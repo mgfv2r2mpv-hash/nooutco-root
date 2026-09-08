@@ -2339,7 +2339,27 @@ const SERVER_PROMPT_TOOLS = new Set(["assess", "bt", "parent", "sap", "sup"]);
    prompt asks for counts and rates; the BT session note has those already, off
    the data collection, and asking again spends the technician's attention on
    what the EHR filled in for them. */
-const PROMPT_KINDS = new Set(["bt_triage", "sap_triage", "triage"]);
+const PROMPT_KINDS = new Set([
+  "bt_triage",
+  "sap_triage",
+  "triage",
+  /* THE SAP DESIGN PAIR, added 2026-09-07 alongside the four-key pair above
+     rather than replacing it. One prompt store serves both the production and
+     the dev Pages projects, so replacing "sap" would hand the thirteen-section
+     prompt to whichever client had not deployed yet. The old pair keeps serving
+     production until production carries the new client, and then it can go. */
+  "sap_design",
+  "sap_design_triage",
+]);
+
+/* WHICH KINDS TAKE THE PER-NOTE STYLE BLOCK.
+   A caller that believes it sent a style card must never be told nothing while
+   the model never sees one, so a suffix sent to a kind that cannot use it is
+   refused rather than dropped. What decides is what the call DOES: a triage
+   call writes no prose, so nothing measured in the page belongs in it. A
+   drafting call writes the note and takes the block, whether or not it happens
+   to address its prompt by name. */
+const SUFFIX_KINDS = new Set(["sap_design"]);
 
 // The style card, the shape line and the intake-voice sentence together run to a
 // few hundred words. This is a sanity bound on a field that reaches the model,
@@ -2361,6 +2381,12 @@ export function promptKinds() {
 export function maxSystemSuffix() {
   return MAX_SYSTEM_SUFFIX;
 }
+// Same accessor reasoning as promptKinds(). Exported so the browser-side list of
+// drafting kinds can be pinned against this one rather than against a second
+// hand-typed copy of it - see prompt-kind-suffix.spec.js.
+export function suffixKinds() {
+  return [...SUFFIX_KINDS].sort();
+}
 
 export function serverPromptRequest(body, tool) {
   if (!isServerPromptTool(tool)) return { serverSide: false };
@@ -2380,12 +2406,16 @@ export function serverPromptRequest(body, tool) {
     }
     // Refused rather than ignored, on the same reasoning as the system field
     // above: a caller that believes it sent a style card must not be told
-    // nothing while the model never sees one. Triage takes no suffix because
-    // nothing measured in the page belongs in a call that writes no prose.
-    if (typeof b.system_suffix === "string" && b.system_suffix) {
+    // nothing while the model never sees one. See SUFFIX_KINDS for which kinds
+    // can use one at all.
+    const kindSuffix = typeof b.system_suffix === "string" ? b.system_suffix : "";
+    if (kindSuffix && !SUFFIX_KINDS.has(kind)) {
       return { serverSide: true, error: "This prompt takes no system_suffix." };
     }
-    return { serverSide: true, kind, suffix: "" };
+    if (kindSuffix.length > MAX_SYSTEM_SUFFIX) {
+      return { serverSide: true, error: "system_suffix is longer than this tool accepts." };
+    }
+    return { serverSide: true, kind, suffix: kindSuffix };
   }
   const suffix = typeof b.system_suffix === "string" ? b.system_suffix : "";
   if (suffix.length > MAX_SYSTEM_SUFFIX) {
@@ -3516,6 +3546,22 @@ export const AUDIT_TYPES = new Set([
      counts and refuses everything else, which is what keeps a section id from
      ever arriving with a sentence attached to it. */
   "note_retyped",
+  /* THE TWO DESIGN-CHANNEL EVENTS, added 2026-09-07 in the same commit as the
+     browser calls that emit them, which is what the block above exists to
+     insist on.
+
+     They answer the two questions the SAP rebuild cannot answer any other way.
+     another_way says which blocks clinicians reject the tool's design on - if
+     one section draws every press, that section's prompt is wrong rather than
+     that clinician being fussy. coherence_answered says how often the plan
+     really does disagree with itself and which of the four kinds it was, which
+     is the only way to find out whether the check earns the space it takes.
+
+     Both carry a closed vocabulary and no prose: a section id, and a kind that
+     is one of four. No sentence of a plan travels here because a check fired
+     on it. */
+  "another_way",
+  "coherence_answered",
 ]);
 
 export function sanitizeAuditEvent(raw) {

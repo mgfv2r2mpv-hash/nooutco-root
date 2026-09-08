@@ -13,17 +13,30 @@
  * triage call with a note and the spec times out somewhere unrelated.
  */
 
-/* True for every shape triage has ever had, so a spec reads the same before and
-   after its tool migrates.
+/* THE DAY THE COMMENT BELOW CAME DUE, 2026-09-07.
+ *
+ * This used to treat ANY prompt_kind as triage, and said so deliberately:
+ * "Every kind the store holds is a triage prompt today; if that ever stops
+ * being true, this needs a set rather than a truthiness check."
+ *
+ * It stopped being true. sap now asks for its DRAFTING prompt by name too -
+ * "sap_design" - because one prompt store serves two Pages projects and the old
+ * and new clients have to run side by side. Left alone, this helper would have
+ * called every SAP draft a triage call, which is the exact fail-open direction
+ * the paragraph above was written to prevent: the spec answers the draft with a
+ * triage payload and then times out somewhere unrelated.
+ *
+ * So it is a set now. DRAFT_PROMPT_KINDS is the list of kinds that WRITE PROSE,
+ * and prompt-kind-suffix.spec.js pins it against the Worker's own SUFFIX_KINDS -
+ * which is the same fact from the other side, since a kind takes the per-note
+ * style block exactly when it writes something for the block to act on. A new
+ * drafting kind added to the Worker and not here fails that spec rather than
+ * quietly breaking every note test. */
+export const DRAFT_PROMPT_KINDS = new Set(['sap_design']);
 
-   ANY prompt_kind, not the string "triage". This read `prompt_kind === 'triage'`
-   until 2026-08-20, when sap started sending "sap_triage" for its own triage
-   prompt - and that would have failed open in the one direction this helper
-   exists to prevent, treating a sap triage call as a note. Every kind the store
-   holds is a triage prompt today; if that ever stops being true, this needs a
-   set rather than a truthiness check. */
 export const isTriageCall = (body) =>
-  !!(body && typeof body.prompt_kind === 'string' && body.prompt_kind) ||
+  !!(body && typeof body.prompt_kind === 'string' && body.prompt_kind &&
+     !DRAFT_PROMPT_KINDS.has(body.prompt_kind)) ||
   !!(body && body.systemPrompt) ||
   /sufficient/i.test((body && body.system) || '');
 

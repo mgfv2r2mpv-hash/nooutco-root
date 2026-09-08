@@ -226,12 +226,52 @@ function modelKeys(tool) {
   return keys;
 }
 
-test('a schema requires exactly the keys the model fills, plus hints', () => {
+/* A SIDE CHANNEL: a key the model must fill that is not a section drawn on the
+   page. sap grew three of them on 2026-09-07 and this pair of tests is what the
+   single test here used to be, split because the old one asserted the wrong
+   thing once sections stopped being the only required keys.
+
+   reentryRule is folded INTO the maintenance block by normalizeOutput rather
+   than drawn beside it, and design and conflicts are read by the engine and
+   rendered as their own furniture. None of the three is a section, and all
+   three are load-bearing.
+
+   The danger the old test guarded is still real and is now the second test: a
+   key in `required` that nothing reads costs the model tokens on every single
+   draft and silently constrains what it may say, for nothing. So rather than
+   list the three by name - which would only assert that I typed the same words
+   in two files - each is put to the normalizer and has to prove it arrives
+   somewhere: kept under its own name, or changing the note when it changes. */
+function sideChannels(tool) {
+  const sections = new Set(modelKeys(tool));
+  return tool.responseSchema.required.filter((k) => k !== 'hints' && !sections.has(k));
+}
+
+test('a schema requires every section the model fills, plus hints', () => {
   for (const id of ALL) {
     const { tool } = loadTool(id);
-    expect([...tool.responseSchema.required].sort(), `${id} requires the wrong keys`)
-      .toEqual([...modelKeys(tool), 'hints'].sort());
+    const required = new Set(tool.responseSchema.required);
+    for (const key of [...modelKeys(tool), 'hints']) {
+      expect(required.has(key), `${id} draws ${key} but never requires it, so a draft may arrive without one`)
+        .toBe(true);
+    }
     expect(tool.responseSchema.additionalProperties, `${id} does not seal its object`).toBe(false);
+  }
+});
+
+test('and every key it requires beyond those reaches something', () => {
+  for (const id of ALL) {
+    const { tool } = loadTool(id);
+    for (const key of sideChannels(tool)) {
+      const draft = maximalDraft(tool.responseSchema);
+      const out = tool.normalizeOutput(draft);
+      // Kept under its own name, which the engine then reads.
+      if (Object.prototype.hasOwnProperty.call(out, key)) continue;
+      // Or consumed into the note, in which case changing it changes the note.
+      const moved = tool.normalizeOutput({ ...draft, [key]: 'an entirely different answer' });
+      expect(JSON.stringify(moved), `${id} requires "${key}", and its normalizer neither keeps it nor reads it - every draft must carry a value that arrives nowhere`)
+        .not.toBe(JSON.stringify(out));
+    }
   }
 });
 

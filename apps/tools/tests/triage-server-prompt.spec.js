@@ -135,14 +135,21 @@ test.describe('the triage call obeys the same rule the note call does', () => {
  * would still be green. So this drives a real SAP turn and reads what left the
  * browser. */
 test.describe('sap triage asks for its own stored prompt', () => {
-  test('the SAP triage call names sap_triage and carries no prompt text', async ({ page }) => {
+  test('the SAP triage call names sap_design_triage and carries no prompt text', async ({ page }) => {
     const body = await captureFirstCall(page, {
       path: '/notes/bcba/index.html?tool=sap',
       toolId: 'sap',
       fill: FILL_BCBA(/Treatment Goal/i, 'client will request a preferred item using a full sentence, 80% across 3 sessions'),
     });
 
-    expect(body.prompt_kind, 'SAP triage fell back to the generic prompt').toBe('sap_triage');
+    /* THE KEY IS sap_design_triage, NOT sap_triage, AND THE REASON IS DEPLOY
+       ORDER RATHER THAN TASTE. One prompt store serves both the production and
+       the dev Pages projects. Overwriting the stored "sap_triage" would hand
+       the learner-focused prompt to production's client the moment voice-module
+       deployed, and production still runs the version that asks for plan
+       mechanics. A new name lets the two clients coexist until main carries
+       this code, at which point the old pair is deleted rather than fixed. */
+    expect(body.prompt_kind, 'SAP triage fell back to the generic prompt').toBe('sap_design_triage');
     expect(typeof body.system, 'a migrated tool must send no prompt text').not.toBe('string');
     expect(typeof body.systemPrompt).not.toBe('string');
 
@@ -152,6 +159,6 @@ test.describe('sap triage asks for its own stored prompt', () => {
     const gate = serverPromptRequest(body, 'sap');
     expect(gate.serverSide).toBe(true);
     expect(gate.error, 'the Worker refused the body the browser actually sent').toBeUndefined();
-    expect(promptKeyFor('sap', gate.kind), 'the store would be asked for the wrong key').toBe('sap_triage');
+    expect(promptKeyFor('sap', gate.kind), 'the store would be asked for the wrong key').toBe('sap_design_triage');
   });
 });
