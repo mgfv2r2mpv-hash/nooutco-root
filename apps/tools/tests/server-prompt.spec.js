@@ -81,7 +81,7 @@ test.describe('which tools compose server-side', () => {
   test('the two tools that have one point at their own stored copy', () => {
     // Stated positively as well as structurally. The loop above would still pass
     // if a tool's override and its key were both deleted.
-    for (const [tool, kind] of [['sap', 'sap_triage'], ['bt', 'bt_triage']]) {
+    for (const [tool, kind] of [['sap', 'sap_design_triage'], ['bt', 'bt_triage']]) {
       const src = readFileSync(path.join(process.cwd(), `notes/bcba/tools/${tool}.js`), 'utf8');
       expect(/triageSystem\s*:/.test(src), `${tool}.js lost its triage override`).toBe(true);
       expect(src).toContain(`triageKind: "${kind}"`);
