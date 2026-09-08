@@ -520,11 +520,23 @@
      caller that half-migrates finds out immediately rather than silently getting
      the old path. */
   function systemFields(opts) {
-    // Three shapes, mutually exclusive, and the Worker refuses any request that
-    // mixes them. promptKind names a prompt the store holds that is not the
-    // tool's own - triage is the only one - and it carries no text and no
-    // suffix, because nothing measured in this page belongs in that call.
-    if (typeof opts.promptKind === "string") return { prompt_kind: opts.promptKind };
+    /* Three shapes, and the Worker refuses any request that mixes system with
+       either of the others. promptKind names a prompt the store holds under a
+       name other than the tool's own.
+
+       IT MAY NOW CARRY A SUFFIX, and the distinction is what the call is for
+       rather than how it is addressed. A triage kind writes no prose, so the
+       per-note style block has nothing to act on and the Worker still refuses
+       one. A DRAFTING kind writes the note, so it takes the block exactly as an
+       unnamed drafting call does. sap asks for its prompt by name only because
+       one store serves two Pages projects and the two clients have to be able
+       to run side by side; that is a deploy-order fact and it should not cost
+       the tool its style card. */
+    if (typeof opts.promptKind === "string") {
+      return typeof opts.systemSuffix === "string" && opts.systemSuffix
+        ? { prompt_kind: opts.promptKind, system_suffix: opts.systemSuffix }
+        : { prompt_kind: opts.promptKind };
+    }
     return typeof opts.systemSuffix === "string"
       ? { system_suffix: opts.systemSuffix }
       : { system: opts.system };

@@ -18,24 +18,39 @@ async function sapConfig(page) {
   await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length));
 }
 
+/* THE SHAPE MOVED ON 2026-09-07 AND THESE THREE DEFECTS DID NOT.
+ *
+ * sap used to return four nested objects and now returns thirteen flat section
+ * keys, because a revision that names one section may no longer rewrite the
+ * other twelve. reentryRule went with it: it was errorCorrection.reentryRule
+ * and is now a top-level key that normalizeOutput folds into the maintenance
+ * block as its Note line.
+ *
+ * So all three assertions below are rewritten against the new keys and none of
+ * them is weakened. Each still fails against bfd66b84, and each still fails if
+ * the fold is removed. */
 test.describe('SAP error-correction Note', () => {
   // Was: the closing Note was pushed onto the parts array unconditionally, so an
   // errorCorrection the model never filled still rendered ~119 characters. The
   // section looked populated to any truthiness or length check, which is exactly
   // the blank-section hole the shape gate exists to catch - except this one
   // slipped past it, because the section was not empty.
-  test('an empty errorCorrection renders nothing at all', async ({ page }) => {
+  test('an empty error-correction block renders nothing at all', async ({ page }) => {
     await sapConfig(page);
     const out = await page.evaluate(() => {
       const sap = window.NOTE_TOOLS.find((t) => t.id === 'sap');
       return {
-        empty: sap.normalizeOutput({}).errorCorrection,
-        emptyEc: sap.normalizeOutput({ errorCorrection: {} }).errorCorrection,
+        empty: sap.normalizeOutput({}).errorCorrectionMaintenance,
+        ruleOnly: sap.normalizeOutput({
+          reentryRule: 'After 3 consecutive probes below criteria, contact the BCBA.',
+        }).errorCorrectionMaintenance,
       };
     });
 
     expect(out.empty, 'normalizeOutput({}) must not fabricate an error-correction section').toBe('');
-    expect(out.emptyEc, 'an empty errorCorrection object must not render boilerplate').toBe('');
+    // And the flat shape's own version of the same hole: a re-entry rule with no
+    // block to append it to must not become a section consisting of one Note.
+    expect(out.ruleOnly, 'a re-entry rule alone must not render a section').toBe('');
   });
 
   // Was: the probe count was hardcoded to "2 consecutive maintenance probes"
@@ -48,12 +63,10 @@ test.describe('SAP error-correction Note', () => {
     const rendered = await page.evaluate(() => {
       const sap = window.NOTE_TOOLS.find((t) => t.id === 'sap');
       return sap.normalizeOutput({
-        errorCorrection: {
-          initial: '(1) Block access.',
-          maintenance: '(1) Re-present once.',
-          reentryRule: 'After 3 consecutive weekly probes below 80%, contact BCBA.',
-        },
-      }).errorCorrection;
+        errorCorrectionInitial: '(1) Block access.',
+        errorCorrectionMaintenance: '(1) Re-present once.',
+        reentryRule: 'After 3 consecutive weekly probes below 80%, contact BCBA.',
+      }).errorCorrectionMaintenance;
     });
 
     expect(rendered).toContain('After 3 consecutive weekly probes below 80%');
@@ -63,13 +76,13 @@ test.describe('SAP error-correction Note', () => {
 
   test('reentryRule is contracted in the response schema', async ({ page }) => {
     await sapConfig(page);
-    const ec = await page.evaluate(() => {
+    const schema = await page.evaluate(() => {
       const sap = window.NOTE_TOOLS.find((t) => t.id === 'sap');
-      return sap.responseSchema.properties.errorCorrection;
+      return { required: sap.responseSchema.required, keys: Object.keys(sap.responseSchema.properties) };
     });
 
-    expect(ec.required, 'an optional reentryRule is one the model may omit').toContain('reentryRule');
-    expect(Object.keys(ec.properties)).toContain('reentryRule');
+    expect(schema.required, 'an optional reentryRule is one the model may omit').toContain('reentryRule');
+    expect(schema.keys).toContain('reentryRule');
   });
 });
 
@@ -280,10 +293,21 @@ test.describe('SAP gap questions', () => {
   // for counts, rates, and how this session compared to recent ones. A SAP is a
   // program plan with no session behind it, so all three are unanswerable.
   //
-  // The gap that matters here is the prompt hierarchy, which is also the one
-  // where a plausible invention is unsafe: a technician runs whatever levels
-  // the plan lists, and this tool used to manufacture four of them.
-  test('SAP asks about program specification, not about a session', async ({ page }) => {
+  /* WHAT IT ASKS ABOUT CHANGED ON 2026-09-07, ON HIS RULING, AND THIS TEST
+   * TURNED OVER WITH IT.
+   *
+   * It used to assert that the prompt hierarchy was the question SAP leads
+   * with. That was right while the tool refused to design one. His ruling was
+   * the opposite: "Ask about the learner. Propose every plan mechanic outright.
+   * Readiness stops grading your paperwork and starts grading how tailored the
+   * plan can be." A hierarchy the drafter is about to design and mark as its own
+   * is no longer a gap - asking for it spends the one round trip the clinician
+   * gets on something the tool can answer itself.
+   *
+   * So the hierarchy is asserted here in the other direction, and the thing that
+   * did NOT change is kept exactly as it was: no session-note vocabulary, and no
+   * question that could pull an identifier out of a de-identified input. */
+  test('SAP asks about the learner, and refuses to ask for plan mechanics', async ({ page }) => {
     await sapConfig(page);
     const triage = await page.evaluate(() => {
       const sap = window.NOTE_TOOLS.find((t) => t.id === 'sap');
@@ -291,17 +315,50 @@ test.describe('SAP gap questions', () => {
     });
 
     expect(triage.system, 'SAP declares no triage prompt of its own').toBeTruthy();
-    expect(triage.system, 'the hierarchy is the gap the maintainer asked to become a question')
+    expect(triage.system, 'the learner is what the clinician alone holds').toMatch(/ASK ABOUT THE LEARNER/);
+    expect(triage.system, 'and the repertoire has to lead, being the fact that moves the plan most')
+      .toMatch(/current repertoire[\s\S]{0,400}what competes/i);
+
+    // The mechanics are named as things NOT to ask for. Naming them is what
+    // makes the instruction bite: a prompt that merely omits them leaves the
+    // model free to ask anyway.
+    const notAsk = triage.system.slice(triage.system.indexOf('WHAT NOT TO ASK'), triage.system.indexOf('ASK ABOUT THE LEARNER'));
+    expect(notAsk, 'the drafter designs the hierarchy now, so triage must not ask for it')
       .toMatch(/prompt hierarchy/i);
-    expect(triage.system, 'and it must lead, not appear in passing').toMatch(/Ask this first/);
+    for (const mechanic of [/mastery criteria/i, /generalization/i, /maintenance/i, /error correction/i]) {
+      expect(notAsk, `a mechanic the drafter designs is still being asked for: ${mechanic}`).toMatch(mechanic);
+    }
 
     // Session-note vocabulary is the tell that the default prompt leaked in.
     for (const wrong of [/how many times/i, /this session/i, /behaviors of concern/i, /rates for a behavior/i]) {
       expect(triage.system, `SAP triage still asks a session-note question: ${wrong}`).not.toMatch(wrong);
     }
 
+    // Unchanged and non-negotiable: the input is de-identified and triage is the
+    // one place that could ask for what the scrub just took out.
+    expect(triage.system, 'triage may never ask for an identifier').toMatch(/NEVER ask for a name, a date, an address, a diagnosis/);
+
     expect(triage.intro).toMatch(/GOAL AND SPECIFICATIONS/);
     expect(triage.intro, 'a plan is not a set of raw session notes').not.toMatch(/RAW NOTES/);
+  });
+
+  /* THE COHERENCE CHECK, which is the second job triage gained and the one he
+     widened by hand: "It looks for inconsistencies beyond just checking mastery
+     criteria, trial minimums, or numbers of probes." A check that only compares
+     figures would pass a plan labelled NET and described as table trials. */
+  test('triage reads the input back for contradictions, not only for figures', async ({ page }) => {
+    await sapConfig(page);
+    const sys = await page.evaluate(() => (window.NOTE_TOOLS.find((t) => t.id === 'sap').triageSystem || ''));
+
+    const block = sys.slice(sys.indexOf('COHERENCE'));
+    expect(block, 'the coherence block is missing entirely').toBeTruthy();
+    expect(block, 'a numbers-only check is the one he ruled out').toMatch(/NOT mainly about numbers/i);
+    // His own two examples, which are the ones a figures check cannot see.
+    expect(block, 'a procedure named one thing and described as another').toMatch(/NET/);
+    expect(block, 'the prompt-delay reading he raised himself').toMatch(/prompt delay/i);
+    // And the two rules that keep it a question rather than a correction.
+    expect(block, 'it must never pick a reading for the clinician').toMatch(/never pick a reading for them/i);
+    expect(block, 'a deliberate hybrid has to stay a live reading').toMatch(/mixed format/i);
   });
 
   // An override the engine never reads is the failure this pins: the property
@@ -365,7 +422,7 @@ test.describe('SAP gap questions', () => {
      * call succeeds, the model answers, and the clinician is asked about
      * behavior counts instead of prompt hierarchies. */
     expect(triageCall.prompt_kind, 'the engine asked for the session-note default for a SAP')
-      .toBe('sap_triage');
+      .toBe('sap_design_triage');
     expect(typeof triageCall.system, 'a migrated tool must send no prompt text')
       .not.toBe('string');
     expect(typeof triageCall.systemPrompt).not.toBe('string');
