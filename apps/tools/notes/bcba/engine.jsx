@@ -201,6 +201,41 @@ function sectionBlock(section, output, values) {
   return `${section.heading}\n${sectionBody(section, output, values)}`;
 }
 
+/* ONE CARD IS NOT ALWAYS ONE EHR FIELD, and on the SAP tool it is not.
+ *
+ * That form has four boxes. The eight Purpose / Teaching Strategy / ... labels
+ * are typed into the second one as text, so splitting the tool into thirteen
+ * cards was a change to what a clinician can CLICK, never to what the company
+ * form takes. copyGroups is how the two stay separate: the cards are the
+ * editing surface, the groups are the form, and Copy hands back exactly the
+ * four blocks this tool produced before the split.
+ *
+ * A part with no text drops out with its label, which is what the old nested
+ * formatter did. The difference is that an empty block is now a visible empty
+ * card and a missing key the shape gate rejects, so it can no longer go missing
+ * quietly on the way to the clipboard - which is precisely how eight required
+ * blocks used to disappear.
+ *
+ * A tool that declares no groups is unchanged: one card, one field, as before. */
+function copyBlocks(tool, output, values) {
+  if (!Array.isArray(tool.copyGroups) || !tool.copyGroups.length) {
+    return tool.formSections.map((sec) => sectionBlock(sec, output, values));
+  }
+  const byId = new Map(tool.formSections.map((sec) => [sectionId(sec), sec]));
+  return tool.copyGroups.map((group) => {
+    const body = group.parts
+      .map((part) => {
+        const sec = byId.get(part.id);
+        const text = sec ? sectionBody(sec, output, values) : "";
+        if (!text.trim()) return "";
+        return part.label ? `${part.label}:\n${text}` : text;
+      })
+      .filter(Boolean)
+      .join("\n\n");
+    return `${group.heading}\n${body}`;
+  });
+}
+
 function valuesEqual(a, b) {
   return JSON.stringify(a === undefined ? null : a) === JSON.stringify(b === undefined ? null : b);
 }
@@ -649,6 +684,124 @@ function HintList({ hints, catalog, testid }) {
 function HintNotes({ hints, section, catalog }) {
   const id = sectionId(section);
   return <HintList hints={(hints || []).filter((h) => h.section === id)} catalog={catalog} testid={`hints-${id}`} />;
+}
+
+/* ── The design channel ───────────────────────────────────────────────────
+   A hint says a block is thin. A design note says the opposite: the block is
+   finished, and here is the call that was made in it. The two are different
+   enough to look different, and they stack under the same card.
+
+   Every proposal is ACCEPTED ALREADY. There is no tick to take it and nothing
+   is pending, which is his ruling and the generous reading: the plan is
+   complete the moment it is drafted, and a clinician who disagrees with a
+   choice presses "another way" or simply types over it. Marking a block as the
+   tool's work is a disclosure, never a request. */
+function designFor(design, section) {
+  const id = sectionId(section);
+  return (design || []).find((d) => d.section === id) || null;
+}
+
+function DesignNote({ design, section, onAnotherWay, busy }) {
+  const d = designFor(design, section);
+  if (!d) return null;
+  const id = sectionId(section);
+  return (
+    <div
+      data-testid={`design-${id}`}
+      style={{
+        marginTop: 10, padding: "8px 11px", borderRadius: 7,
+        background: "#fdf8ec", border: "1px solid #ecdcb8",
+        fontSize: 12.5, color: "#6b5a2e", lineHeight: 1.55,
+      }}
+    >
+      {d.choice && <div><strong style={{ color: "#7a5510" }}>Chose:</strong> {d.choice}</div>}
+      {/* The lever is the whole reason a design note beats a silent block: it
+          is written so a BCBA can tell at a glance whether it applies to their
+          learner, which is the one thing the tool cannot know. */}
+      {d.lever && <div style={{ marginTop: 3 }}><strong style={{ color: "#7a5510" }}>Change it if:</strong> {d.lever}</div>}
+      {onAnotherWay && (
+        <button
+          data-testid={`another-way-${id}`}
+          disabled={busy}
+          onClick={(e) => { e.stopPropagation(); onAnotherWay(section, d); }}
+          style={{
+            ...smallBtn, marginTop: 7, borderColor: "#ecdcb8", color: "#7a5510",
+            background: "white", opacity: busy ? 0.5 : 1, cursor: busy ? "default" : "pointer",
+          }}
+        >
+          Another way
+        </button>
+      )}
+    </div>
+  );
+}
+
+/* WHERE THE PLAN DISAGREES WITH ITSELF, and the shape of it is the argument.
+ *
+ * This is not a validation error and it must never read as one. The commonest
+ * real inconsistency in a program plan is a procedure NAMED one thing and
+ * DESCRIBED as another, and when that happens there is frequently no wrong
+ * side: "Most-to-Least" over a trial that starts independent is either a
+ * mistyped direction or a prompt delay described correctly, and those are
+ * different procedures a technician would run differently. Only the person who
+ * wrote it knows which.
+ *
+ * So the readings are named as the real procedures they are, with what a
+ * technician would actually do under each, and the clinician answers. Nothing
+ * is picked for them and nothing is corrected behind them. */
+const CONFLICT_LABEL = {
+  label_vs_description: "Named one thing, described another",
+  description_vs_description: "Two blocks describe different arrangements",
+  undefined_level: "Used but never defined",
+  figures: "Two figures disagree",
+};
+
+function ConflictPanel({ conflicts, onAnswer, busy }) {
+  const list = conflicts || [];
+  if (!list.length) return null;
+  return (
+    <div data-testid="conflicts" style={{ marginBottom: 18 }}>
+      <div style={{ fontSize: 11, letterSpacing: ".07em", textTransform: "uppercase", color: "#7a5510", fontWeight: 700, marginBottom: 6 }}>
+        Reading the plan back
+      </div>
+      {list.map((c) => (
+        <div
+          key={c.id}
+          data-testid={`conflict-${c.id}`}
+          style={{
+            padding: "11px 13px", borderRadius: 8, marginBottom: 8,
+            background: "#fdf8ec", border: "1px solid #ecdcb8",
+          }}
+        >
+          <div style={{ fontSize: 11.5, fontWeight: 700, color: "#a3803a", marginBottom: 4 }}>
+            {CONFLICT_LABEL[c.kind] || CONFLICT_LABEL.label_vs_description}
+          </div>
+          <div style={{ fontSize: 13.5, color: "#4a3f22", lineHeight: 1.6, marginBottom: 8 }}>{c.question}</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {c.readings.map((r, i) => (
+              <button
+                key={i}
+                data-testid={`conflict-${c.id}-reading-${i}`}
+                disabled={busy}
+                onClick={() => onAnswer && onAnswer(c, r)}
+                title={r.consequence}
+                style={{
+                  ...smallBtn, borderColor: "#ecdcb8", color: "#5a4a1e", background: "white",
+                  textAlign: "left", whiteSpace: "normal", maxWidth: 300,
+                  opacity: busy ? 0.5 : 1, cursor: busy ? "default" : "pointer",
+                }}
+              >
+                <span style={{ fontWeight: 700 }}>{r.name}</span>
+                {r.consequence && (
+                  <span style={{ display: "block", fontWeight: 400, color: "#7a6b45", marginTop: 2 }}>{r.consequence}</span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 // Findings about the note as a whole. These have nowhere to live under a
@@ -1199,6 +1352,20 @@ function freshSession(tool) {
     // nothing is lost and nothing lands where it was not asked for.
     routingAsks: null,     // [{id, heading, value, prev, why, ...}] or null
 
+    /* ── The design channel ───────────────────────────────────────────────
+       Only a tool that designs rather than transcribes fills these, which today
+       is the SAP tool alone. Both are replaced whole on every turn rather than
+       accumulated: a revision can settle a conflict as easily as it can raise
+       one, and re-asking a question the clinician already answered is the
+       failure that teaches somebody to stop reading the panel. */
+    // One line per block the tool made a real choice about: what it chose, the
+    // lever that would change it, and whether it was the tool's design or the
+    // clinician's own specification restated.
+    design: null,          // [{section, choice, lever, proposed}] or null
+    // Where the plan disagrees with itself. Reported with the readings named,
+    // never resolved: two coherent procedures are the clinician's call.
+    conflicts: null,       // [{id, sections, kind, question, readings}] or null
+
     // ── Learned voice ────────────────────────────────────────────────────
     // styleCard is the live card, refreshed for display. convStyleBlock is the
     // snapshot the open conversation was drafted with, and must not track it -
@@ -1463,9 +1630,19 @@ function App() {
      fetched inside the Worker from a service-bound Worker with no public URL, so
      it is neither downloadable nor forgeable. Everything else behaves exactly as
      it did. */
+  /* A DRAFTING KIND, and it exists for deploy order rather than for tidiness.
+     One prompt store serves both the production and the dev Pages projects, so
+     a tool whose stored prompt is being replaced would hand the new prompt to
+     whichever client deployed second. A tool that names draftKind asks for a
+     prompt of its own name instead, which lets the old and new clients run side
+     by side while one of them catches up. Everything else is unchanged: the
+     per-note style block still rides along, because a drafting call writes
+     prose and triage does not. */
   const systemFor = (block) =>
     tool.serverPrompt
-      ? { systemSuffix: block || "" }
+      ? (tool.draftKind
+          ? { promptKind: tool.draftKind, systemSuffix: block || "" }
+          : { systemSuffix: block || "" })
       : { system: tool.buildSystem() + (block ? "\n\n" + block : "") };
 
   /* TRIAGE IS A CALL TOO, and the sup migration forgot it. This branch is the
@@ -1504,7 +1681,13 @@ function App() {
 
      It fails OPEN. If absence.js did not load, a note without the strip is worth
      more than no note, and the counts go out as zero rather than as a lie. */
-  const finalize = (parsed) => {
+  /* `normalizer` is how a revision turn gets through here rather than around
+     here. Under the edits contract the model returns changed blocks, not a
+     note, so the caller passes a merge that folds them onto the note as it
+     stands. Everything either side of that call is the same work in the same
+     order - restore, inject, strip, recast - which is the point of threading a
+     function through instead of adding a second pipeline. */
+  const finalize = (parsed, normalizer) => {
     /* RESTORE FIRST, before normalising and before the absence strip reads a
        word of it. A word with no evidence of being a person went out as an
        opaque token, and this is where it comes back. Doing it here rather than
@@ -1535,7 +1718,7 @@ function App() {
       ? { ...restored, hints: (Array.isArray(restored.hints) ? restored.hints : []).concat(injected) }
       : restored;
 
-    const normalized = tool.normalizeOutput(withHints);
+    const normalized = (normalizer || tool.normalizeOutput)(withHints);
     const stripped = window.NoteAbsence
       ? window.NoteAbsence.scrubNote(normalized)
       : { output: normalized, cut: 0, flagged: 0 };
@@ -1561,7 +1744,13 @@ function App() {
   };
   const finalOutput = (parsed) => finalize(parsed).output;
 
-  const runTurn = async (messages, styleBlock, wantOpinions) => {
+  /* `shape` is "edits" on a revision turn for a tool that has the edits
+     contract, and undefined everywhere else. It swaps two things and nothing
+     more: which schema constrains the answer, and which key the shape gate
+     insists on. A reply carrying only changed blocks has none of the section
+     keys, so checking for all thirteen would reject every correct answer. */
+  const runTurn = async (messages, styleBlock, wantOpinions, shape) => {
+    const editsTurn = shape === "edits" && !!tool.editsOnly && !!tool.revisionSchema;
     const r = await NotesGate.generateConversation({
       ...systemFor(styleBlock),
       messages,
@@ -1574,11 +1763,13 @@ function App() {
       // The sections this tool renders are exactly the top-level keys its prompt
       // contracts for, so they double as the shape the response must satisfy.
       // Derived rather than declared, so the check cannot drift from the UI.
-      expectKeys: tool.formSections.filter(isModelSection).map(sectionId),
+      expectKeys: editsTurn ? ["edits"] : tool.formSections.filter(isModelSection).map(sectionId),
       // Constrains the answer to the tool's schema so the API serializes the
       // note. Tools without one keep the plain-text path and the recovery
       // ladder beneath it, so this rolls out a tool at a time.
-      responseSchema: schemaDisabled() ? null : (tool.responseSchema || null),
+      responseSchema: schemaDisabled()
+        ? null
+        : ((editsTurn ? tool.revisionSchema : tool.responseSchema) || null),
     });
     return r; // {parsed, rawText, usage, stopReason}
   };
@@ -2041,6 +2232,27 @@ function App() {
    * belonged in the BCBA summary and the note was REWRITTEN rather than
    * answered. And on a move, content left the source section and never arrived
    * at the destination, so a move silently became a delete. */
+  /* HOW A REVISION IS ALLOWED TO ANSWER, and the whole reason SAP plans were
+     coming back gutted.
+   *
+   * The old contract - the one every tool still uses - asks for the COMPLETE
+   * updated object with every unaffected section copied verbatim. On a session
+   * note that is a few hundred tokens and models manage it. On a SAP it is
+   * about 2,500 tokens of clinical prose that has to survive re-typing on every
+   * single turn, and models do not re-type 2,500 tokens: they paraphrase. Every
+   * paraphrase then diffs as a real change, so the clinician was shown whole
+   * company-required sections struck through in red for a clarification they
+   * asked about one figure.
+   *
+   * A tool with editsOnly names what it is changing instead. A section it does
+   * not name is carried across byte-identical, so it produces no diff, so it
+   * cannot shrink. `never` is the branch's own fabrication clause, kept
+   * per-branch because each one is about a different kind of input. */
+  const returnRule = (never) =>
+    tool.editsOnly
+      ? `Return ONLY the blocks you are changing, in "edits", each carrying that block's COMPLETE new text. A block you do not name is left exactly as it stands, so never name one in order to say it is unchanged, and never re-type the plan. Put any block that YOUR edit just made stale or self-contradictory into "dependents" - you changed the figure, so you are the one who knows which blocks quote it. Re-evaluate "hints", "design" and "conflicts". ${never}`
+      : `Return the COMPLETE updated JSON object with ALL keys, copying every unaffected section verbatim. Re-evaluate "hints". ${never}`;
+
   const REVISION_RULES = [
     `IF THE CLINICIAN SAYS THEY ARE UNSURE about something clinical - whether a behaviour counts, whether a program should change, whether something is worth reporting - do not guess and do not decide for them. Put a short question for the supervising BCBA in "bcbaQuestion", phrased the way the technician would ask it. Leave it empty otherwise. This is not for uncertainty about wording or formatting, only about clinical judgement.`,
     `IF THE MESSAGE IS A QUESTION rather than an instruction to change something, answer it in "answer" and return every other key EXACTLY as it currently stands. Do not edit the note to answer a question. "Should this go in the summary?" is a question. "Move this to the summary" is an instruction.`,
@@ -2348,6 +2560,12 @@ function App() {
         lastCallAt: Date.now(),
         corrections: marks,
         markState: {},
+        // Read off the draft rather than off `corrected`: the corrections pass
+        // rewrites prose and never touches these, and reading the post-pass
+        // copy would make a tool that has no design channel clear one it never
+        // set.
+        design: (finalDraft.output.design || []).length ? finalDraft.output.design : null,
+        conflicts: (finalDraft.output.conflicts || []).length ? finalDraft.output.conflicts : null,
       });
       pushThread("assistant", "status", marks
         ? "Drafted, and I made " + marks.count + (marks.count === 1 ? " change" : " changes") +
@@ -2816,6 +3034,49 @@ function App() {
      derived from it, so the annotation would not be there yet. A click on a
      finding is exactly that case, so it hands the annotation in instead of
      storing it. Everything else passes nothing and keeps reading S.annotation. */
+  /* "ANOTHER WAY" REUSES THE REVISION PATH, and that is the whole design.
+     No new endpoint, no new call shape, no new UI vocabulary: the button
+     composes an instruction and sends it exactly as a typed one, so the
+     alternative arrives as an ordinary inline diff where "use this" is Apply
+     and Discard is the undo. It inherits the dependents check for free, which
+     matters more than it sounds - swapping a prompt hierarchy is precisely the
+     kind of change that leaves the error correction block quoting a level that
+     no longer exists. */
+  const askAnotherWay = (section, design) => {
+    if (loading || S.proposal) return;
+    const heading = section.heading;
+    audit("another_way", { section: sectionId(section) });
+    sendRevision(
+      [
+        `Design a different way of doing "${heading}".`,
+        design && design.choice ? `What is there now: ${design.choice}` : "",
+        `Give a genuinely different clinical decision, not a rewording of the same one - a BCBA reading the two should be able to say what changed and why they would pick one over the other. Stay inside what this goal and this conversation support, and do not state anything new about the client.`,
+        `Say in "why" what is different about it, in one clause.`,
+      ].filter(Boolean).join("\n"),
+      { kind: "section", id: sectionId(section), heading },
+    );
+  };
+
+  /* A COHERENCE READING, TAKEN. The clinician picked which of two or three
+     procedures they meant, so this is a revision like any other: the plan is
+     rewritten to say that procedure consistently everywhere it appears, and the
+     question goes away because the next turn re-reads the plan and finds it
+     coherent. Nothing is corrected behind them - they chose. */
+  const takeReading = (conflict, reading) => {
+    if (loading || S.proposal) return;
+    audit("coherence_answered", { kind: conflict.kind });
+    patchS({ conflicts: (S.conflicts || []).filter((c) => c.id !== conflict.id) });
+    pushThread("clinician", "text", `${reading.name} is what I meant.`);
+    sendRevision(
+      [
+        `You asked: ${conflict.question}`,
+        `The answer is: ${reading.name}${reading.consequence ? " - " + reading.consequence : ""}.`,
+        `Make the plan say that consistently everywhere it appears, including the label and every block that describes the procedure. Change nothing else.`,
+      ].join("\n"),
+      null,
+    );
+  };
+
   const sendRevision = async (instruction, annOverride) => {
     const review = await scrubGate(instruction, { carryOver: true });
     if (!review) return;
@@ -2859,7 +3120,7 @@ function App() {
         section
           ? `If the answer also requires changing a DIFFERENT section, make that change too and list every such section in "crossSection".`
           : `The answer names the sections it belongs in. Change each one it names and list them in "crossSection".`,
-        `Return the COMPLETE updated JSON object with ALL keys, copying every unaffected section verbatim. Re-evaluate "hints". Never fabricate - write only what the clinician's answer and this conversation already contain.`,
+        returnRule(`Never fabricate - write only what the clinician's answer and this conversation already contain.`),
       ].join("\n");
     } else if (section && ann.kind === "span") {
       userMsg = [
@@ -2873,7 +3134,8 @@ function App() {
         ``,
         `Instruction: ${scrubbedInstruction}`,
         ``,
-        `Change the highlighted phrase and only what the instruction requires around it; leave the rest of the section as written. Return the COMPLETE updated JSON object with ALL keys, copying every other section verbatim. Re-evaluate "hints". Never fabricate - if the instruction asks for information not present anywhere in this conversation, leave it out and emit the appropriate hint instead.`,
+        `Change the highlighted phrase and only what the instruction requires around it; leave the rest of the section as written.`,
+        returnRule(`Never fabricate - if the instruction asks for information not present anywhere in this conversation, leave it out and emit the appropriate hint instead.`),
       ].join("\n");
     } else if (section) {
       userMsg = [
@@ -2884,7 +3146,7 @@ function App() {
         ``,
         `Instruction: ${scrubbedInstruction}`,
         ``,
-        `Return the COMPLETE updated JSON object with ALL keys. Re-evaluate "hints" for the whole note. Never fabricate - if the instruction asks for information not present anywhere in this conversation, leave it out and emit the appropriate hint instead.`,
+        returnRule(`Never fabricate - if the instruction asks for information not present anywhere in this conversation, leave it out and emit the appropriate hint instead.`),
         ``,
         // The clinician pointed at one section, but an instruction routinely
         // belongs partly somewhere else. Silently dropping that half is how a
@@ -2896,7 +3158,9 @@ function App() {
         `The clinician pointed at ONE section. If the instruction also requires changing a DIFFERENT section, make that change too and list every such section in "crossSection".`,
         `Set "confident": true ONLY when the instruction names that section, or names content that appears in that section and nowhere else. Anything you inferred, guessed at, or judged stylistically consistent is "confident": false. A false is not a failure; it asks the clinician, which is the correct outcome when it is genuinely their call.`,
         `"why" is one short clause the clinician will read, naming what in their instruction sent the change there.`,
-        `Leave "crossSection" empty and copy every other section verbatim when the instruction only concerns the section they pointed at.`,
+        tool.editsOnly
+          ? `Leave "crossSection" empty, and name only the one section in "edits", when the instruction concerns nothing else.`
+          : `Leave "crossSection" empty and copy every other section verbatim when the instruction only concerns the section they pointed at.`,
       ].join("\n");
     } else if (ann && ann.kind === "quote") {
       // They pointed at something that was SAID rather than at a section. The
@@ -2913,7 +3177,7 @@ function App() {
         ``,
         REVISION_RULES,
         ``,
-        `Return the COMPLETE updated JSON object with ALL keys; copy unaffected sections verbatim. Re-evaluate "hints". Never fabricate beyond what is stated.`,
+        returnRule(`Never fabricate beyond what is stated.`),
       ].join("\n");
     } else {
       userMsg = [
@@ -2922,7 +3186,8 @@ function App() {
         ``,
         REVISION_RULES,
         ``,
-        `Apply these to every affected section. Return the COMPLETE updated JSON object with ALL keys; copy unaffected sections verbatim. Re-evaluate "hints". Never fabricate beyond what is stated.`,
+        `Apply these to every affected section.`,
+        returnRule(`Never fabricate beyond what is stated.`),
       ].join("\n");
     }
 
@@ -2931,9 +3196,18 @@ function App() {
       const conversation = [...S.conversation, { role: "user", content: userMsg }];
       // The same block the draft was written with, not whatever the card says
       // now - this replays a cached prefix and must match it byte for byte.
-      const r = await runTurn(conversation, S.convStyleBlock || "");
+      const editsTurn = !!tool.editsOnly && !!tool.mergeRevision;
+      const r = await runTurn(conversation, S.convStyleBlock || "", false, editsTurn ? "edits" : undefined);
       conversation.push({ role: "assistant", content: r.rawText });
-      const normalized = finalOutput(r.parsed);
+      /* THE MERGE, and it happens inside finalize rather than after it.
+         Under the edits contract the model returned changed blocks, so the note
+         is rebuilt from the note as it stands plus those blocks. Every section
+         the model did not name is carried across byte-identical and therefore
+         diffs as nothing at all, which is the whole fix: a section can no longer
+         shrink by being paraphrased, only by being named. */
+      const normalized = editsTurn
+        ? finalize(r.parsed, (raw) => tool.mergeRevision(raw, S.output)).output
+        : finalOutput(r.parsed);
       /* A claim answer is routed by the clinician rather than by a click on one
          card: they said what they saw, and the instruction told the model which
          section that belongs in. So every change it made is applied, the way an
@@ -2966,6 +3240,17 @@ function App() {
       const routing = new Map(
         (normalized.crossSection || []).map((c) => [c.section, c]),
       );
+      /* A DEPENDENT IS A BLOCK THE TOOL FIXED WITHOUT BEING ASKED, and it is
+         his ruling on what the check may do: a conflict inside the clinician's
+         own input it cannot resolve, so it asks; a conflict IT caused by
+         applying their revision, it knows which figure is new, so it updates
+         the blocks that quote the old one and says it did.
+
+         Dependents are never routed and never held back as questions. The model
+         raised them because its own edit made them stale, so the section that
+         was clicked has nothing to do with whether they apply. */
+      const dependentIds = new Set(normalized.dependentSections || []);
+      const editReasons = normalized.editReasons || {};
       const changes = [];
       const asks = [];
       tool.formSections.filter(isModelSection).forEach((sec) => {
@@ -2974,11 +3259,13 @@ function App() {
         const change = {
           id, heading: sec.heading, kind: sec.kind, columns: sec.columns,
           value: normalized[id], prev: S.output[id],
+          why: editReasons[id] || "",
         };
+        if (dependentIds.has(id)) { changes.push({ ...change, dependent: true }); return; }
         if (!targetId || id === targetId) { changes.push(change); return; }
         const route = routing.get(id);
-        if (route && route.confident) changes.push({ ...change, why: route.why });
-        else asks.push({ ...change, why: route ? route.why : "" });
+        if (route && route.confident) changes.push({ ...change, why: route.why || change.why });
+        else asks.push({ ...change, why: route ? route.why : change.why });
       });
       /* A question, answered. No proposal, no diff, nothing touched in the
          note: the reply goes into the panel where the rest of the conversation
@@ -3003,13 +3290,19 @@ function App() {
       }
       if (bcbaQuestion) patchS({ bcbaOffer: bcbaQuestion });
 
-      const carried = changes.filter((c) => c.id !== targetId);
+      const dependents = changes.filter((c) => c.dependent);
+      const carried = changes.filter((c) => c.id !== targetId && !c.dependent);
       patchS({
         conversation,
         lastCallAt: Date.now(),
         annotation: null,
         proposal: { changes, hints: normalized.hints || [], targetSectionId: targetId, kind: ann ? ann.kind : "global" },
         routingAsks: asks.length ? asks : null,
+        // Re-read every turn rather than accumulated: a revision can resolve a
+        // conflict as easily as it can introduce one, and a stale conflict is a
+        // question the clinician already answered being asked again.
+        conflicts: (normalized.conflicts || []).length ? normalized.conflicts : null,
+        design: (normalized.design || []).length ? normalized.design : S.design,
         error: "",
       });
       audit("revision", {
@@ -3036,6 +3329,21 @@ function App() {
           "status",
           `That also changed ${carried.map((c) => "“" + c.heading + "”").join(" and ")}, because ` +
             (carried[0].why || "the instruction reached that section") +
+            ". Discard reverts all of it.",
+        );
+      }
+      /* Named separately from the carried sections above, because they are a
+         different act. A carried change is part of what the clinician asked
+         for, reaching further than the card they clicked. A dependent is the
+         tool keeping the plan consistent with a figure they just moved, which
+         they did not ask for and are entitled to see stated plainly. */
+      if (dependents.length) {
+        pushThread(
+          "assistant",
+          "status",
+          `I also updated ${dependents.map((c) => "“" + c.heading + "”").join(" and ")} to stay ` +
+            `consistent with that: ` +
+            (dependents[0].why || "the figure you changed is quoted there too") +
             ". Discard reverts all of it.",
         );
       }
@@ -3497,7 +3805,7 @@ function App() {
 
   const handleCopyAll = () => {
     if (!S.output) return;
-    navigator.clipboard.writeText(tool.formSections.map((sec) => sectionBlock(sec, S.output, S.values)).join("\n\n"));
+    navigator.clipboard.writeText(copyBlocks(tool, S.output, S.values).join("\n\n"));
     setCopied("all");
     setTimeout(() => setCopied(null), 1800);
     recordNoteLeft();
@@ -4117,6 +4425,11 @@ function App() {
               Checkbox suggestions are inferred from your notes - verify before ticking your form. Narratives are editable. <strong style={{ color: "#5a6b4a" }}>Click a section to revise it, or select a phrase inside one to revise just that</strong> - the assistant panel takes it from there. 💡 flags what might be missing, ⚠ flags what a funder could reject the claim over.
             </p>
 
+            <ConflictPanel
+              conflicts={S.conflicts}
+              onAnswer={takeReading}
+              busy={loading || !!S.proposal}
+            />
             <NoteHints hints={S.output.hints} catalog={tool.hintCatalog} />
             <ExpertReading
               expert={S.expert}
@@ -4163,7 +4476,26 @@ function App() {
                     style={{ borderRadius: 9, border: "1px solid #ddecd0", background: "#f7fbf3", padding: 16 }}
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10, gap: 8 }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: "#374528" }}>{sec.heading}</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: "#374528" }}>
+                        {sec.heading}
+                        {/* A DISCLOSURE, NOT A REQUEST. The block is already in
+                            the plan and already counts; this says whose call it
+                            was, so a clinician scanning thirteen cards can see
+                            at a glance which ones came from their own
+                            specifications and which the tool designed. */}
+                        {designFor(S.design, sec) && designFor(S.design, sec).proposed && (
+                          <span
+                            data-testid={`proposed-${id}`}
+                            style={{
+                              marginLeft: 7, fontSize: 10, fontWeight: 700, letterSpacing: ".06em",
+                              textTransform: "uppercase", padding: "2px 6px", borderRadius: 999,
+                              background: "#f6e3bd", color: "#7a5510", verticalAlign: "middle",
+                            }}
+                          >
+                            Designed
+                          </span>
+                        )}
+                      </span>
                       <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                         {/* The width toggle is gone: narratives are always full
                             width now, so it had nothing left to toggle. */}
@@ -4178,6 +4510,12 @@ function App() {
 
                     {renderSectionContent(sec)}
                     <HintNotes hints={S.output.hints} section={sec} catalog={tool.hintCatalog} />
+                    <DesignNote
+                      design={S.design}
+                      section={sec}
+                      onAnotherWay={revisable ? askAnotherWay : null}
+                      busy={loading || !!S.proposal}
+                    />
                     <ExpertNotes expert={S.expert} section={sec} />
                   </div>
                 );

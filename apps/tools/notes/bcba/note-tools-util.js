@@ -171,6 +171,111 @@ window.NoteToolsUtil = {
     };
   },
 
+  /* ── The design-partner channel ──────────────────────────────────────────
+     Three shapes the SAP tool returns that a session-note tool has no use for,
+     kept here anyway for the same reason hintSchema is: they belong to the
+     engine's contract with a tool, not to one tool's file. The engine renders
+     them; a tool that never sends them renders nothing and behaves as it did.
+
+     All three validate the section name against the tool's own list, so a
+     fabricated section cannot route a mark, a question or an edit into a
+     section the tool does not draw. That check is the whole reason these are
+     functions rather than a spread. */
+
+  // One line under a designed block: what was chosen, and the lever that would
+  // change it. `proposed` decides whether the card is marked as the tool's own
+  // work; anything that is not exactly true means it was not.
+  normalizeDesign: function (raw, sectionIds) {
+    if (!Array.isArray(raw)) return [];
+    var ids = Array.isArray(sectionIds) ? sectionIds : [];
+    var seen = {};
+    return raw.filter(function (d) {
+      return d && typeof d === "object" && ids.indexOf(d.section) !== -1;
+    }).map(function (d) {
+      return {
+        section: d.section,
+        choice: typeof d.choice === "string" ? d.choice.slice(0, 160) : "",
+        lever: typeof d.lever === "string" ? d.lever.slice(0, 160) : "",
+        proposed: d.proposed === true,
+      };
+    }).filter(function (d) {
+      // One line per section, and a line with nothing in it is not a line. The
+      // first entry for a section wins, so a model that repeats itself does not
+      // stack two notes under one card.
+      if (!d.choice && !d.lever) return false;
+      if (seen[d.section]) return false;
+      seen[d.section] = true;
+      return true;
+    }).slice(0, 20);
+  },
+
+  /* Where the plan disagrees with itself. Reported to the clinician as a
+     question with the readings as its answers, and NEVER resolved here: a
+     conflict with a reading picked for them is worse than no check at all,
+     because the picked reading is the one they stop reading.
+
+     A conflict with fewer than two readings is dropped. One reading is an
+     assertion that they were wrong, which is the thing this must not do. */
+  normalizeConflicts: function (raw, sectionIds) {
+    if (!Array.isArray(raw)) return [];
+    var ids = Array.isArray(sectionIds) ? sectionIds : [];
+    var KINDS = ["label_vs_description", "description_vs_description", "undefined_level", "figures"];
+    return raw.filter(function (c) {
+      return c && typeof c === "object" && typeof c.question === "string" && c.question.trim();
+    }).map(function (c, i) {
+      return {
+        sections: (Array.isArray(c.sections) ? c.sections : []).filter(function (x) {
+          return ids.indexOf(x) !== -1;
+        }).slice(0, 6),
+        kind: KINDS.indexOf(c.kind) !== -1 ? c.kind : "label_vs_description",
+        question: c.question.slice(0, 320),
+        readings: (Array.isArray(c.readings) ? c.readings : []).filter(function (r) {
+          return r && typeof r === "object" && typeof r.name === "string" && r.name.trim();
+        }).map(function (r) {
+          return {
+            name: r.name.slice(0, 90),
+            consequence: typeof r.consequence === "string" ? r.consequence.slice(0, 180) : "",
+          };
+        }).slice(0, 4),
+        id: "cf" + i,
+      };
+    }).filter(function (c) {
+      return c.readings.length >= 2;
+    }).slice(0, 6);
+  },
+
+  /* An edit names a section and carries that section's COMPLETE new text.
+     Anything the model does not name is untouched by construction, which is the
+     whole point of the contract: the model is no longer asked to re-type a
+     2,500 token plan to change one sentence, so it can no longer paraphrase one
+     while re-typing it.
+
+     An edit with empty content is DROPPED rather than applied. Under the old
+     whole-note contract an emptied section was indistinguishable from a section
+     the model chose not to repeat; here it can only mean the model returned
+     nothing for a block it said it was changing, and blanking a
+     company-required block is never what the clinician asked for. */
+  normalizeEdits: function (raw, sectionIds) {
+    if (!Array.isArray(raw)) return [];
+    var ids = Array.isArray(sectionIds) ? sectionIds : [];
+    var seen = {};
+    return raw.filter(function (e) {
+      return e && typeof e === "object" && ids.indexOf(e.section) !== -1 &&
+        typeof e.content === "string" && e.content.trim();
+    }).map(function (e) {
+      return {
+        section: e.section,
+        content: e.content,
+        why: typeof e.why === "string" ? e.why.slice(0, 140) : "",
+      };
+    }).filter(function (e) {
+      // Last write would win silently on a repeat; first write wins loudly.
+      if (seen[e.section]) return false;
+      seen[e.section] = true;
+      return true;
+    }).slice(0, 16);
+  },
+
   revisionKeys: function (sectionIds) {
     return {
       // Something the clinician was unsure about clinically, phrased as a
