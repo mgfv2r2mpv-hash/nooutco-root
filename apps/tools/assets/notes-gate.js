@@ -1627,12 +1627,53 @@
    * never match. Sorting by token length descending is the whole fix, and it is
    * why this is not simply a loop over the map.
    */
+  /* THE MODEL DOES NOT TYPE THE TOKEN BACK THE WAY IT WAS HANDED IT.
+   *
+   * [[T3]] goes out and [T3] comes back. notes-scrub.js picked the double
+   * bracket because it "carries no meaning for the model to act on", and that is
+   * the assumption this repairs. A model reads [[...]] as a wiki link or a
+   * markdown artefact and normalises the second bracket away, exactly as it
+   * would anywhere else in prose.
+   *
+   * The literal pass below matches the whole token, so a single-bracket [T3]
+   * misses every entry and rides into the note. He hit this on a sup note on
+   * 2026-09-08: fourteen ordinary clinical terms reached the EHR as [T1]
+   * through [T14], none of them PHI, and none of them recoverable from the note
+   * once it was there.
+   *
+   * WHY MATCHING ON THE NUMBER IS SAFE. Nothing is substituted unless this note
+   * actually issued that number. [T99] with no entry behind it stays exactly as
+   * the model wrote it, so a clinician who brackets a term of their own keeps
+   * it. The number is the identity, and the brackets around it are decoration
+   * the model is free to mangle.
+   *
+   * ROLE TOKENS ARE UNTOUCHED. The index is built only from tokens shaped
+   * [[Tn]], so Client--1 cannot reach this even when a caller passes a map that
+   * restores names, which the bench does.
+   */
+  function restoreLooseOpaque(text, map) {
+    var byNumber = {};
+    (map || []).forEach(function (e) {
+      var m = /^\[\[T(\d+)\]\]$/.exec(String((e && e.token) || ""));
+      if (m) byNumber[m[1]] = e.name;
+    });
+    if (!Object.keys(byNumber).length) return text;
+    /* Built here rather than hoisted: a /g regex kept at module scope carries
+       lastIndex between calls, and every caller of this is in a loop. */
+    return text.replace(/\[{1,2}\s*[Tt]\s*(\d+)\s*\]{1,2}/g, function (whole, n) {
+      return Object.prototype.hasOwnProperty.call(byNumber, n) ? byNumber[n] : whole;
+    });
+  }
+
   function restoreDeep(value, map) {
     if (typeof value === "string") {
       var s = value;
       var ordered = map.slice().sort(function (a, b) { return b.token.length - a.token.length; });
       ordered.forEach(function (e) { s = s.split(e.token).join(e.name); });
-      return s;
+      /* The literal pass ran first and still wins, so a token the model echoed
+         back correctly never reaches the tolerant one. This only ever sees the
+         survivors. */
+      return restoreLooseOpaque(s, map);
     }
     if (Array.isArray(value)) return value.map(function (v) { return restoreDeep(v, map); });
     if (value && typeof value === "object") {
