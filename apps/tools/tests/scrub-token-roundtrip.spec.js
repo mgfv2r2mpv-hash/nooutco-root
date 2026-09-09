@@ -478,3 +478,84 @@ test.describe('a token the model reshaped still comes back', () => {
     expect(noteText, 'an unissued bracketed term was rewritten').toContain('[T941]');
   });
 });
+
+/* THE LEDGER HAS TO OUTLIVE THE PAGE.
+ *
+ * [[T3]] is a number. The ledger is what says 3 was "Play-Doh", and it used to
+ * live in a React ref and nowhere else, so closing the tab destroyed the only
+ * copy and every opaque token in that note became permanent. That is the fault
+ * behind fourteen [T1]..[T14] in a signed sup note on 2026-09-09: the restore
+ * pass was not merely wrong about the brackets, it had nothing left to restore
+ * against.
+ *
+ * These tests are written against STORAGE rather than against a rendered note,
+ * and that is deliberate here even though the tests above it are not. The claim
+ * under test is "the ledger survives a reload", so the reload and the store are
+ * the behaviour, not an implementation detail standing in for it.
+ */
+test.describe('the ledger outlives the page', () => {
+  test('a token minted before a reload still restores after it', async ({ page }) => {
+    await draft(page);
+    await page.reload();
+
+    /* Mount is gated on NotesGate.draft.ready, so an input showing its restored
+       text proves the encrypted cache is populated. draft.load() is synchronous
+       against that cache, and reading it before the decrypt settles would test
+       nothing but the race. */
+    await expect(page.getByRole('textbox', { name: /Skill Acquisition/i })).toHaveValue(/labeled/);
+
+    const after = await page.evaluate(() => {
+      const map = window.NotesGate.draft.load('bt::map') || [];
+      const opaque = map.filter((e) => e.restore && /^\[\[T\d+\]\]$/.test(e.token));
+      if (!opaque.length) return { count: 0 };
+      const entry = opaque[0];
+      /* The MANGLED form, because that is what a real model hands back and the
+         two halves of this repair have to hold together: a ledger that survives
+         is no use if the restore pass only matches the canonical shape. */
+      const mangled = entry.token.replace('[[', '[').replace(']]', ']');
+      return {
+        count: opaque.length,
+        name: entry.name,
+        restored: window.NotesGate._scrub.restoreDeep(
+          'The client sorted the ' + mangled + ' cards.',
+          map.filter((e) => e.restore)
+        ),
+      };
+    });
+
+    expect(after.count, 'the ledger did not survive the reload').toBeGreaterThan(0);
+    expect(after.restored).toContain(after.name);
+    expect(after.restored).not.toMatch(/\[{1,2}\s*[Tt]\s*\d+\s*\]{1,2}/);
+  });
+
+  test('the ledger is encrypted at rest like the draft it belongs to', async ({ page }) => {
+    await draft(page);
+    const raw = await page.evaluate(() => localStorage.getItem('notes_draft_bt::map') || '');
+    expect(raw, 'nothing was written').not.toEqual('');
+    /* It holds the clinician's own words, which is the same class of data as the
+       draft. Riding the draft's storage is what buys that, so this is the test
+       that the sibling key really did inherit it and was not quietly special. */
+    for (const word of ['Blue', 'Mand', 'Paw Patrol']) {
+      expect(raw, `"${word}" is on disk in the clear`).not.toContain(word);
+    }
+  });
+
+  test('starting fresh drops the ledger, so a new note cannot inherit old numbering', async ({ page }) => {
+    await draft(page);
+    /* Read it BEFORE the Clear. Asserting only that the ledger is empty
+       afterwards is a test that passes on a build which never wrote one, which
+       is exactly the build this change replaced. */
+    const before = await page.evaluate(() => (window.NotesGate.draft.load('bt::map') || []).length);
+    expect(before, 'nothing was stored, so the Clear proves nothing').toBeGreaterThan(0);
+
+    page.on('dialog', (d) => d.accept());
+    await page.getByRole('button', { name: /^Clear/ }).click();
+    await expect(page.getByRole('textbox', { name: /Skill Acquisition/i })).toHaveValue('');
+
+    const left = await page.evaluate(() => (window.NotesGate.draft.load('bt::map') || []).length);
+    /* A ledger outliving its note is worse than none: the next note mints [[T1]]
+       for a different word, and restoreDeep puts the PREVIOUS note's word into
+       this one. A wrong word in a signed note beats a visible token. */
+    expect(left, 'the previous note’s ledger survived a Clear').toBe(0);
+  });
+});

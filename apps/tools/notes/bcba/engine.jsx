@@ -1101,8 +1101,37 @@ function ExpertReading({ expert, claimAnswers, onClaimAnswer, busy }) {
 
 /* ── App ──────────────────────────────────────────────────────────────── */
 
+/* WHERE A TOKEN'S MEANING LIVES.
+ *
+ * [[T3]] is a number, not a word. What makes it restorable is the ledger that
+ * says 3 was "Play-Doh", and until now that ledger lived in one React ref and
+ * died with the page - so a reload, a crash, or a closed tab turned every
+ * opaque token in the note into a permanent [T3]. That is what put fourteen of
+ * them in a signed sup note on 2026-09-09 with no way back.
+ *
+ * The ledger now rides the draft's own storage under a sibling key. It inherits
+ * every protection the draft already has, which is the point of putting it
+ * there rather than inventing a second store: the same non-extractable AES-GCM
+ * key, the same 12-hour hard TTL, the same wipe on logout.
+ *
+ * AND NO MORE THAN THE DRAFT. The ledger holds the clinician's original words,
+ * which is the same class of data as the draft itself, so it gets the draft's
+ * lifetime exactly. Keeping it longer to make an older note recoverable would
+ * be extending PHI retention to buy convenience, and that trade is not ours.
+ *
+ * The token stays SHORT on the wire. Carrying the word inside the token - a
+ * cipher payload the page could decode without any ledger - fails on the bug
+ * this system just shipped a fix for: the model rewrote [[T3]] as [T3], and a
+ * long payload gets mangled more than a short one, not less. It also puts a
+ * reversible copy of a possibly-real name in front of the model, which is the
+ * one thing the scrub exists to prevent. So the tag goes on the wire and the
+ * meaning stays on the device.
+ */
+function scrubMapKey(toolId) { return toolId + "::map"; }
+
 function freshSession(tool) {
   const saved = (window.NotesGate && NotesGate.draft.load(tool.id)) || {};
+  const savedMap = (window.NotesGate && NotesGate.draft.load(scrubMapKey(tool.id))) || [];
   const migrated = tool.migrateDraft ? tool.migrateDraft(saved) : saved;
   const values = {};
   tool.inputs.forEach((f) => {
@@ -1118,7 +1147,7 @@ function freshSession(tool) {
     output: null,
     conversation: [],     // [{role, content}] - replayed each turn; prefix is server-cached
     promptText: "",
-    scrubMap: [],         // [{name, token, identifier?}] - what the last scrub took
+    scrubMap: Array.isArray(savedMap) ? savedMap : [], // [{name, token, identifier?}] - survives a reload
     certified: [],        // names the clinician has since marked "not a name"
     error: "",
     lastCallAt: 0,
@@ -1343,7 +1372,27 @@ function App() {
      S.scrubMap there would restore against the PREVIOUS note's map, or against
      an empty one on the first draft. The ref is what the model answer is
      measured against; the state copy stays because the notice renders from it. */
-  const scrubMapRef = React.useRef([]);
+  const scrubMapRef = React.useRef(S.scrubMap || []);
+
+  /* ONE REF, SEVERAL TOOLS, AND A LEDGER THAT NOW OUTLIVES THE PAGE.
+
+     The ref is what a model answer is measured against, and there is exactly one
+     of it for an app holding a session per tool. Re-seed it whenever the tool
+     changes: a note reopened after a reload has to restore against its OWN
+     ledger, not against an empty ref and not against whichever tool was on
+     screen when the page last rendered.
+
+     Keyed on tool.id alone. scrubGate() sets the ref itself and then patches the
+     state copy, so keying this on S.scrubMap as well would only overwrite the
+     ref with the value it already holds, one render late. */
+  React.useEffect(() => { scrubMapRef.current = S.scrubMap || []; }, [tool.id]);
+
+  /* Persist the ledger beside the draft on every change, under the sibling key.
+     This is the half that makes a token restorable at all: the draft has always
+     survived a reload, and the words its tokens stand for did not. */
+  React.useEffect(() => {
+    if (window.NotesGate) NotesGate.draft.save(scrubMapKey(tool.id), S.scrubMap || []);
+  }, [S.scrubMap, tool.id]);
   /* carryOver decides whether this scrub JOINS the note's map or replaces it,
      and getting it wrong is what put [[T3]] in a signed sup note on 2026-08-31.
 
@@ -3474,7 +3523,10 @@ function App() {
   const handleClear = () => {
     if (loading) return;
     if (hasContent() && !window.confirm("Clear this tool's inputs and generated note to start fresh? This can't be undone.")) return;
-    if (window.NotesGate) NotesGate.draft.clear(tool.id);
+    if (window.NotesGate) {
+      NotesGate.draft.clear(tool.id);
+      NotesGate.draft.clear(scrubMapKey(tool.id));
+    }
     setSessions((prev) => ({ ...prev, [tool.id]: freshSession(tool) }));
     setCopied(null);
     setCopiedPrompt(false);
