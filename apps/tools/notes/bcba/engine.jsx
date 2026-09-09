@@ -3528,6 +3528,18 @@ function App() {
       NotesGate.draft.clear(scrubMapKey(tool.id));
     }
     setSessions((prev) => ({ ...prev, [tool.id]: freshSession(tool) }));
+    /* THE REF TOO, NOT JUST THE STATE AND THE STORE.
+
+       handleGeneratePrompt scrubs with carryOver:true and seeds itself from this
+       ref, so a ref surviving a Clear hands the next note the previous note's
+       entries: its numbering continues from the old high-water mark and
+       mergeMaps carries the old word/token pairs straight into the new map.
+
+       That was survivable while the map died with the page. It is not now: the
+       autosave effect below writes whatever lands in state, so a stale ref would
+       be PERSISTED into the new note's ledger. Clearing all three is what makes
+       "Clear drops the ledger" true rather than half true. */
+    scrubMapRef.current = [];
     setCopied(null);
     setCopiedPrompt(false);
   };
