@@ -558,4 +558,41 @@ test.describe('the ledger outlives the page', () => {
        this one. A wrong word in a signed note beats a visible token. */
     expect(left, 'the previous note’s ledger survived a Clear').toBe(0);
   });
+
+  test('and the in-memory map is dropped too, not only the stored one', async ({ page }) => {
+    /* THE LOGGED-OUT PROMPT PATH IS WHERE A STALE REF SHOWS.
+       handleGeneratePrompt scrubs with carryOver:true and seeds from the ref, so
+       a ref that survived a Clear carries the previous note's entries into the
+       next note - and the autosave then writes them to the new note's ledger.
+       Clearing the store alone would leave this hole open. */
+    await page.goto('/notes/bt/');
+    // Every required input, or tool.validate() rejects and the scrub never runs.
+    await page.getByRole('textbox', { name: /Skill Acquisition/i })
+      .fill('Client sorted the Magenta cards during Tact trials.');
+    await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first-then board before demands');
+    await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked and redirected');
+    await page.getByRole('button', { name: 'Generate Prompt' }).click();
+    await expect
+      .poll(() => page.evaluate(() => (window.NotesGate.draft.load('bt::map') || []).length))
+      .toBeGreaterThan(0);
+
+    page.on('dialog', (d) => d.accept());
+    await page.getByRole('button', { name: /^Clear/ }).click();
+    await expect(page.getByRole('textbox', { name: /Skill Acquisition/i })).toHaveValue('');
+
+    await page.getByRole('textbox', { name: /Skill Acquisition/i })
+      .fill('Client sorted the Turquoise cards during Echoic trials.');
+    await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first-then board before demands');
+    await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked and redirected');
+    await page.getByRole('button', { name: 'Generate Prompt' }).click();
+    await expect
+      .poll(() => page.evaluate(() => (window.NotesGate.draft.load('bt::map') || []).length))
+      .toBeGreaterThan(0);
+
+    const names = await page.evaluate(() =>
+      (window.NotesGate.draft.load('bt::map') || []).map((e) => e.name)
+    );
+    expect(names, 'the cleared note’s word came back through the ref').not.toContain('Magenta');
+    expect(names).toContain('Turquoise');
+  });
 });
