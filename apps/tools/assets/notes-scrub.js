@@ -36,10 +36,13 @@
  * draft rather than before writing one.
  *
  * Tokens stay in the output (de-identified AND retrievable - the clinician
- * substitutes real names in their own EHR). The name->token map is EPHEMERAL: it
- * lives only for the duration of one action and is never stored or transmitted.
- * persistMap() is an inert hook for future encrypted-at-rest storage if re-insertion
- * is ever added.
+ * substitutes real names in their own EHR). The name->token map is NEVER
+ * TRANSMITTED, and since 2026-09-09 it is no longer ephemeral: the engine keeps
+ * it beside the draft, encrypted at rest, so an opaque token stays restorable
+ * across a reload. It used to live for the duration of one action, which meant
+ * a closed tab destroyed the only copy and every [[Tn]] in that note became
+ * permanent. See scrubMapKey() in engine.jsx for where it goes and why the
+ * token itself stays short.
  *
  * NOT the same job as NotesGate.scrubForAgent(), which the expert bench uses. That
  * one restores the real words into what comes back, because the expert quotes the
@@ -447,9 +450,19 @@
       .join(", ");
   }
 
-  // Inert hook. If re-insertion is ever added, encrypt the map at rest here
-  // (Web Crypto AES-GCM, key derived from a clinician passphrase via PBKDF2) - never
-  // store the map in plaintext, never transmit it. Currently a no-op by design.
+  /* DEAD, and kept only so an old stress-test page does not throw on it.
+     Nothing in the tree calls it.
+
+     It used to be the designated seam for encrypted-at-rest map storage, and it
+     specified the contract well: never plaintext, never transmitted. That
+     storage exists now, and it is NOT here - the engine writes the map through
+     NotesGate.draft.save() under a sibling key, so it inherits the draft's own
+     non-extractable AES-GCM key, its 12-hour TTL and its wipe on logout.
+
+     The seam moved because this module does not know about tools or sessions
+     and the engine does. Leaving the old comment saying "no-op by design" would
+     have left two answers in the tree to one question, with the wrong one
+     written in the more authoritative-looking place. */
   function persistMap(/* map */) { return false; }
 
   /* ───────────────── Acknowledgment ───────────────── */
