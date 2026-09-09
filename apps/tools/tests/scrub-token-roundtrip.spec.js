@@ -115,7 +115,11 @@ test.describe('a word with no evidence of being a person comes back', () => {
 
   test('no opaque token is left anywhere a clinician can read it', async ({ page }) => {
     const { noteText } = await draft(page);
-    expect(noteText).not.toMatch(/\[\[T\d+\]\]/);
+    /* ONE BRACKET OR TWO. This asserted /\[\[T\d+\]\]/ until 2026-09-09, which is
+       the canonical shape and the one shape a real model does not reliably
+       return. A note carrying [T3] passed this line while showing the clinician
+       a token, so the assertion is written against the family now. */
+    expect(noteText).not.toMatch(/\[{1,2}\s*[Tt]\s*\d+\s*\]{1,2}/);
   });
 
   test('and the note never says Client with a number on it', async ({ page }) => {
@@ -406,5 +410,71 @@ test.describe('numbering continues across scrubs of the same note', () => {
       return window.NotesScrub.mergeMaps(map, map).length;
     });
     expect(n).toBe(1);
+  });
+});
+
+/* THE MODEL DOES NOT HAND THE TOKEN BACK THE WAY IT WAS GIVEN IT.
+ *
+ * Every test above this line drives a mock that echoes the prompt back
+ * byte-perfect, so [[T3]] always returns as [[T3]] and the literal substitution
+ * always finds it. That is the one thing a real model will not promise, and it
+ * is why the suite stayed green through the fault below.
+ *
+ * WHAT HE READ ON 2026-09-09, on a signed sup note on production: fourteen
+ * ordinary clinical terms rendered as [T1] through [T14] in Goals Analyzed.
+ * None of them was PHI. The scrub mints [[Tn]], nothing in the tree converts a
+ * double bracket to a single one, and restoreDeep matched the whole token
+ * literally - so the single-bracket form the model actually returned matched no
+ * entry and rode into the EHR.
+ *
+ * These tests mangle the token on purpose, which is the negative control the
+ * echo mock cannot be.
+ */
+async function draftWithMangledTokens(page, collapse) {
+  await page.route('**/api/llm-call**', async (route) => {
+    const body = JSON.parse(route.request().postData() || '{}');
+    const reply = JSON.stringify(echoReply(body));
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ content: [{ text: collapse(reply) }] }),
+    });
+  });
+
+  await loggedIn(page);
+  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill(INTAKE);
+  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first-then board before demands');
+  await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked and redirected');
+  await page.getByRole('button', { name: 'Generate Note' }).click();
+  await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 30000 });
+  const note = page.getByTestId('generated-note');
+  return note.evaluate((el) =>
+    [el.innerText, ...[...el.querySelectorAll('textarea')].map((t) => t.value)].join('\n')
+  );
+}
+
+test.describe('a token the model reshaped still comes back', () => {
+  test('[[T3]] returned as [T3] restores to the clinician word', async ({ page }) => {
+    const noteText = await draftWithMangledTokens(page, (s) => s.replace(/\[\[T(\d+)\]\]/g, '[T$1]'));
+    for (const word of ['Blue', 'Red', 'Yellow']) {
+      expect(noteText, `"${word}" did not come back from a single-bracket token`).toContain(word);
+    }
+    expect(noteText, 'a token survived into the note').not.toMatch(/\[{1,2}\s*[Tt]\s*\d+\s*\]{1,2}/);
+  });
+
+  test('an unbalanced [[T3] restores too, because the number is the identity', async ({ page }) => {
+    const noteText = await draftWithMangledTokens(page, (s) => s.replace(/\[\[T(\d+)\]\]/g, '[[T$1]'));
+    expect(noteText).toContain('Blue');
+    expect(noteText).not.toMatch(/\[{1,2}\s*[Tt]\s*\d+\s*\]{1,2}/);
+  });
+
+  /* THE SAFETY PROPERTY, and the reason matching on a bare number is not
+     reckless: a bracketed term this note never issued is the clinician's own
+     writing and stays exactly as they typed it. */
+  test('a number this note never issued is left alone', async ({ page }) => {
+    const noteText = await draftWithMangledTokens(page, (s) =>
+      s.replace(/\[\[T(\d+)\]\]/g, '[T$1]')
+        .replace('Choices were offered before each demand.', 'Ran the [T941] protocol before each demand.'));
+    expect(noteText, 'an unissued bracketed term was rewritten').toContain('[T941]');
   });
 });
