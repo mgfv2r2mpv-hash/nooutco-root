@@ -14,6 +14,13 @@
  * source array, because composition is what the model receives and because the
  * logged-out copy path composes separately. Both are checked.
  *
+ * AND THE LIST IS NOT THE POINT, ruled 2026-09-10. He gave the eighteen as
+ * EXAMPLES of a standard of practice, not as the standard itself. A framing
+ * that closes the list is the same defect as an empty section: the BCBA left
+ * the mechanic alone BECAUSE it is standard, so the block nobody specified is
+ * the block that comes out thin. The second describe pins the framing, and
+ * pins the old closing wording OUT.
+ *
  * These are his clinical rulings, not house style. Change one only on his word.
  */
 
@@ -103,5 +110,67 @@ test.describe('the SAP drafter designs from his toolkit, not from whatever reads
     );
     expect(system).not.toContain('90% accuracy over a minimum of 5 trials');
     expect(system).not.toContain('Least-to-Most is the default direction');
+  });
+});
+
+/* His 2026-09-10 ruling, in his words: "There are best-case heuristics in ABA
+   like other fields that are used as researched standards unless the individual
+   client has some contraindication or it doesn't work with them. I didn't give
+   an exhaustive list."
+
+   So the framing has two jobs the bullets cannot do. It has to license the
+   field, and it has to stay out of the way of the learner-facts rule, which is
+   the one thing the model genuinely may not invent. Both are asserted, and the
+   wording that broke it is asserted out. */
+test.describe('the defaults read as examples of the standard, not as the whole of it', () => {
+  const FRAMING = [
+    ['a silent mechanic falls back on the field', 'established standard of practice in ABA'],
+    ['unspecified means standard, not optional', 'BECAUSE it is standard, not because it is optional'],
+    ['a skipped block gets the same detail', 'Give it the same detail as a block they did reach'],
+    ['the list is the house calls, not the field', 'They are not the boundary of the field'],
+    ['researched practice governs the gaps', 'researched best practice still governs'],
+    ['departure needs a reason, listed or not', 'Depart from any standard, listed or not'],
+    ['a contraindication is a reason to depart', 'a contraindication the clinician gave you'],
+    ['and the list says so itself at the end', 'The list above is not exhaustive'],
+    ['an unnamed mechanic is not thereby unsettled', 'is not thereby unsettled'],
+  ];
+
+  test('the framing licenses the field, in both prompts', async ({ page }) => {
+    await sapConfig(page);
+    const both = await page.evaluate(() => {
+      const sap = window.NOTE_TOOLS.find((t) => t.id === 'sap');
+      return [sap.buildSystem(), sap.buildLabeledPrompt({ goal: 'x', sapSpecs: '' })];
+    });
+    for (const prompt of both) {
+      for (const [ruling, phrase] of FRAMING) {
+        expect(prompt, `the framing lost his ruling: ${ruling}`).toContain(phrase);
+      }
+    }
+  });
+
+  /* THE REGRESSION THIS ROUND EXISTS FOR. "Do not invent one" was meant to stop
+     the model making up a mechanic. It read as a ceiling on ABA itself, and the
+     blocks the specifications never reached came out thin. Anybody tightening
+     this framing again will reach for that phrase; this is what stops them. */
+  test('and does not close the list again', async ({ page }) => {
+    await sapConfig(page);
+    const system = await page.evaluate(() =>
+      window.NOTE_TOOLS.find((t) => t.id === 'sap').buildSystem()
+    );
+    expect(system).not.toContain('do not invent one');
+    expect(system).not.toContain('Design from the standards below.');
+  });
+
+  /* Licensing the field must not license the learner. The line that may never
+     move is the one about facts, and widening the mechanics is exactly the edit
+     that could take it with it. */
+  test('but never licenses a fact about the learner', async ({ page }) => {
+    await sapConfig(page);
+    const system = await page.evaluate(() =>
+      window.NOTE_TOOLS.find((t) => t.id === 'sap').buildSystem()
+    );
+    expect(system).toContain('It never licenses a fact about this learner');
+    expect(system).toContain('WHAT YOU STILL MAY NOT INVENT');
+    expect(system).toContain('Never state a fact about this client that the clinician did not give you');
   });
 });

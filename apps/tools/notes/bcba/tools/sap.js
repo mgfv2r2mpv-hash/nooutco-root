@@ -329,11 +329,22 @@
    * standards: the toolkit a BCBA here would reach for when the specifications
    * settle nothing.
    *
+   * NOT A CLOSED LIST, ruled 2026-09-10. He gave these as EXAMPLES, and said so
+   * plainly: ABA carries researched heuristics the way any field does, he could
+   * not write them all out, and the expert should reach for the established one
+   * whenever the BCBA left a mechanic alone. The first framing said "do not
+   * invent one", which a model reads as a ceiling on the whole field rather
+   * than a ban on making things up, and that is exactly how a block goes thin:
+   * the BCBA skipped it BECAUSE it is standard. So the framing licenses the
+   * field, the list pins the house calls, and the learner-facts rule above is
+   * what still holds the line on invention.
+   *
    * Shared by SYSTEM_PROMPT and buildLabeledPrompt on purpose. The logged-out
    * copy path pastes into somebody else's model and should carry the same
    * clinical floor; two copies of this would drift within a month. */
   var STANDING_DEFAULTS = [
-    "STANDING DEFAULTS. Where the specifications do not settle a mechanic, do not invent one and do not leave the block thin. Design from the standards below. Depart from one only where the goal or the specifications give you a reason to, and say so in the design notes when you do.",
+    "STANDING DEFAULTS. Where the specifications do not settle a mechanic, design it from the established standard of practice in ABA and write it out in full. A clinician leaves a standard mechanic unspecified BECAUSE it is standard, not because it is optional, so the block the specifications did not reach is the one most likely to come out thin. Give it the same detail as a block they did reach.",
+    "The standards below are the ones this clinic has pinned. They are not the boundary of the field. Where they are silent the researched best practice still governs, and you design from it the same way. Depart from any standard, listed or not, only where the goal, the specifications, or a contraindication the clinician gave you calls for it, and say so in the design notes when you do.",
     "",
     "Prompting.",
     "* Use the least restrictive controlling prompt: the least intrusive level that reliably produces the response.",
@@ -363,6 +374,8 @@
     "",
     "Error correction.",
     "* Default the initial-teaching procedure to: prompt the correct response, run a distractor or transfer trial, then reset and re-present the errored trial at the original prompt level.",
+    "",
+    "The list above is not exhaustive. A mechanic it does not name is not thereby unsettled: write the established standard for that one too, on the same terms. This licenses standard ABA practice and nothing else. It never licenses a fact about this learner, which the rule above still forbids.",
   ].join("\n");
 
   var SYSTEM_PROMPT = [
