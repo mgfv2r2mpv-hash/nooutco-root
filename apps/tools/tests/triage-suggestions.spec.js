@@ -99,6 +99,14 @@ const TWO = {
   }],
 };
 
+/* The same two clicks whichever row it lands on: open the mark, then take its
+   arrow. On the one standing that drops it. On a struck alternative it moves the
+   pick, and strikes whichever one was standing. */
+const press = async (page, id) => {
+  await page.locator(`[data-suggestion-tick="${id}"]`).click();
+  await page.locator(`[data-suggestion-toggle="${id}"]`).click();
+};
+
 /* ── The prompt, which is the only place the safety rule can live ────────── */
 
 test.describe('the prompt that produces them', () => {
@@ -185,12 +193,19 @@ test.describe('the posted schema', () => {
 /* ── The surface, and what reaches the note ──────────────────────────────── */
 
 test.describe('what the technician does with them', () => {
-  test('they arrive accepted, and generating keeps them', async ({ page }) => {
+  /* THE DEFECT THIS DESCRIBE NOW GUARDS, reported 2026-09-10. Both used to
+     arrive accepted, so a question offering two readings of one procedure sent
+     both readings and the note came back asserting a pair that cannot both be
+     true. He hit it on the SAP drafter, whose triage prompt deliberately offers
+     the competing readings of a coherence conflict. */
+  test('one stands, the other arrives struck, and only the one standing goes', async ({ page }) => {
     const seen = await ask(page, TWO);
     await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
-    await expect(page.locator('[data-suggestion-accepted="1"]')).toHaveCount(2);
-    // Ghost, not solid: accepted is the resting state, and a column of bright
-    // ticks is a column nobody reads.
+    await expect(page.locator('[data-suggestion-accepted="1"]')).toHaveCount(1);
+    await expect(page.locator('[data-suggestion="0:0"]')).toHaveAttribute('data-suggestion-accepted', '1');
+    await expect(page.locator('[data-suggestion="0:1"]')).toHaveAttribute('data-suggestion-accepted', '0');
+    // Ghost, not solid: the one standing is the resting state, and a column of
+    // bright ticks is a column nobody reads.
     await expect(page.locator('[data-suggestion-tick="0:0"]')).toHaveClass(/is-ghost/);
 
     // The skip button is the accept path, because sending needs typed text and
@@ -202,40 +217,39 @@ test.describe('what the technician does with them', () => {
 
     await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 20000 });
     expect(seen.noteAsk).toContain('Moving to the floor settled him faster than the break did.');
-    expect(seen.noteAsk).toContain('The first-then board worked better once we were down there.');
+    expect(seen.noteAsk, 'both alternatives reached the note, which is the contradiction he reported')
+      .not.toContain('The first-then board worked better once we were down there.');
   });
 
-  test('dropping one keeps it out of the note, and the other still goes', async ({ page }) => {
+  test('picking the other one moves the pick rather than adding to it', async ({ page }) => {
     const seen = await ask(page, TWO);
     await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
 
-    await page.locator('[data-suggestion-tick="0:1"]').click();
-    await page.locator('[data-suggestion-toggle="0:1"]').click();
-    await expect(page.locator('[data-suggestion-accepted="0:1"]')).toHaveCount(0);
-    await expect(page.locator('[data-suggestion="0:1"]')).toHaveAttribute('data-suggestion-accepted', '0');
+    await press(page, '0:1');
+    await expect(page.locator('[data-suggestion="0:1"]')).toHaveAttribute('data-suggestion-accepted', '1');
+    await expect(page.locator('[data-suggestion="0:0"]')).toHaveAttribute('data-suggestion-accepted', '0');
+    await expect(page.locator('[data-suggestion-accepted="1"]')).toHaveCount(1);
 
     const skip = page.locator('.revision-skip');
     await expect(skip).toBeEnabled({ timeout: 40000 });
     await skip.click();
     await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 20000 });
 
-    expect(seen.noteAsk).toContain('Moving to the floor settled him faster than the break did.');
-    expect(seen.noteAsk, 'a dropped suggestion reached the note anyway')
-      .not.toContain('The first-then board worked better once we were down there.');
+    expect(seen.noteAsk).toContain('The first-then board worked better once we were down there.');
+    expect(seen.noteAsk, 'the reading he picked away from followed him into the note')
+      .not.toContain('Moving to the floor settled him faster than the break did.');
   });
 
-  const dropBoth = async (page) => {
-    for (const id of ['0:0', '0:1']) {
-      await page.locator(`[data-suggestion-tick="${id}"]`).click();
-      await page.locator(`[data-suggestion-toggle="${id}"]`).click();
-    }
-  };
-
-  test('dropping every one puts the note back behind the gate', async ({ page }) => {
+  /* Dropping the one that stands leaves the question with NO answer, and that
+     is a state they are allowed to be in rather than a dead end. It is also the
+     safe one: nothing is carried, so the drafter designs that mechanic from the
+     standing defaults instead of from a reading nobody chose. */
+  test('dropping the one that stands puts the note back behind the gate', async ({ page }) => {
     await ask(page, TWO);
     await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
-    await dropBoth(page);
-    /* The button was the accept path, so dropping every suggestion leaves it
+    await press(page, '0:0');
+    await expect(page.locator('[data-suggestion-accepted="1"]')).toHaveCount(0);
+    /* The button was the accept path, so leaving nothing standing leaves it
        nothing to carry. This note reads 70, and a technician carrying nothing
        and answering nothing is exactly who the gate holds, so below the bar
        there is no button here at all. The line names both ways out rather than
@@ -244,12 +258,12 @@ test.describe('what the technician does with them', () => {
     await expect(page.locator('[data-skip-held]')).toHaveText(/Keep one of the suggestions/);
   });
 
-  test('dropping every one on a note already at the bar puts the button back to nothing to add', async ({ page }) => {
+  test('and on a note already at the bar the button goes back to nothing to add', async ({ page }) => {
     // The same drop where the gate never closes. The label describes what the
     // button carries, and with nothing left to carry it is a plain skip again.
     await ask(page, { ...TWO, readiness: 90 });
     await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
-    await dropBoth(page);
+    await press(page, '0:0');
     await expect(page.locator('.revision-skip')).toHaveText(/Nothing to add/);
   });
 
@@ -283,5 +297,46 @@ test.describe('what the technician does with them', () => {
 
     expect(seen.noteAsk).toContain('No, floor seating is not in the plan.');
     expect(seen.noteAsk).toContain('Moving to the floor settled him faster than the break did.');
+  });
+});
+
+/* A question carrying ONE candidate has no alternatives, so nothing about it
+   changed: doing nothing still keeps it, and dropping it still puts it back.
+   That default is the entire reason suggestions get used at all - the audit
+   trail that produced them showed two technicians, 22 sessions and zero
+   revisions ever made - and the exclusive rule must not cost it. This describe
+   is what proves the rule was scoped to alternatives rather than to
+   suggestions. */
+test.describe('a lone suggestion is untouched by the exclusive rule', () => {
+  const ONE = {
+    sufficient: false,
+    readiness: 70,
+    questions: [{
+      field: 'fAntecedent',
+      question: 'You wrote that you moved to the floor. Was that in the plan?',
+      suggestions: ['Moving to the floor settled him faster than the break did.'],
+    }],
+  };
+
+  test('arrives standing, and generating keeps it', async ({ page }) => {
+    const seen = await ask(page, ONE);
+    await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
+    await expect(page.locator('[data-suggestion-accepted="1"]')).toHaveCount(1);
+
+    const skip = page.locator('.revision-skip');
+    await expect(skip).toHaveText(/Use these and generate/);
+    await expect(skip).toBeEnabled({ timeout: 40000 });
+    await skip.click();
+    await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 20000 });
+    expect(seen.noteAsk).toContain('Moving to the floor settled him faster than the break did.');
+  });
+
+  test('and dropping it still puts it back', async ({ page }) => {
+    await ask(page, ONE);
+    await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
+    await press(page, '0:0');
+    await expect(page.locator('[data-suggestion="0:0"]')).toHaveAttribute('data-suggestion-accepted', '0');
+    await press(page, '0:0');
+    await expect(page.locator('[data-suggestion="0:0"]')).toHaveAttribute('data-suggestion-accepted', '1');
   });
 });

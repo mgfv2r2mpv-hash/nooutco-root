@@ -116,8 +116,16 @@ function Bubble({ role, children, muted }) {
    cross while they are rewording it.
 
    Accepted is the resting state, so the tick is nearly invisible. What the eye
-   should land on is the sentence, which is the thing they are deciding about. */
-function SuggestionRow({ id, text, accepted, onToggle, onEdit }) {
+   should land on is the sentence, which is the thing they are deciding about.
+
+   `alternatives` says this row is one of several answers to ONE question, which
+   changes what the controls MEAN without changing what they are. Undoing an
+   alternative picks it and strikes its siblings, so the arrow reads "use this
+   one instead" rather than "put it back". The gesture stays the same three
+   states on purpose: a technician learns this contract once, on the corrections
+   marks, and a second interaction model for one row type would cost more than
+   the extra click it saves. */
+function SuggestionRow({ id, text, accepted, alternatives, onToggle, onEdit }) {
   const [open, setOpen] = React.useState(false);
   const [editing, setEditing] = React.useState(false);
   const [buffer, setBuffer] = React.useState(text);
@@ -161,7 +169,9 @@ function SuggestionRow({ id, text, accepted, onToggle, onEdit }) {
       {open ? (
         <span className="cx-ctl">
           <button type="button" className="cx-ck" data-suggestion-toggle={id}
-            title={accepted ? "Drop this one" : "Put it back"}
+            title={accepted
+              ? (alternatives ? "Drop it, and answer this one yourself" : "Drop this one")
+              : (alternatives ? "Use this one instead" : "Put it back")}
             onClick={() => { onToggle(); setOpen(false); }}>{accepted ? "↶" : "↷"}</button>
           <button type="button" className="cx-ck" title="Reword it" data-suggestion-pencil={id}
             onClick={() => { setEditing(true); setOpen(false); }}>✎</button>
@@ -170,7 +180,9 @@ function SuggestionRow({ id, text, accepted, onToggle, onEdit }) {
         <button
           type="button"
           className={"cx-ck" + (accepted ? " is-ghost" : "")}
-          title={accepted ? "Included. Click to change it." : "Dropped. Click to change it."}
+          title={accepted
+            ? "Included. Click to change it."
+            : (alternatives ? "Not the one you picked. Click to choose it." : "Dropped. Click to change it.")}
           data-suggestion-tick={id}
           onClick={() => setOpen(true)}
         >
@@ -248,7 +260,7 @@ function SkipAfterCooldown({ seconds, onSkip, loading, carrying }) {
 function RevisionPanel({
   open, onToggle, thread, annotation, onClearAnnotation,
   draft, onDraft, onSend, onAskAdvice, canAsk, onExportPairs, pairCount, loading, questions, onSkipQuestions, skipCooldown, skipHeld, unread, quality,
-  suggestState, onToggleSuggestion, onEditSuggestion, acceptedSuggestions,
+  suggestState, suggestionAccepted, onToggleSuggestion, onEditSuggestion, acceptedSuggestions,
   loggedIn,
   intro,
   routingAsks, onTakeRouted, onLeaveRouted,
@@ -493,12 +505,19 @@ function RevisionPanel({
                     {q.suggestions.map((raw, j) => {
                       const key = i + ":" + j;
                       const st = (suggestState || {})[key] || {};
+                      /* The engine owns which one stands, because the default
+                         depends on how many the question carries and the panel
+                         should not be re-deriving a clinical rule. */
+                      const accepted = suggestionAccepted
+                        ? suggestionAccepted(i, j)
+                        : !st.reverted;
                       return (
                         <SuggestionRow
                           key={key}
                           id={key}
                           text={typeof st.text === "string" ? st.text : raw}
-                          accepted={!st.reverted}
+                          accepted={accepted}
+                          alternatives={q.suggestions.length > 1}
                           onToggle={() => onToggleSuggestion(key)}
                           onEdit={(text) => onEditSuggestion(key, text)}
                         />

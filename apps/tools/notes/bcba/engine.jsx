@@ -2858,17 +2858,41 @@ function App() {
 
   /* ── The candidate answers under each question ────────────────────────────
      Accepted by default and undone with a click, the same contract the
-     corrections marks carry. Doing nothing keeps all of them.
+     corrections marks carry.
 
      That is only safe because of what the prompt forbids: a suggestion
      rephrases something the technician already wrote and never supplies a fact
      they did not report. So leaving one alone re-surfaces their own observation
-     rather than admitting the model's guess about their session. */
+     rather than admitting the model's guess about their session.
+
+     ONE QUESTION TAKES ONE ANSWER, ruled 2026-09-10. "Doing nothing keeps all
+     of them" was written when a question carried a single candidate. The cap is
+     two, and two candidate answers to one question are ALTERNATIVES: the SAP
+     triage prompt says so outright, telling the model to offer the competing
+     readings of a coherence conflict as the suggestions and to never pick one
+     for the clinician. Accepting both then sent both, so a note came back
+     saying the program ran most-to-least AND ran a prompt delay. He hit it on
+     the SAP drafter and ruled it for all five tools: a note carrying two
+     accounts of the same event is a worse record than a plan carrying two
+     options. So one stands and the rest are struck, and picking a struck one
+     moves the pick rather than adding to it. */
   const suggestKey = (qi, si) => qi + ":" + si;
 
-  const suggestionText = (qi, si, raw) => {
+  const suggestionCount = (qi) =>
+    (((S.questions || [])[qi] || {}).suggestions || []).length;
+
+  /* An explicit decision wins. With none, the FIRST one stands - which keeps a
+     lone suggestion behaving exactly as it always has, since its index is 0,
+     and leaves a pair arriving with one picked instead of both. */
+  const suggestionAccepted = (qi, si) => {
     const st = (S.suggestState || {})[suggestKey(qi, si)];
-    if (st && st.reverted) return "";
+    if (st && typeof st.reverted === "boolean") return !st.reverted;
+    return si === 0;
+  };
+
+  const suggestionText = (qi, si, raw) => {
+    if (!suggestionAccepted(qi, si)) return "";
+    const st = (S.suggestState || {})[suggestKey(qi, si)];
     return st && typeof st.text === "string" ? st.text : raw;
   };
 
@@ -2878,9 +2902,26 @@ function App() {
       .flatMap((q, qi) => (q.suggestions || []).map((raw, si) => suggestionText(qi, si, raw)))
       .filter((t) => t && t.trim());
 
+  /* Picking one drops its alternatives. Dropping the one that stands leaves the
+     question with NO answer, which is a state they are allowed to be in and is
+     the safe one: the drafter then designs that mechanic from the standing
+     defaults rather than from a reading nobody chose. */
   const toggleSuggestion = (key) => {
-    const prev = (S.suggestState || {})[key] || {};
-    patchS({ suggestState: { ...(S.suggestState || {}), [key]: { ...prev, reverted: !prev.reverted } } });
+    const parts = String(key).split(":");
+    const qi = Number(parts[0]), si = Number(parts[1]);
+    const next = { ...(S.suggestState || {}) };
+    const setReverted = (k, reverted) => {
+      next[k] = { ...(next[k] || {}), reverted: reverted };
+    };
+    const picking = !suggestionAccepted(qi, si);
+    setReverted(key, !picking);
+    if (picking) {
+      const n = suggestionCount(qi);
+      for (let j = 0; j < n; j++) {
+        if (j !== si) setReverted(suggestKey(qi, j), true);
+      }
+    }
+    patchS({ suggestState: next });
   };
 
   // Editing does not accept: a technician can reword one they have undone and
@@ -4205,6 +4246,7 @@ function App() {
         loading={loading}
         questions={S.questions}
         suggestState={S.suggestState}
+        suggestionAccepted={suggestionAccepted}
         onToggleSuggestion={toggleSuggestion}
         onEditSuggestion={editSuggestion}
         acceptedSuggestions={acceptedSuggestions().length}
