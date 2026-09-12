@@ -38,10 +38,17 @@ export default defineConfig({
     baseURL: `http://localhost:${PORT}`,
     trace: 'on-first-retry',
   },
+  /* The touch project runs ONE file and the three desktop projects skip it.
+     That split is deliberate rather than tidy: the other 400-odd specs assume a
+     mouse, a wide viewport and no soft keyboard, so running them on a phone
+     profile would report a pile of failures that say nothing about the code.
+     The desktop testIgnore takes nothing away either, since the file it names
+     did not exist before this project did. */
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-    { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
-    { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] }, testIgnore: /touch\.spec\.js/ },
+    { name: 'firefox', use: { ...devices['Desktop Firefox'] }, testIgnore: /touch\.spec\.js/ },
+    { name: 'webkit', use: { ...devices['Desktop Safari'] }, testIgnore: /touch\.spec\.js/ },
+    { name: 'touch', use: { ...devices['iPhone 13'] }, testMatch: /touch\.spec\.js/ },
   ],
   webServer: {
     // ADMIN_SECRET is bound to a throwaway value so tests can mint a real signed
