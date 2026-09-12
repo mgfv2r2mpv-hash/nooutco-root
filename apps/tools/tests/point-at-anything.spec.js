@@ -303,3 +303,52 @@ test.describe('the assistant can be pointed at', () => {
     await expect(page.locator('.point-toggle')).toHaveAttribute('aria-pressed', 'true');
   });
 });
+
+/* THE OTHER HALF OF THE TOUCH WORK (issue #99).
+ *
+ * iphone-touch.spec.js proves a touch reaches the two new paths. These two
+ * prove a mouse does not, which is the claim that makes the whole change an
+ * expansion rather than a modification. Both new listeners read
+ * event.pointerType and return on anything that is not "touch"; delete either
+ * guard and one of these goes red on all three desktop projects.
+ *
+ * They dispatch pointerType "mouse" explicitly rather than using page.mouse,
+ * because the assertion is about the gate, not about how Playwright labels a
+ * synthetic click. */
+test.describe('a mouse cannot reach the touch paths', () => {
+  test('a mouse press paints no outline, so pointing still needs a hover', async ({ page }) => {
+    await drafted(page, 'admin');
+    await page.locator('.point-toggle').click();
+    await expect(page.locator('body.is-pointing')).toHaveCount(1);
+
+    const card = page.locator('[data-section-key]').first();
+    await card.scrollIntoViewIfNeeded();
+    const box = await card.boundingBox();
+
+    await page.evaluate(({ x, y }) => {
+      const el = document.elementFromPoint(x, y);
+      el.dispatchEvent(new PointerEvent('pointerdown', { pointerType: 'mouse', bubbles: true }));
+    }, { x: box.x + box.width / 2, y: box.y + box.height / 2 });
+
+    await expect(page.locator('.point-hover')).toHaveCount(0);
+  });
+
+  test('selectionchange raises no chip without a touch, so a mouse drag is quiet', async ({ page }) => {
+    await drafted(page, 'admin');
+    const area = page.locator('textarea[data-section-id]').first();
+    await area.scrollIntoViewIfNeeded();
+
+    // Exactly what iphone-touch.spec.js does, with "mouse" in place of "touch".
+    await page.evaluate(() => {
+      const el = document.querySelector('textarea[data-section-id]');
+      el.dispatchEvent(new PointerEvent('pointerdown', { pointerType: 'mouse', bubbles: true }));
+      el.focus();
+      el.setSelectionRange(0, Math.min(24, (el.value || '').length));
+      document.dispatchEvent(new Event('selectionchange'));
+    });
+
+    // Long enough that the settle timer would have fired if the gate were open.
+    await page.waitForTimeout(600);
+    await expect(page.locator('[data-revise-chip]')).toHaveCount(0);
+  });
+});

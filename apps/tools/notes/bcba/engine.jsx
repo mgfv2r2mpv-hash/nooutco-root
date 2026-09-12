@@ -4201,15 +4201,36 @@ function App() {
 
     const onKey = (e) => { if (e.key === "Escape") { clearHover(); setPointMode(false); } };
 
+    /* TOUCH, and why this is three more listeners rather than a rewrite.
+       A phone has no hover, so a technician who arms pointing and reaches for a
+       section cannot see what they are about to send until they have sent it.
+       A press paints the same outline a mouse gets from hovering, lifting
+       clears it, and the tap then reaches onClick above on its ordinary path.
+       So what a touch DOES here is unchanged. Only what it shows is new.
+
+       Every binding above is mouse-only: mouseover, click, keydown. These
+       three read e.pointerType and return on anything that is not "touch", so
+       a mouse, a pen and a hybrid laptop's trackpad all fall straight out and
+       a machine with no touchscreen installs three listeners that never fire.
+       That gate is the whole reason this is an expansion. */
+    const onTouchDown = (e) => { if (e.pointerType === "touch") onOver(e); };
+    const onTouchLift = (e) => { if (e.pointerType === "touch") clearHover(); };
+
     document.addEventListener("mouseover", onOver, true);
     document.addEventListener("click", onClick, true);
     document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onTouchDown, true);
+    document.addEventListener("pointerup", onTouchLift, true);
+    document.addEventListener("pointercancel", onTouchLift, true);
     document.body.classList.add("is-pointing");
     return () => {
       clearHover();
       document.removeEventListener("mouseover", onOver, true);
       document.removeEventListener("click", onClick, true);
       document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onTouchDown, true);
+      document.removeEventListener("pointerup", onTouchLift, true);
+      document.removeEventListener("pointercancel", onTouchLift, true);
       document.body.classList.remove("is-pointing");
     };
   }, [pointMode, pointScope]);

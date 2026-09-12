@@ -53,7 +53,27 @@ jobs:
       # failure is browser-specific is most of the diagnosis.
       fail-fast: false
       matrix:
-        project: [chromium, firefox, webkit]
+        # `browser` is carried alongside `project` because the two stopped being
+        # the same word. `touch` is the iPhone 13 profile, which Playwright
+        # drives with webkit, and `playwright install touch` is not a thing.
+        # Every other step still keys off `project`, so the job names and the
+        # artefact names read the way they always did.
+        #
+        # touch is a shard rather than a browser: playwright.config.js gives it
+        # testMatch, so it runs the one touch spec and the three desktop
+        # projects skip that file. It costs seconds, not the 17 to 25 minutes
+        # the others take. Leaving it out of this list would have shipped a spec
+        # file that never ran anywhere, which is the failure this whole workflow
+        # exists to stop.
+        include:
+          - project: chromium
+            browser: chromium
+          - project: firefox
+            browser: firefox
+          - project: webkit
+            browser: webkit
+          - project: touch
+            browser: webkit
     steps:
       - uses: actions/checkout@v4
 
@@ -66,9 +86,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Only the browser this shard actually needs.
+      # Only the browser this shard actually needs. See the matrix above for
+      # why this is `browser` and not `project`.
       - name: Install Playwright browser
-        run: npx playwright install --with-deps ${{ matrix.project }}
+        run: npx playwright install --with-deps ${{ matrix.browser }}
 
       - name: Run E2E tests
         # No port override is needed here: playwright.config.js already sets

@@ -22,6 +22,11 @@
    textarea's own top-right corner instead of the caret: caret coordinates in a
    textarea can't be measured without mirroring the content into a hidden div,
    and the corner is stable, predictable, and never lands under the pointer. */
+// How long an iOS selection handle has to sit still before the chip reads the
+// selection. Long enough that a drag does not repaint on every pixel, short
+// enough that a technician who has stopped dragging is not waiting on it.
+const SELECTION_SETTLE_MS = 200;
+
 function useTextSelection(onSelect) {
   const [chip, setChip] = React.useState(null); // {top, left, id, text}
 
@@ -56,13 +61,50 @@ function useTextSelection(onSelect) {
       if (el && el.tagName === "TEXTAREA" && el.getAttribute("data-section-id")) return;
       setChip(null);
     };
+    /* TOUCH, and why `read` cannot simply be handed another event name.
+       iOS finishes a selection with the drag handles and fires no mouseup on
+       the document, so neither listener above ever runs and the chip never
+       appears on a phone. The event that DOES report it is selectionchange,
+       which fires on document rather than on the textarea, so its e.target is
+       the document and `read` would bail on the tagName check. This resolves
+       the box from activeElement instead and hands `read` the shape it wants.
+
+       Gated on the LAST pointer having been a touch, because selectionchange
+       also fires on every pixel of a mouse drag: ungated, it would pop the chip
+       mid-drag on a desktop, which is a behaviour change rather than an
+       addition. A mouse-only machine never opens the gate, takes the early
+       return forever, and behaves exactly as it did.
+
+       Last, not ever. A latching flag would be simpler and wrong: a touchscreen
+       laptop is one device that gets both, and one stray tap would leave the
+       new path armed for every mouse drag after it. Writing the flag on every
+       pointerdown means a mouse press closes the gate again on the way in. */
+    let touching = false;
+    let settle = null;
+    const noteTouch = (e) => { touching = e.pointerType === "touch"; };
+    const readSelection = () => {
+      if (!touching) return;
+      // iOS fires this on every pixel of handle movement, so read once the
+      // handle has been still. Otherwise the chip chases the finger.
+      clearTimeout(settle);
+      settle = setTimeout(() => {
+        const el = document.activeElement;
+        if (el && el.tagName === "TEXTAREA") read({ target: el });
+      }, SELECTION_SETTLE_MS);
+    };
+
     document.addEventListener("mouseup", read);
     document.addEventListener("keyup", read);
     document.addEventListener("pointerdown", clear);
+    document.addEventListener("pointerdown", noteTouch, true);
+    document.addEventListener("selectionchange", readSelection);
     return () => {
+      clearTimeout(settle);
       document.removeEventListener("mouseup", read);
       document.removeEventListener("keyup", read);
       document.removeEventListener("pointerdown", clear);
+      document.removeEventListener("pointerdown", noteTouch, true);
+      document.removeEventListener("selectionchange", readSelection);
     };
   }, []);
 
