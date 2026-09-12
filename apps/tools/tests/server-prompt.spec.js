@@ -208,9 +208,18 @@ test.describe('the live route', () => {
   });
 
   test('with no prompt binding, sup fails closed and says nothing was sent', async ({ request }) => {
-    // The PROMPTS binding is not bound in dev, which is also production's state
-    // until it is added. Falling back to a client prompt here would be the hole
-    // itself, so the only correct answer is a refusal.
+    // The local `wrangler pages dev` this suite runs against has no PROMPTS
+    // binding, which is what makes the unbound path testable at all.
+    //
+    // It is no longer production's state, and the old wording here said it was.
+    // I checked both projects on 2026-09-11 with
+    // `npx wrangler pages download config <project>`: tools-nooutco-me and
+    // dev-tools-nooutco-me each carry PROMPTS -> nooutco-prompt-api alongside
+    // PROFILE -> bt-profile-api. So this test covers the binding going away,
+    // not the binding never having arrived.
+    //
+    // Falling back to a client prompt here would be the hole itself, so the
+    // only correct answer is still a refusal.
     const res = await request.post('/api/llm-call', {
       headers: auth(),
       data: { tool: 'sup', system_suffix: 'STYLE', messages: [{ role: 'user', content: 'hi' }] },

@@ -73,10 +73,22 @@ jobs:
       # actually existing on the project. Running IN apps/tools makes that file
       # the source of truth, so bindings live in git rather than the dashboard.
       #
-      # Consequence worth knowing: that file is now authoritative for this
-      # project's bindings. Anything removed from it is removed on the next
-      # deploy. `npx wrangler pages download config <project>` shows what is
-      # really live.
+      # THAT FILE IS NOT AUTHORITATIVE, and this comment used to claim it was.
+      # The old wording read "anything removed from it is removed on the next
+      # deploy", which would make deleting a line here delete a live binding.
+      # It does not work that way, and apps/tools/wrangler.jsonc carries the
+      # 2026-08-04 test that proved it: a deploy ran from inside apps/tools
+      # with PROFILE declared, reported success, and left the project's
+      # bindings untouched. Project bindings are project settings. The
+      # dashboard and the API set them; `pages deploy` ships assets and the
+      # Worker bundle.
+      #
+      # The live counter-example as of 2026-09-11: both tools projects carry
+      # PROMPTS -> nooutco-prompt-api, and that binding has never appeared in
+      # wrangler.jsonc. Every deploy since has left it alone.
+      #
+      # So treat that file as the written record and verify the real thing:
+      # `npx wrangler pages download config <project>` shows what is live.
       - uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}

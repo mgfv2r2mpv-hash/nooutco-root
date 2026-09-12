@@ -38,18 +38,34 @@
   // session token has no address to send a forged request to. Giving it a
   // route would silently undo that.
   //
-  // STATE ON 2026-08-04: dev-tools-nooutco-me HAS the PROFILE binding.
-  // tools-nooutco-me does NOT. Everything behind it fails open, so production
-  // notes generate exactly as they did before any of this existed, and the
-  // admin Style Profiles tab reports the store unavailable. Adding it to
-  // production is deliberately pending his answer on whether dev and production
-  // should share one profile store, because they would.
+  // STATE ON 2026-09-11, read off both projects with
+  // `npx wrangler pages download config <project>`:
+  //
+  //   tools-nooutco-me       PROFILE -> bt-profile-api, PROMPTS -> nooutco-prompt-api
+  //   dev-tools-nooutco-me   PROFILE -> bt-profile-api, PROMPTS -> nooutco-prompt-api
+  //
+  // Both carry both. The question that was pending in August, whether dev and
+  // production should share one profile store, got answered by sharing it.
+  //
+  // PROMPTS matters most and this file has never mentioned it. It reaches the
+  // prompt store (voice-module's nooutco-prompt-api), which serves the system
+  // prompt for all five migrated note tools. That path FAILS CLOSED:
+  // _worker.js refuses to draft rather than fall back to whatever the browser
+  // sent. So an unbound PROMPTS is not a degraded tool, it is a tool that
+  // returns 503 to every clinician.
+  //
+  // The previous note here read "STATE ON 2026-08-04: tools-nooutco-me does
+  // NOT [have PROFILE]". It was true when someone wrote it and it is not true
+  // now, which is the standing hazard with this file: it is a record, so it
+  // goes stale in silence. Re-read the real thing before you trust any line
+  // above.
   "kv_namespaces": [
     { "binding": "SUGGEST_DUPES", "id": "770ceeccadb94d78b519e628509beed8" },
     { "binding": "API_PASSWORDS", "id": "cdaf40fa2b814f7d94818b27042b9cf2" }
   ],
   "services": [
-    { "binding": "PROFILE", "service": "bt-profile-api" }
+    { "binding": "PROFILE", "service": "bt-profile-api" },
+    { "binding": "PROMPTS", "service": "nooutco-prompt-api" }
   ],
   "env": {
     "production": {
@@ -58,7 +74,8 @@
         { "binding": "API_PASSWORDS", "id": "cdaf40fa2b814f7d94818b27042b9cf2" }
       ],
       "services": [
-        { "binding": "PROFILE", "service": "bt-profile-api" }
+        { "binding": "PROFILE", "service": "bt-profile-api" },
+        { "binding": "PROMPTS", "service": "nooutco-prompt-api" }
       ]
     },
     "preview": {
@@ -67,7 +84,8 @@
         { "binding": "API_PASSWORDS", "id": "cdaf40fa2b814f7d94818b27042b9cf2" }
       ],
       "services": [
-        { "binding": "PROFILE", "service": "bt-profile-api" }
+        { "binding": "PROFILE", "service": "bt-profile-api" },
+        { "binding": "PROMPTS", "service": "nooutco-prompt-api" }
       ]
     }
   }
