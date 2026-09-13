@@ -43,7 +43,17 @@
   // intercepts clean ".js" GET paths (serving the SPA fallback) until a query string
   // forces the request through to the worker. A per-call cache-buster guarantees the
   // worker is hit and the response is never served stale from cache.
-  function apiUrl(path) { return path + API_SUFFIX + (path.indexOf("?") === -1 ? "?" : "&") + "_=" + Date.now(); }
+  // The suffix belongs on the PATH, not on the end of the whole string. Appending it
+  // last put it after any query string a caller passed, so "/api/style-card?tool=bt&seed=abc"
+  // became "/api/style-card?tool=bt&seed=abc.js&_=...": the last parameter was corrupted,
+  // and url.pathname no longer ended in ".js", so the exemption this whole mechanism
+  // exists to trigger never fired. Split the path from the query first, then rebuild.
+  function apiUrl(path) {
+    var q = path.indexOf("?");
+    var base = q === -1 ? path : path.slice(0, q);
+    var qs = q === -1 ? "" : path.slice(q + 1);
+    return base + API_SUFFIX + "?" + (qs ? qs + "&" : "") + "_=" + Date.now();
+  }
 
   // Reject with a clear, retryable error if a request stalls at the edge. Behind
   // Super Bot Fight Mode + Pages static-asset interception an /api/* request can
