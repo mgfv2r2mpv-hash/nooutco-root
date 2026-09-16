@@ -102,6 +102,21 @@ function correctionsEnabled(toolId) {
 }
 window.correctionsEnabled = correctionsEnabled;
 
+/* THE AUTHOR AID IS OFF UNTIL IT IS ASKED FOR, and that is the opposite default
+   to ?schema=off and ?corrections=off above. Those two turn a shipped behaviour
+   OFF for a side-by-side. This one turns an unshipped surface ON, because the
+   maintainer asked to walk it on his own phone before it replaces anything the
+   technicians use. ?aid=1 is the whole gate.
+
+   Nothing inside the flag may change what the tool produces. It adds a strip
+   that reports where each section stands and it records when a section was
+   copied. The note, the prompts and the scrub are untouched by it, so a
+   technician on the current page gets byte-identical behaviour. */
+function authorAidEnabled() {
+  return new URLSearchParams(location.search).get("aid") === "1";
+}
+window.authorAidEnabled = authorAidEnabled;
+
 /* THE SECTION LIST COMES OUT OF THE RESPONSE SCHEMA. The obvious source is
    formSections, and the reason not to read it is worth stating accurately,
    because this comment stated it wrongly until 2026-08-30. It is NOT that the
@@ -1282,6 +1297,16 @@ function ExpertReading({ expert, claimAnswers, onClaimAnswer, busy }) {
  */
 function scrubMapKey(toolId) { return toolId + "::map"; }
 
+/* Copy marks live under their own sibling key for the same reason the scrub
+   ledger does: they belong to the note, they have to survive a reload, and they
+   must not ride inside the values object that every tool's migrateDraft touches.
+
+   A mark is {h, at}: a 32-bit hash of the text that went to the clipboard, and
+   when it went. Never the text. The strip only ever asks whether the section
+   still matches what was pasted, so the prose itself buys nothing and storing it
+   would put a second copy of the note in local storage beside the draft. */
+function copyMarksKey(toolId) { return toolId + "::copied"; }
+
 function freshSession(tool) {
   const saved = (window.NotesGate && NotesGate.draft.load(tool.id)) || {};
   const savedMap = (window.NotesGate && NotesGate.draft.load(scrubMapKey(tool.id))) || [];
@@ -1389,6 +1414,18 @@ function App() {
   const [nowTick, setNowTick] = React.useState(Date.now());
   const [panelOpen, setPanelOpen] = React.useState(false);
 
+  /* Copy marks, per tool, seeded from the draft store so a reload does not tell
+     a technician they still have to paste six sections they already pasted.
+     Keyed by tool exactly like sessions, because a technician moves between the
+     BT note and the SAP in one sitting and their EHR progress does not. */
+  const [copyMarks, setCopyMarks] = React.useState(() => {
+    const map = {};
+    TOOLS.forEach((t) => {
+      map[t.id] = (window.NotesGate && NotesGate.draft.load(copyMarksKey(t.id))) || {};
+    });
+    return map;
+  });
+
   const tool = toolById(activeId) || TOOLS[0];
   const S = sessions[tool.id];
   const canUse = loggedIn && !!(window.NotesGate && NotesGate.canUseTool(tool.id));
@@ -1414,6 +1451,13 @@ function App() {
     document.body.classList.toggle("revision-open", panelOpen);
     return () => document.body.classList.remove("revision-open");
   }, [panelOpen]);
+
+  /* Persist the copy marks beside the draft, on the sibling key. Same shape and
+     same reason as the scrub ledger below: the draft has always survived a
+     reload and what the technician had already pasted did not. */
+  React.useEffect(() => {
+    if (window.NotesGate) NotesGate.draft.save(copyMarksKey(tool.id), copyMarks[tool.id] || {});
+  }, [tool.id, copyMarks]);
 
   // Persist the active tool's typed inputs on every change (per-tool draft key).
   React.useEffect(() => {
@@ -1447,6 +1491,7 @@ function App() {
     setActiveId(id);
     setCopied(null);
     setCopiedPrompt(false);
+    setCopyMarks((prev) => Object.assign({}, prev, { [tool.id]: {} }));
   };
 
   const collectFreeText = () =>
@@ -1513,10 +1558,29 @@ function App() {
     );
   };
 
+  /* Remember what went to the clipboard, so the section map can tell "already in
+     the EHR" from "still only here" an hour later.
+
+     The mark is taken from the SAME string that was written to the clipboard,
+     not re-derived from state afterwards. Re-deriving would race the render that
+     a revision lands in, and a section would read "changed" the instant it was
+     copied. The id carries the "sec-" prefix the one call site gives it; nothing
+     else is a section and nothing else is marked. */
+  const markCopied = (secIds) => {
+    if (!authorAidEnabled() || !secIds.length) return;
+    const at = Date.now();
+    setCopyMarks((prev) => {
+      const forTool = Object.assign({}, prev[tool.id] || {});
+      secIds.forEach(({ id, text }) => { forTool[id] = { h: window.SectionMap.hashText(text), at }; });
+      return Object.assign({}, prev, { [tool.id]: forTool });
+    });
+  };
+
   const handleCopy = (id, text) => {
     navigator.clipboard.writeText(text);
     setCopied(id);
     setTimeout(() => setCopied(null), 1800);
+    if (String(id).indexOf("sec-") === 0) markCopied([{ id: String(id).slice(4), text }]);
     recordNoteLeft();
   };
 
@@ -3847,6 +3911,13 @@ function App() {
   const handleCopyAll = () => {
     if (!S.output) return;
     navigator.clipboard.writeText(copyBlocks(tool, S.output, S.values).join("\n\n"));
+    /* Every section went over, whatever shape the blocks were grouped into. A
+       tool with copyGroups hands the EHR four blocks built from thirteen cards,
+       and all thirteen are now in the EHR, so all thirteen get a mark. */
+    markCopied(tool.formSections.map((sec) => ({
+      id: sectionId(sec),
+      text: sectionBody(sec, S.output, S.values),
+    })));
     setCopied("all");
     setTimeout(() => setCopied(null), 1800);
     recordNoteLeft();
@@ -3875,6 +3946,9 @@ function App() {
     if (window.NotesGate) {
       NotesGate.draft.clear(tool.id);
       NotesGate.draft.clear(scrubMapKey(tool.id));
+      // A cleared note has never been pasted anywhere, so its copy marks go too.
+      // Leaving them would tell the next note it was already in the EHR.
+      NotesGate.draft.clear(copyMarksKey(tool.id));
     }
     setSessions((prev) => ({ ...prev, [tool.id]: freshSession(tool) }));
     /* THE REF TOO, NOT JUST THE STATE AND THE STORE.
@@ -4487,6 +4561,37 @@ function App() {
             <p style={{ fontSize: 13, color: "#7a9460", marginBottom: 20, lineHeight: 1.55 }}>
               Checkbox suggestions are inferred from your notes - verify before ticking your form. Narratives are editable. <strong style={{ color: "#5a6b4a" }}>Click a section to revise it, or select a phrase inside one to revise just that</strong> - the assistant panel takes it from there. 💡 flags what might be missing, ⚠ flags what a funder could reject the claim over.
             </p>
+
+            {/* The strip sits at the top of the output and sticks there, because
+                the question it answers ("what have I not pasted yet") is the one
+                the technician carries the whole way down a long note. It renders
+                only behind ?aid=1 and it reads state the tool already keeps, so
+                the current page is byte-identical without the flag. */}
+            {authorAidEnabled() && window.SectionMap && (
+              <window.SectionMap
+                sections={tool.formSections.map((sec) => ({ id: sectionId(sec), heading: sec.heading }))}
+                marks={copyMarks[tool.id] || {}}
+                textOf={(id) => {
+                  const sec = tool.formSections.find((x) => sectionId(x) === id);
+                  return sec ? sectionBody(sec, S.output, S.values) : "";
+                }}
+                onJump={(id) => {
+                  const el = document.querySelector('[data-section-key="' + id + '"]');
+                  if (el && el.scrollIntoView) el.scrollIntoView({ behavior: "smooth", block: "center" });
+                }}
+                /* A changed tile hands the technician the fix rather than the
+                   news: it scrolls them there and copies the current text in the
+                   same tap, which clears the tile back to copied. That is the
+                   whole reason a lock was never needed here. */
+                onRecopy={(id) => {
+                  const sec = tool.formSections.find((x) => sectionId(x) === id);
+                  if (!sec) return;
+                  const el = document.querySelector('[data-section-key="' + id + '"]');
+                  if (el && el.scrollIntoView) el.scrollIntoView({ behavior: "smooth", block: "center" });
+                  handleCopy("sec-" + id, sectionBody(sec, S.output, S.values));
+                }}
+              />
+            )}
 
             <ConflictPanel
               conflicts={S.conflicts}

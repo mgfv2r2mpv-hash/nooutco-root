@@ -785,3 +785,97 @@ body.is-pointing, body.is-pointing * { cursor: crosshair !important; }
     flex: 1 1 220px; min-width: 0; font-size: 11.5px;
   }
 }
+
+/* ── The section map ─────────────────────────────────────────────────────────
+   One strip, one tile per copyable section, pinned under the page chrome so a
+   technician scrolling a long note can still see what has gone to the EHR. It
+   scrolls sideways on a phone and sits on one line on a laptop.
+
+   Every tile carries its state as a WORD. The colour repeats the word and never
+   carries meaning on its own, so the strip reads the same to a technician who
+   does not see the orange as it does to one who does. */
+
+.section-map {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: #eef1ea;
+  border-bottom: 1px solid #c7d3b5;
+  padding: 8px 0 6px;
+  margin-bottom: 14px;
+}
+
+.section-map-head {
+  font-size: 12px;
+  font-weight: 700;
+  color: #5a6b4a;
+  margin-bottom: 6px;
+}
+
+/* -webkit-overflow-scrolling keeps the strip on iOS momentum scrolling, which
+   is what makes a six-tile strip feel like part of the phone rather than a
+   widget. The negative margin lets a tile bleed to the screen edge so a partly
+   visible tile shows there is more to the right. */
+.section-map-strip {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 2px 20px 8px;
+  margin: 0 -20px;
+  scrollbar-width: thin;
+}
+
+.section-tile {
+  flex: 0 0 auto;
+  min-width: 96px;
+  max-width: 190px;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  background: #fff;
+  border: 1.5px solid #c7d3b5;
+  border-radius: 8px;
+  padding: 7px 10px;
+  color: #2d3a1f;
+}
+.section-tile:focus-visible { outline: 2px solid #5a7040; outline-offset: 2px; }
+
+.section-tile-name {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.section-tile-state {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 3px;
+  color: #5a6b4a;
+}
+
+.section-tile-copied { border-color: #5a7040; background: #eef4e6; }
+.section-tile-copied .section-tile-state { color: #374528; }
+
+/* The only tile that ever asks for anything. */
+.section-tile-changed { border-color: #c9962a; background: #fdf6e0; }
+.section-tile-changed .section-tile-state { color: #6d5410; }
+
+.section-map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 11.5px;
+  color: #5a6b4a;
+}
+.section-map-legend b { font-weight: 700; }
+
+@media (max-width: 560px) {
+  .section-map-legend { gap: 10px; font-size: 11px; }
+  .section-tile { min-width: 88px; }
+}
