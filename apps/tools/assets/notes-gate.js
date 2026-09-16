@@ -1356,6 +1356,48 @@
     auditFlush();
   }
 
+  /* ── A note's voice reading ──────────────────────────────────────────
+     One entry per note: which house levels it measured and which synonyms the
+     technician reached for, as numbers and ids. window.NoteVoice builds it; this
+     only carries it, on the same flush as corrections and for the same reason.
+     The profile store rebuilds every entry against its closed lists, so this is
+     the client half of the shape check and not the gate. ── */
+
+  var VOICE_BUFFER_KEY = "noaba.voice.buffer.v1";
+  var VOICE_PER_FLUSH = 20;
+
+  function voiceBuffer() {
+    try { return JSON.parse(localStorage.getItem(VOICE_BUFFER_KEY)) || []; } catch (e) { return []; }
+  }
+  function writeVoiceBuffer(list) {
+    try { localStorage.setItem(VOICE_BUFFER_KEY, JSON.stringify(list.slice(-AUDIT_MAX))); } catch (e) {}
+  }
+
+  function sanitizeVoiceNote(v) {
+    if (!v || typeof v !== "object" || !/^[a-z0-9_-]{1,16}$/.test(v.tool || "")) return null;
+    var levels = {};
+    var given = v.levels && typeof v.levels === "object" ? v.levels : {};
+    Object.keys(given).slice(0, 8).forEach(function (k) {
+      if (/^[a-z][a-z0-9_]{0,31}$/.test(k) && typeof given[k] === "number" && isFinite(given[k])) levels[k] = given[k];
+    });
+    var diction = (Array.isArray(v.diction) ? v.diction : []).filter(function (r) {
+      return r && /^[a-z][a-z0-9_]{0,31}$/.test(r.family_id || "")
+        && Number.isInteger(r.variant_index) && r.variant_index >= 0
+        && Number.isInteger(r.count) && r.count > 0;
+    }).slice(0, 85).map(function (r) {
+      return { family_id: r.family_id, variant_index: r.variant_index, count: r.count };
+    });
+    if (!Object.keys(levels).length && !diction.length) return null;
+    return { tool: v.tool, levels: levels, diction: diction };
+  }
+
+  function auditVoice(entry) {
+    var clean = sanitizeVoiceNote(entry);
+    if (!clean) return;
+    writeVoiceBuffer(voiceBuffer().concat([clean]));
+    auditFlush();
+  }
+
   var auditFlushing = false;
   /* AN EMIT THAT LANDS MID-FLIGHT USED TO WAIT FOR THE NEXT ONE. The guard
      below is right - two overlapping POSTs would each slice the buffer from the
@@ -1380,14 +1422,16 @@
     if (!tok) return; // events for a logged-out page have no technician to attribute
     var list = auditBuffer();
     var corr = correctionBuffer();
-    if (!list.length && !corr.length) return;
+    var voice = voiceBuffer();
+    if (!list.length && !corr.length && !voice.length) return;
     auditFlushing = true;
     var batch = list.slice(0, 50);
     var corrBatch = corr.slice(0, 50);
+    var voiceBatch = voice.slice(0, VOICE_PER_FLUSH);
     fetch(apiUrl("/api/audit"), {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok },
-      body: JSON.stringify({ events: batch, corrections: corrBatch }),
+      body: JSON.stringify({ events: batch, corrections: corrBatch, voice: voiceBatch }),
     })
       .then(function (r) {
         // Only drop what the server accepted. A 5xx leaves the batch buffered
@@ -1406,6 +1450,9 @@
         return r.json().then(function (d) {
           if (d && d.profile === "ok") {
             writeCorrectionBuffer(correctionBuffer().slice(corrBatch.length));
+            // Kept on the same terms: a store that is not there yet has not
+            // learned the note, so the reading waits for one that is.
+            writeVoiceBuffer(voiceBuffer().slice(voiceBatch.length));
           }
         });
       })
@@ -1945,9 +1992,11 @@
     audit: {
       emit: auditEmit,
       corrections: auditCorrections,
+      voice: auditVoice,
       flush: auditFlush,
       _buffer: auditBuffer,
       _corrections: correctionBuffer,
+      _voice: voiceBuffer,
     },
     /* The type-time screen list. Device-local, encrypted at rest under the
        draft key, keyed to the signed-in technician, and NEVER transmitted -
