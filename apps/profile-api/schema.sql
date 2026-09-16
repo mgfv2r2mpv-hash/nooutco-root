@@ -154,3 +154,32 @@ CREATE TABLE IF NOT EXISTS voice_level (
 );
 
 CREATE INDEX IF NOT EXISTS idx_voice_level_kid ON voice_level (kid);
+
+-- Which synonym an author reaches for, per meaning. The diction half of slice 5.
+--
+-- WHAT A ROW IS. `family` is a meaning from the closed list in
+-- src/diction-level.js (prompting, mand, elopement and so on). `variant` is a
+-- POSITION in that family's synonym list, which lives in the browser at
+-- apps/tools/notes/bcba/diction.js. `count` is how many times that author has
+-- used it, `notes` how many notes contributed.
+--
+-- WHY A POSITION AND NOT THE WORD. A word in a column here is clinical text in
+-- the store, and the whole shape of this database is that there is none. A
+-- word the house dictionary does not hold has no position at all, so it is
+-- counted as unknown on the device and never sent.
+--
+-- WHY `variant` IS A STORED MEANING. Inserting a synonym in the middle of a
+-- family in the browser silently rewrites every row here. Append only, and
+-- test/diction-level.test.js pins the two sides together.
+CREATE TABLE IF NOT EXISTS diction_level (
+  kid      TEXT    NOT NULL,
+  tool     TEXT    NOT NULL,
+  family   TEXT    NOT NULL,          -- closed list, see src/diction-level.js
+  variant  INTEGER NOT NULL,          -- position in that family, never a word
+  count    INTEGER NOT NULL DEFAULT 0,
+  notes    INTEGER NOT NULL DEFAULT 0,
+  updated  INTEGER NOT NULL,
+  PRIMARY KEY (kid, tool, family, variant)
+);
+
+CREATE INDEX IF NOT EXISTS idx_diction_level_kid ON diction_level (kid);
