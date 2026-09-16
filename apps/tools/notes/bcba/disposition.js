@@ -81,15 +81,33 @@
     return n ? DISPOSITIONS[n].evidence : "";
   }
 
-  /* The class an entry is filed against, and it is built out of enums alone.
-     Producer id, finding code, section id. A sentence never reaches this, so
-     two notes raising the same finding land on the same row and the row cannot
-     be read back into either note. */
+  /* WHAT A CLASS FIELD MAY BE. Producer ids, finding codes, section ids and
+     tool ids in this app are all identifiers: `hints`, `no_prompt_level`,
+     `lessonProgressNarrative`, `bt`. A caller that hands over a sentence in one
+     of those slots, or a detail string, has made a mistake, and the ledger is
+     the wrong place to find out. So a field is an identifier or it is refused.
+     A space, a full stop or a comma cannot pass, which means no sentence from a
+     note can sit in a row. What this cannot tell is a single lowercase word
+     from an identifier, and it does not claim to. */
+  var IDENT = /^[A-Za-z][A-Za-z0-9_-]{0,63}$/;
+
+  // Absent is a default. Present and not an identifier is a refusal.
+  function field(v, fallback) {
+    if (v === undefined || v === null || v === "") return fallback;
+    return typeof v === "string" && IDENT.test(v) ? v : null;
+  }
+
+  /* The class an entry is filed against, and it is built out of identifiers
+     alone. Producer id, finding code, section id. A sentence never reaches
+     this, so two notes raising the same finding land on the same row and the
+     row cannot be read back into either note. A field that is not an
+     identifier reads as its default here, so even the reason a refused event
+     is dropped cannot carry the text that got it refused. */
   function classOf(ev) {
     var e = ev || {};
-    var producer = typeof e.producer === "string" && e.producer ? e.producer : "unknown";
-    var code = typeof e.code === "string" && e.code ? e.code : "unspecified";
-    var section = typeof e.section === "string" && e.section ? e.section : "note";
+    var producer = field(e.producer, "unknown") || "unknown";
+    var code = field(e.code, "unspecified") || "unspecified";
+    var section = field(e.section, "note") || "note";
     return producer + ":" + code + ":" + section;
   }
 
@@ -116,13 +134,23 @@
         dropped: base.dropped.concat([{ reason: "unknown-disposition", cls: classOf(e) }]),
       };
     }
+    var producer = field(e.producer, "unknown");
+    var code = field(e.code, "unspecified");
+    var section = field(e.section, "note");
+    var tool = field(e.tool, "");
+    if (producer === null || code === null || section === null || tool === null) {
+      return {
+        entries: base.entries.slice(),
+        dropped: base.dropped.concat([{ reason: "class-not-an-identifier", cls: classOf(e) }]),
+      };
+    }
     var spec = DISPOSITIONS[name];
     var entry = {
-      cls: classOf(e),
-      producer: typeof e.producer === "string" ? e.producer : "unknown",
-      code: typeof e.code === "string" ? e.code : "unspecified",
-      section: typeof e.section === "string" ? e.section : "note",
-      tool: typeof e.tool === "string" ? e.tool : "",
+      cls: producer + ":" + code + ":" + section,
+      producer: producer,
+      code: code,
+      section: section,
+      tool: tool,
       disposition: name,
       weight: spec.weight,
       evidence: spec.evidence,
