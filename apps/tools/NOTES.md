@@ -907,10 +907,9 @@ above. The em dash sweep covers `apps/tools` only and does not reach
   `{family_id, variant_index, count}`, and a word not in the dictionary has no
   index, counts as unknown and is dropped. Still uncalled and still without a
   write path.
-- **(b) SHAPE.** Widening WHERE `style-features.js` fires, not what it emits. It
-  is called from exactly one place today, `engine.jsx:1937`, guarded by
-  `NotesGate.audit.corrections`. A rejected suggestion, an accepted then edited
-  suggestion and a manual overtype are each a paired specimen.
+- **(b) SHAPE.** LANDED, see "Slice 5b" below. A rejected correction, a
+  reworded one and hand typing are three pairs cut from one chain in
+  `notes/bcba/specimens.js`, all taught at the first Copy.
 - **(c) THE DISPOSITION LEDGER** from slice 4, against the suggestion CLASS. On
   an edit, diff offered against kept and route the pair into (a) and (b).
   `disposition.js` already hands the offered/kept pair to a caller supplied sink
@@ -1086,3 +1085,150 @@ all checked free before the run, so no foreign worktree's server could have
 answered. The one `supervisor-email.spec.js` socket hang up named under slice 4
 did not recur, which supports the reading there that it was ephemeral rather
 than a regression.
+
+## Slice 5b - where the style measurement fires
+
+`notes/bcba/specimens.js` (new, loaded by both note pages), `notes/bcba/engine.jsx`
+(a ref, one effect, one reset line, the copy-time call and one guard on the
+voice capture), `tests/style-specimens.spec.js` (15 tests).
+
+**Nothing about what leaves the page changed.** `style-features.js` is not
+edited. What the store receives is still `{feature, direction, magnitude,
+source}` plus the `ts` notes-gate adds, and `source` is still `revision` or
+`manual`. The kind of a specimen never rides along; it picks one of the two
+sources compare already carried, and that is all.
+
+### One pair was three acts, and one act that was not the technician's
+
+Before this, the note taught once at copy: the model's draft against the note
+that was copied. On a note the corrections pass touched, that pair holds four
+different things.
+
+```
+draft      what the model wrote
+  |        the corrections pass. The TOOL did this. Not measured.
+offered    every correction standing
+  |        REJECTED   the technician undid a correction      source revision
+rejected   only the undos applied
+  |        EDITED     the technician reworded one they kept  source manual
+decided    the marks as they now read
+  |        OVERTYPED  the technician typed over it by hand   source manual
+shipped    what they copied
+```
+
+Each link is one pair, so no difference is taught twice and each is taught as
+the act that made it. **The old comparison was a live fault, not just a narrow
+one:** a correction nobody touched was taught as `manual`, which is the
+technician's own typing. Slice 4 ruled that an untouched change is the weakest
+evidence there is, and the store was receiving it as the strongest. A test
+drives exactly that note, first proving the old comparison finds a hedging
+change on it, then asserting nothing is posted.
+
+For a note with no marks the chain collapses to the old comparison exactly
+(draft, draft, draft, shipped), and a test pins that too.
+
+### When it is taught
+
+All three at the first Copy, off the note's final state, behind the same
+`taughtRef` that keeps a note from teaching once per Copy press. That was a
+choice between two moments, and the other one was worse: teaching at the click
+would teach a correction undone and then put back as a rejection it no longer
+was. A test undoes and restores a correction and asserts nothing is posted.
+
+### The book, and why it exists
+
+"Edit by hand" (`dismissCorrections`) removes a section's marks and its mark
+state, which was the only record of what had been offered and what was undone.
+A section finished by hand would fall back to the model draft as its baseline
+and lose the rejection. So an effect in the engine calls
+`NoteSpecimens.observe(book, S.corrections, S.markState)` whenever the marks
+change, and the book keeps a section's three readings after its marks are gone.
+It is reset in `draftNote` beside `taughtRef`, so the last note's corrections
+cannot become this note's baseline. None of the existing handlers were edited
+to feed it, which keeps the rebase against `note-tool-interface` to the lines
+listed above.
+
+### A rejection is not the owner's prose
+
+`emitStyle` also hands every pair to `VoiceCapture`, which keeps pairs of the
+owner's own writing. A rejection's after side is the model's draft put back, so
+`KINDS.rejected.own` is false and `emitStyle` skips the capture for it. It
+still reaches the style store, because refusing a change is real evidence of
+what the author prefers.
+
+### Landing tests and their revert proof
+
+Sixteen guards, each removed alone, the spec run, the guard restored. All
+sixteen fail at least one named test. The driver is a throwaway at
+`/tmp/slice5b-revert-proof.py`; it hashes every file it touches before and
+after, and the hashes matched.
+
+| Guard removed | Tests that failed | The named one |
+|---|---|---|
+| the REJECTED firing site | 5 | a REJECTED correction teaches, as a revision, in the direction the technician went |
+| the EDITED firing site | 2 | an ACCEPTED THEN EDITED correction teaches, as the technician's own prose |
+| the OVERTYPED firing site | 3 | a MANUAL OVERTYPE teaches, as the technician's own prose |
+| the engine call at copy | 6 | all three firing site tests |
+| the engine effect that observes the marks | 7 | a correction left standing is not taught as the technician's prose |
+| the book reset in `draftNote` | 1 | a new note starts a new book, so the last note's corrections cannot teach on this one |
+| `observe` keeping a section after its marks are gone | 2 | a section finished by hand after an undo still teaches the rejection |
+| the rejected stage carrying undos only | 2 | an ACCEPTED THEN EDITED correction teaches (a rewording arrived as a rejection) |
+| a link with no change dropped | 1 | a note with no marks yields exactly the old comparison, and nothing else |
+| rejection source is `revision` | 4 | a REJECTED correction teaches, as a revision |
+| `KINDS.rejected.own` is false | 2 | a rejection is never filed as the owner's own prose in the voice capture |
+| `emitStyle` honours `own` | 1 | a rejection is never filed as the owner's own prose in the voice capture |
+| the effect's guard for a missing module | 1 | a page that failed to load the specimen module still drafts and copies, and throws nothing |
+| the copy guard for a missing module | 1 | the same |
+| the bt page loads the module | 11 | both note pages load the specimen module |
+| the bcba page loads the module | 1 | both note pages load the specimen module |
+
+**Each firing site is one line** (`link(out, "rejected", ...)` and its two
+siblings), so "that site alone removed" is a literal one-line deletion rather
+than a condition added to skip it. In each of the three firing tests the other
+two links are identical on both sides, so nothing else can pick up the slack.
+The edited test also asserts the direction of `hedging`: measured against the
+model's draft instead of against what was offered, a rewording of an inserted
+hedge moves hedging nowhere, and that is how the effect's removal is caught
+there rather than passing on some other `manual` feature.
+
+**The two missing-module guards each have a test of their own.** Both are
+there so a page that failed to fetch `specimens.js` keeps working. No other
+test in the spec loads a page without the module, so the one that aborts the
+script and listens for page errors is the only one that can see either guard go.
+The effect guard matters more than it looks: an effect that throws unmounts the
+whole note. That test grants clipboard permission, because headless Chromium's
+refused clipboard is a page error of its own and would have failed it for a
+reason unrelated to this.
+
+### Known costs, stated rather than found later
+
+- **One note can now post the same feature up to three times**, once per act.
+  They are three decisions, not one measurement repeated, which is the
+  distinction the teach-once ruling drew. `acceptProposal` already posted a
+  revision and a copy-time comparison off one note. `derive.js` does not read
+  `source` at all, so the store weighs a rejection, a rewording and an accepted
+  revision the same. The disposition weights from slice 4 live in the browser
+  ledger and do not reach the card. That is slice 5c's question, not this one.
+- **A revision accepted onto a section that still has marks** is measured twice:
+  once as `revision` when it is accepted, and again as `manual` inside the
+  overtyped link. `acceptProposal` replaces the section's text and leaves its
+  marks alone, so the book's decided text is still the marks' reading. Read
+  from the code, not driven by a test. The old copy-time comparison measured
+  an accepted revision a second time as `manual` too, so this is not new, but
+  it is not fixed either.
+- **The book is filled by an effect**, which runs after paint. A technician who
+  changes a mark and presses Generate Note inside the same frame could leave
+  that last reading in the book after the reset. Nothing in the tests reaches a
+  window that small, and the cost if it happened is one wrong baseline on one
+  note.
+
+### Suite state after slice 5b
+
+`tests/style-specimens.spec.js` is 15 of 15 green on chromium, port 8853.
+`apps/profile-api` `npm test` is 137 of 137 with 0 skipped. **The full chromium
+project was not run to the end in this iteration.** It reached test 593 with
+every one passing, and then the iteration had to close and stop its own
+processes. The `✘` lines after 593 in that log, and its exit 143, come from
+stopping the server under running tests, not from the code. The next iteration
+owes a full run before it claims the project green. Ports 8788, 8789, 8799 and
+8808 were free at every check, and 8853 was free once the run was stopped.
