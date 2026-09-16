@@ -902,9 +902,11 @@ above. The em dash sweep covers `apps/tools` only and does not reach
 
 ### What is still owed on slice 5
 
-- **(a) DICTION.** The house synonym-family dictionary under `apps/tools`, and
-  the `{family_id, variant_index, count}` per author record. A word not in the
-  dictionary has no index, counts as unknown and is dropped.
+- **(a) DICTION.** LANDED, see "Slice 5a" below. The house synonym-family
+  dictionary is `notes/bcba/diction.js`, the per author record is
+  `{family_id, variant_index, count}`, and a word not in the dictionary has no
+  index, counts as unknown and is dropped. Still uncalled and still without a
+  write path.
 - **(b) SHAPE.** Widening WHERE `style-features.js` fires, not what it emits. It
   is called from exactly one place today, `engine.jsx:1937`, guarded by
   `NotesGate.audit.corrections`. A rejected suggestion, an accepted then edited
@@ -919,3 +921,168 @@ above. The em dash sweep covers `apps/tools` only and does not reach
 - **A number the maintainer should rule on.** `MOVES_PER_NOTE` is 3 of 4
   features, chosen as "most but never all of them". Nobody has said what the
   right budget is.
+
+## Slice 5a - the house synonym families, and the only thing a word leaves behind
+
+`notes/bcba/diction.js` (new, loaded by both note pages), `../profile-api/src/diction-level.js`
+(new), `../profile-api/schema.sql`, `tests/diction.spec.js` (29 tests),
+`../profile-api/test/diction-level.test.js` (17 tests).
+
+This is part (a) of slice 5. Twenty families, 85 variants, 309 surface forms.
+The four families the maintainer named (prompting, mand, elopement,
+dysregulation) are his; every surface form under them, and the other sixteen
+families, are authored here and are the part to argue with.
+
+### The record is three fields, and a word is not one of them
+
+A technician writes "prompted" and another writes "assisted", and the difference
+is the voice this run is trying to learn. The obvious way to learn it, keeping
+the words somebody used, is a store full of clinical text inside a week, and a
+store full of clinical text is a store that eventually holds a name.
+
+So a word is looked up and only its coordinates leave: `{family_id,
+variant_index, count}`. A word the house does not hold has no coordinates at
+all, so it is added to a number called `unknown` and dropped. On the sentence
+"Marisol Quintero brought the periwinkle folder from Ashford Lane" the module
+returns no counts, `unknown: 9`, and nothing else.
+
+That is structural rather than promised. Inside `tally` the matched text ends at
+the line that computes `hit.family + ":" + hit.variant`, and every line below it
+reads `FAMILIES[i].id` and an integer, so there is no variable a word could be
+sitting in when the entries are built.
+
+### Two gates, because the browser is the side somebody else controls
+
+`NoteDiction.record()` checks the tally against the SEALED house dictionary, not
+against whatever dictionary produced it, so an injected family cannot ride a
+payload into a caller who is about to write it down. Then
+`diction-level.accept()` checks it again on the Worker side. The second one is
+the gate that decides what gets stored; a gate that runs before an untrusted hop
+is not a gate.
+
+Both refusals name the slot and never quote the id they refused. A rejected
+`family_id` is a string somebody on the other side chose, and writing it into a
+log is the same mistake in a different file.
+
+### The store side holds no surface form at all
+
+`src/diction-level.js` holds `{prompting: 6, mand: 4, ...}` and no synonyms. Not
+because a synonym list is secret, but because the question a reviewer has to
+answer there is one sentence long: is every value in this table a slug from a
+closed list or an integer. A test reads the browser dictionary, collects all 309
+forms, and asserts none of them is quoted in the store module.
+
+`variant_index` is a POSITION, which makes it a stored value: a synonym inserted
+in the middle of a family in the browser silently rewrites the meaning of every
+row already in D1, and nothing would error. Append, never insert. The mirror test
+loads the real browser file and pins the two sides together, which is the only
+moment they are ever in one process.
+
+### Forms that are missing on purpose
+
+A form that is a different word in these notes is worse than a form that is
+absent, because it counts a meaning the author did not reach for.
+
+| left out | family | why |
+|---|---|---|
+| `ran`, `running` | elopement | "ran mixed trials" is half the session notes in this app. The family holds `ran off` and `ran away` as phrases instead |
+| `note`, `noted` | display | a note is the object this whole app makes, so the word is furniture rather than a choice |
+| `bit` | self_injury | "a bit longer" is the same three letters |
+| `engaged in` | display | longest-first matching would take it out of the engagement family every time the next word happened to be "in" |
+
+`tally` scans longest form first, so a phrase beats a shorter form that starts
+it. The fixture that proves it had to be hunted for: "asked for" does NOT prove
+it, because "asked" is in no family and the scan reaches the phrase from either
+direction. The rule only bites where both forms are real, which in this
+dictionary is `prompted back` (redirection) against `prompted` (prompting). Read
+shortest first, and the redirection the technician described is gone.
+
+### Revert proof, the browser module
+
+Seventeen guards, each taken out, `tests/diction.spec.js` run, put back. All
+seventeen are caught. The spec is green after every restore and `git status`
+shows the three files unchanged.
+
+| guard | named test that fails |
+|---|---|
+| longest match first | tally / a phrase wins over a shorter form that starts it |
+| first writer wins on a duplicate form | tally / a duplicated form fires from the family that wrote it first |
+| the text is lowercased before lookup | tally / a variant is recorded by its index, whatever case it was typed in (+1) |
+| a form past the phrase cap is dropped at load | tally / a form longer than the phrase cap is never looked for |
+| tally sorts its counts | tally / counts come back in a stable order whatever order the note used |
+| record refuses an unknown family | record / a family the house does not hold is refused |
+| the refusal does not name the family | record / a family the house does not hold is refused |
+| record refuses a variant index outside the family | record / a variant index past the end of a real family is refused (+1) |
+| record refuses a count that is not a positive whole number | record / a count that is not a positive whole number is refused |
+| record sorts what it kept | record / a payload comes back in the same stable order |
+| unknown and words coerced to a whole number | record / unknown and words come back as whole numbers |
+| merge refuses an unknown family | merge / a family the house does not hold cannot enter the running total |
+| merge refuses a fractional index or count | merge / a fractional count or index cannot enter the running total either |
+| merge copies rather than carrying the argument row | merge / neither argument is touched |
+| elopement holds phrases, never bare "ran" | tally / "ran mixed trials" is not elopement and "ran off" is |
+| the bt page loads the dictionary | both note pages load the dictionary |
+| the bcba page loads the dictionary | both note pages load the dictionary |
+
+### Revert proof, the store module
+
+Thirteen guards, `node --test test/diction-level.test.js`, twelve caught.
+
+| guard | named test that fails |
+|---|---|
+| the mirror is pinned to the browser dictionary | the mirror matches the browser dictionary, family for family |
+| a family is looked up as an OWN property | accept refuses an inherited property masquerading as a family |
+| accept refuses an unknown family | accept refuses a family the house does not hold (+2) |
+| the refusal does not quote the id | accept refuses a family the house does not hold, without quoting it |
+| accept refuses a variant index outside the family | accept refuses a variant index outside the family it names |
+| accept refuses a bad count | accept refuses a count that is not a positive whole number |
+| one note's vote is capped at 50 | one note's vote is capped, folding a repeated key first |
+| a repeated key is folded rather than half lost | one note's vote is capped, folding a repeated key first |
+| accept sorts | accept returns rows in one stable order however they arrived (+1) |
+| FAMILY_VARIANTS is frozen | FAMILY_VARIANTS is frozen, so a caller cannot widen the closed list (+3) |
+| applyNote puts a stored row through the same gate | a stored row the house no longer holds is dropped rather than carried |
+| familyShares refuses an unknown family | familyShares refuses a family the house does not hold |
+
+`FAMILY_VARIANTS[entry.family_id]` written as a plain lookup lets
+`{family_id: "constructor"}` through, because `Object.prototype.constructor` is
+not undefined and `0 >= [Function]` is false. That is a row keyed on a string an
+attacker chose, sitting in the store. `hasOwnProperty` is what closes it, and the
+test that lands it names `constructor` and `toString` specifically.
+
+### Two guards I wrote and then removed, because nothing could land them
+
+Both were a fresh object built where an in place add would do, in
+`NoteDiction.merge` and in `applyNote`. Neither could be landed, for the reason
+slice 5 hit twice: the row being updated was built by the push above it or by
+`accept()`, so it is the function's own object and mutating it cannot reach
+either argument. The copy that carries the immutability claim is the one at the
+push, and THAT one is landed (take it out and "neither argument is touched"
+fails). A second copy downstream of it is a guard that can only ever agree.
+
+### What this does not do yet
+
+Nothing calls `NoteDiction` yet, exactly as `alert-budget.js` is loaded and
+uncalled. The call site is (c), the disposition ledger, which is where an edit
+produces an offered/kept pair to diff. Wiring the tally into the draft path
+before that exists would be counting words for nobody.
+
+`diction_level` has a table and no route, the same gap `voice_level` has. Both
+close together when the write path lands, through the Pages worker the way
+`/events` already does. The browser never calls the profile Worker directly.
+
+A number the maintainer should rule on: `MAX_COUNT_PER_NOTE` is 50. It exists so
+one note with a stuck key cannot outweigh a year of notes, and 50 is a guess.
+
+### Suite state after slice 5a
+
+`apps/profile-api`: `npm test` is 137 of 137 green in 5.8s, of which 17 are the
+new `test/diction-level.test.js`.
+
+`apps/tools`: `tests/diction.spec.js` is 29 of 29 green on chromium in 3.4s
+(28 of them node only, one loads both pages).
+
+The full chromium project was re-run after this change and is **1259 of 1259
+green in 9.4 minutes**, on `TOOLS_TEST_PORT=8841` with 8789, 8799, 8808 and 8841
+all checked free before the run, so no foreign worktree's server could have
+answered. The one `supervisor-email.spec.js` socket hang up named under slice 4
+did not recur, which supports the reading there that it was ephemeral rather
+than a regression.
