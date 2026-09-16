@@ -322,3 +322,146 @@ hours; chromium is the project the rest of this branch has been scored on.
 While the chromium run was going, another session's Playwright was live on 8808
 out of the note-tool-interface worktree. It was left alone and it cannot have
 touched this result, because `TOOLS_TEST_PORT` turns `reuseExistingServer` off.
+
+## Slice 3 - the type-time screen list
+
+The census in slice 2 put a number on what the wide `FIRST_NAMES` dictionary
+costs: 26 false positives over 12 notes, 2.2 a note, and a supervision note
+naming three programmes pays 10 on its own. The maintainer's ruling is that the
+width stays and the cost is paid here instead, by a technician clearing a word
+once, before they draft, rather than by narrowing detection.
+
+### What a cleared word does
+
+`NotesScrub.screenAnswer(word, "not-a-person" | "take-it")` records one of the
+two answers. `not-a-person` puts the word in a device-local list; `take-it`
+affirms the flag and takes the word back out of the list if a mis-tap had put it
+there. Both record a count and the pass name, and neither records the word.
+
+The consult sits in `NotesScrub.detect()`, which is the one place both flagging
+paths already met: `review()` calls it for the tokens, and `_syncHighlight` used
+to call `NotesGate._scrub.detectNames` directly and now comes through here too.
+That was the trap the slice 2 reconnaissance named, and it is closed by routing
+rather than by two consults that could drift.
+
+### Where the list lives, and why not in either store that already exists
+
+- **Not `NotesGate.draft.save`.** `decryptDraft` drops a record after 12 hours
+  and `clearAllDrafts()` wipes every `notes_draft_` key at logout. Both are right
+  for a note and both are wrong for a list that holds no note text: a technician
+  would re-answer the same six words every morning.
+- **Not `NotesGate.nonPii`.** That store is a shared vocabulary and syncs to
+  `/api/nonpii` so a whole clinic stops seeing the same programme name flagged.
+  A screening answer is the opposite: one person, one word, at typing speed, and
+  the word may well BE a name that this technician decided not to protect.
+  Transmitting it would turn a local convenience into a disclosure.
+- **What is reused is the key, not the store.** `encryptRecord` and
+  `decryptRecord` are the draft pair generalised, so the screen list gets the
+  same non-extractable AES-GCM key out of IndexedDB and the same
+  `{v, iv, ct, savedAt}` envelope under `noaba_screen_<technician>`.
+  `decryptRecord(raw, null)` means no age limit, which is a different record
+  rather than a relaxed draft, and the reason is written at the function.
+  `screen.ready` is chained off `draftsReady` rather than racing it, because both
+  want the same IndexedDB key and minting it twice on a cold device writes two.
+
+The owner is inside the ciphertext as well as in the key name, so moving a
+record onto another technician's key does not hand them the list. There is a
+test for exactly that, because the key name alone would not have noticed.
+
+### The rules that make it safe
+
+- **Identifiers can never be screened, and there are two locks.**
+  `screenNormalize` admits letters only, one word or two, which structurally
+  excludes every shape `detectIdentifiers` matches, since each of them carries a
+  digit, an `@` or a slash. `screenRefusesIdentifier` then asks
+  `detectIdentifiers` outright. The third guarantee is structural and is the one
+  that matters most: `identifierMap()` runs first in `review()` and never reads
+  the list at all, so screening `Jacob` leaves `123 Jacob Street` tokenised whole.
+- **Adjacency beats a prior screen.** A screened word carrying an attached role
+  cue is flagged anyway: `mom Grace`, `client Grace`, `Grace, his mother`. The
+  decision is `cueRole()`, the same function the token path uses, so the two
+  cannot disagree about a sentence. A cue merely in the same sentence claims
+  nothing, which is the rule the token path already had.
+- **Cap and expiry.** 200 entries, freshest kept. An entry unseen for 25 notes is
+  dropped, and a note is a draft: `review()` ticks the counter when `newNote` is
+  true, which the engine sets from `!carryOver`, so a technician who revises hard
+  does not expire their own answers by lunch. A note that uses a screened word
+  again refreshes it.
+- **The audit carries counts and a pass name.** `phi_screen` sends
+  `{pass: "name", screened, cued}` and `phi_screen_answer` sends
+  `{pass: "name", cleared, confirmed}`. Note that the client sanitiser would
+  happily pass a four letter word through its short-slug rule, so the claim
+  being tested is the emit site's and not the sanitiser's.
+
+### What the interface would need, written down rather than built
+
+The maintainer is ruling on the note page layout, so no popover was built. What
+exists is the seam under it, and it is the part that had to be settled whatever
+the answer looks like.
+
+- A tap cannot land on a mark. The highlight layer is `pointer-events:none` at
+  `z-index:0` and the textarea sits on top; giving the layer pointer events would
+  take the click away from the field and stop typing working.
+- So the caret is the way in. A click or a tap sets `selectionStart`,
+  `NotesScrub.markAt(text, offset)` maps that offset back onto the span the
+  overlay drew, and `_attachHighlight` raises `notes-phi-mark` on the textarea
+  with `{word, name, start, end, field}`. Mouse and touch both land there, so
+  there is one path rather than two to keep in step.
+- What is left for the interface is two buttons and where to put them. A page
+  listens for `notes-phi-mark` and calls `NotesScrub.screenAnswer(word, answer)`.
+  Nothing else in this slice depends on that decision.
+- `detectedSpans()` is what both halves read, so what glows and what a tap means
+  cannot disagree. Writing it also fixed a live fault in the overlay: the old
+  pass ran each name's regex over HTML that already had marks in it, so a shorter
+  name inside a longer one matched the text INSIDE a `<mark>` and nested a second
+  one in it. `Caregiver Barbara Jean attended with Barbara.` did it.
+
+### Landing tests and their revert proof
+
+`tests/phi-screen-list.spec.js`, 26 tests. Every guard was taken out, the spec
+run, and the guard put back.
+
+| guard removed | tests that failed |
+|---|---|
+| the screen consult in `detect()` | 11 |
+| the role cue override in `screenFilter` | 3: the cue in front, the role label in front, the appositive behind |
+| `screenRefusesIdentifier` in `screenAdd` | 1: the labelled record number made only of letters |
+| the letters-only rule in `screenNormalize` | 1: the word no identifier pattern would catch |
+| the owner check inside the ciphertext | 1: a record moved to another key |
+| the cap in `screenPrune` | 1: the list is capped |
+| the notes-unseen expiry in `screenPrune` | 2: the entry expires, drafting advances the clock |
+| the seen refresh on the drafting path | 1: a note that uses the word again restarts its clock |
+| the note counter tick in `review()` | 2: drafting advances the clock, a revision does not tick twice |
+| encryption at rest for the screen list | 1: not plaintext in localStorage |
+
+**Three guards caught nothing on the first pass, and the fix was fixtures rather
+than a shrug.** The two identifier locks each refused all nine identifier shapes
+on their own, so removing either one left the other holding the door and no test
+moved. They now have a fixture apiece that only one of them catches: `b12` and
+`apt 4b` for the letters-only rule, `policy abcdef` for the identifier check,
+which is two plain words the letters rule admits and the labelled-ID pattern
+reads as a record number. The note counter tick caught nothing because every
+expiry test called `advanceNote()` by hand; two tests now draft notes instead,
+which is what the expiry is actually counted in.
+
+### Known costs, stated rather than discovered later
+
+- A detected candidate with a digit in it cannot be screened. `detectNames`
+  cannot produce one, so this is not reachable from a mark today; it would bite
+  if a future pass started returning them.
+- A two word phrase whose second word reads as a labelled record number is
+  refused. `Chart Notes` is the realistic one, because the labelled-ID pattern
+  treats `chart` as a cue and takes the next word whatever it is. It stays
+  flagged, which is the conservative direction, and it is the same false positive
+  the slice 2 census already recorded against `Insurance authorisation`.
+- A logged-out page screens nothing, because there is no technician to key a list
+  to. Words are still flagged, which is the direction this has to fail in.
+
+### Suite state after slice 3
+
+`npx playwright test --project=chromium` with `TOOLS_TEST_PORT=8799`:
+**1196 of 1196 passed, 10.1m, exit 0.** That is slice 1's 22, slice 2's 20,
+slice 3's 26 and everything that was already there.
+
+Ports 8788, 8789, 8799 and 8808 were all checked before the run and all four
+were free, so nothing adopted a foreign worktree's server.
