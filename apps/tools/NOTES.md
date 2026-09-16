@@ -905,8 +905,8 @@ above. The em dash sweep covers `apps/tools` only and does not reach
 - **(a) DICTION.** LANDED, see "Slice 5a" below. The house synonym-family
   dictionary is `notes/bcba/diction.js`, the per author record is
   `{family_id, variant_index, count}`, and a word not in the dictionary has no
-  index, counts as unknown and is dropped. Still uncalled and still without a
-  write path.
+  index, counts as unknown and is dropped. Its write path has LANDED, see "The
+  write path" below.
 - **(b) SHAPE.** LANDED, see "Slice 5b" below. A rejected correction, a
   reworded one and hand typing are three pairs cut from one chain in
   `notes/bcba/specimens.js`, all taught at the first Copy.
@@ -914,9 +914,9 @@ above. The em dash sweep covers `apps/tools` only and does not reach
   `notes/bcba/distill.js`: one edit's pair gives a diction tally and a shape
   specimen, and a ledger row now refuses any class field that is not an
   identifier.
-- **The write path.** `voice_level` has a table and an accumulator and no route.
-  The browser never calls the profile Worker directly, so it goes through the
-  Pages worker the way `/events` already does.
+- **The write path.** LANDED, see "The write path" below. `voice_level` and
+  `diction_level` are written through `/api/audit` and `/events`, the route the
+  Pages worker already forwards. There is no new route on the profile Worker.
 - **A number the maintainer should rule on.** `MOVES_PER_NOTE` is 3 of 4
   features, chosen as "most but never all of them". Nobody has said what the
   right budget is.
@@ -1425,3 +1425,277 @@ also the complete run slice 5b owed. It was started after the revert driver had
 finished and every file it edits hashed back to its starting value. One comment
 line in `distill.js` (the `harvest` doc, "class" to "item") and this section of
 NOTES.md were edited while it ran; neither changes code.
+
+## The write path - voice_level and diction_level, through the Pages worker
+
+Both tables had a schema and an accumulator and nothing that wrote to them. They
+are written now, and nothing new was opened to do it: the page adds a `voice`
+array to the body it already POSTs to `/api/audit`, the Pages worker forwards it
+inside the `/events` body it already sends over the `PROFILE` binding, and
+`/events` appends the voice statements to the batch it already runs. The browser
+still never reaches the profile Worker, and the KV audit trail never sees a voice
+entry.
+
+### One entry per note, and what is in it
+
+```
+{ tool: "bt",
+  levels:  { within_cv, step_rel, actor_naming, hedging },   // any of the four, numbers
+  diction: [ { family_id, variant_index, count } ] }           // house ids and integers
+```
+
+- **The page** (`notes/bcba/voice-note.js`, new) measures the note as copied with
+  `NoteStyleFeatures._measure` and `NoteMetrics.measure` and keeps four rates.
+  Nothing of the passage is in the entry.
+- **The store** (`apps/profile-api/src/voice-write.js`, new) reads what the
+  author already holds, folds the note in, and writes back only the rows that
+  changed. A level goes through `accumulateLevel` (n, sum, sum_sq), diction
+  through `applyNote` (count, notes). Two notes for one tool in one request fold
+  in order, so the second adds to the first.
+
+### Three gates, and every name is checked against a closed list
+
+| Where | Tool | Level names | Level values | Diction |
+|---|---|---|---|---|
+| the page buffer, `notes-gate.js` `audit.voice` | a slug | identifier shape, first 8 | finite numbers | identifier family, integer variant, integer count above 0, rows rebuilt, 85 at most |
+| the Pages worker, `sanitizeVoiceNote` in `_worker.js` | `NOTES_TOOLS` | `VOICE_FEATURES` | finite, rounded to 6 places | `VOICE_FAMILIES`, integer variant 0 to 63, integer count above 0, rows rebuilt, 85 at most; 20 notes a request |
+| the store, `acceptVoice` | `VOICE_TOOLS` | walked from `HOUSE_FEATURES` | finite, 0 to `LEVEL_MAX` (10), refused not clamped | `accept()` from slice 5a, 50 a note; 20 notes a request |
+
+`VOICE_FEATURES` and `VOICE_FAMILIES` in the Pages worker are copies of
+`HOUSE_FEATURES` and `FAMILY_IDS`, because the two Workers deploy separately and
+share no module. `VOICE_TOOLS` in the store is a copy of `NOTES_TOOLS`.
+`test/voice-write.test.js` reads all three out of `_worker.js` and fails if any
+of them drifts, and a second test pins `NoteVoice.FEATURES` to `HOUSE_FEATURES`.
+
+**A defect in this iteration's own first draft, caught by the surface form
+test.** The Pages worker first checked level names and family ids for
+identifier shape only, the way `sanitizeCorrection` checks a feature name. The
+Playwright surface form test failed with every house synonym listed twice:
+"often" and "coached" are legal identifiers, so each crossed once as a level name
+and once as a family id. The store dropped them, but they had already been sent
+to a second service. Both slots now check against a closed list, and
+"a word shaped like an identifier is still refused, as a level name and as a
+family id" holds the line.
+
+### When a note teaches a level
+
+**Only when the technician's own hand changed it.** A level is read off the note
+as copied, and every word of an untouched note came from the tool. Filed as the
+author's level, the tool's habits would come back as somebody's voice, which is
+the fault slice 5b took out of the style measurement. So `NoteVoice.entry` reads
+levels only when at least one pair on the note has `own === true`: an overtyped
+section or an edited correction from `NoteSpecimens.pairs`, or an edit specimen
+from `NoteDistill.harvest`. A rejection alone puts model text back and does not
+count.
+
+- A note copied as drafted sends nothing. A note changed only by a rejection
+  sends nothing.
+- Below 25 words, the floor `style-features.js` judges on, no level is read.
+- `within_cv` and `step_rel` are left out, never sent as zero, when the sections
+  are too short to measure (under 3 sentences). A zero would enter perfect
+  flatness as a real reading.
+- Diction needs no gate of its own here: every count in `harvest().diction` came
+  from an edit.
+
+### Decisions made here, stated so they can be argued with
+
+1. **The own-hand gate above.** The alternative, reading every note, teaches the
+   tool's own drafts back as the author's style.
+2. **No `voiceState` ref and no harvest wiring in `engine.jsx`.** Nothing on this
+   branch answers a suggestion, so a `voiceState` ref or a `harvest` call would
+   be code no test could land. The engine edit is one line beside the 5b pairs,
+   passing `pairs` only. The host adds `harvest` when the affordance is wired
+   (below).
+3. **The page buffer drains voice only when the response says `profile: "ok"`**,
+   on the terms corrections already drain on. A store that is not bound yet has
+   not learned the note, so the reading waits in a bounded ring (500 entries).
+4. **`LEVEL_MAX` is 10.** Every one of the four is a rate or a ratio that real
+   notes put under 2, and a value past 10 is a broken client or a forged payload.
+   It is a plausibility bound, not a measured one, and the maintainer may want to
+   rule on it.
+
+### A defect found in slice 5a's code: `applyNote` cut a running total back to the cap
+
+`applyNote` re-read the rows already stored through `accept()`, and `accept()`
+caps ONE NOTE's count at `MAX_COUNT_PER_NOTE` (50). A stored row is a running
+total over many notes. Measured before the fix: a stored count of 120 plus a note
+of 3 came back as 53, so an author's history would have been cut down on every
+write. It never reached live data, because nothing wrote `diction_level` before
+this iteration. `applyNote` now keeps the stored count and still uses `accept()`
+to decide whether the row is readable. Landed by "a stored total past one note's
+cap is carried whole, not cut back to the cap" in
+`test/diction-level.test.js`.
+
+### THE CALL AN AFFORDANCE MAKES, with the write path in place
+
+What `recordNoteLeft` in `engine.jsx` calls now, one line after the 5b pairs:
+
+```js
+if (window.NoteVoice) NotesGate.audit.voice(NoteVoice.entry({ tool: tool.id, ids: narrativeIds(), shipped: S.output, pairs: leaving }));
+```
+
+What the host makes of that line and the 5c block above, when the affordance
+answers suggestions:
+
+```js
+const harvest = NoteDistill.harvest(voiceState.current);
+harvest.specimens.forEach((p) => emitStyle(p.before, p.after, p.source, p.own));
+if (window.NoteVoice) NotesGate.audit.voice(NoteVoice.entry({
+  tool: tool.id, ids: narrativeIds(), shipped: S.output, pairs: leaving, harvest,
+}));
+```
+
+The signatures, all plain functions, none of them touching the DOM:
+
+- `NoteVoice.entry({tool, ids, shipped, pairs, harvest?})` returns
+  `{tool, levels, diction}` or `null` when the note has nothing to teach.
+- `NoteVoice.levels(passage)` returns
+  `{actor_naming, hedging, within_cv?, step_rel?}` or `null` under the word floor.
+- `NotesGate.audit.voice(entry)` checks the entry, adds it to the buffer and
+  flushes. It returns nothing, and a `null` entry is a no-op.
+
+### How the landing tests join two Workers without a dev server for either
+
+`PROFILE` is not bound under `wrangler pages dev`, so a page test through the dev
+server alone would stop at `profile: "skipped"`. `tests/voice-write-path.spec.js`
+routes the page's `/api/audit.js` requests to the real `_worker.js` `fetch`,
+imported into the Playwright process. Its `env.PROFILE.fetch` calls the real
+`apps/profile-api/src/index.js` `fetch`, and that Worker's `env.DB` is
+`test/helpers/d1-sqlite.js`: `node:sqlite` running `schema.sql`, recording every
+bound statement. The helper takes the schema text from its caller, because
+Playwright compiles a spec and what it imports to CommonJS, where `import.meta`
+does not exist. Only the LLM, the expert pass and the corrections pass are
+mocked.
+
+**DONE WHEN, part one, a browser side accumulation reaches the store:**
+"a note the technician typed over lands all four levels in voice_level" types
+over two sections, copies, and reads `voice_level` back as `n = 1` with each sum
+equal to the value on the wire. "an edit answered through the ledger lands its
+diction in diction_level" does the same for diction. The store side
+"/events writes a note's levels and diction, and a second request accumulates
+onto them" checks the fold against a hand sum.
+
+**DONE WHEN, part two, no route accepts a surface form:**
+"no route on the profile Worker writes a surface form from a voice payload, in
+any slot" parses every route out of `src/index.js` (so a route added later is
+driven without editing the test) and sends each one every house synonym, about
+309 forms plus a sentence, in every slot of a voice entry. It reads every bound
+write statement and every table cell afterwards. "a voice payload holding a house
+synonym in every slot writes none of them, through the real worker into the
+store" does the same through `/api/audit` and also walks every key and value the
+Pages worker forwarded. Both have a positive control: the one legal row in each
+payload must land, so a route that wrote nothing cannot pass. House ids that are
+also words ("prompting", "mand", "hedging", "bt") are exempt by exact match
+only.
+
+The scope, stated: the route test proves this for the voice payload. The limit
+slice 5c stated still stands for other slots: a correction's `tool` and a
+metric's `type` and data keys are checked for slug shape, so a single word
+passes those. No sentence can.
+
+### Landing tests and their revert proof
+
+Every guard below was removed alone, the named suite run, and the file put back.
+The store guards ran `test/voice-write.test.js` and `test/diction-level.test.js`.
+All others ran `tests/voice-write-path.spec.js` on chromium, port 8880. The driver
+is a throwaway at `/tmp/voice-revert/driver.mjs`. It hashed all 9 files it edits
+before and after each batch, and every batch reported the hashes matched.
+`git status` was identical before and after. **All 48 are caught.**
+
+**One pair of guards was caught by nothing, and is gone.** `isLevel` read
+`typeof v === "number" && Number.isFinite(v) && ...`. Each half, removed alone,
+broke no test, because each covers the other: `Number.isFinite` is already false
+for anything that is not a number. The `typeof` was removed, and
+`Number.isFinite` alone is now caught (S3b).
+
+| Guard removed, or mutation applied | Caught by |
+|---|---|
+| S1 store tool from `VOICE_TOOLS` | a tool outside the closed list is refused, even a single word a slug rule would take; no route on the profile Worker writes a surface form |
+| S2 store levels walked from `HOUSE_FEATURES` | levels are read by house feature name, so a key the payload made up is never visited; no route writes a surface form |
+| S3 store level bounds 0 to `LEVEL_MAX` | a level that is not a plausible reading is refused, not clamped |
+| S3b store level `Number.isFinite` | a level that is not a plausible reading is refused, not clamped |
+| S4 store empty entry refused | diction rows go through the house gate, and an entry left with nothing is not a note |
+| S5 store `MAX_VOICE_NOTES` | one request reads at most MAX_VOICE_NOTES notes |
+| S6 store running level inside one request | two notes for one tool in one request fold in order, so the second adds to the first |
+| S7 store running diction inside one request | the same, and a second note's NEW diction slot survives when the first note added a different one |
+| S8 store writes touched rows only | only the rows a request changed are written, not every row the author holds |
+| S9 store reads stored rows before folding | /events writes a note's levels and diction, and a second request accumulates onto them |
+| S10 store diction through `accept()` | diction rows go through the house gate, and an entry left with nothing is not a note |
+| S11 `/events` pushes the voice statements | /events writes ... and a second request accumulates onto them; no route writes a surface form |
+| S12 `applyNote` keeps the stored count | a stored total past one note's cap is carried whole, not cut back to the cap |
+| W1 worker tool from `NOTES_TOOLS` | sanitizeVoiceNote keeps a note tool, numbers and house names, and drops every other slot; the synonym-in-every-slot test |
+| W2 worker level names from `VOICE_FEATURES` | the same two, and a word shaped like an identifier is still refused |
+| W3 worker level is a finite number | sanitizeVoiceNote keeps a note tool, numbers and house names |
+| W4 worker family from `VOICE_FAMILIES` | a word shaped like an identifier is still refused; the synonym-in-every-slot test |
+| W5 worker variant is an integer 0 to 63 | sanitizeVoiceNote keeps ...; the synonym-in-every-slot test |
+| W6 worker count is an integer above 0 | sanitizeVoiceNote keeps ...; the synonym-in-every-slot test |
+| W7 worker rebuilds each diction row | sanitizeVoiceNote keeps ...; the synonym-in-every-slot test |
+| W8 worker refuses an empty entry | sanitizeVoiceNote keeps a note tool, numbers and house names |
+| W9 worker forwards `voice` | a note the technician typed over lands all four levels; an edit answered through the ledger lands its diction; one request carries at most twenty notes |
+| W10 worker early return counts voice | one request carries at most twenty notes; an edit answered through the ledger lands its diction |
+| W11 worker 20 notes a request | one request carries at most twenty notes on to the store |
+| W12 worker rounds a level to 6 places | sanitizeVoiceNote keeps a note tool, numbers and house names |
+| W13 worker sanitizes voice at all | the synonym-in-every-slot test |
+| G1 page flush sends `voice` | a note the technician typed over lands all four levels; a reading waits in the buffer; an edit lands its diction |
+| G2 page drains voice only on `profile: "ok"` | a reading waits in the buffer while the store is not there, and goes when it is, twenty at a time |
+| G3 page drains voice at all | the same, and an edit answered through the ledger lands its diction |
+| G4 page family id shape | the page buffer keeps numbers and identifiers and nothing else |
+| G5 page level name and value check | the page buffer keeps numbers and identifiers and nothing else |
+| G6 page rebuilds each diction row | the page buffer keeps numbers and identifiers and nothing else |
+| G7 page refuses an empty entry | the page buffer keeps numbers and identifiers and nothing else |
+| G8 page tool shape | the page buffer keeps numbers and identifiers and nothing else |
+| G9 page flush early return counts voice | a reading waits in the buffer; an edit answered through the ledger lands its diction |
+| G10 page 20 notes a flush | a reading waits in the buffer ..., twenty at a time |
+| G11 `audit.voice` flushes | an edit answered through the ledger lands its diction in diction_level |
+| E1 engine calls `NoteVoice` when the note leaves | a note the technician typed over lands all four levels in voice_level |
+| E2 engine `window.NoteVoice` guard | a page that failed to load voice-note.js still drafts and copies, and throws nothing |
+| V1 the own-hand gate | a note copied as drafted teaches no level; a rejection alone teaches no level; levels are read only when a pair is the technician's own prose |
+| V2 `own` must be exactly `true` | a rejection alone teaches no level; levels are read only when a pair is the technician's own prose |
+| V3 the 25 word floor | a passage under the word floor gives no level at all |
+| V4 `sectionCv` present | a section measure the passage cannot support is left out, never sent as zero |
+| V5 `sectionStep` present | a section measure the passage cannot support is left out, never sent as zero |
+| V6 harvest specimens count as own | levels are read only when a pair on the note is the technician's own prose |
+| V7 an entry with nothing is `null` | the own prose test; the word floor test; diction rides without a level, and an entry with neither is not sent |
+| P1 the bt page loads `voice-note.js` | both note pages load voice-note.js; a note the technician typed over lands all four levels |
+| P2 the bcba page loads `voice-note.js` | both note pages load voice-note.js |
+
+### Known costs, stated rather than found later
+
+- **One word typed by hand admits the whole note's levels.** A rate cannot be
+  taken off a single word, so the gate is per note, not per word.
+- **Short sections teach two levels, not four.** `within_cv` and `step_rel` need
+  sections of 3 sentences or more.
+- **Two requests for one author at once can lose an update.** Read, fold, write
+  has no lock, because D1 has no RETURNING on conflict. It is the trade
+  `shape_profile` already makes, and one technician rarely copies two notes in
+  the same second.
+- **The page gate checks shape, not the closed lists.** A caller inside the page
+  could put an identifier-shaped word in the localStorage buffer, and the request
+  would carry it to the Pages worker, which drops it. `NoteVoice.entry` cannot
+  produce one: its level names are `FEATURES` and its diction came through
+  `NoteDiction.record`. Anything running inside the page can already POST
+  whatever it likes.
+- **Nothing sends diction on this branch yet.** The `harvest` argument is the
+  host's to add. Until then the diction half is landed by the ledger test that
+  calls `NoteVoice.entry` with a harvest directly.
+- **`LEVEL_MAX` (10) and the 6 place rounding are judgment, not measurement.**
+
+### Suite state after the write path
+
+`tests/voice-write-path.spec.js` is 17 of 17 on chromium, port 8880. With
+`style-specimens`, `distill`, `diction`, `audit-events`, `style-card-api`,
+`no-em-dashes`, `asset-cache-lockstep`, `voice-capture`, `style-features` and
+`profile-admin-api` beside it: 167 of 167 (run before the last test was added,
+and the new spec was 17 of 17 alone after that). `apps/profile-api` `npm test`
+is 155 of 155 with 0 skipped: 137 before, 1 in `diction-level.test.js`, 17 in
+`voice-write.test.js`. Ports 8788, 8789, 8799, 8808 and 8880 were free at every
+check.
+
+**The full chromium project was NOT run to the end.** It was started on
+`TOOLS_TEST_PORT=8880` after the revert driver had finished and the hashes had
+matched. It had passed tests 1 to 206 of 1311 with no failure when the iteration
+had to end, and I stopped it so no background process was left. A complete run
+is still owed. 1311 is the 1294 from slice 5c plus the 17 here.
+
+`git diff --name-only origin/main` plus untracked files lists nothing outside
+`apps/tools` and `apps/profile-api`, and no added line holds an em or en dash.

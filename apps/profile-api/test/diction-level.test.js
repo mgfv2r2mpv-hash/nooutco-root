@@ -180,6 +180,17 @@ test("applyNote adds this note to the stored total and counts the note once", ()
   ]);
 });
 
+test("a stored total past one note's cap is carried whole, not cut back to the cap", () => {
+  /* The cap bounds one note's vote. A stored row is many notes, and reading it
+     back through the same cap turned 120 uses over 40 notes into 50 on the next
+     write, so an author's longest habit was the one the store kept forgetting. */
+  const out = applyNote(
+    [{ family_id: "mand", variant_index: 0, count: MAX_COUNT_PER_NOTE + 70, notes: 40 }],
+    [{ family_id: "mand", variant_index: 0, count: 3 }],
+  );
+  assert.deepEqual(out, [{ family_id: "mand", variant_index: 0, count: MAX_COUNT_PER_NOTE + 73, notes: 41 }]);
+});
+
 test("applyNote does not touch what it was given", () => {
   const stored = [{ family_id: "mand", variant_index: 0, count: 5, notes: 2 }];
   const next = [{ family_id: "mand", variant_index: 0, count: 1 }];

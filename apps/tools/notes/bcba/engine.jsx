@@ -1593,8 +1593,10 @@ function App() {
     const modelOut = lastModelOutput();
     if (!modelOut) return;
     if (!window.NoteSpecimens) return;
-    NoteSpecimens.pairs({ ids: narrativeIds(), draft: modelOut, book: specimenBook.current, shipped: S.output })
-      .forEach((p) => emitStyle(p.before, p.after, p.source, p.own));
+    const leaving = NoteSpecimens.pairs({ ids: narrativeIds(), draft: modelOut, book: specimenBook.current, shipped: S.output });
+    leaving.forEach((p) => emitStyle(p.before, p.after, p.source, p.own));
+    // The note's voice levels, read only when the technician's own hand changed it. See voice-note.js.
+    if (window.NoteVoice) NotesGate.audit.voice(NoteVoice.entry({ tool: tool.id, ids: narrativeIds(), shipped: S.output, pairs: leaving }));
   };
 
   /* Remember what went to the clipboard, so the section map can tell "already in
