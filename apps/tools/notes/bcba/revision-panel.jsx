@@ -18,10 +18,106 @@
 
 /* ── Selecting a phrase to revise ─────────────────────────────────────────
    Narrative sections are textareas, so a selection is selectionStart/End rather
-   than a DOM Range - which is the easier half. The chip anchors to the
-   textarea's own top-right corner instead of the caret: caret coordinates in a
-   textarea can't be measured without mirroring the content into a hidden div,
-   and the corner is stable, predictable, and never lands under the pointer. */
+   than a DOM Range - which is the easier half.
+
+   THE CHIP USED TO ANCHOR TO THE TEXTAREA'S CORNER, and the comment that stood
+   here gave the reason: "caret coordinates in a textarea can't be measured
+   without mirroring the content into a hidden div". That is true, and it is
+   also already done, twice a day, in this same repo: notes-scrub.js mirrors
+   every textarea into an absolutely positioned overlay with cloned computed
+   style so it can draw PHI highlights over the right characters. The hard part
+   was built and running in production while this file called it impossible.
+
+   So it mirrors now, and the chip sits on the phrase. That matters more than it
+   sounds: "say what is wrong with THIS" reads as a different offer from a
+   button in the corner of a box, and on a phone the corner of a box can be most
+   of a screen away from the words it is about.
+
+   Two safety rails. The mirror is measured, never trusted: if anything about it
+   comes back empty the chip falls back to the corner and the technician loses
+   nothing. And on touch the chip goes BELOW the selection rather than above,
+   because iOS puts its own Copy and Look Up callout above a selection and two
+   controls in one place is a fight the system wins. */
+
+/* One reusable hidden div. Created on first use, never removed: making and
+   dropping one per selection would thrash layout on a phone while somebody
+   drags a selection handle. */
+function measureMirror() {
+  var m = document.getElementById("revise-phrase-mirror");
+  if (m) return m;
+  m = document.createElement("div");
+  m.id = "revise-phrase-mirror";
+  m.setAttribute("aria-hidden", "true");
+  document.body.appendChild(m);
+  return m;
+}
+
+/* Where the selected characters actually are, in viewport coordinates.
+   Returns null rather than a guess when it cannot say. */
+function phraseRect(ta, start, end) {
+  try {
+    if (!(end > start)) return null;
+    var box = ta.getBoundingClientRect();
+    if (!box.width) return null;
+    var cs = window.getComputedStyle(ta);
+    var m = measureMirror();
+
+    /* Position fixed and hidden by visibility rather than display, because a
+       display:none element has no layout and therefore no rects to read. */
+    m.style.cssText = "position:fixed;visibility:hidden;pointer-events:none;z-index:-1;" +
+      "white-space:pre-wrap;overflow-wrap:break-word;word-wrap:break-word;margin:0;";
+    [
+      "fontSize", "fontFamily", "fontWeight", "fontStyle", "fontVariant",
+      "lineHeight", "letterSpacing", "wordSpacing", "textIndent", "textTransform",
+      "paddingTop", "paddingRight", "paddingBottom", "paddingLeft",
+      "borderTopWidth", "borderRightWidth", "borderBottomWidth", "borderLeftWidth",
+      "boxSizing", "tabSize",
+    ].forEach(function (k) { try { m.style[k] = cs[k]; } catch (e) {} });
+    // A transparent border of the same width, so the first character starts
+    // where it starts in the real box rather than one border to the left.
+    m.style.borderStyle = "solid";
+    m.style.borderColor = "transparent";
+    m.style.width = box.width + "px";
+    m.style.left = box.left + "px";
+    // Scrolled content moves up inside the box; the mirror moves with it, so a
+    // phrase halfway down a scrolled section still measures where it is SEEN.
+    m.style.top = (box.top - ta.scrollTop) + "px";
+    m.textContent = ta.value || "";
+
+    var node = m.firstChild;
+    if (!node) return null;
+    var range = document.createRange();
+    range.setStart(node, Math.min(start, node.length));
+    range.setEnd(node, Math.min(end, node.length));
+    var rects = range.getClientRects();
+    // The FIRST rect, not the bounding one: a selection running over three
+    // lines has a bounding box whose top-left is nowhere near its first word.
+    var r = rects.length ? rects[0] : range.getBoundingClientRect();
+    if (!r || (!r.width && !r.height)) return null;
+    // A phrase scrolled out of sight would put the chip outside the section
+    // it belongs to, so it is held to the part of the box a person can see.
+    var top = Math.min(Math.max(r.top, box.top), box.bottom);
+    return { top: top, bottom: Math.min(Math.max(r.bottom, box.top), box.bottom), left: r.left, right: r.right };
+  } catch (e) {
+    return null;
+  }
+}
+
+/* Above the phrase on a mouse, below it on a finger, clamped to the viewport on
+   both axes. The chip is position:fixed, so a section below the fold would
+   otherwise put it off screen: visible to a test, unreachable to a person. */
+function placeChip(anchor, touch) {
+  var CHIP_W = 152, CHIP_H = 40, GUTTER = 8;
+  var vw = document.documentElement.clientWidth || window.innerWidth;
+  var vh = document.documentElement.clientHeight || window.innerHeight;
+  var top = touch ? anchor.bottom + 8 : anchor.top - CHIP_H - 2;
+  if (top < GUTTER) top = anchor.bottom + 8;
+  if (top > vh - CHIP_H - GUTTER) top = anchor.top - CHIP_H - 2;
+  return {
+    top: Math.min(Math.max(GUTTER, top), vh - CHIP_H - GUTTER),
+    left: Math.min(Math.max(GUTTER, anchor.left - 8), vw - CHIP_W - GUTTER),
+  };
+}
 // How long an iOS selection handle has to sit still before the chip reads the
 // selection. Long enough that a drag does not repaint on every pixel, short
 // enough that a technician who has stopped dragging is not waiting on it.
@@ -31,24 +127,67 @@ function useTextSelection(onSelect) {
   const [chip, setChip] = React.useState(null); // {top, left, id, text}
 
   React.useEffect(() => {
+    /* A SECTION THE CORRECTIONS PASS TOUCHED IS NOT A TEXTAREA. It is drawn as
+       spans so a strikethrough is possible, and until now that put it outside
+       this whole mechanism: the one kind of section most likely to need a word
+       said about it was the one kind you could not select a phrase in. Under
+       the author aid flag a corrected section is the COMMON case, so the
+       omission would have been most of the note.
+
+       This half is the easy half, ironically. Real text in real elements means
+       a real Range, and a Range knows exactly where it is. */
+    const readRendered = () => {
+      const sel = window.getSelection && window.getSelection();
+      if (!sel || sel.isCollapsed || !sel.rangeCount) { setChip(null); return; }
+      const range = sel.getRangeAt(0);
+      const host = range.commonAncestorContainer;
+      const node = host && host.nodeType === 1 ? host : host && host.parentNode;
+      if (!node || !node.closest) { setChip(null); return; }
+      const view = node.closest("[data-corrections-section]");
+      if (!view) { setChip(null); return; }
+      const text = String(sel.toString() || "").trim();
+      if (!text || text.length < 2) { setChip(null); return; }
+      const rects = range.getClientRects();
+      const r = rects.length ? rects[0] : range.getBoundingClientRect();
+      if (!r || (!r.width && !r.height)) { setChip(null); return; }
+      const card = view.closest("[data-section-key]");
+      const pos = placeChip(r, touching);
+      setChip({
+        top: pos.top,
+        left: pos.left,
+        id: view.getAttribute("data-corrections-section"),
+        text,
+        heading: (card && card.getAttribute("data-section-title")) || "",
+      });
+    };
+
     const read = (e) => {
       const el = e.target;
-      if (!el || el.tagName !== "TEXTAREA") return;
+      /* THE CHIP'S OWN MOUSEUP. It used to be harmless, because `read` bailed
+         on anything that was not a textarea and the chip is a button. Now that
+         a non-textarea falls through to the rendered branch, the sequence
+         pointerdown, mouseup, click had the mouseup find no document selection
+         - a textarea's selection is not one - clear the chip, and unmount the
+         button before its own click could fire. Revising a phrase stopped
+         working entirely, and only the test that clicks the chip caught it. */
+      if (el && el.closest && el.closest("[data-revise-chip]")) return;
+      if (!el || el.tagName !== "TEXTAREA") return readRendered();
       const id = el.getAttribute("data-section-id");
       if (!id) return; // only narrative section boxes opt in
       const start = el.selectionStart, end = el.selectionEnd;
       const text = (el.value || "").slice(start, end).trim();
       if (!text || text.length < 2) { setChip(null); return; }
-      // Clamp to the viewport on BOTH axes. The chip is position:fixed and
-      // anchored to the textarea, so a section below the fold would otherwise
-      // put it off-screen - visible to a test, unclickable to a person.
-      const r = el.getBoundingClientRect();
-      const CHIP_W = 132, CHIP_H = 40, GUTTER = 8;
-      const vw = document.documentElement.clientWidth || window.innerWidth;
-      const vh = document.documentElement.clientHeight || window.innerHeight;
+      /* The phrase if the mirror can find it, the box's corner if it cannot.
+         Falling back rather than failing is deliberate: a chip in a slightly
+         dull place still revises the sentence, and no chip at all is a feature
+         that disappeared. */
+      const box = el.getBoundingClientRect();
+      const anchor = phraseRect(el, start, end) ||
+        { top: box.top, bottom: box.top + 22, left: box.right - 120, right: box.right };
+      const pos = placeChip(anchor, touching);
       setChip({
-        top: Math.min(Math.max(GUTTER, r.top - 6), vh - CHIP_H),
-        left: Math.min(Math.max(GUTTER, r.right - 120), vw - CHIP_W),
+        top: pos.top,
+        left: pos.left,
         id,
         text,
         heading: el.getAttribute("data-section-heading") || "",
@@ -59,6 +198,7 @@ function useTextSelection(onSelect) {
       if (e.target && e.target.closest && e.target.closest("[data-revise-chip]")) return;
       const el = e.target;
       if (el && el.tagName === "TEXTAREA" && el.getAttribute("data-section-id")) return;
+      if (el && el.closest && el.closest("[data-corrections-section]")) return;
       setChip(null);
     };
     /* TOUCH, and why `read` cannot simply be handed another event name.
@@ -90,6 +230,9 @@ function useTextSelection(onSelect) {
       settle = setTimeout(() => {
         const el = document.activeElement;
         if (el && el.tagName === "TEXTAREA") read({ target: el });
+        // Nothing is focused when a finger selects rendered text, so the
+        // rendered branch is reached directly rather than through activeElement.
+        else readRendered();
       }, SELECTION_SETTLE_MS);
     };
 
@@ -121,7 +264,7 @@ function useTextSelection(onSelect) {
         boxShadow: "0 4px 14px rgba(45,58,31,.35)", whiteSpace: "nowrap",
       }}
     >
-      ✎ Revise this
+      Say what is wrong
     </button>
   ) : null;
 
@@ -314,9 +457,30 @@ function RevisionPanel({
   bcbaOffer, onTakeBcba, onDismissBcba,
   ticketOffer, ticketFiling, onFileTicket, onDismissTicket,
   pointMode, onPointMode, pointScope,
+  changes, onApproveChange, onRevertChange, onEditChange, onGoToSection,
 }) {
   const scrollRef = React.useRef(null);
   const inputRef = React.useRef(null);
+
+  /* THE PILL'S NUMBER CHANGES MEANING, and that is the whole redesign in one
+     word. It used to carry the count of things wanting something from the
+     technician, which is a debt: seven things to answer. The questions moved
+     onto the note itself, so what is left to count is what was already done for
+     them, which is a receipt: six changes, all of them in, none of them owed.
+     Same badge, same corner, opposite meaning. */
+  const changeList = Array.isArray(changes) ? changes : [];
+  const hasChanges = changeList.length > 0;
+  const [view, setView] = React.useState("ask");
+
+  /* Opening with changes shows the changes, because that is the answer to the
+     question a technician opens this with. Switching to the composer is their
+     choice and it sticks: this only runs when the panel opens or when changes
+     appear for the first time, so a pass landing mid-sentence never yanks the
+     view out from under someone who is typing. */
+  React.useEffect(() => {
+    if (!hasChanges) setView("ask");
+    else if (open) setView("changes");
+  }, [open, hasChanges]);
   const [phiOpen, setPhiOpen] = React.useState(false);
 
   // Keep the newest turn in view as the exchange grows.
@@ -455,14 +619,26 @@ function RevisionPanel({
           type="button"
           className={"revision-fab quality-" + (signedOut ? "idle" : q.level || "idle")}
           onClick={onToggle}
-          aria-label={signedOut ? "Ask NoMe. Sign in to use the assistant, or report a problem." : "Open the assistant. " + qs.label}
+          aria-label={
+            signedOut
+              ? "Ask NoMe. Sign in to use the assistant, or report a problem."
+              : hasChanges
+                ? "See what NoMe changed. " + changeList.length + (changeList.length === 1 ? " change" : " changes") + ", already in your note."
+                : "Open the assistant. " + qs.label
+          }
           title={signedOut ? "Sign in to use the assistant, or report a problem" : q.reason || qs.label}
         >
           <span className="revision-fab-check" aria-hidden="true">
             {signedOut || q.level === "idle" ? "💬" : q.level === "good" ? "✓" : "!"}
           </span>
-          <span className="revision-fab-label">Ask{nomeMark}</span>
-          {!signedOut && unread > 0 && <span className="revision-fab-dot" aria-label={unread + " new"} />}
+          {!signedOut && hasChanges ? (
+            <span className="revision-fab-label" data-fab-changes={changeList.length}>
+              {changeList.length} {changeList.length === 1 ? "change" : "changes"}
+            </span>
+          ) : (
+            <span className="revision-fab-label">Ask{nomeMark}</span>
+          )}
+          {!signedOut && !hasChanges && unread > 0 && <span className="revision-fab-dot" aria-label={unread + " new"} />}
         </button>
       </div>
     );
@@ -486,6 +662,47 @@ function RevisionPanel({
       </header>
 
       <div className="revision-panel-body" ref={scrollRef}>
+        {/* THE DRAWER, AND WHY IT IS A VIEW RATHER THAN A THIRD FLOATING THING.
+            The report button used to be its own circle on this corner and the
+            collision is recorded above as the reason it moved in here. A
+            changes sheet floating beside the pill would rebuild exactly that
+            problem, so the panel carries two views and the pill stays one
+            control. */}
+        {hasChanges && (
+          <div className="cd-switch" role="group" aria-label="What you are looking at">
+            <button
+              type="button"
+              className={"cd-tab" + (view === "changes" ? " is-on" : "")}
+              data-changes-tab="changes"
+              aria-pressed={view === "changes"}
+              onClick={() => setView("changes")}
+            >
+              What changed
+            </button>
+            <button
+              type="button"
+              className={"cd-tab" + (view === "ask" ? " is-on" : "")}
+              data-changes-tab="ask"
+              aria-pressed={view === "ask"}
+              onClick={() => setView("ask")}
+            >
+              Ask NoMe something
+            </button>
+          </div>
+        )}
+
+        {view === "changes" && window.ChangesDrawer && (
+          <window.ChangesDrawer
+            entries={changeList}
+            onApprove={onApproveChange}
+            onRevert={onRevertChange}
+            onEdit={onEditChange}
+            onGoTo={onGoToSection}
+          />
+        )}
+
+        {view !== "changes" && (
+          <React.Fragment>
         {signedOut && (
           <p className="revision-empty">
             Sign in with your access code to use the assistant. If signing in is the
@@ -637,6 +854,8 @@ function RevisionPanel({
           </div>
         )}
         {loading && <Bubble role="assistant" muted>Working…</Bubble>}
+          </React.Fragment>
+        )}
       </div>
 
       <form
