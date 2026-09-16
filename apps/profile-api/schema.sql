@@ -120,3 +120,37 @@ CREATE TABLE IF NOT EXISTS shape_profile (
 );
 
 CREATE INDEX IF NOT EXISTS idx_shape_profile_kid ON shape_profile (kid);
+
+-- Per author level for one voice feature, one row per (technician, tool,
+-- feature). This is the author half of the shrinkage in src/voice-shrink.js;
+-- the house half lives in src/house-prior.js and is a constant, not a table,
+-- because it is a bar and a measured corpus rather than anything anyone here
+-- typed.
+--
+-- WHY PER TOOL, the same reason shape_profile is: a level like average sentence
+-- length or how often an actor is named is partly a property of the document
+-- class. One row per technician would learn the average of two things they
+-- never write.
+--
+-- WHY RUNNING SUMS. Mean and sd are recomputed from the sums on every read, so
+-- there is no per note history, nothing unbounded and nothing to prune. Same
+-- three accumulators as shape_profile, one feature at a time.
+--
+-- `feature` is a name from the closed list in src/house-prior.js. A row whose
+-- feature the house holds no prior for is dead weight: housePrior refuses the
+-- name and no target is ever built from it.
+--
+-- WHAT IS STORED IS THREE NUMBERS AGAINST AN OPAQUE LOGIN CODE ID. No text, no
+-- fragment of text, no length in characters.
+CREATE TABLE IF NOT EXISTS voice_level (
+  kid      TEXT    NOT NULL,
+  tool     TEXT    NOT NULL,
+  feature  TEXT    NOT NULL,          -- closed list, see src/house-prior.js
+  n        INTEGER NOT NULL DEFAULT 0,
+  sum      REAL    NOT NULL DEFAULT 0,
+  sum_sq   REAL    NOT NULL DEFAULT 0,
+  updated  INTEGER NOT NULL,
+  PRIMARY KEY (kid, tool, feature)
+);
+
+CREATE INDEX IF NOT EXISTS idx_voice_level_kid ON voice_level (kid);

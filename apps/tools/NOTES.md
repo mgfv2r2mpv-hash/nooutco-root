@@ -717,3 +717,205 @@ Another worktree, `note-tool-interface`, was running its own Playwright on 8831
 throughout, verified by reading that process's `cwd`. `TOOLS_TEST_PORT=8811`
 means `reuseExistingServer` is off, so neither run could adopt the other's
 server in either direction.
+
+## Slice 5 - the shrinkage module and the house prior
+
+This iteration built stage one of slice 5: the PURE module the slice's whole
+DONE WHEN list is about, plus the per author store it reads. Two new files in
+`apps/profile-api`, `src/house-prior.js` and `src/voice-shrink.js`, and one new
+table in `schema.sql`. No routes, no browser code, no I/O anywhere in either
+file. **The three voice channels (a) diction, (b) the widened style-features
+firing sites and (c) the disposition ledger routing are NOT built yet** and are
+the next iteration's work. See "what is still owed" at the end.
+
+### The ruling, and what makes it structural rather than written down
+
+> "I don't really want BTs teaching the system anything but their style."
+
+The house prior is not the mean over technicians. Two mechanisms enforce that,
+and neither of them is a comment:
+
+1. **`housePrior` takes exactly one argument and it must be a feature name from
+   a closed list.** There is no parameter an observation could arrive through.
+   A second argument is refused rather than ignored, because ignoring it would
+   let a caller believe their data was being used.
+2. **`buildHousePrior` parses entries against an ALLOWLIST of keys and a CLOSED
+   enum of provenances.** An entry carrying `kid`, `author`, `observations`,
+   `n`, `sum` or any key the file does not name is refused. A provenance outside
+   `["maintainer_bar", "bcba_authored"]` is refused. Both fail closed.
+
+The allowlist is the part that matters. A denylist of author-bearing field names
+would have to already know the name of the field that one day carries a
+technician's observations, and it will not. `test/voice-shrink.test.js` drives
+eight field names including one called `whatever` and watches each refuse.
+
+`authorTarget(feature, row)` has no house parameter either. It fetches the prior
+by name, so a caller cannot hand it a house mean derived from anything.
+
+### The four features, and where each number came from
+
+`within_var` is one author's note to note variance. `between_var` is the
+variance of author MEANS around the house mean. `k = within_var / between_var`
+is the price of moving the estimate: how many notes an author writes before
+their own mean carries half the weight.
+
+| Feature | House mean | k | Envelope | Provenance |
+|---|---|---|---|---|
+| `within_cv` | 0.465 | 0.5 | 0.336 to 0.600 | `bcba_authored`, the 108 documents behind `shape.js` |
+| `step_rel` | 0.309 | 4 | 0.104 to 0.584 | `bcba_authored`, same corpus |
+| `actor_naming` | 0.85 | 1 | **0.40** to 1.30 | `maintainer_bar`, voice rule 1 |
+| `hedging` | 0.012 | 0.25 | **0.004** to 0.045 | `maintainer_bar`, voice rule 5 |
+
+**What is measured and what is a bar, stated because they are not the same kind
+of number.** Every `mean`, `floor` and `ceiling` for the two shape features is
+lifted from `shape.js`, which measured them. Both `actor_naming` and `hedging`
+are the maintainer's stated rule rather than a measurement and the entries say
+so in a `basis` field a test asserts on.
+
+**Every `between_var` is a house setting, not a measurement, and this is the
+honest limit of the file.** No corpus in this repo measures how far author means
+sit from each other: the 108 documents are 101 from one author. So the 0.066
+figure is a fair reading of one author's note to note noise and there is nothing
+to divide it by. Each `between_var` carries its reasoning in the source. Two are
+argued from `shape.js` itself: variability is called "effectively personal"
+there, so authors should differ more than one author does, and the step is the
+one number that transfers across corpora at 0.296 against 0.297, so the house
+holds it four times longer. **Replacing these with measurements needs a repeated
+measures corpus, several authors and several notes each, which does not exist
+here.** Do not present them as measured.
+
+**Two floors are load bearing rather than tidy.** `actor_naming` stops at 0.40
+and `hedging` at 0.004. An author who strips attributions out of every note
+cannot teach the tool to write notes that never say who did anything, and an
+author whose every note is flat assertion cannot teach it never to mark an
+uncertain observation as uncertain. Both are house requirements rather than
+style preferences, and the clamp is where they stop being a comment. A test
+drives 500 and 1000 notes of the offending behaviour and watches the target
+stop.
+
+### Why the clamp comes after the shrinkage and not before
+
+Both orders clamp on the same fixture, so "it clamped" proves nothing:
+
+- shrink then clamp: `0.465 + (1/1.5) * (0.95 - 0.465)` is 0.7883, over the
+  0.600 ceiling, so **0.600**
+- clamp then shrink: 0.95 clamps to 0.600 first, then
+  `0.465 + (1/1.5) * (0.600 - 0.465)` is **0.555**
+
+0.555 sits inside the envelope and would never look wrong. The test asserts the
+answer is 0.600 and is not 0.555, which is the only thing that separates the two
+orders.
+
+### The style budget, and the counter that had to be made falsifiable
+
+Three moves per note, spent only where the draft sits outside that author's
+band. The band is the target plus or minus one `within_var` standard deviation,
+clipped to the envelope, and the spread is the house's rather than the author's
+measured one because a spread needs far more evidence than a mean.
+
+Ranking is by band widths outside, not by raw distance: `hedging` moves in
+thousandths and `actor_naming` in tenths, so a raw sort would put `actor_naming`
+first whatever was actually wrong. A test builds a case where the two sorts
+disagree.
+
+**`inBandMoves` is the audit and it did not work.** It counts moves aimed at a
+feature the draft had already got right, and the answer is zero by construction.
+That is exactly what made it useless: replacing the entire counter with the
+literal `0` broke no test, because a check that can only report zero reads
+identically to one that never ran. Two changes fixed it:
+
+- `countInBandMoves(moves)` is extracted and exported, so a test can hand it a
+  move that IS in band and watch it say 1.
+- `planStyleMoves` takes a `spendWhere` seam defaulting to `OUT_OF_BAND`. A test
+  injects a rule that spends everywhere and the audit reports 3 moves, 3 of them
+  wasted. **That is the seam slice 4 learned to reach for**: making a guard
+  reachable beat deleting it there too.
+
+### A defect found by reading, not by a test
+
+A target whose band is not two real numbers used to **disappear from the plan
+entirely**. Every comparison against NaN is false, so it earned no move, was not
+in band and was not unmeasured either. It was in no list at all, and a plan
+missing a feature looks exactly like a plan that had nothing to say about it.
+Driven through `planStyleMoves`, a `[NaN, NaN]` band returns
+`{moves: 0, inBand: [], unmeasured: []}`. It now lands in `refused` with a
+reason, mirroring slice 4's diagnostic list.
+
+The NaN was reachable: `sum_sq / n - mean * mean` goes negative on floating
+point for three identical notes at 0.1, which is what the `Math.max(0, ...)`
+guard in `summariseLevel` is for.
+
+### Revert proof
+
+36 guards, each removed one at a time, suite run, restored. 35 of them made a
+named test fail. The driver is a throwaway at `/tmp/slice5-revert-proof.py`; the
+table below is what it reported, so a later iteration can rebuild it rather than
+look for the file.
+
+| Guard | Landed by |
+|---|---|
+| `housePrior` arity, string check, unknown feature | "housePrior takes a feature name and nothing else" |
+| entry key allowlist | "a corpus entry carrying an author is refused, whatever it calls the field" |
+| provenance closed enum | "a corpus entry sourced from a technician is refused, by provenance" |
+| missing key, `within_var`, `between_var`, finite numbers, mean inside envelope, duplicate feature, non empty feature, plain object, entries is an array | "a malformed house entry is refused rather than defaulted", "the house prior cannot be built out of author rows at all" |
+| `Object.freeze` on the entry and on the map | "the prior a caller gets back cannot be edited" |
+| the envelope clamp, and its ORDER | "a value outside the envelope clamps, in both directions" |
+| band clipped to the envelope | "the band is clipped to the envelope" |
+| the out of band filter, the default spend rule, the `spendWhere` default | "a draft already matching the profile spends nothing" |
+| unmeasured feature skipped | "an unmeasured feature earns no move even under a rule that spends everywhere" |
+| unusable band refused | "a target with an unusable band is refused with a reason, not dropped" |
+| budget cap, rank by band widths, tie break on the name | "the budget caps the moves", "an exact tie is broken by the name" |
+| variance guarded at zero, Bessel correction, non numeric measurement dropped, negative n floored, fractional n truncated | the four accumulator tests |
+| `countInBandMoves` body, and its wiring into the plan | "the audit the caller reads is wired to the moves, shown by making it fire" |
+
+**One guard is correctly caught by nothing, and it is not a test that is not
+testing.** `authorTarget` writes `seen.n > 0 ? seen.mean : prior.mean`. Removing
+the fallback changes no output: `summariseLevel` returns `null` for a cold
+author, `null` coerces to 0, `w` is exactly 0, so the multiply is negative zero
+and the sum is the house mean either way. It stays because the n = 0 case is a
+promise the module makes and resting it on how `null` happens to coerce rests it
+on something no test would notice breaking. The comment in the source says this
+rather than claiming a NaN guard it does not provide.
+
+**Three tests were found to be watching accidents and were rebuilt.** Two real
+features "the same distance out of band" were separated by float residue, so the
+tie break could be deleted with nothing failing; the tie is now built from two
+synthetic targets with byte identical arithmetic and asserted in both input
+orders. Four notes at 0.47 came out at exactly zero variance, so the negative
+variance guard was landed by nothing; the fixture is three notes at 0.1 now. And
+a negative note count was rescued by the n = 0 fallback, so asserting only the
+VALUE let `n: -4` through carrying a weight of 1.07; the test asserts `n` and
+`w` as well.
+
+### Suite state after this iteration
+
+`apps/profile-api`: `npm test` is **120 of 120 green, 5.8s**, of which 38 are the
+new `test/voice-shrink.test.js`, including both
+live files, which really did spin up `wrangler dev` (6 and 5 tests, 0 skipped,
+verified by reading the per test timings rather than the totals).
+
+`apps/tools` Playwright was not re-run. **No file under `apps/tools` changed in
+this iteration except this NOTES.md**, so the suite state is slice 4's: 1229 of
+1230 with the one named `supervisor-email.spec.js` socket hang up documented
+above. The em dash sweep covers `apps/tools` only and does not reach
+`apps/profile-api`; both new files were checked by hand and are clean.
+
+### What is still owed on slice 5
+
+- **(a) DICTION.** The house synonym-family dictionary under `apps/tools`, and
+  the `{family_id, variant_index, count}` per author record. A word not in the
+  dictionary has no index, counts as unknown and is dropped.
+- **(b) SHAPE.** Widening WHERE `style-features.js` fires, not what it emits. It
+  is called from exactly one place today, `engine.jsx:1937`, guarded by
+  `NotesGate.audit.corrections`. A rejected suggestion, an accepted then edited
+  suggestion and a manual overtype are each a paired specimen.
+- **(c) THE DISPOSITION LEDGER** from slice 4, against the suggestion CLASS. On
+  an edit, diff offered against kept and route the pair into (a) and (b).
+  `disposition.js` already hands the offered/kept pair to a caller supplied sink
+  and has no field that could hold it, so the sink is where (c) attaches.
+- **The write path.** `voice_level` has a table and an accumulator and no route.
+  The browser never calls the profile Worker directly, so it goes through the
+  Pages worker the way `/events` already does.
+- **A number the maintainer should rule on.** `MOVES_PER_NOTE` is 3 of 4
+  features, chosen as "most but never all of them". Nobody has said what the
+  right budget is.
