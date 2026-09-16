@@ -1223,3 +1223,34 @@ body.is-pointing, body.is-pointing * { cursor: crosshair !important; }
   color: #6b7360;
   line-height: 1.6;
 }
+
+/* Hold to talk. The button is thumb sized because the phone is where it earns
+   its keep, and touch-action none keeps the browser from reading the hold as a
+   scroll and stealing the gesture halfway through a sentence. */
+.speak-row { margin: 8px 0 0; }
+.speak-btn {
+  display: block;
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  color: #374528;
+  background: #eef4e6;
+  border: 1px solid #c0d4a8;
+  border-radius: 10px;
+  cursor: pointer;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.speak-btn.is-on { color: #fff; background: #374528; border-color: #374528; }
+/* The rule reads at arm's length. Fine print is a rule nobody follows. */
+.speak-rule {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: #5a6b4a;
+  text-align: center;
+}

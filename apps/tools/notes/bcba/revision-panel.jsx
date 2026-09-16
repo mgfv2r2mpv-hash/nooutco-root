@@ -481,6 +481,61 @@ function RevisionPanel({
     if (!hasChanges) setView("ask");
     else if (open) setView("changes");
   }, [open, hasChanges]);
+
+  /* TALKING TO THE NOTE. Typing on a phone after a session is the root canal,
+     and a technician who can hold a button and say what happened is getting
+     something the EHR cannot give them.
+
+     The recogniser lives in a ref rather than in state because the button needs
+     to know whether one is running on the way DOWN, and a state read inside a
+     rapid keydown repeat is stale. The ref also doubles as the reentry guard:
+     NoteSpeech.listen returns a stop function on every path, including the ones
+     that fail, so a non-null ref means one is up. */
+  const [listening, setListening] = React.useState(false);
+  const stopRef = React.useRef(null);
+  const draftRef = React.useRef(draft);
+  React.useEffect(() => { draftRef.current = draft; }, [draft]);
+
+  /* Recognised words go into the same box typing goes into, which is the whole
+     privacy story: the scrub that tokenises every name before a model sees it
+     sits downstream of this box and does not care how the words arrived. */
+  const startTalking = () => {
+    if (stopRef.current) return;
+    if (!window.NoteSpeech || !window.NoteSpeech.available()) return;
+    let ended = false;
+    const done = () => { ended = true; stopRef.current = null; setListening(false); };
+    const stop = window.NoteSpeech.listen({
+      onText: (said) => {
+        const heard = String(said || "").trim();
+        if (!heard) return;
+        const had = draftRef.current || "";
+        // Adding, never replacing. Somebody who typed half of it and said the
+        // rest should keep both halves.
+        const joined = had && !/\s$/.test(had) ? had + " " + heard : had + heard;
+        draftRef.current = joined;
+        onDraft(joined);
+      },
+      onEnd: done,
+      onError: done,
+    });
+    // listen() reports a failed start through onError before it returns, so a
+    // ref set here would be a stop function for a recogniser that never ran.
+    if (ended) return;
+    stopRef.current = stop;
+    setListening(true);
+  };
+
+  const stopTalking = () => {
+    const stop = stopRef.current;
+    stopRef.current = null;
+    setListening(false);
+    if (stop) stop();
+  };
+
+  // Let go of a button that is gone and the recogniser would keep the
+  // microphone open with nothing left to put the words into.
+  React.useEffect(() => () => { if (stopRef.current) stopRef.current(); }, []);
+
   const [phiOpen, setPhiOpen] = React.useState(false);
 
   // Keep the newest turn in view as the exchange grows.
@@ -910,6 +965,48 @@ function RevisionPanel({
             {loading ? "…" : "Send"}
           </button>
         </div>}
+        {/* HIS RULING IS ON THE BUTTON. He allowed the audio path and asked
+            staff to keep names off it: "Staff should still avoid using client
+            names on this surface so they should not be dictating it to Apple as
+            well. This will be part of their training that I will do in person."
+            A rule that lives only in a training session is a rule somebody
+            forgets in month four, so it sits here as a label on the affordance
+            rather than as an alert in a queue. It costs the technician nothing
+            and it is never not there.
+
+            Offered only where the browser can actually hear, which is a
+            capability check and not a browser check: sniffing for Safari would
+            refuse a capable browser we did not think of AND offer the control
+            on a version that cannot do it. */}
+        {!signedOut && !barMode && window.NoteSpeech && window.NoteSpeech.available() && (
+          <div className="speak-row">
+            <button
+              type="button"
+              data-speak="true"
+              className={"speak-btn" + (listening ? " is-on" : "")}
+              aria-pressed={listening ? "true" : "false"}
+              /* Capturing the pointer means a thumb that slides off the button
+                 while talking still ends the recording on the way up, rather
+                 than leaving the microphone open. */
+              onPointerDown={(e) => {
+                try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) { /* synthetic pointer */ }
+                startTalking();
+              }}
+              onPointerUp={stopTalking}
+              onPointerCancel={stopTalking}
+              onLostPointerCapture={stopTalking}
+              onKeyDown={(e) => {
+                if (e.key === " " || e.key === "Enter") { e.preventDefault(); startTalking(); }
+              }}
+              onKeyUp={(e) => {
+                if (e.key === " " || e.key === "Enter") { e.preventDefault(); stopTalking(); }
+              }}
+            >
+              {listening ? "Listening. Let go when you are done." : "Hold to talk"}
+            </button>
+            <p className="speak-rule" data-speak-rule="true">{window.NoteSpeech.RULE}</p>
+          </div>
+        )}
         {/* Asking is deliberately its own button rather than something inferred
             from the wording of a revision. The supervising clinician's stored
             judgement only reaches a note when someone asks for it, and a guess
