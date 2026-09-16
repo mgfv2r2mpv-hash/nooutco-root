@@ -15,7 +15,23 @@
  *
  * Defines window.CorrectionsView; loaded before engine.jsx, which owns the state.
  */
-function CorrectionsView({ id, ops, marks, state, onToggle, onEdit, onGoToOrigin, headings }) {
+/* QUIET MODE, and what it is for.
+ *
+ * His ruling on the affordance below: "not the thing with the inline check and
+ * exes that I had requested. I hate it and it looks stupid and makes it hard to
+ * read and use. but indicate the changes and have them default accepted."
+ *
+ * The indication is the half he kept, so in quiet mode a changed phrase still
+ * draws as a changed phrase and reads exactly as it did. What goes is every
+ * control attached to it: the ghost tick, the undo, the pencil, and the origin
+ * dot on a move. All four move into the changes drawer, where a technician goes
+ * only if they want something different, and where the same four answers are
+ * spelled as words.
+ *
+ * The origin dot goes too, though it is navigation rather than a disposition,
+ * because the drawer row says "Moved into Antecedent, from Consequence" in
+ * words and that line is itself the button. Saying it beats drawing it. */
+function CorrectionsView({ id, ops, marks, state, onToggle, onEdit, onGoToOrigin, headings, quiet }) {
   const [openKey, setOpenKey] = React.useState(null);
   const [editKey, setEditKey] = React.useState(null);
   const [buffer, setBuffer] = React.useState("");
@@ -93,7 +109,7 @@ function CorrectionsView({ id, ops, marks, state, onToggle, onEdit, onGoToOrigin
                 be read as one thing happening in two places rather than as a
                 deletion here and an arrival there. It goes away when the move is
                 undone, because then nothing moved. */}
-            {op.type === "move-in" && op.from && !reverted && (
+            {!quiet && op.type === "move-in" && op.from && !reverted && (
               <button
                 type="button"
                 className="cx-dot"
@@ -103,7 +119,7 @@ function CorrectionsView({ id, ops, marks, state, onToggle, onEdit, onGoToOrigin
                 onClick={() => onGoToOrigin(op.from)}
               />
             )}
-            <span className="cx-ctl">
+            {!quiet && <span className="cx-ctl">
               {openKey === key ? (
                 <React.Fragment>
                   <button
@@ -136,7 +152,7 @@ function CorrectionsView({ id, ops, marks, state, onToggle, onEdit, onGoToOrigin
                   {reverted ? "↩" : "✓"}
                 </button>
               )}
-            </span>
+            </span>}
           </React.Fragment>
         );
       })}

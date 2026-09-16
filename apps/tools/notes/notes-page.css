@@ -1141,3 +1141,85 @@ body.is-pointing, body.is-pointing * { cursor: crosshair !important; }
   outline: none;
   box-shadow: 0 0 0 3px rgba(125, 154, 95, .35);
 }
+
+/* ── The changes drawer ───────────────────────────────────────────────────
+   A receipt, not a chore list. Nothing in here is waiting for anybody, so it
+   is styled to be skimmed and abandoned rather than worked through. */
+
+/* Two views, one panel. The tabs are words because every control on this
+   surface is a word: a technician should not have to learn a glyph to use
+   their own documentation tool. */
+.cd-switch {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+.cd-tab {
+  flex: 1 1 auto;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: #5a6b4a;
+  background: #f4f6f0;
+  border: 1px solid #d8e2cb;
+  border-radius: 8px;
+  /* 44px, and it is a minimum rather than a height, so a tab that wraps on a
+     narrow phone grows instead of clipping its own second line. */
+  min-height: 44px;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+.cd-tab.is-on { background: white; color: #374528; border-color: #5a7040; box-shadow: inset 0 -2px 0 #5a7040; }
+.cd-tab:focus-visible { outline: 2px solid #5a7040; outline-offset: 2px; }
+
+.cd-head {
+  font-size: 12px;
+  font-weight: 700;
+  color: #374528;
+  margin: 0 0 8px;
+  line-height: 1.5;
+}
+.cd-head-sub { font-weight: 400; color: #5a6b4a; }
+
+.cd-list { list-style: none; margin: 0; padding: 0; }
+.cd-item {
+  margin: 0 0 14px;
+  padding: 0 0 12px;
+  border-bottom: 1px solid #eaeee3;
+}
+.cd-item:last-child { border-bottom: 0; padding-bottom: 0; }
+
+/* The section name is the button. A technician reading the drawer is not
+   looking at the note, so the place has to be said rather than pointed at, and
+   saying it costs nothing to also make it the way back. */
+.cd-where { margin: 0 0 4px; }
+.cd-where-btn {
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #5a6b4a;
+  background: none;
+  border: 0;
+  border-bottom: 1px dotted #b9c8a6;
+  padding: 4px 0;
+  cursor: pointer;
+  text-align: left;
+}
+.cd-where-btn:hover { color: #374528; }
+.cd-where-btn:focus-visible { outline: 2px solid #5a7040; outline-offset: 2px; }
+
+.cd-why {
+  margin: 0 0 4px;
+  font-size: 12px;
+  color: #6b7360;
+  line-height: 1.5;
+}
+
+.cd-empty {
+  margin: 0;
+  font-size: 13px;
+  color: #6b7360;
+  line-height: 1.6;
+}

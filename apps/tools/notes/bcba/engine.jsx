@@ -2646,9 +2646,21 @@ function App() {
         design: (finalDraft.output.design || []).length ? finalDraft.output.design : null,
         conflicts: (finalDraft.output.conflicts || []).length ? finalDraft.output.conflicts : null,
       });
+      /* The count a technician is told has to be the count they can then go and
+         look at. marks.count counts both ends of a move, because the note draws
+         the sentence leaving and the sentence arriving; the drawer collapses
+         that pair into the one event it was. Reporting the uncollapsed number
+         here would have the status line say six and the drawer list five, with
+         nothing on screen to explain the missing one. */
+      const shownCount = (authorAidEnabled() && marks && window.ChangesDrawer)
+        ? window.ChangesDrawer.countOf(marks, {}, correctionHeadings)
+        : (marks ? marks.count : 0);
       pushThread("assistant", "status", marks
-        ? "Drafted, and I made " + marks.count + (marks.count === 1 ? " change" : " changes") +
-          " the note needed. They are already in it and marked where they are. Click a tick to undo or reword one."
+        ? "Drafted, and I made " + shownCount + (shownCount === 1 ? " change" : " changes") +
+          " the note needed. They are already in it and marked where they are. " +
+          (authorAidEnabled()
+            ? "Nothing needs you. Open what changed if you want one of them different."
+            : "Click a tick to undo or reword one.")
         : "Drafted. Click any section - or select a phrase inside one - to revise it.");
       // Register signals for the weekly audit. Numbers only, measured on the
       // draft the clinician is about to read, so a drift toward machine-uniform
@@ -3723,6 +3735,26 @@ function App() {
     applyMarkState(NoteCorrections.edit(S.markState, key, text));
   };
 
+  /* Approving a change does nothing to the note, which is the point. The
+     sentence was already in, and doing nothing would have shipped it. What an
+     approval buys is the difference between a technician who read it and agreed
+     and a technician who scrolled past, and those two look identical in a log
+     that records only "kept". His table weighs them apart, so the tool has to
+     be able to tell them apart.
+
+     A reverted change is restored through toggle rather than by clearing the
+     flag here, because a move is one event with a mark at each end: clearing
+     this key alone would put the sentence back where it arrived while leaving
+     it struck where it left, and the note would then carry it twice. */
+  const approveChange = (key) => {
+    if (!S.corrections) return;
+    let next = S.markState || {};
+    if ((next[key] || {}).reverted) next = NoteCorrections.toggle(S.corrections.sections, next, key);
+    const prev = next[key] || {};
+    audit("corrections_mark", { approved: 1 });
+    applyMarkState({ ...next, [key]: { ...prev, approved: true } });
+  };
+
   /* Clearing a section's marks does NOT revert anything. The note already reads
      the way the marks say it does, and this is the only way back to a plain
      editable textarea, which is what a technician wants the moment they would
@@ -4077,6 +4109,13 @@ function App() {
      A question naming a field this form does not have is not placed and stays
      in the panel. Dropping it to keep the layout tidy would mean the tool asked
      something and then hid it, which is worse than any layout. */
+  /* What the pill counts and the drawer lists, from the one record that already
+     exists. Behind the flag, because the pill changing from a debt into a
+     receipt is the thing he walks before it is anyone's default. */
+  const changeEntries = (authorAidEnabled() && window.ChangesDrawer && S.corrections)
+    ? window.ChangesDrawer.entriesFrom(S.corrections, S.markState, correctionHeadings)
+    : [];
+
   const floorPlan = (authorAidEnabled() && window.QuestionInline && S.questions && S.questions.length)
     ? window.QuestionInline.placeQuestions(S.questions, (tool.inputs || []).map((i) => i.id))
     : { placed: {}, unplaced: (S.questions || []).map((q, qi) => ({ qi, question: q && q.question, field: (q && q.field) || null })) };
@@ -4249,6 +4288,7 @@ function App() {
               marks={{ why: (S.corrections.marks.find((m) => m.id === id) || {}).why || "" }}
               state={S.markState}
               headings={correctionHeadings}
+              quiet={authorAidEnabled()}
               onToggle={toggleCorrection}
               onEdit={editCorrection}
               onGoToOrigin={goToOrigin}
@@ -4512,6 +4552,11 @@ function App() {
         loading={loading}
         questions={S.questions}
         suggestState={S.suggestState}
+        changes={changeEntries}
+        onApproveChange={approveChange}
+        onRevertChange={toggleCorrection}
+        onEditChange={editCorrection}
+        onGoToSection={goToOrigin}
         suggestionAccepted={suggestionAccepted}
         onToggleSuggestion={toggleSuggestion}
         onEditSuggestion={editSuggestion}
