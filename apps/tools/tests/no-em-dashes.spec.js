@@ -31,7 +31,11 @@ const SKIP_DIRS = new Set([
 // "go edit babel.min.js" is not an instruction anyone should ever be handed.
 const SKIP_PATHS = [path.join(ROOT, 'shared'), path.join(ROOT, 'vendor')];
 
-const EXTS = new Set(['.js', '.jsx', '.html', '.css', '.md', '.json', '.jsonc', '.sql', '.yml']);
+/* .mjs was missing, and every bench script under scripts/ is one, so the whole
+   measurement surface sat outside a rule that covers the code it measures. The
+   three that existed were already clean, so adding the extension took nothing
+   away and closed the gap before the next script walked through it. */
+const EXTS = new Set(['.js', '.jsx', '.mjs', '.html', '.css', '.md', '.json', '.jsonc', '.sql', '.yml']);
 
 function walk(dir, out = []) {
   for (const entry of readdirSync(dir)) {
