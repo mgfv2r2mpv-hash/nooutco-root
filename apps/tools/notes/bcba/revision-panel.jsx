@@ -240,26 +240,6 @@ function SuggestionRow({ id, text, accepted, alternatives, onToggle, onEdit }) {
    technicians are using today and nothing is being taken off them mid-shift.
    This is the ?aid=1 replacement, and the only thing it adds to DispositionRow
    is the open and editing state that the old row kept inside itself. */
-function AidSuggestion({ id, text, state, alternatives, onApprove, onRevert, onEdit }) {
-  const [open, setOpen] = React.useState(false);
-  const [editing, setEditing] = React.useState(false);
-  return (
-    <window.DispositionRow
-      id={id}
-      text={text}
-      state={state}
-      alternatives={alternatives}
-      open={open}
-      onOpenChange={setOpen}
-      editing={editing}
-      onEditingChange={setEditing}
-      onApprove={onApprove}
-      onRevert={onRevert}
-      onEdit={onEdit}
-    />
-  );
-}
-
 /* ── Skipping the gap questions costs a moment ─────────────────────────────
    His idea, 2026-08-05, after the audit trail showed something worth acting on:
    two technicians, 22 sessions, ten gap-question rounds, and ZERO revisions ever
@@ -326,7 +306,7 @@ function SkipAfterCooldown({ seconds, onSkip, loading, carrying }) {
 
 function RevisionPanel({
   open, onToggle, thread, annotation, onClearAnnotation,
-  draft, onDraft, onSend, onAskAdvice, canAsk, onExportPairs, pairCount, loading, questions, onSkipQuestions, skipCooldown, skipHeld, unread, quality, suggestionDisposition, onApproveSuggestion,
+  draft, onDraft, onSend, onAskAdvice, canAsk, onExportPairs, pairCount, loading, questions, onSkipQuestions, skipCooldown, skipHeld, unread, quality, suggestionDisposition, onApproveSuggestion, placedQuestions, pendingAnswers,
   suggestState, suggestionAccepted, onToggleSuggestion, onEditSuggestion, acceptedSuggestions,
   loggedIn,
   intro,
@@ -379,6 +359,20 @@ function RevisionPanel({
      panel the technicians are using today. */
   const aidOn = !!(window.authorAidEnabled && window.authorAidEnabled() && window.DispositionRow);
   const awaitingQuestions = !!(questions && questions.length);
+
+  /* THE FLOOR PLAN'S OTHER HALF. Moving the questions onto the page is only
+     half the fix: measured on an iPhone 14 profile, this panel is 465px of a
+     664px viewport, so with the questions gone it was still a tall empty box
+     sitting on top of the question it had just handed over.
+
+     When every question is drawn on the page, the panel has exactly one thing
+     left that the page cannot do, which is the button that ends the round. So
+     it becomes that button. The answer box goes too: with an answer box under
+     every question, a second one here labelled "answer here" is a second place
+     to type the same thing. */
+  const everyQuestionPlaced = awaitingQuestions
+    && questions.every((q, i) => placedQuestions && placedQuestions[i]);
+  const barMode = awaitingQuestions && everyQuestionPlaced;
   // Whether the held line can point at a suggestion, which is the cheapest way
   // out of the gate when there is one to keep.
   const hasSuggestions = awaitingQuestions && questions.some((q) => (q.suggestions || []).length > 0);
@@ -476,7 +470,7 @@ function RevisionPanel({
 
   return (
     <React.Fragment>
-    <aside className="revision-panel" aria-label="Assistant">
+    <aside className={"revision-panel" + (barMode ? " revision-panel-bar" : "")} aria-label="Assistant">
       <header className="revision-panel-head">
         <p className="revision-panel-title">
           <span className={"revision-head-dot quality-" + (signedOut ? "idle" : q.level || "idle")} aria-hidden="true" />
@@ -567,7 +561,12 @@ function RevisionPanel({
         ))}
         {awaitingQuestions && (
           <div style={{ margin: "4px 0 10px" }}>
-            {questions.map((q, i) => (
+            {/* A question already drawn on the page beside the box it asks about
+                is not drawn again here. Asking the same thing twice, in two
+                places, with two answer boxes, would be worse than the panel it
+                replaced. A question with no box on this form was not placed and
+                still belongs here. */}
+            {questions.map((q, i) => (placedQuestions && placedQuestions[i]) ? null : (
               <React.Fragment key={i}>
                 <Bubble role="assistant">{q.question}</Bubble>
                 {(q.suggestions || []).length > 0 && aidOn && (
@@ -577,7 +576,7 @@ function RevisionPanel({
                       const key = i + ":" + j;
                       const st = (suggestState || {})[key] || {};
                       return (
-                        <AidSuggestion
+                        <window.AidSuggestion
                           key={key}
                           id={key}
                           text={typeof st.text === "string" ? st.text : raw}
@@ -641,7 +640,7 @@ function RevisionPanel({
       </div>
 
       <form
-        className="revision-panel-foot"
+        className={"revision-panel-foot" + (barMode ? " is-bar" : "")}
         onSubmit={(e) => { e.preventDefault(); onSend(); }}
       >
         {signedOut && <div className="revision-report-row revision-report-only">{reportButton}</div>}
@@ -663,7 +662,7 @@ function RevisionPanel({
             </span>
           </div>
         )}
-        {!signedOut && <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+        {!signedOut && !barMode && <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
           <textarea
             ref={inputRef}
             value={draft}
@@ -683,7 +682,10 @@ function RevisionPanel({
           />
           <button
             type="submit"
-            disabled={loading || !draft.trim()}
+            /* An answer typed under the question it answers is still an
+               answer. This used to read the panel's own box only, so the floor
+               plan's boxes could be full and Send dead. */
+            disabled={loading || (!draft.trim() && !pendingAnswers)}
             className="revision-send"
           >
             {loading ? "…" : "Send"}

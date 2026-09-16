@@ -973,3 +973,118 @@ body.is-pointing, body.is-pointing * { cursor: crosshair !important; }
   padding: 9px 11px;
   resize: vertical;
 }
+
+/* ── The question, drawn under the box it asks about ─────────────────────────
+   The floor plan. Measured before it was built: on an iPhone 14 profile with
+   the gap questions open, the page is 2555px of intake boxes and the assistant
+   panel is 465px fixed to the bottom of a 664px viewport. The question named a
+   box the panel was covering.
+
+   So this has to read as a note pinned to the box above it, not as a second
+   form. It is indented under the box, it carries the tool's name so it cannot
+   be mistaken for the technician's own writing, and it never gets a border
+   heavy enough to compete with the field label above it. */
+.qi-wrap {
+  margin: -6px 0 18px;
+  padding-left: 10px;
+  border-left: 3px solid #cfe0bd;
+}
+
+.qi + .qi { margin-top: 12px; }
+
+.qi-ask {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 7px;
+  margin-bottom: 8px;
+}
+
+.qi-who {
+  flex-shrink: 0;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: #6f8a56;
+}
+
+.qi-q {
+  flex: 1 1 200px;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #2f3b25;
+}
+
+.qi-sugs { margin: 0 0 10px; }
+
+/* The label sits above the box and says the box is optional, because the answer
+   above it may already be complete: a technician whose whole answer is "those
+   two sentences are right" said it by leaving them standing. */
+.qi-answer { display: block; }
+
+.qi-answer-label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 11.5px;
+  color: #6b7a5e;
+}
+
+.qi-answer-box {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 11px;
+  border: 1px solid #cddcbe;
+  border-radius: 7px;
+  background: #fff;
+  font-family: inherit;
+  /* 16px exactly. iOS Safari zooms the page when you focus an input whose text
+     is under 16px, and a technician typing an answer on a phone that has just
+     zoomed has lost the box above that the question is about. */
+  font-size: 16px;
+  line-height: 1.5;
+  color: #2f3b25;
+  resize: vertical;
+}
+
+.qi-answer-box:focus {
+  outline: none;
+  border-color: #7d9a5f;
+  box-shadow: 0 0 0 3px rgba(125, 154, 95, .18);
+}
+
+.qi-answer-box::placeholder { color: #9aa891; }
+
+/* ── The panel in bar mode ───────────────────────────────────────────────────
+   When every question is drawn on the page beside the box it asks about, the
+   panel has one job left that the page cannot do: end the round. So it stops
+   being a panel.
+
+   Measured before and after on an iPhone 14 profile, 664px tall: the panel held
+   the questions and stood 465px, seventy percent of the screen, covering the
+   box its own question named. In bar mode it is the height of its button. */
+.revision-panel-bar {
+  max-height: none;
+  border-radius: 14px;
+}
+
+.revision-panel-bar .revision-panel-body {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  overflow: visible;
+}
+
+.revision-panel-foot.is-bar {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+/* "Report a problem" stays reachable, because a technician who has found a
+   fault in the question should not have to finish the round to say so. It just
+   stops being a row of its own. */
+.revision-panel-foot.is-bar .revision-report-row { margin-top: 2px; }
+
+@media (max-width: 720px) {
+  .revision-panel-bar { max-height: none; }
+}
