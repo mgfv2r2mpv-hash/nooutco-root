@@ -176,10 +176,17 @@ test.describe('the control to talk', () => {
   test('holding it listens, and letting go stops', async ({ page }) => {
     await ready(page);
     const btn = page.locator('[data-speak]');
+    /* Polling the whole counter object rather than one field: this failed once
+       under the full parallel suite and passed ten times in a row on its own,
+       and a poll on a single number reports "expected 1" without ever saying
+       what it saw. The object says whether the recogniser never started or
+       started twice, which are opposite faults. */
     await btn.dispatchEvent('pointerdown');
-    await expect.poll(() => page.evaluate(() => window.__speech.started)).toBe(1);
+    await expect.poll(() => page.evaluate(() => window.__speech), { timeout: 10000 })
+      .toMatchObject({ started: 1, stopped: 0 });
     await btn.dispatchEvent('pointerup');
-    await expect.poll(() => page.evaluate(() => window.__speech.stopped)).toBe(1);
+    await expect.poll(() => page.evaluate(() => window.__speech), { timeout: 10000 })
+      .toMatchObject({ started: 1, stopped: 1 });
   });
 
   test('the button says which of the two states it is in', async ({ page }) => {
