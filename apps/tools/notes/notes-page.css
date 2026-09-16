@@ -1254,3 +1254,34 @@ body.is-pointing, body.is-pointing * { cursor: crosshair !important; }
   color: #5a6b4a;
   text-align: center;
 }
+
+/* THE PAGE MUST NOT ZOOM WHEN A THUMB TAPS A FIELD.
+ *
+ * iOS Safari zooms a focused form control whose text is under 16px, and it does
+ * not zoom back out on blur. The technician is left scrolled sideways with the
+ * section they were reading off screen, and the way back is a pinch. Every box
+ * on this page sat under that line: intake at 14, the section boxes at 14.5,
+ * and the composer they type revisions into at 13, which is the one they touch
+ * most on a phone.
+ *
+ * !important is load bearing rather than lazy. Most of these sizes are set as
+ * inline styles from the engine, and an inline style beats a stylesheet rule on
+ * any specificity, so this is the only way a rule reaches them without moving
+ * the whole design into JavaScript.
+ *
+ * Scoped to the narrow viewport on purpose. 16px is the phone's requirement and
+ * not a design decision, so the desk keeps the proportions it was drawn with,
+ * and tests/ios-zoom.spec.js asserts both halves. */
+@media (max-width: 820px) {
+  #root input[type="text"],
+  #root input[type="date"],
+  #root input[type="number"],
+  #root input[type="search"],
+  #root input:not([type]),
+  #root textarea,
+  #root select,
+  .revision-input,
+  .dz-edit {
+    font-size: 16px !important;
+  }
+}
