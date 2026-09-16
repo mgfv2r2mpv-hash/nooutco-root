@@ -1088,3 +1088,56 @@ body.is-pointing, body.is-pointing * { cursor: crosshair !important; }
 @media (max-width: 720px) {
   .revision-panel-bar { max-height: none; }
 }
+
+/* ── How did they show up ────────────────────────────────────────────────────
+   Two taps and, if they have them, three words. The whole common case is one
+   tap, so the control is sized for a thumb and nothing else on this form has to
+   grow to match it.
+
+   His move, and it is the one that removed a whole class of problem: an arrival
+   fact captured at arrival never has to be reconstructed from something that
+   turns up an hour later, so clinical status stops being a section that changes
+   after it was already copied into the EHR. */
+.arrival { margin-bottom: 16px; }
+
+.arrival-ask {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #374528;
+}
+
+.arrival-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.arrival-choice {
+  flex: 1 1 150px;
+  /* A thumb target, not a form control. 44px is the smallest Apple will call a
+     target, and this is the one control on the page a technician uses while
+     still holding something else. */
+  min-height: 46px;
+  padding: 11px 16px;
+  border: 1.5px solid #c0d4a8;
+  border-radius: 10px;
+  background: #fff;
+  color: #374528;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+  cursor: pointer;
+}
+
+.arrival-choice.is-on {
+  border-color: #374528;
+  background: #374528;
+  color: #fff;
+}
+
+.arrival-choice:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(125, 154, 95, .35);
+}

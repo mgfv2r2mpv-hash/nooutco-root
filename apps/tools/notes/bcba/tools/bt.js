@@ -195,6 +195,30 @@
      positive here puts a red hint on a correct note. Matching nothing is the
      right way to be wrong. "Other" is a label for whatever the technician
      typed, so it cannot be matched either. */
+  /* What the arrival answer says to the model, and it says it as a fact rather
+     than as prose. The technician answered "how did they show up", so the note
+     gets to state that; the sentence that ends up in clinicalStatusNarrative is
+     still the model's to write in the register this tool asks for.
+
+     It returns the empty string when nothing was answered, which is what keeps
+     the prompt identical for every technician who has not been given this
+     control. */
+  function arrivalBlock(values) {
+    var a = values && values.arrival;
+    if (a !== "ready" && a !== "notready") return "";
+    var words = String((values && values.arrivalWords) || "").trim();
+    var said = a === "ready"
+      ? "The technician answered, at arrival, that the client presented as ready to work."
+      : "The technician answered, at arrival, that the client did not present as ready to work.";
+    if (words) said += " In their words: " + words + ".";
+    return [
+      "ARRIVAL, ANSWERED AT ARRIVAL AND AUTHORITATIVE FOR CLINICAL STATUS:",
+      said,
+      "Write clinicalStatus and clinicalStatusNarrative from this. Do not contradict it from anything later in the session, and do not move a behavior that happened later in the session into the arrival picture.",
+      "",
+    ].join("\n");
+  }
+
   var STRATEGY_OWNERSHIP = {
     code: "strategy_in_wrong_section",
     sections: {
@@ -488,7 +512,10 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
       "BT NOTES BY CLUSTER (raw; expand faithfully, never fabricate):",
       "",
       "[1] SESSION START & CONTEXT (who was present, how the client presented on arrival, purpose, any unexpected pause):",
-      (values.fSession || "").trim() || "(none provided)",
+      /* The arrival answer goes in front of what they typed, and only when they
+         gave one, so a note from a technician who never saw this control
+         composes byte for byte the way it always has. */
+      arrivalBlock(values) + ((values.fSession || "").trim() || "(none provided)"),
       "",
       "[2] SKILL ACQUISITION / LESSON (teaching techniques used + lesson progress across ideally two programs):",
       (values.fLesson || "").trim() || "(none provided)",
@@ -609,6 +636,44 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
         id: "telehealth", type: "toggle", label: "Provided via Telehealth?",
         options: [{ value: "No", label: "No" }, { value: "Yes", label: "Yes" }],
         defaultValue: "No",
+      },
+      /* ── THE ARRIVAL DATUM ────────────────────────────────────────────
+         His move, and it generalises past this one section: do not build a
+         lock to manage a section that changes late, restructure the section so
+         it is answerable completely at the start. His words on the lock he
+         rejected: "later edits you didn't know to ask for doesn't go into
+         clinical status which is copied early, and locked so it can't be
+         updated to 'client engaged in aggression when staff arrived' and have
+         the clinical status on arrival addressed."
+
+         An arrival fact captured at arrival never has to be reconstructed from
+         something that turns up an hour later. Aggression at arrival is an
+         arrival fact and goes in the words below. Aggression at 2pm is a
+         behaviour datum and files to behaviour, where it always belonged.
+
+         TWO TAPS IS THE WHOLE COMMON CASE. A technician whose client showed up
+         fine answers this in under a second and clinical status is then
+         complete and stays complete. This lowers paperwork effort and not
+         reporting effort: they still report what they saw, they stop composing
+         a sentence about it.
+
+         THE WORDS FIELD IS A TEXTAREA ON PURPOSE, however it is drawn. Both
+         collectFreeText and scrubValues select on type === "textarea", so
+         declaring it as one is what puts it through the same PHI scan and the
+         same substitution as every other box on this form. A new type here
+         would have been a free-text field the scrubber does not read, which is
+         the one mistake this form cannot make. */
+      {
+        id: "arrival", type: "choice", label: "How did they show up?", aidOnly: true,
+        options: [
+          { value: "ready", label: "Normal, ready to go" },
+          { value: "notready", label: "Not ready" },
+        ],
+      },
+      {
+        id: "arrivalWords", type: "textarea", label: "1 to 3 words, if you have them",
+        aidOnly: true, oneLine: true, height: 44,
+        placeholder: "tired, refused breakfast",
       },
       {
         id: "fSession", type: "textarea", label: "Session Start & Context", height: 120,

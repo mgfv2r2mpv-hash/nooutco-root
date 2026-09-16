@@ -372,7 +372,9 @@ function TextareaField({ field: f, value, onChange }) {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 6 }}>
         <label htmlFor={fieldId} style={{ ...subLbl, marginBottom: 0 }}>
           {f.label}{f.required ? <span style={{ color: "#c0392b" }}> *</span> : null}
-          {(f.tooltip || f.placeholder) ? <InfoTooltip text={f.tooltip || f.placeholder} /> : null}
+          {/* A one-line field shows its example IN the box, so an "i" beside the
+              label would offer the same three words twice. */}
+          {(f.tooltip || (f.placeholder && !f.oneLine)) ? <InfoTooltip text={f.tooltip || f.placeholder} /> : null}
         </label>
         {f.help ? (
           <button
@@ -399,7 +401,15 @@ function TextareaField({ field: f, value, onChange }) {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={f.placeholder}
-        style={{ ...inputBase, height: f.height || 160, resize: "vertical", lineHeight: 1.6 }}
+        rows={f.oneLine ? 1 : undefined}
+        style={{
+          ...inputBase,
+          height: f.height || 160,
+          /* Three words do not need a drag handle, and on a phone the handle is
+             a target nobody meant to hit. */
+          resize: f.oneLine ? "none" : "vertical",
+          lineHeight: 1.6,
+        }}
       />
       {f.charCount ? <p style={{ fontSize: 12, color: "#aaa", marginTop: 4 }}>{(value || "").length} characters</p> : null}
     </div>
@@ -4089,6 +4099,46 @@ function App() {
   };
 
   const renderInput = (f) => {
+    /* A field the technicians have not been given yet draws nothing. It is
+       still in tool.inputs, so it is still collected and still scrubbed, and it
+       contributes an empty string to both, which is why the prompt for a
+       technician without the flag is byte for byte what it always was. */
+    if (f.aidOnly && !authorAidEnabled()) return null;
+
+    /* THE ARRIVAL ANSWER. Two buttons and a third state, which is not having
+       answered, and the third state is silent: this asks once, accepts nothing
+       as an answer, and does not ask again. Asking twice would be nagging, and
+       the whole point of the control is that it costs a second.
+
+       A pressed button can be pressed again to unsay it, because a technician
+       who taps the wrong one on a phone needs a way back that is not reloading
+       the note. */
+    if (f.type === "choice") {
+      return (
+        <div key={f.id} className="arrival" data-arrival-field={f.id}>
+          <p className="arrival-ask">{f.label}</p>
+          <div className="arrival-choices">
+            {f.options.map((opt) => {
+              const on = S.values[f.id] === opt.value;
+              return (
+                <button
+                  key={String(opt.value)}
+                  type="button"
+                  data-arrival={opt.value}
+                  data-arrival-on={on ? "true" : "false"}
+                  aria-pressed={on ? "true" : "false"}
+                  className={"arrival-choice" + (on ? " is-on" : "")}
+                  onClick={() => setValue(f.id, on ? "" : opt.value)}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
     if (f.type === "toggle") {
       return (
         <div key={f.id} style={{ marginBottom: 20 }}>
