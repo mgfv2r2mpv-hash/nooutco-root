@@ -910,10 +910,10 @@ above. The em dash sweep covers `apps/tools` only and does not reach
 - **(b) SHAPE.** LANDED, see "Slice 5b" below. A rejected correction, a
   reworded one and hand typing are three pairs cut from one chain in
   `notes/bcba/specimens.js`, all taught at the first Copy.
-- **(c) THE DISPOSITION LEDGER** from slice 4, against the suggestion CLASS. On
-  an edit, diff offered against kept and route the pair into (a) and (b).
-  `disposition.js` already hands the offered/kept pair to a caller supplied sink
-  and has no field that could hold it, so the sink is where (c) attaches.
+- **(c) THE DISPOSITION LEDGER.** LANDED, see "Slice 5c" below. The sink is
+  `notes/bcba/distill.js`: one edit's pair gives a diction tally and a shape
+  specimen, and a ledger row now refuses any class field that is not an
+  identifier.
 - **The write path.** `voice_level` has a table and an accumulator and no route.
   The browser never calls the profile Worker directly, so it goes through the
   Pages worker the way `/events` already does.
@@ -1232,3 +1232,196 @@ processes. The `✘` lines after 593 in that log, and its exit 143, come from
 stopping the server under running tests, not from the code. The next iteration
 owes a full run before it claims the project green. Ports 8788, 8789, 8799 and
 8808 were free at every check, and 8853 was free once the run was stopped.
+
+## Slice 5c - what an edit teaches
+
+`notes/bcba/distill.js` (new, loaded by both note pages), `notes/bcba/disposition.js`
+(the identifier rule for class fields), `tests/distill.spec.js` (20 tests).
+**No engine.jsx line was added in this slice.** Nothing on this branch answers a
+suggestion yet, so a call site here would be code nobody reaches. The call the
+host wires is written out below.
+
+### One pair in, two readings out
+
+`NoteDisposition.record` already handed an edit's offered and kept sentences to
+a sink and kept neither. `NoteDistill.distill` is that sink, and both readings
+come off the one pair it is handed:
+
+- **diction** is what the rewrite reached for that the offer did not hold:
+  `tally(kept)` less `tally(offered)`, positive differences only, through
+  `NoteDiction.record` so a count can only be a house family and a whole number.
+  A word the offer already had and the technician left standing is the weak
+  `none` answer, so it is not counted as the edit's evidence.
+- **shape** is a specimen in the form `specimens.js` already hands the style
+  measurement, `{kind: "edited", source: "manual", own: true, before, after}`,
+  with the offer before and the rewrite after. A test pins its source and owner
+  to `NoteSpecimens.KINDS.edited`, so the two routes cannot drift apart.
+
+Nothing here posts. `answer()` keeps the latest reading per item in a book that
+lives in the browser for one note, and `harvest()` reads it when the note
+leaves, the same moment the 5b chain teaches.
+
+### Four decisions made here, stated so they can be argued with
+
+- **Diction counts uses, not weights.** The weights live in the ledger, where
+  `score()` sums them per class. A diction count is how many times an author
+  used a word, and the store turns it into a share. Multiplying it by an edit's
+  weight would record five uses of a word somebody wrote once. The weight takes
+  effect in which answers produce a pair at all: only an edit does.
+- **A correction mark gets diction and no shape specimen.** The 5b chain
+  already reads a reworded correction off the marks at Copy and teaches it as
+  the EDITED link. Answered through the ledger as well, the same rewording would
+  teach twice. `CHAIN_PRODUCERS` is `["corrections"]`, and the host has to file
+  a mark's answer under that producer for this to hold.
+- **The last answer on an item governs what the note teaches.** A revert takes
+  the pending reading out, a second edit replaces the first, and an approve
+  after an edit leaves it standing. The ledger keeps every answer; the book is
+  what the note teaches.
+- **The book is keyed by item inside the class.** Two correction marks in one
+  section are one class (`corrections:correction:<section>`) and two different
+  sentences. Keyed by class alone, the second rewording overwrote the first and
+  one was never taught. The previous iteration found this and did not fix it.
+  `suggestion.item` is the caller's own key (a mark key such as
+  `lessonProgressNarrative:0`, a suggestion key such as `3:1`). It picks a slot
+  in the book and is never handed to the ledger. A value that is not a short key
+  (`^[A-Za-z0-9_.:-]{1,64}$`) is read as no item.
+
+### The ledger row cannot hold a surface form, and now a caller cannot put one there
+
+Slice 4 made the pair structurally unable to enter a row. It left `producer`,
+`code`, `section` and `tool` as any string, so a caller handing a detail
+sentence in as `code` would have filed it. An affordance this branch cannot see
+is about to call this, so that is closed now rather than found later:
+
+- a class field is an identifier, `^[A-Za-z][A-Za-z0-9_-]{0,63}$`, or the event
+  is dropped as `class-not-an-identifier`. Absent is still a default.
+- `classOf` reads a refused field as its default, so the `dropped` entry that
+  explains the refusal cannot carry the text that caused it.
+- **The limit, stated:** a single word with no space and no punctuation passes
+  the rule. No sentence can sit in a row. A lone name typed into `code` could,
+  and nothing short of a closed list of every code and section id would stop
+  that.
+
+Every real id this branch produces passes: the alert budget's codes
+(`no_prompt_level`, `token_in_note`, `strategy_in_wrong_section`,
+`gap_unbarred`), section ids
+(`lessonProgressNarrative`) and tool ids (`bt`). `tests/alert-budget.spec.js`
+is still green with the rule in place.
+
+### THE CALL AN AFFORDANCE MAKES
+
+For the host, after the rebase. All of it is plain functions and none of it
+touches the DOM.
+
+```js
+// one per note, reset where draftNote resets taughtRef
+voiceState.current = null;
+
+// the technician answered one change or one suggestion
+voiceState.current = NoteDistill.answer(
+  voiceState.current,
+  { producer, code, section, tool, item },  // identifiers plus the item key; no other key is read
+  disposition,                               // "none" | "approve" | "reject" | "revert" | "edit"
+  { offered, kept },                         // read on "edit" only, may be null otherwise
+);
+
+// the note leaves (recordNoteLeft, beside NoteSpecimens.pairs)
+const { diction, specimens } = NoteDistill.harvest(voiceState.current);
+specimens.forEach((p) => emitStyle(p.before, p.after, p.source, p.own));
+// diction goes out through the write path
+```
+
+`answer` returns a new `{ledger, book}` and never touches the one passed in.
+`voiceState.current.ledger` is the slice 4 ledger, ready for
+`NoteDisposition.closeNote` and `score`.
+
+What to pass, read off `note-tool-interface` with `git show` and not wired to it:
+
+| the row there | producer | code | section | item | disposition | pair |
+|---|---|---|---|---|---|---|
+| a correction mark (`CD_entriesFrom` in `changes-drawer.jsx`) | `corrections` | `correction` | the mark's `id` | the mark's `key` | `reverted` as `revert`, `edited` as `edit`, `approved` as `approve`, `default` as `none` | `{offered: entry.original, kept: entry.text}` |
+| a triage suggestion (`suggestionDisposition(qi, si)` in `engine.jsx`) | `gaps` | the budget item's `code` | the question's `field` | `suggestKey(qi, si)` | the same four | `{offered: the suggestion as drafted, kept: st.text}` |
+
+That branch derives a mark's state as reverted, then edited
+(`st.text !== m.text`), then approved, and a suggestion's as not accepted, then
+edited (`st.text` is a string), then approved. An "edited" suggestion whose text
+equals the offer yields no specimen and no diction here, so the looser test on
+that side costs nothing.
+
+Calling once per item at Copy, off the derived state, and calling on every
+click harvest the same thing, because the book keeps the latest answer per item.
+The ledger differs: every click is a row. Slice 4 left that choice open and it
+is the host's.
+
+### Landing tests and their revert proof
+
+Twenty-five guards and mutations, each applied alone, `tests/distill.spec.js`
+run on chromium (port 8871), the file restored. **All twenty-five are caught.**
+The driver is a throwaway at `/tmp/slice5c-revert-proof.py`; it hashes every
+file it touches, the hashes matched afterwards, and `shasum -c` against a copy
+taken before the run agreed.
+
+| Guard removed, or mutation applied | Failed | The named one |
+|---|---|---|
+| record refuses a class field that is not an identifier | 5 | a sentence in the producer slot is refused, and the refusal does not carry it either (and code, section, tool) |
+| `field()` admits identifiers only | 5 | the same four |
+| `classOf` reads a refused field as its default | 3 | the producer, code and section slot tests (tool is not part of a class) |
+| absent is a default, not a refusal | 1 | an absent tool or section is still a default rather than a refusal |
+| MUTATION a row grows a free `note` field | 1 | a row is identifiers, numbers and a flag, whatever else the caller hands over |
+| MUTATION the edit weight collapses onto approve | 1 | the four answers keep four distinct weights in the ruled order, and only the edit is paired or taught |
+| `answer` attaches the distiller as the sink | 9 | one edit produces a diction tally and a shape specimen, both read off the same pair |
+| the offer's own counts are subtracted | 2 | the diction tally counts what the rewrite added, never a word the offer already held |
+| diction goes through the sealed `record()` | 1 | one edit produces a diction tally and a shape specimen (see below) |
+| the diction route | 6 | one edit produces a diction tally and a shape specimen |
+| the shape route | 5 | the shape specimen is the kind, source and owner the specimen chain gives an edited link |
+| a chain producer gets no shape specimen | 1 | a correction mark gets its diction tallied and no shape specimen |
+| an unchanged pair gets no shape specimen | 1 | an edit that changed nothing yields no shape specimen and no diction |
+| MUTATION the specimen source drifts to `revision` | 1 | the shape specimen is the kind, source and owner the specimen chain gives an edited link |
+| a revert takes the pending reading out | 2 | a rewrite reverted before the note leaves teaches nothing, and one approved after still does |
+| `answer` copies the book | 1 | answer returns a new state and leaves the one passed in alone |
+| a refused answer returns before touching the book | 1 | an answer the ledger refuses teaches nothing, on a note with nothing in it yet |
+| a missing dictionary reads as no diction | 1 | a page without the dictionary still records the answer and still hands on the shape |
+| MUTATION the book is keyed by answer, not item | 7 | a second edit of the same suggestion replaces the first |
+| the book is keyed per item inside the class | 1 | two marks in one section are two items, so both rewordings are taught and a revert takes out only its own |
+| an item that is not a short key is read as no item | 1 | an item that is not a short key is read as no item, so it cannot name a slot in the book |
+| `harvest` merges the diction | 3 | one edit produces a diction tally and a shape specimen |
+| `harvest` hands on the specimens | 4 | a rewrite reverted before the note leaves teaches nothing, and one approved after still does |
+| the bt page loads the distiller | 1 | both note pages load the distiller |
+| the bcba page loads the distiller | 1 | both note pages load the distiller |
+
+**One guard is landed by a weaker test than it should be.** Sending the diction
+through `NoteDiction.record()` is what checks it against the sealed house
+dictionary, and `tally()` cannot produce a family the house lacks, so there is
+no input that makes the two disagree. Its removal is caught only because the
+test asserts `refused` is an empty list and a raw tally has no `refused` field.
+That lands the call, not the refusal. The refusal itself is landed in
+`tests/diction.spec.js` from slice 5a.
+
+### Known costs, stated rather than found later
+
+- **A correction mark is taught once for shape only if the host files it under
+  `corrections`.** The 5b chain teaches its rewording at Copy either way. Filed
+  under any other producer, the same rewording teaches shape a second time
+  through `harvest`. Nothing on this branch can check what the host passes.
+- **Diction from a correction mark is new evidence the chain never counted**, so
+  wiring this does change what a note teaches: a note with reworded marks now
+  tallies diction it did not before. That is the slice, and it is stated here so
+  it is not read as drift.
+- **The book holds the pair in the browser** for one note, the same as the 5b
+  book holds a section's offered and decided text. It never reaches the ledger
+  and `harvest` returns counts and specimens, not the book.
+
+### Suite state after slice 5c
+
+`tests/distill.spec.js` is 20 of 20 green on chromium, port 8871, with
+`alert-budget.spec.js`, `style-specimens.spec.js`, `diction.spec.js` and
+`no-em-dashes.spec.js` beside it: 92 of 92. `apps/profile-api` `npm test` is 137
+of 137 with 0 skipped. Ports 8788, 8789, 8799 and 8808 were free at every check.
+
+**The full chromium project is 1294 of 1294 green in 9.5 minutes**, exit 0, on
+`TOOLS_TEST_PORT=8872` with 8788, 8789, 8799, 8808 and 8872 checked free before
+it started. That is 1259 from slice 5a, the 15 from 5b and the 20 here, so it is
+also the complete run slice 5b owed. It was started after the revert driver had
+finished and every file it edits hashed back to its starting value. One comment
+line in `distill.js` (the `harvest` doc, "class" to "item") and this section of
+NOTES.md were edited while it ran; neither changes code.
