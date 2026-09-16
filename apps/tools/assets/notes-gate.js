@@ -259,7 +259,7 @@
     return out;
   }
 
-  function encryptDraft(obj) {
+  function encryptRecord(obj) {
     return draftKey().then(function (key) {
       var plain = new TextEncoder().encode(JSON.stringify(obj));
       // No key (no WebCrypto / private-mode IndexedDB): store nothing rather
@@ -273,11 +273,18 @@
     });
   }
 
-  function decryptDraft(raw) {
+  /* `ttlMs` null means no age limit, and that is a DIFFERENT RECORD rather than a
+     relaxed draft. A draft holds the clinician's own typing from before the
+     scrub, which is the one place unredacted PHI legitimately exists here, so it
+     dies on a clock. The type-time screen list holds no note text at all and
+     expires in notes-since-last-seen instead, so a hard twelve hours would buy
+     nothing and would make a technician re-answer the same six words every
+     morning. */
+  function decryptRecord(raw, ttlMs) {
     var rec;
     try { rec = JSON.parse(raw); } catch (e) { return Promise.resolve(null); }
     if (!rec || rec.v !== 1 || !rec.iv || !rec.ct) return Promise.resolve(null);
-    if (!rec.savedAt || Date.now() - rec.savedAt > DRAFT_TTL_MS) return Promise.resolve(null);
+    if (ttlMs && (!rec.savedAt || Date.now() - rec.savedAt > ttlMs)) return Promise.resolve(null);
     return draftKey().then(function (key) {
       if (!key) return null;
       return crypto.subtle
@@ -286,6 +293,8 @@
         .catch(function () { return null; }); // key rotated or record tampered
     });
   }
+
+  function decryptDraft(raw) { return decryptRecord(raw, DRAFT_TTL_MS); }
 
   // Decrypt every stored draft into the cache once, before the UI renders.
   // Anything expired, corrupt, or written under a key we no longer hold is
@@ -1070,6 +1079,191 @@
     }
   }
 
+  /* ─────────────── Type-time screen list ───────────────
+   *
+   * The technician's own answer to a highlighted word, kept on this device and
+   * keyed to the technician who gave it. A word cleared as "not a person" stops
+   * being flagged; a word they confirm stays flagged.
+   *
+   * WHY THIS IS NOT THE nonPii STORE ABOVE. That one is a shared vocabulary: it
+   * syncs to /api/nonpii so the whole clinic stops seeing the same programme
+   * name flagged. This one is the opposite on purpose. A screening answer is
+   * given at typing speed, about one word, by one person, and the word may well
+   * BE a name that this technician decided not to protect. Sending that anywhere
+   * would turn a local convenience into a disclosure, so nothing here is ever
+   * transmitted and there is no endpoint to transmit it to.
+   *
+   * WHICH IS WHY IT IS ENCRYPTED AT REST, the same way a draft is, under the
+   * same non-extractable AES-GCM key out of IndexedDB. Not the same STORE:
+   * decryptDraft drops a record after twelve hours and logout wipes every
+   * notes_draft_ key, both right for a note and both wrong for a list that holds
+   * no note text and exists to save a technician re-answering every morning.
+   *
+   * The owner is inside the ciphertext as well as in the key name, so renaming a
+   * localStorage key cannot hand one technician another technician's answers.
+   *
+   * EXPIRY IS IN NOTES, NOT HOURS. An entry unseen for SCREEN_TTL_NOTES notes is
+   * dropped, so a word screened once during one placement does not sit in the
+   * list for a year waiting to suppress a real name.
+   */
+  var SCREEN_PREFIX = "noaba_screen_";
+  var SCREEN_MAX = 200;        // a convenience list, not a dictionary
+  var SCREEN_TTL_NOTES = 25;   // an entry unseen for this many notes is dropped
+
+  /* { owner, notes, terms: [{ t, seen }] } for the CURRENT owner, or null when
+     nobody is signed in. Reads are synchronous against this because detectNames
+     is synchronous and runs on a keystroke. Before the decrypt lands the cache
+     is empty, so the list suppresses nothing and every word is still flagged,
+     which is the direction this has to fail in. */
+  var screenCache = null;
+
+  function screenOwner() {
+    var p = tokenPayload();
+    if (!p || (p.exp && p.exp * 1000 < Date.now())) return null;
+    if (p.role === "admin") return "admin";
+    var kid = String(p.kid || "");
+    return /^[A-Za-z0-9_-]{1,64}$/.test(kid) ? kid : null;
+  }
+
+  /* LETTERS ONLY, one word or two, and that is the identifier exclusion rather
+     than a tidiness rule. Every shape detectIdentifiers matches carries a digit,
+     an @ or a slash: a phone, a ZIP, an SSN, a date, an address, an email, a
+     labelled record number. A pattern admitting none of those cannot admit an
+     identifier whatever a caller passes in. screenRefusesIdentifier is the
+     second lock on the same door rather than the only one. */
+  function screenNormalize(word) {
+    var s = String(word == null ? "" : word).trim().toLowerCase().replace(/['\u2019]s$/, "");
+    if (!s || s.length > 40) return "";
+    if (!/^[a-z\u00c0-\u024f'\u2019-]+(?: [a-z\u00c0-\u024f'\u2019-]+)?$/.test(s)) return "";
+    return s;
+  }
+
+  function screenRefusesIdentifier(word) {
+    try { return detectIdentifiers(String(word || "")).length > 0; } catch (e) { return true; }
+  }
+
+  function screenPrune(rec) {
+    if (!rec || !rec.terms) return rec;
+    var floor = rec.notes - SCREEN_TTL_NOTES;
+    var live = rec.terms.filter(function (e) { return e && e.t && e.seen > floor; });
+    // Freshest first, so the cap drops the answer nobody has needed in longest.
+    live.sort(function (a, b) { return b.seen - a.seen; });
+    rec.terms = live.slice(0, SCREEN_MAX);
+    return rec;
+  }
+
+  function screenBlank(owner) { return { owner: owner, notes: 0, terms: [] }; }
+
+  function screenFind(term) {
+    if (!term || !screenCache) return null;
+    for (var i = 0; i < screenCache.terms.length; i++) {
+      if (screenCache.terms[i].t === term) return screenCache.terms[i];
+    }
+    return null;
+  }
+
+  function screenSave() {
+    if (!screenCache || !screenCache.owner) return;
+    var owner = screenCache.owner;
+    encryptRecord({ owner: owner, notes: screenCache.notes, terms: screenCache.terms.slice() })
+      .then(function (blob) {
+        // No WebCrypto means no write at all. Re-answering costs a tap; writing
+        // these words to disk in the clear is not a trade worth making.
+        if (!blob) return;
+        try { localStorage.setItem(SCREEN_PREFIX + owner, blob); } catch (e) {}
+      })
+      .catch(function () {});
+  }
+
+  function screenLoad(owner) {
+    if (!owner) { screenCache = null; return Promise.resolve(null); }
+    var raw = null;
+    try { raw = localStorage.getItem(SCREEN_PREFIX + owner); } catch (e) {}
+    if (!raw) { screenCache = screenBlank(owner); return Promise.resolve(screenCache); }
+    return decryptRecord(raw, null)
+      .then(function (obj) {
+        screenCache = (obj && obj.owner === owner && Array.isArray(obj.terms))
+          ? screenPrune({ owner: owner, notes: obj.notes || 0, terms: obj.terms })
+          : screenBlank(owner);
+        return screenCache;
+      })
+      .catch(function () { screenCache = screenBlank(owner); return screenCache; });
+  }
+
+  /* Chained off the draft store's own ready promise rather than racing it. Both
+     want the same IndexedDB key, and minting it twice on a cold device is how
+     two AES-GCM keys end up written where one was meant to be. A caller that
+     already awaits NotesGate.draft.ready is not waiting a second time for this. */
+  var screenReady = draftsReady
+    .then(function () { return screenLoad(screenOwner()); })
+    .then(function () { return true; })
+    .catch(function () { return true; });
+
+  // A different technician signing in on the same laptop reads their own list
+  // and never this one. Logging out leaves the record on disk, encrypted: it
+  // holds no note text, and wiping it would mean re-answering after every shift.
+  window.addEventListener(EVT, function () {
+    var owner = screenOwner();
+    if (screenCache && screenCache.owner === owner) return;
+    screenReady = screenLoad(owner).then(function () { return true; });
+  });
+
+  function screenHas(word) {
+    return !!screenFind(screenNormalize(word));
+  }
+
+  function screenAdd(word) {
+    var term = screenNormalize(word);
+    if (!term) return false;
+    if (screenRefusesIdentifier(word)) return false;
+    if (!screenCache || !screenCache.owner) return false; // nobody to key it to
+    var hit = screenFind(term);
+    if (hit) { hit.seen = screenCache.notes; screenSave(); return true; }
+    screenCache.terms.push({ t: term, seen: screenCache.notes });
+    screenPrune(screenCache);
+    screenSave();
+    return true;
+  }
+
+  function screenRemove(word) {
+    var term = screenNormalize(word);
+    if (!term || !screenCache) return false;
+    var before = screenCache.terms.length;
+    screenCache.terms = screenCache.terms.filter(function (e) { return e.t !== term; });
+    if (screenCache.terms.length === before) return false;
+    screenSave();
+    return true;
+  }
+
+  // Refresh the expiry clock for words this note actually used. Called from the
+  // drafting path only: the highlight overlay runs on a keystroke and would
+  // write an encrypted record per character.
+  function screenSeen(words) {
+    if (!screenCache || !words || !words.length) return 0;
+    var n = 0;
+    words.forEach(function (w) {
+      var hit = screenFind(screenNormalize(w));
+      if (hit) { hit.seen = screenCache.notes; n += 1; }
+    });
+    if (n) screenSave();
+    return n;
+  }
+
+  function screenAdvanceNote() {
+    if (!screenCache) return 0;
+    screenCache.notes += 1;
+    screenPrune(screenCache);
+    screenSave();
+    return screenCache.notes;
+  }
+
+  function screenClear() {
+    if (!screenCache) return;
+    var owner = screenCache.owner;
+    screenCache = screenBlank(owner);
+    try { localStorage.removeItem(SCREEN_PREFIX + owner); } catch (e) {}
+  }
+
   /* ─────────────── Audit / usage events ───────────────
    *
    * Content-free by construction. An event carries counts, durations and a tool
@@ -1755,6 +1949,29 @@
       _buffer: auditBuffer,
       _corrections: correctionBuffer,
     },
+    /* The type-time screen list. Device-local, encrypted at rest under the
+       draft key, keyed to the signed-in technician, and NEVER transmitted -
+       there is no route that carries it and no route that could.
+
+       `ready` is a getter rather than a fixed promise because the list is
+       reloaded when the signed-in technician changes, and a property captured at
+       export time would go on resolving against the person who left. */
+    screen: {
+      get ready() { return screenReady; },
+      has: screenHas,
+      add: screenAdd,
+      remove: screenRemove,
+      seen: screenSeen,
+      advanceNote: screenAdvanceNote,
+      clear: screenClear,
+      count: function () { return screenCache ? screenCache.terms.length : 0; },
+      owner: screenOwner,
+      // Diagnostics. The words are the technician's own and never leave the
+      // device, so a reader is safe here; it is what a future "words you have
+      // cleared" list would read, and it is how a test sees the shape.
+      _terms: function () { return screenCache ? screenCache.terms.slice() : []; },
+      _noteCount: function () { return screenCache ? screenCache.notes : 0; },
+    },
     // Local draft persistence for the note tools - keeps a clinician's typed note
     // across a page reload so a refresh (or an errant one) never loses their work.
     // Encrypted at rest (see "Draft storage" above) and hard-expired after 12h.
@@ -1770,7 +1987,7 @@
         // Cache first so a reload during the async write still sees the note,
         // and so load() right after save() is consistent.
         draftCache[key] = obj;
-        encryptDraft(obj).then(function (blob) {
+        encryptRecord(obj).then(function (blob) {
           if (!blob) return;
           try { localStorage.setItem(DRAFT_PREFIX + key, blob); } catch (e) {}
         }).catch(function () {});
