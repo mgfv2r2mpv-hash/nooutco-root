@@ -147,7 +147,12 @@ export function applyNote(stored, accepted) {
 
   (Array.isArray(stored) ? stored : []).forEach((row) => {
     const { counts } = accept([row]);
-    if (counts.length) put({ ...counts[0], notes: row && row.notes }, false);
+    /* The stored count, not the one accept() hands back. accept() caps ONE
+       NOTE's vote at MAX_COUNT_PER_NOTE, and a stored row is a running total
+       over many notes: read back through the cap, a total of 120 came out at
+       50 and the author's history was cut down on every write. The gate still
+       decides whether the row is readable at all. */
+    if (counts.length) put({ ...counts[0], count: row.count, notes: row.notes }, false);
   });
   (Array.isArray(accepted) ? accepted : []).forEach((row) => {
     const { counts } = accept([row]);

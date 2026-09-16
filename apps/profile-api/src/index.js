@@ -21,6 +21,7 @@ import { FEATURE_NAMES } from "./features.js";
 import { sanitizeCorrections, sanitizeMetrics, cleanKid, cleanSlug } from "./validate.js";
 import { runWeekly, isSendHour } from "./weekly.js";
 import { accumulate, targetFor, renderShapeBlock } from "./shape.js";
+import { acceptVoice, voiceStatements } from "./voice-write.js";
 
 /** Corrections considered when rebuilding a card. Bounds the query, and a
  *  technician's style two thousand edits ago is not evidence about today. */
@@ -185,13 +186,19 @@ async function handleEvents(request, env) {
     );
   }
 
+  /* Voice levels and diction, one entry per note. Every string these statements
+     bind was already held by voice-write.js before the request arrived: see the
+     comment at the top of that file. */
+  const voice = acceptVoice(body.voice).notes;
+  statements.push(...await voiceStatements(env.DB, kid, voice, now));
+
   await env.DB.batch(statements);
 
   // Only rebuild when something could actually have changed the card.
   const rules = corrections.length ? await rebuildCard(env, kid, now) : null;
 
   return json(200, {
-    stored: { corrections: corrections.length, metrics: metrics.length },
+    stored: { corrections: corrections.length, metrics: metrics.length, voice: voice.length },
     rules: rules ? rules.length : undefined,
   });
 }

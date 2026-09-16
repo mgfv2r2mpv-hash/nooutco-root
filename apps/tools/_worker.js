@@ -3658,10 +3658,12 @@ async function handleAudit(request, env) {
   const events = incoming.map(sanitizeAuditEvent).filter(Boolean);
   const incomingCorr = Array.isArray(body?.corrections) ? body.corrections.slice(0, 50) : [];
   const corrections = incomingCorr.map(sanitizeCorrection).filter(Boolean);
+  const incomingVoice = Array.isArray(body?.voice) ? body.voice.slice(0, VOICE_NOTES_PER_REQUEST) : [];
+  const voice = incomingVoice.map(sanitizeVoiceNote).filter(Boolean);
   // Same response shape whether or not there was anything to do, so a caller
   // never has to distinguish "zero accepted" from "key absent".
-  if (!events.length && !corrections.length) {
-    return jsonRes(200, { stored: 0, corrections: 0, profile: "skipped" });
+  if (!events.length && !corrections.length && !voice.length) {
+    return jsonRes(200, { stored: 0, corrections: 0, voice: 0, profile: "skipped" });
   }
 
   // Audit events need KV; corrections do not - they go to the profile store.
@@ -3694,13 +3696,71 @@ async function handleAudit(request, env) {
     tool: events[0]?.tool || null,
     corrections,
     metrics: events.map((e) => ({ type: e.type, ts: e.ts, data: e.data })),
+    voice,
   });
 
   return jsonRes(200, {
     stored: events.length,
     corrections: corrections.length,
+    voice: voice.length,
     profile: forwarded ? "ok" : "skipped",
   });
+}
+
+/* A NOTE'S VOICE READING: which house levels it measured and which synonyms the
+ * technician reached for, as numbers and closed-list ids.
+ *
+ * It rides beside corrections for the reason corrections do: it is style
+ * learning, it goes to the profile store and never to the KV trail, and it
+ * costs no second round trip. The profile Worker holds the authoritative lists
+ * (house features, house families) and rebuilds every entry against them. This
+ * is the boundary check: right shape, a tool from NOTES_TOOLS, numbers, and
+ * every name checked against a CLOSED list, not only against the shape of an
+ * identifier. That is stricter than sanitizeCorrection on purpose. A family id
+ * that only had to look like an identifier let "often" or "coached" through as
+ * a key, and a word that crosses to another service has left the page even if
+ * the store drops it. The two lists below are mirrored from the store
+ * (house-prior.js HOUSE_FEATURES, diction-level.js FAMILY_IDS) and pinned to
+ * it by apps/profile-api/test/voice-write.test.js. */
+const VOICE_NOTES_PER_REQUEST = 20;
+const VOICE_FEATURES = Object.freeze(["within_cv", "step_rel", "actor_naming", "hedging"]);
+const VOICE_FAMILIES = Object.freeze([
+  "prompting", "mand", "elopement", "dysregulation", "aggression", "self_injury", "reinforcement",
+  "compliance", "refusal", "engagement", "redirection", "independence", "escalation", "calming",
+  "transition", "vocalization", "display", "frequency", "acquisition", "caregiver_training",
+]);
+/* One note's diction rows. The house dictionary holds 85 variants in 20
+   families, so a real note cannot exceed this, and a payload that does is not
+   one note's reading. */
+const VOICE_DICTION_ROWS = 85;
+const VOICE_VARIANT_MAX = 64;
+
+export function sanitizeVoiceNote(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  if (!NOTES_TOOLS.includes(raw.tool)) return null;
+
+  const levels = {};
+  const given = raw.levels && typeof raw.levels === "object" && !Array.isArray(raw.levels) ? raw.levels : {};
+  for (const k of VOICE_FEATURES) {
+    if (!Object.prototype.hasOwnProperty.call(given, k)) continue;
+    const v = given[k];
+    if (typeof v !== "number" || !Number.isFinite(v)) continue;
+    // Six places, NOT three: hedging sits near 0.012 per word, and rounding to
+    // three would turn an author's real rate into one of a dozen values.
+    levels[k] = Math.round(v * 1e6) / 1e6;
+  }
+
+  const diction = [];
+  for (const row of (Array.isArray(raw.diction) ? raw.diction : []).slice(0, VOICE_DICTION_ROWS)) {
+    if (!row || typeof row !== "object") continue;
+    if (!VOICE_FAMILIES.includes(row.family_id)) continue;
+    if (!Number.isInteger(row.variant_index) || row.variant_index < 0 || row.variant_index >= VOICE_VARIANT_MAX) continue;
+    if (!Number.isInteger(row.count) || row.count <= 0) continue;
+    diction.push({ family_id: row.family_id, variant_index: row.variant_index, count: row.count });
+  }
+
+  if (!Object.keys(levels).length && !diction.length) return null;
+  return { tool: raw.tool, levels, diction };
 }
 
 /**
