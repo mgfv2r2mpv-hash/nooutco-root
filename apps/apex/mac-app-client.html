@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mac App Client · No Outcome</title>
+  <meta name="description" content="What Mac App Client is, and how it handles Google account data.">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="icon" type="image/png" href="N-O.png">
+  <link rel="stylesheet" href="/tokens.css">
+  <link rel="stylesheet" href="/assets/nav-bar.css">
+  <script src="/assets/nav-bar.js" defer></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+      background: #eef1ea;
+      color: #1a1a1a;
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+    .apex-main { padding: 40px 24px 56px; }
+    .doc { max-width: 720px; margin: 0 auto; }
+
+    h1 { font-size: 30px; font-weight: 800; margin-bottom: 6px; }
+    .updated { color: #5a5f55; font-size: 14px; margin-bottom: 28px; }
+    h2 { font-size: 20px; font-weight: 700; margin: 28px 0 8px; }
+    p { margin-bottom: 12px; }
+    ul { margin: 0 0 12px 22px; }
+    li { margin-bottom: 6px; }
+    a { color: #2f5d3a; }
+  </style>
+</head>
+<body>
+  <main class="apex-main">
+    <article class="doc">
+      <h1>Mac App Client</h1>
+      <p class="updated">Last updated September 16, 2026</p>
+
+      <h2>What it is</h2>
+      <p>
+        Kaleb Fowles, who runs No Outcome, uses Mac App Client on his own computer. It lets his
+        AI coding assistant, Claude Code, read and organize the email in Google accounts that belong
+        to him: it flags alerts that need his attention and helps him clear out junk mail.
+      </p>
+      <p>
+        No Outcome does not offer Mac App Client to anyone else, and no other person's Google
+        account is connected to it.
+      </p>
+
+      <h2>Privacy policy</h2>
+      <p>This policy covers Mac App Client only.</p>
+      <ul>
+        <li>
+          <strong>What it can reach.</strong> Mac App Client connects only to Google accounts
+          owned by Kaleb Fowles, and only with the permissions he approves when he signs in.
+        </li>
+        <li>
+          <strong>Where the data goes.</strong> Mac App Client stores its sign-in tokens on his
+          computer. When a task needs a message, it fetches that message from Google and passes it
+          to the AI assistant he uses, Anthropic's Claude, to carry out the task.
+        </li>
+        <li>
+          <strong>What it never does.</strong> Mac App Client does not sell data, share it with
+          advertisers, or build profiles of anyone.
+        </li>
+        <li>
+          <strong>What it keeps.</strong> Mac App Client keeps no database of email. Its sign-in
+          tokens last until Kaleb revokes them at
+          <a href="https://myaccount.google.com/connections">myaccount.google.com/connections</a>.
+        </li>
+      </ul>
+
+      <h2>Contact</h2>
+      <p>Questions about this page go to <a href="mailto:kaleb@nooutco.me">kaleb@nooutco.me</a>.</p>
+    </article>
+  </main>
+</body>
+</html>
