@@ -465,3 +465,255 @@ slice 3's 26 and everything that was already there.
 
 Ports 8788, 8789, 8799 and 8808 were all checked before the run and all four
 were free, so nothing adopted a foreign worktree's server.
+
+---
+
+## Slice 4 - one alert budget, and changes accepted by default
+
+Two new files, both pure data and neither of them draws anything:
+`notes/bcba/alert-budget.js` and `notes/bcba/disposition.js`. Both are loaded by
+`/notes/bt/` and `/notes/bcba/`, after `note-rubric.js`.
+
+**No interface was built and none was designed.** The maintainer is ruling on
+the revision panel and the note page layout, and the ghost checkmark with the
+revert arrow is retracted. What is testable without a layout is what got built:
+which findings are produced, how they are ranked, what is withheld and why, and
+what a technician's answer is worth. The section at the bottom names what the
+interface would need when the ruling lands.
+
+### The eight producers, and the tier each one states
+
+| Producer | Reads | Tier, and why |
+|---|---|---|
+| `scrub` | the substitution map and the drafted note | **1** for a token left in the note: the clinician is reading `[[T3]]` where they wrote a word. **2** for a name that was substituted and stayed, which is an ordinary fact about a note with a person in it |
+| `wrong-section` | `NoteHollow.misplacedInput` against the tool's own table | **1**. A consequence procedure narrated as an antecedent one is the note stating something that did not happen that way |
+| `passes` | `NoteAbsence.scrubNote`, `NoteHollow.passNote` | **1** for a FLAGGED absence sentence, which stayed because a person was the subject and is the note asserting something nobody observed. **2** for a hollow section |
+| `rubric` | `NoteRubric.grade` | **1** at level `missing`, **2** at level `thin`, nothing at `good` |
+| `hints` | the model's own hint array | read straight off `kind`: `blocks-claim` 1, `thin` 2, `register` 3 |
+| `expert` | the expert pass result | its hints by the same three kinds, its register and term findings **3** |
+| `gaps` | the triage questions | **2**. What the model could not tell from the note is what the note is missing |
+| `register` | `NoteMetrics.flagged` | **3**, and only at three flagged constructions or more. One is a word choice, three is the register |
+
+`gaps` drops any question carrying `injected`, because those are the misfiled
+rows that `wrong-section` already raised at tier 1. Without that filter one
+finding sits in the queue twice under two tiers.
+
+### The three rules, and what enforces them
+
+- **A tier 3 never occupies a slot while a tier 1 is unresolved.** Not ranked
+  below it, withheld, with `withheld: "tier-1-open"` on the item.
+- **A producer that cannot state its tier gets no slot.** It lands in `refused`
+  with a reason. Four routes into that list: an unknown hint `kind`, a rubric
+  `level` nobody declared, a source key naming no registered producer, and a
+  producer emitting a tier outside 1..3.
+- **A producer's own rank cannot promote it past another producer's tier.**
+  `rank` sorts inside a tier only.
+
+**Resolved is not the same question as accepted, and the difference is the whole
+rule.** A change the tool made is accepted by default, which is ruled. A finding
+is a statement that the note has a fault, and nobody untouching it has answered
+that, so `none` leaves a tier 1 open and the tier 3 stays withheld. Only
+approve, reject, revert or edit resolves one.
+
+### The cap is five, and the maintainer should rule on it
+
+Five rows for the whole note, across all eight producers. The number is borrowed
+rather than picked: the pre-draft check already argued it for its own findings,
+"two findings is a technician who has something to fix; five is a wall, and a
+wall gets skipped whole". That argument was made about one producer, and five
+across all of them is the same ceiling put where it belongs. `build()` takes a
+cap, so nothing in the code treats five as a law, and the tests assert the cap is
+enforced rather than that it equals five.
+
+### The four dispositions
+
+| Answer | Weight | Evidence | Note |
+|---|---|---|---|
+| `none` | +1 | `kept` | the default acceptance, low but never zero |
+| `approve` | +3 | `endorsed` | they went out of their way to agree |
+| `reject` / `revert` | **-3** | `refused` | negative evidence, the same magnitude as an approval and the other way round |
+| `edit` | +5 | `rewritten` | strongest, and the only one carrying a specimen |
+
+The numbers are ORDINAL. They encode the order the maintainer stated and nothing
+else; no fitting has been done. Every caller reads `weightOf()` so a learned bar
+replaces them without another file changing.
+
+**The offered/kept pair never enters the ledger, and that is structural.**
+`record(ledger, event, sink)` hands the pair to a sink the caller passes, on an
+edit and only on an edit, and the entry it appends has no field that could hold
+it. A test serialises the whole ledger and asserts neither sentence is in it.
+`closeNote(ledger, offered)` files every offered item nobody answered as `none`,
+and never overwrites an explicit answer.
+
+### NoteRubric now reports the severity it graded on
+
+`grade()` returns `band` and `worstTier` beside `level`, `reason` and
+`dimensions`. `level` is unchanged and still categorical: a blocking gap is
+`missing`, any other gap is `thin`, no gap is `good`. **No numeric bar was
+picked and nothing turns a count into a level.**
+
+- `band` counts GAP DIMENSIONS per tier, never hints. Five register findings
+  inside one dimension are one thing wrong with the note, and counting them five
+  times is the hint tally wearing a different hat.
+- `blocking` is now read off the tier rather than off the hint kinds a second
+  time. Both spellings picked out the same hints, which is the problem: a change
+  to one would leave the other still answering and nothing in the tree saying
+  which answer was real.
+- **`bySeverity` stopped reporting a tally, and that was a live fault rather
+  than a tidy-up.** Its detail read `"1 flagged"`, and on a tool that declares no
+  rubric that string becomes the pill's whole reason. Four of the six tools
+  declare no rubric. It now names the top hint's catalog text, which is what the
+  named dimensions have always done.
+
+### Revert proof: alert-budget.js and disposition.js
+
+Every guard removed, the suite run, the guard restored. 18 of 18 land.
+
+| Guard removed | Tests that failed |
+|---|---|
+| the tier 3 withholding rule | 2 |
+| `none` does not resolve a finding | 1 |
+| tier sorts before any producer rank | 1 |
+| a hint kind with no tier is refused | 1 |
+| a rubric level with no tier is refused | 1 |
+| an unregistered source key is refused | 1 |
+| the cap | 1 |
+| the token family wider than `[[Tn]]` | 4, one per non-canonical shape |
+| the tier check at the end of `collect` | 1 |
+| a reject is negative | 2 |
+| an edit outweighs an approval | 2 |
+| an unknown disposition is dropped, not defaulted | 1 |
+| the sink fires on an edit alone | 1 |
+| the entry cannot hold the pair | 1 |
+| `record` returns a new ledger | 1 |
+| `closeNote` skips a class already answered | 1 |
+| a revert is the same act as a reject | 1 |
+| the producer registry is injectable | 1 |
+
+**One guard caught nothing first time and the fix was to make it reachable.**
+The tier check at the end of `collect()` was landed by nothing: all eight
+producers refuse their own untiered findings on the way past, so removing it left
+26 tests green. The registry is injectable now, which lets a test hand `collect`
+a ninth producer that emits tier 9 and assert it is refused. Without that the
+rule "a producer that cannot state its tier gets no slot" was a claim about code
+no caller could reach.
+
+### Revert proof: note-rubric.js
+
+| Guard removed | Tests that failed |
+|---|---|
+| hint dimensions carry a tier, and blocking is read off it | 4 |
+| the band counts dimensions, not hints | 1 |
+| the empty-section dimension carries a tier | 1 |
+| `bySeverity` carries a tier | 1 |
+| `bySeverity` names what to fix rather than how many | 1 |
+
+**Two of these caught nothing until the code or the fixtures changed.** The
+first was a dead branch I had written myself: `level` read
+`blocking.length || worstTier === 1`, and no dimension can be tier 1 without
+being blocking, so the second half was unreachable. Two answers to one question
+in the tree. Blocking is now derived from the tier and the branch is gone. The
+second was the empty-section dimension's tier, which no test asserted because
+every empty-section fixture also carried a claim-blocking hint and graded tier 1
+anyway; a fixture with a blank narrative and nothing else lands it.
+
+### What the interface would need, when the ruling arrives
+
+Written here rather than built, per the instruction.
+
+- `build()` returns `{shown, withheld, refused, open, cap, offered}`. `shown` is
+  the list to draw, in order. Nothing else needs computing.
+- Each item carries `producer`, `tier`, `code`, `section`, `detail` and `key`.
+  `detail` is the reader's sentence; `key` is the disposition's identity and is
+  built out of enums alone.
+- `withheld` is not a second list to draw. It is the answer to "why did I not see
+  that", and it belongs in a bench or an audit rather than on the note page.
+- **No per-item accept control, and no checkmark.** The only thing the reading
+  path needs is a way to reach `reject` and `edit`; `none` is what happens when
+  nobody does anything and is recorded by `closeNote` when the note is filed.
+- An edit needs the offered sentence and the kept sentence at the moment it is
+  recorded, which means whatever captures a retype has to hold the prior text
+  long enough to pass both to `record`. `diff.js` already does this work for the
+  revision view.
+
+### Not wired into engine.jsx yet, and that is deliberate
+
+The engine still renders each producer where it always did. Wiring the queue in
+is a change to what the technician sees, and the layout ruling is what decides
+where the queue goes. Everything the engine would need is a pure function call
+with values it already has in hand: `S.scrubMap`, `S.output`, `S.output.hints`,
+`S.questions`, `S.expert`, the `finalize()` counts, `NoteMetrics.flagged` on the
+note body, and `noteQuality()`.
+
+
+### A defect this slice introduced and caught before it shipped
+
+`collect()` checked incoming source keys against PRODUCER IDS, and a producer id
+is not the field its findings arrive under: the wrong-section producer reads
+`misfiled`, the passes producer reads `absence` and `hollow`, the rubric reads
+`quality`. So every real source would have been refused as unregistered, and
+`refused` is the one list whose whole job is answering "why did I not see that".
+Filling it with five false entries per note would have hidden a real refusal in
+the noise, and nothing would have failed: the unregistered test passed on a key
+nobody reads, which is the fixture that agrees with the bug.
+
+Each producer declares `reads` now, and the test that lands it asserts the LIVE
+sources come back with `refused` empty. Removing the `reads` half of the check
+fails exactly that test.
+
+| Guard removed | Tests that failed |
+|---|---|
+| producers declare the source fields they read | 1 |
+
+It was found by reading the code back rather than by a test, which is the part
+worth keeping: the eight producers all pass their own fixtures, and a fixture
+built to exercise a rule agrees with whatever the rule happens to do.
+
+### All eight at once, on one note
+
+Driving `build()` with every producer firing, cap 5:
+
+```
+offered 10  shown 5  withheld 5  open 2  refused []
+
+shown:
+  1 wrong-section:strategy_in_wrong_section
+  1 passes:absence_flagged
+  2 gaps:gap_b4
+  2 rubric:rubric_thin
+  2 scrub:substituted
+
+withheld:
+  2 passes:hollow_section      (over-cap)
+  3 hints:x                    (tier-1-open)
+  3 expert:expert_register     (tier-1-open)
+  3 expert:expert_terms        (tier-1-open)
+  3 register:tired_register    (tier-1-open)
+```
+
+Ten findings, five rows. Both tier 1 items are open, so all four tier 3 items
+are held whatever they ranked themselves, and the one tier 2 that did not fit is
+held for the cap and says so. Nothing is dropped and `refused` is empty.
+
+### Suite state after slice 4
+
+`npx playwright test --project=chromium` with `TOOLS_TEST_PORT=8811`:
+**1229 of 1230 passed, 10.0m.** That is slice 1's 22, slice 2's 20, slice 3's 26,
+slice 4's 27 alert-budget tests and 6 added to note-rubric, and everything that
+was already there.
+
+**The one failure is named, and it is not a regression.**
+`tests/supervisor-email.spec.js:49` - "an address set at creation comes back on
+the list" - failed with `apiRequestContext.post: socket hang up` on
+`POST /api/admin/passwords`. The whole file passes on its own:
+`13 of 13, 3.6s, exit 0`. It is the admin password route, which this slice does
+not touch by any path - no file changed here is loaded by the admin page and the
+route is the Worker's. The `wrangler pages dev` process was observed restarting
+mid-run, which is what a socket hang up on one request looks like from the test
+side.
+
+Ports 8788, 8789 and 8799 were checked before every run and all three were free.
+Another worktree, `note-tool-interface`, was running its own Playwright on 8831
+throughout, verified by reading that process's `cwd`. `TOOLS_TEST_PORT=8811`
+means `reuseExistingServer` is off, so neither run could adopt the other's
+server in either direction.
