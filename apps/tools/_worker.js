@@ -3562,6 +3562,18 @@ export const AUDIT_TYPES = new Set([
      on it. */
   "another_way",
   "coherence_answered",
+  /* APPROVING A CHANGE, added 2026-09-16 in the same commit as the browser call
+     that emits it, which is what the block above exists to insist on.
+
+     It is the one disposition the old row could not record. Reverting,
+     rewording and doing nothing were all it could tell apart, and doing nothing
+     is the weakest evidence there is: a technician who never read a sentence
+     and one who read it and agreed leave the same trace. This separates them.
+
+     It carries the triage round and nothing else. Not the sentence, not which
+     sentence, not the question that produced it. The maintainer's rule on this
+     ledger has not moved: counts and pass names, never the word. */
+  "suggestion_approved",
 ]);
 
 export function sanitizeAuditEvent(raw) {

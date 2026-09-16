@@ -33,7 +33,8 @@
  * documentation tool, and on the phone they actually use there is no hover to
  * explain one.
  *
- * Defines window.DispositionRow. Loaded before engine.jsx.
+ * Defines window.DispositionRow and window.AidSuggestion. Loaded before
+ * revision-panel.jsx and engine.jsx, both of which draw these rows.
  */
 
 /* The resting state says nothing, because the resting state is agreement and a
@@ -148,6 +149,31 @@ function DispositionHeading(props) {
   );
 }
 
+/* Open and editing are per row and belong to nobody else, so they live here
+   rather than in whichever surface is drawing the row. Two surfaces draw these
+   now, the assistant panel and the questions placed on the page, and neither
+   should have to carry a pair of flags it does not read. */
+function AidSuggestion(props) {
+  var [open, setOpen] = React.useState(false);
+  var [editing, setEditing] = React.useState(false);
+  return (
+    <DispositionRow
+      id={props.id}
+      text={props.text}
+      state={props.state}
+      alternatives={props.alternatives}
+      open={open}
+      onOpenChange={setOpen}
+      editing={editing}
+      onEditingChange={setEditing}
+      onApprove={props.onApprove}
+      onRevert={props.onRevert}
+      onEdit={props.onEdit}
+    />
+  );
+}
+
 window.DispositionRow = DispositionRow;
 window.DispositionHeading = DispositionHeading;
 window.DispositionRow.DZ_WORD = DZ_WORD;
+window.AidSuggestion = AidSuggestion;

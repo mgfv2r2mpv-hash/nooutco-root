@@ -1357,6 +1357,11 @@ function freshSession(tool) {
     // of asking twice, and cleared with the rest of the session.
     claimAnswers: {},      // {"<quote>": "after"|"before"|"both"|"other"}
     panelDraft: "",
+    // One answer per question, keyed by its index, for the questions drawn on
+    // the page beside the box they ask about. The panel's single draft is still
+    // here and still works; this is what the floor plan collects into, and both
+    // are spent by the same send.
+    answerDrafts: {},      // {"<question index>": "what they typed"}
     questions: null,       // triage questions awaiting an answer, or null
     readiness: null,       // 0-100 from triage; sets how long the skip stays locked
     pendingValues: null,   // scrubbed values held while triage runs
@@ -2903,11 +2908,22 @@ function App() {
      holds, unchanged. */
   const modelAsked = () => (S.questions || []).some((q) => !q.injected);
 
+  /* AND AN ANSWER TYPED IN PLACE OPENS IT, for the same reason a kept
+     suggestion does: it is the answer. The gate exists to refuse an EMPTY
+     draft, and a technician who has written two sentences under the question
+     that asked for them has not given an empty one.
+
+     This is not a nicety. Once the questions moved onto the page the panel
+     stopped carrying its own answer box, so a gate that could only be opened by
+     keeping a suggestion would leave a technician who typed a real answer with
+     nothing on screen to press. The first version of the floor plan did exactly
+     that, and three tests in question-inline.spec.js hold it shut. */
   const gateHolds = () => modelAsked() &&
     (S.triageRound || 1) === 1 &&
     Number.isFinite(S.readiness) &&
     S.readiness < BAR_READINESS &&
-    acceptedSuggestions().length === 0;
+    acceptedSuggestions().length === 0 &&
+    !answeredInPlace();
 
   const skipSecondsFor = (readiness) => {
     if (!Number.isFinite(readiness)) return SKIP_COOLDOWN_MAX_SECONDS;
@@ -3538,11 +3554,42 @@ function App() {
     );
 
   // One entry point for the panel's Send button: it either answers the pending
+  /* The floor plan's answers, composed in the order the questions were asked
+     and each one carrying its question. An empty box contributes nothing, so a
+     technician who answered one of three sends one answer and not two blanks.
+
+     The QUESTION text is safe to repeat here: the model wrote it, from intake
+     that had already been through the scrub. The ANSWER is not, and it is not
+     treated as if it were - this string goes into the same gate the panel's
+     draft goes into, in the same call, a few lines below. */
+  const answeredInPlace = () => {
+    const qs = S.questions || [];
+    const drafts = S.answerDrafts || {};
+    return qs
+      .map((q, qi) => {
+        const said = String(drafts[qi] == null ? "" : drafts[qi]).trim();
+        if (!said) return "";
+        const asked = q && q.question ? String(q.question).trim() : "";
+        return asked ? asked + "\n" + said : said;
+      })
+      .filter(Boolean)
+      .join("\n\n");
+  };
+
   // triage questions or asks for a revision, depending on where we are.
   const handlePanelSend = async () => {
-    const text = S.panelDraft.trim();
+    /* Two boxes can hold an answer now and the send spends both. The panel's
+       one box is unchanged. The floor plan adds a box under each question, and
+       those are LABELLED with the question they answer when they compose.
+
+       That label is not decoration. Today two answers to two questions arrive
+       at the model as one undifferentiated paragraph and it has to guess which
+       half answers which, on a note where guessing wrong puts a strategy in the
+       wrong section. Answering in place is what makes the pairing knowable, so
+       the pairing gets written down. */
+    const text = [answeredInPlace(), S.panelDraft.trim()].filter(Boolean).join("\n\n");
     if (!text || loading) return;
-    patchS({ panelDraft: "" });
+    patchS({ panelDraft: "", answerDrafts: {} });
     pushThread("user", "answer", text);
 
     /* Feedback about the tool rather than about the note. Sending it to the note
@@ -4013,6 +4060,34 @@ function App() {
   const toggleExpand = (i) =>
     patchS((s) => ({ expanded: s.expanded.includes(i) ? s.expanded.filter((x) => x !== i) : [...s.expanded, i] }));
 
+  /* Which questions have a box on this form to sit under, and which do not.
+     Computed once per render rather than filtered inside each field, and
+     computed OFF when the flag is off so nothing moves for anyone else.
+
+     A question naming a field this form does not have is not placed and stays
+     in the panel. Dropping it to keep the layout tidy would mean the tool asked
+     something and then hid it, which is worse than any layout. */
+  const floorPlan = (authorAidEnabled() && window.QuestionInline && S.questions && S.questions.length)
+    ? window.QuestionInline.placeQuestions(S.questions, (tool.inputs || []).map((i) => i.id))
+    : { placed: {}, unplaced: (S.questions || []).map((q, qi) => ({ qi, question: q && q.question, field: (q && q.field) || null })) };
+
+  /* One question's suggestions in the shape a row needs: the kept wording if
+     they reworded it, the offered wording otherwise, and the one word for where
+     it stands. Same source as the panel's, so the two can never disagree. */
+  const inlineSuggestions = (qi) => {
+    const q = (S.questions || [])[qi];
+    return ((q && q.suggestions) || []).map((raw, si) => {
+      const key = suggestKey(qi, si);
+      const st = (S.suggestState || {})[key] || {};
+      return {
+        key,
+        si,
+        text: typeof st.text === "string" ? st.text : raw,
+        state: suggestionDisposition(qi, si),
+      };
+    });
+  };
+
   const renderInput = (f) => {
     if (f.type === "toggle") {
       return (
@@ -4040,13 +4115,31 @@ function App() {
         </div>
       );
     }
+    /* THE FLOOR PLAN. A question about this box is drawn under this box, so
+       the technician can read what they wrote while they answer what was asked
+       about it. Measured on an iPhone 14 profile: with the questions in the
+       panel instead, the panel is 465px of a 664px viewport and the box the
+       question names is behind it. */
+    const asks = floorPlan.placed[f.id];
     return (
-      <TextareaField
-        key={f.id}
-        field={f}
-        value={S.values[f.id]}
-        onChange={(val) => setValue(f.id, val)}
-      />
+      <React.Fragment key={f.id}>
+        <TextareaField
+          field={f}
+          value={S.values[f.id]}
+          onChange={(val) => setValue(f.id, val)}
+        />
+        {asks && asks.length > 0 && window.QuestionInline && (
+          <window.QuestionInline
+            field={f.id}
+            items={asks.map((a) => ({ ...a, suggestions: inlineSuggestions(a.qi) }))}
+            drafts={S.answerDrafts}
+            onDraft={(qi, v) => patchS({ answerDrafts: { ...(S.answerDrafts || {}), [qi]: v } })}
+            onApprove={approveSuggestion}
+            onRevert={toggleSuggestion}
+            onEdit={editSuggestion}
+          />
+        )}
+      </React.Fragment>
     );
   };
 
@@ -4373,9 +4466,23 @@ function App() {
         onToggleSuggestion={toggleSuggestion}
         onEditSuggestion={editSuggestion}
         suggestionDisposition={suggestionDisposition}
+        /* Which question indexes the page already drew, so the panel does not
+           draw them again. A map rather than a count: the placed ones are not
+           necessarily the first ones. */
+        placedQuestions={Object.keys(floorPlan.placed).reduce((acc, f) => {
+          floorPlan.placed[f].forEach((a) => { acc[a.qi] = true; });
+          return acc;
+        }, {})}
         onApproveSuggestion={approveSuggestion}
         acceptedSuggestions={acceptedSuggestions().length}
-        onSkipQuestions={skipQuestions}
+        /* "Use these and generate" means finish this round with what is
+           standing. Once answers can be typed on the page rather than into the
+           panel, what is standing includes them, and a button that quietly
+           threw away three sentences a technician had just typed would be the
+           worst bug in this feature. So it sends when there is something to
+           send and skips when there is not. */
+        onSkipQuestions={() => (answeredInPlace() ? handlePanelSend() : skipQuestions())}
+        pendingAnswers={!!answeredInPlace()}
         skipCooldown={modelAsked() ? skipSecondsFor(S.readiness) : 0}
         skipHeld={gateHolds()}
         unread={S.questions ? S.questions.length : 0}
