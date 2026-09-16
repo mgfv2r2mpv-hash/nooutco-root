@@ -245,3 +245,147 @@ test.describe('bt declares the handout as its rubric', () => {
     expect(ids).toEqual(['result', 'comparison', 'specifics', 'beyond_data']);
   });
 });
+
+/* THE GRADE REPORTS THE SEVERITY IT GRADED ON (slice 4).
+ *
+ * A claim-blocking hint and a register nitpick already graded differently. What
+ * nothing downstream could tell apart was a thin note from a tidy one with a
+ * register flag on it: both come back "thin", and the only thing separating
+ * them was a count of hints, which is the reading this file exists to refuse.
+ *
+ * `band` counts GAP DIMENSIONS per tier, never hints. Five register findings
+ * inside one dimension are one thing wrong with the note.
+ */
+test.describe('the grade carries the severity, never the tally', () => {
+  test('one serious finding and five nitpicks do not grade the same', async ({ page }) => {
+    await ready(page);
+    const serious = await grade(
+      page,
+      filled({
+        hints: [{ section: 'behaviorPlanNarrative', code: 'no_rate_comparison', detail: '', rank: 1, kind: 'blocks-claim' }],
+      }),
+    );
+    const nitpicks = await grade(
+      page,
+      filled({
+        hints: [1, 2, 3, 4, 5].map((i) => ({
+          section: 'lessonProgressNarrative', code: 'no_prompt_level', detail: '', rank: i, kind: 'register',
+        })),
+      }),
+    );
+    expect(serious.level).toBe('missing');
+    expect(serious.worstTier).toBe(1);
+    expect(nitpicks.level).toBe('thin');
+    expect(nitpicks.worstTier).toBe(3);
+    // Five of them is still ONE dimension with something wrong in it. A band
+    // that read five here would be the hint tally under another name.
+    expect(nitpicks.band['3']).toBe(1);
+  });
+
+  test('a thin note and a note that only reads badly share a level and not a band', async ({ page }) => {
+    await ready(page);
+    const thin = await grade(
+      page,
+      filled({ hints: [{ section: 'lessonProgressNarrative', code: 'no_prompt_level', detail: '', rank: 1, kind: 'thin' }] }),
+    );
+    const polish = await grade(
+      page,
+      filled({ hints: [{ section: 'lessonProgressNarrative', code: 'no_prompt_level', detail: '', rank: 1, kind: 'register' }] }),
+    );
+    expect(thin.level).toBe(polish.level);
+    expect(thin.worstTier).toBe(2);
+    expect(polish.worstTier).toBe(3);
+  });
+
+  test('a clean note has no band and no worst tier', async ({ page }) => {
+    await ready(page);
+    const out = await grade(page, filled({}));
+    expect(out.level).toBe('good');
+    expect(out.worstTier).toBe(null);
+    expect(out.band).toEqual({ 1: 0, 2: 0, 3: 0 });
+  });
+
+  test('a tool with no rubric reports what to fix, not how many there are', async ({ page }) => {
+    await ready(page);
+    const out = await grade(
+      page,
+      filled({
+        hints: [
+          { section: 'lessonProgressNarrative', code: 'no_prompt_level', detail: '', rank: 1, kind: 'thin' },
+          { section: 'lessonProgressNarrative', code: 'no_rate_comparison', detail: '', rank: 2, kind: 'thin' },
+        ],
+      }),
+      { rubric: null },
+    );
+    // It used to read "2 flagged", which is the tally on the one surface four of
+    // the six tools actually show.
+    expect(out.reason).not.toMatch(/^\d+ flagged$/);
+    expect(out.reason).toBe(CATALOG.no_prompt_level);
+  });
+
+  test('the rubric and the budget read the same three tiers off the same three kinds', async ({ page }) => {
+    await ready(page);
+    const agree = await page.evaluate(() => {
+      const kinds = ['blocks-claim', 'thin', 'register'];
+      return kinds.map((kind) => {
+        const budget = window.AlertBudget.build({
+          hints: [{ code: 'x', section: 'note', kind: kind, rank: 1 }],
+        }, { cap: 99 });
+        const item = budget.shown.concat(budget.withheld)[0];
+        return { kind, budget: item ? item.tier : null };
+      });
+    });
+    const rubricTiers = {};
+    for (const kind of ['blocks-claim', 'thin', 'register']) {
+      const out = await grade(
+        page,
+        filled({ hints: [{ section: 'lessonProgressNarrative', code: 'no_prompt_level', detail: '', rank: 1, kind }] }),
+      );
+      rubricTiers[kind] = out.worstTier;
+    }
+    for (const row of agree) {
+      expect(rubricTiers[row.kind], `${row.kind} grades one tier in the rubric and another in the budget`).toBe(row.budget);
+    }
+  });
+});
+
+/* The empty-section dimension is the one that blocks WITHOUT being tier 1, so
+   it is the only dimension whose tier can go missing without the level moving.
+   Without this the band would quietly stop counting the loudest fault on the
+   page and every other assertion above would stay green. */
+test.describe('a blank narrative is counted in the band it belongs to', () => {
+  test('an empty section grades missing and lands in the tier two band', async ({ page }) => {
+    await ready(page);
+    const out = await grade(page, filled({ lessonProgressNarrative: '' }));
+    expect(out.level).toBe('missing');
+    expect(out.worstTier, 'a blank section is the note not saying something').toBe(2);
+    expect(out.band['2']).toBeGreaterThanOrEqual(1);
+    expect(out.band['1']).toBe(0);
+  });
+});
+
+/* The four tools that declare no rubric are graded by severity instead, and
+   they need the same band the named dimensions produce - otherwise a learned
+   bar would read a band on bt and nothing at all on sup, parent, assess and
+   sap, which is four of the six. */
+test.describe('a tool with no rubric still reports a band', () => {
+  test('severity dimensions carry their tier into the band', async ({ page }) => {
+    await ready(page);
+    const polish = await grade(
+      page,
+      filled({ hints: [{ section: 'note', code: 'other', detail: '', rank: 1, kind: 'register' }] }),
+      { rubric: null },
+    );
+    expect(polish.worstTier).toBe(3);
+    expect(polish.band['3']).toBe(1);
+
+    const serious = await grade(
+      page,
+      filled({ hints: [{ section: 'note', code: 'other', detail: '', rank: 1, kind: 'blocks-claim' }] }),
+      { rubric: null },
+    );
+    expect(serious.worstTier).toBe(1);
+    expect(serious.band['1']).toBe(1);
+    expect(serious.level).toBe('missing');
+  });
+});
