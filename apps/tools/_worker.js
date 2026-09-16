@@ -3525,6 +3525,14 @@ export const AUDIT_TYPES = new Set([
      block above gives: note_register, recommendation and capture were each
      emitted for months into an allowlist that did not name them. */
   "note_hints",
+  /* The type-time screen list, added in the same commit as the call that emits
+     it. Counts and a pass name: how many words the technician had cleared that
+     this note would otherwise have flagged, and how many of those a role cue
+     took back anyway. The words themselves are never in it and there is no
+     route that carries them, so this is the only place the feature is visible
+     to anybody but the technician who typed. */
+  "phi_screen",
+  "phi_screen_answer",
   "gap_questions",
   "revision",
   "note_copied",

@@ -1749,7 +1749,18 @@ function App() {
     const carryOver = !!(opts && opts.carryOver);
     if (!(await NotesScrub.acknowledge())) return null;
     const prior = carryOver ? scrubMapRef.current : [];
-    const review = await NotesScrub.review({ freeText, seen: prior });
+    /* `newNote` is carryOver read the other way round, and it is passed rather
+       than derived because the scrubber can only derive it from an empty map,
+       and a fresh draft of a note with no detectable name in it also has one.
+       It ticks the screen list's note counter, which is what that list expires
+       in. `tool` goes with it so the screen counts are attributable without any
+       word of the note being attached to them. */
+    const review = await NotesScrub.review({
+      freeText,
+      seen: prior,
+      newNote: !carryOver,
+      tool: tool.id,
+    });
     if (review.cancelled) return null;
     const carried = carryOver ? NotesScrub.mergeMaps(prior, review.map) : review.map;
     scrubMapRef.current = carried;

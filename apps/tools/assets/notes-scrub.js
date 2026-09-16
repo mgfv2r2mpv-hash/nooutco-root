@@ -82,9 +82,112 @@
 
   function scrub() { return (window.NotesGate && window.NotesGate._scrub) || null; }
 
-  function detect(freeText) {
+  /* DETECTION, THEN THE TECHNICIAN'S OWN SCREEN LIST, IN THAT ORDER.
+   *
+   * Every path that flags a name on this page comes through here, which is the
+   * point: the overlay that glows while someone types and the review that mints
+   * the tokens used to ask the gate separately, and a consult wired into one of
+   * them would have left the other flagging words the technician had already
+   * cleared.
+   *
+   * `stats` is an out-parameter and it is optional on purpose. Passing one marks
+   * the caller as the DRAFTING path, which is the only path allowed to refresh
+   * an entry's expiry clock or emit a count. The overlay runs on a keystroke and
+   * would otherwise write an encrypted record per character.
+   */
+  function detect(freeText, stats) {
     var s = scrub();
-    return s ? s.detectNames(freeText) : [];
+    var names = s ? s.detectNames(freeText) : [];
+    return screenFilter(names, freeText, stats);
+  }
+
+  function screenStore() { return (window.NotesGate && window.NotesGate.screen) || null; }
+
+  /* The type-time screen list, consulted before anything is flagged.
+   *
+   * A technician clears a highlighted word as "not a person" and it stops being
+   * flagged on this device. Two rules are what make that safe to do at typing
+   * speed rather than in a dialog somebody clicks through.
+   *
+   * IT ONLY EVER TOUCHES NAMES. This filters the output of the capitalised-word
+   * heuristic and nothing else. identifierMap() runs first, from review(), and
+   * never reads the list at all, so a date, a phone number, an address, a ZIP,
+   * an email, an SSN or a record number keeps its pass whatever is in the list
+   * and whatever a caller does. The store refusing to hold one of those is the
+   * second lock rather than the only one.
+   *
+   * ADJACENCY BEATS A PRIOR SCREEN. "Grace" cleared as a programme name stays
+   * cleared right up until somebody writes "mom Grace", "client Grace" or
+   * "Grace, his mother", and then it is flagged anyway. A screening answer is
+   * about a word; a role cue attached to that word is the text saying that this
+   * time it is about a person. cueRole() decides it, which is the same rule the
+   * token path uses, so the two cannot drift apart.
+   */
+  function screenFilter(names, text, stats) {
+    var store = screenStore();
+    if (!store || !names || !names.length) return names || [];
+    var kept = [];
+    var suppressed = [];
+    var cued = 0;
+    names.forEach(function (n) {
+      if (!store.has(n)) { kept.push(n); return; }
+      if (cueRole(n, text)) { kept.push(n); cued += 1; return; }
+      suppressed.push(n);
+    });
+    if (stats) {
+      stats.screened = suppressed.length;
+      stats.cued = cued;
+      if (suppressed.length) store.seen(suppressed);
+    }
+    return kept;
+  }
+
+  /* COUNTS AND THE PASS NAME, NEVER THE WORD.
+   *
+   * What anyone reading this back needs is how often the name pass is being
+   * overruled and how often a role cue took an answer back, not which words were
+   * involved. The word is the one thing here that could be clinical, so it is
+   * not in scope: this function is handed two integers and a fixed pass name and
+   * has no reader for the list at all.
+   */
+  function screenAudit(opts, stats) {
+    if (!stats || (!stats.screened && !stats.cued)) return;
+    var a = window.NotesGate && window.NotesGate.audit;
+    if (!a) return;
+    var tool = String((opts && opts.tool) || "");
+    a.emit("phi_screen", {
+      tool: /^[a-z0-9_-]{1,16}$/.test(tool) ? tool : "notes",
+      pass: "name",
+      screened: stats.screened,
+      cued: stats.cued,
+    });
+  }
+
+  /* The two answers a highlighted word can carry, and the only two.
+   *
+   * "not a person" clears it for this technician on this device. "yes, take it"
+   * affirms the flag, and undoes a previous clearing if there was one, which is
+   * how a mis-tap is repaired without anybody building a settings screen.
+   *
+   * Both record a count and the pass name. Neither records the word.
+   */
+  function screenAnswer(word, answer) {
+    var store = screenStore();
+    if (!store) return false;
+    var cleared = 0;
+    if (answer === "not-a-person") {
+      if (!store.add(word)) return false;
+      cleared = 1;
+    } else if (answer === "take-it") {
+      store.remove(word);
+    } else {
+      return false;
+    }
+    var a = window.NotesGate && window.NotesGate.audit;
+    if (a) {
+      a.emit("phi_screen_answer", { pass: "name", cleared: cleared, confirmed: cleared ? 0 : 1 });
+    }
+    return true;
   }
 
   function roleByKey(key) {
@@ -616,8 +719,24 @@
          numbering instead of colliding with it. Absent on a first draft, which
          is the same as an empty map. */
       var seen = (opts && opts.seen) || [];
+      /* A SCRUB WITH NOTHING ALREADY ISSUED IS A NEW NOTE, and a new note is
+         what the screen list counts its expiry in. A revision carries the note's
+         map forward and must not tick the counter a second time, or a technician
+         who revises hard would expire their own answers in an afternoon. The
+         engine says so outright with `newNote`; the derivation is for the
+         callers that do not, and it agrees with the engine on both branches. */
+      var newNote = (opts && typeof opts.newNote === "boolean") ? opts.newNote : !seen.length;
+      var store = screenStore();
+      if (newNote && store) store.advanceNote();
+
+      /* IDENTIFIERS FIRST, AND THAT ORDER IS THE SCREEN LIST'S OTHER GUARANTEE.
+         This pass runs before the name pass and never consults the list, so a
+         screened word sitting inside an address or a labelled record number
+         cannot take the identifier's pass away with it. */
       var idMap = identifierMap(freeText, seen);
-      var names = detect(freeText);
+      var stats = { screened: 0, cued: 0 };
+      var names = detect(freeText, stats);
+      screenAudit(opts, stats);
       if (!names.length) { resolve({ cancelled: false, map: idMap, certified: [] }); return; }
 
       var defaults = defaultTokens(names, freeText, seen);
@@ -681,28 +800,88 @@
 
   var HIGHLIGHT_TRIGGER_RE = /[\s.,!?;:()\[\]{}\-'"]/;
 
-  function _syncHighlight(ta, hl) {
-    var text = ta.value;
-    var names = (window.NotesGate && window.NotesGate._scrub)
-      ? window.NotesGate._scrub.detectNames(text)
-      : [];
-
-    if (!names.length) { hl.innerHTML = "​"; return; } // zero-width space keeps height
-
-    // Escape HTML then wrap each detected name in a <mark>.
-    var esc = text
+  function escHtml(t) {
+    return String(t)
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
+  }
 
-    // Sort longest-first so "Barbara Jean" is highlighted as a unit before "Barbara".
-    var sorted = names.slice().sort(function (a, b) { return b.length - a.length; });
-    sorted.forEach(function (name) {
-      var re = new RegExp("\\b" + name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b", "gi");
-      esc = esc.replace(re, "<mark>$&</mark>");
+  /* WHERE EVERY FLAGGED WORD SITS, computed once and read by both halves.
+   *
+   * The overlay draws from this and the tap handler answers from it, so what
+   * glows and what a tap means cannot disagree. It also goes through detect(),
+   * which is what puts the technician's screen list in front of the overlay as
+   * well as in front of the tokens.
+   *
+   * SPANS RATHER THAN REPLACEMENT INTO THE MARKED-UP STRING. The old pass wrapped
+   * each name by running its regex over HTML that already had marks in it, so a
+   * shorter name inside a longer one matched the text INSIDE a <mark> and nested
+   * a second one in it. Positions cannot do that: a span overlapping one already
+   * taken is dropped, longest name first, which is the same longest-first rule
+   * buildMap uses on the token path and for the same reason.
+   */
+  function detectedSpans(text) {
+    var t = String(text || "");
+    if (!t) return [];
+    var names = detect(t);
+    if (!names.length) return [];
+    var spans = [];
+    names
+      .slice()
+      .sort(function (a, b) { return b.length - a.length; })
+      .forEach(function (name) {
+        var re;
+        try {
+          re = new RegExp("\\b" + name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b", "gi");
+        } catch (e) { return; }
+        var m;
+        while ((m = re.exec(t)) !== null) {
+          if (!m[0].length) { re.lastIndex += 1; continue; }
+          var start = m.index;
+          var end = start + m[0].length;
+          var overlap = spans.some(function (sp) { return start < sp.end && end > sp.start; });
+          if (!overlap) spans.push({ name: name, word: m[0], start: start, end: end });
+        }
+      });
+    spans.sort(function (a, b) { return a.start - b.start; });
+    return spans;
+  }
+
+  /* WHICH MARK DID THEY TAP? The caret answers it, and the caret is the only
+   * thing that can.
+   *
+   * The highlight layer is pointer-events:none and sits UNDER the textarea at
+   * z-index 0, because giving it pointer events would take the click away from
+   * the field and stop typing working. So a tap lands on the textarea, the
+   * browser sets selectionStart from where it landed, and that offset maps back
+   * onto the span the overlay drew. Mouse and touch both set it, so one path
+   * covers a laptop and a phone with no second code path to keep in step.
+   */
+  function markAt(text, index) {
+    var i = Number(index);
+    if (!isFinite(i)) return null;
+    var spans = detectedSpans(text);
+    for (var k = 0; k < spans.length; k++) {
+      if (i >= spans[k].start && i <= spans[k].end) return spans[k];
+    }
+    return null;
+  }
+
+  function _syncHighlight(ta, hl) {
+    var text = ta.value;
+    var spans = detectedSpans(text);
+    if (!spans.length) { hl.innerHTML = "​"; return; } // zero-width space keeps height
+
+    var out = "";
+    var at = 0;
+    spans.forEach(function (sp) {
+      out += escHtml(text.slice(at, sp.start)) + "<mark>" + escHtml(text.slice(sp.start, sp.end)) + "</mark>";
+      at = sp.end;
     });
+    out += escHtml(text.slice(at));
 
-    hl.innerHTML = esc;
+    hl.innerHTML = out;
     hl.scrollTop = ta.scrollTop;
   }
 
@@ -796,6 +975,33 @@
     });
     ta.addEventListener("scroll", function () { hl.scrollTop = ta.scrollTop; });
     ta.addEventListener("blur", update);
+
+    /* THE TAP SEAM, AND IT IS A SEAM RATHER THAN A POPOVER ON PURPOSE.
+     *
+     * A tap on a highlighted word raises `notes-phi-mark` on the textarea,
+     * carrying the word and where it sits. Nothing here draws anything: what the
+     * two answers look like on the page is the maintainer's ruling and not this
+     * file's business, and a page that has not listened yet behaves exactly as it
+     * did before. What this settles is the part that has to be right whatever the
+     * answer looks like - that a tap can be resolved to the mark under it at all,
+     * on a mouse and on a phone, without moving the overlay out from under the
+     * field and breaking typing.
+     *
+     * The listener is passive and the event does not bubble past the textarea, so
+     * a tap that lands on no mark costs one detect() and changes nothing.
+     */
+    function askAboutMark() {
+      var hit = markAt(ta.value, ta.selectionStart);
+      if (!hit) return;
+      try {
+        ta.dispatchEvent(new CustomEvent("notes-phi-mark", {
+          bubbles: true,
+          detail: { word: hit.word, name: hit.name, start: hit.start, end: hit.end, field: ta },
+        }));
+      } catch (e) {}
+    }
+    ta.addEventListener("click", askAboutMark);
+    ta.addEventListener("touchend", askAboutMark, { passive: true });
     // Sync once on attach in case the field already has content.
     update();
   }
@@ -833,8 +1039,15 @@
     rehydrate: rehydrate,
     persistMap: persistMap,
     installPHIHighlight: installPHIHighlight,
+    /* The type-time screen list. screenAnswer records one of the two answers a
+       tapped mark can carry; markAt says which mark a caret offset is in, which
+       is how a tap on the textarea becomes an answer about a word. */
+    screenAnswer: screenAnswer,
+    markAt: markAt,
     // exposed for testing / the stress-test page
     _detect: detect,
+    _detectedSpans: detectedSpans,
+    _screenFilter: screenFilter,
     _buildMap: buildMap,
     _guessRole: guessRole,
     _defaultTokens: defaultTokens,
