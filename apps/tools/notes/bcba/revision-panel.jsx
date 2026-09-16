@@ -235,6 +235,31 @@ function SuggestionRow({ id, text, accepted, alternatives, onToggle, onEdit }) {
   );
 }
 
+/* ── The same row, in the shape he ruled for ───────────────────────────────
+   SuggestionRow above stays exactly as it is, because it is what the
+   technicians are using today and nothing is being taken off them mid-shift.
+   This is the ?aid=1 replacement, and the only thing it adds to DispositionRow
+   is the open and editing state that the old row kept inside itself. */
+function AidSuggestion({ id, text, state, alternatives, onApprove, onRevert, onEdit }) {
+  const [open, setOpen] = React.useState(false);
+  const [editing, setEditing] = React.useState(false);
+  return (
+    <window.DispositionRow
+      id={id}
+      text={text}
+      state={state}
+      alternatives={alternatives}
+      open={open}
+      onOpenChange={setOpen}
+      editing={editing}
+      onEditingChange={setEditing}
+      onApprove={onApprove}
+      onRevert={onRevert}
+      onEdit={onEdit}
+    />
+  );
+}
+
 /* ── Skipping the gap questions costs a moment ─────────────────────────────
    His idea, 2026-08-05, after the audit trail showed something worth acting on:
    two technicians, 22 sessions, ten gap-question rounds, and ZERO revisions ever
@@ -301,7 +326,7 @@ function SkipAfterCooldown({ seconds, onSkip, loading, carrying }) {
 
 function RevisionPanel({
   open, onToggle, thread, annotation, onClearAnnotation,
-  draft, onDraft, onSend, onAskAdvice, canAsk, onExportPairs, pairCount, loading, questions, onSkipQuestions, skipCooldown, skipHeld, unread, quality,
+  draft, onDraft, onSend, onAskAdvice, canAsk, onExportPairs, pairCount, loading, questions, onSkipQuestions, skipCooldown, skipHeld, unread, quality, suggestionDisposition, onApproveSuggestion,
   suggestState, suggestionAccepted, onToggleSuggestion, onEditSuggestion, acceptedSuggestions,
   loggedIn,
   intro,
@@ -350,6 +375,9 @@ function RevisionPanel({
     return () => document.removeEventListener("pointerdown", onDown);
   }, [open, onToggle]);
 
+  /* One read of the flag for the whole panel. Off, every line below is the
+     panel the technicians are using today. */
+  const aidOn = !!(window.authorAidEnabled && window.authorAidEnabled() && window.DispositionRow);
   const awaitingQuestions = !!(questions && questions.length);
   // Whether the held line can point at a suggestion, which is the cheapest way
   // out of the gate when there is one to keep.
@@ -542,7 +570,28 @@ function RevisionPanel({
             {questions.map((q, i) => (
               <React.Fragment key={i}>
                 <Bubble role="assistant">{q.question}</Bubble>
-                {(q.suggestions || []).length > 0 && (
+                {(q.suggestions || []).length > 0 && aidOn && (
+                  <div className="tg-suggestions dz-group">
+                    <window.DispositionHeading count={q.suggestions.length} />
+                    {q.suggestions.map((raw, j) => {
+                      const key = i + ":" + j;
+                      const st = (suggestState || {})[key] || {};
+                      return (
+                        <AidSuggestion
+                          key={key}
+                          id={key}
+                          text={typeof st.text === "string" ? st.text : raw}
+                          state={suggestionDisposition ? suggestionDisposition(i, j) : "default"}
+                          alternatives={q.suggestions.length > 1}
+                          onApprove={() => onApproveSuggestion && onApproveSuggestion(key)}
+                          onRevert={() => onToggleSuggestion(key)}
+                          onEdit={(text) => onEditSuggestion(key, text)}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+                {(q.suggestions || []).length > 0 && !aidOn && (
                   <div className="tg-suggestions">
                     {q.suggestions.map((raw, j) => {
                       const key = i + ":" + j;

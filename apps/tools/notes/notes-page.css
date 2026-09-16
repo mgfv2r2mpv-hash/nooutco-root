@@ -879,3 +879,97 @@ body.is-pointing, body.is-pointing * { cursor: crosshair !important; }
   .section-map-legend { gap: 10px; font-size: 11px; }
   .section-tile { min-width: 88px; }
 }
+
+/* ── What the tool added, and the four ways to answer it ─────────────────────
+   The resting row is the sentence and nothing else, because the change is
+   already in and a row that announces agreement is a row in the way. Every
+   control carries a word; there is no tick, cross, arrow or pencil here. */
+
+.dz-head {
+  font-size: 12px;
+  font-weight: 700;
+  color: #374528;
+  margin: 2px 0 6px;
+  line-height: 1.5;
+}
+.dz-head-sub { font-weight: 400; color: #5a6b4a; }
+
+.dz-row { margin: 0 0 4px; }
+
+/* The sentence IS the control, so the tap target is the whole line rather than
+   a 24px glyph. That is the difference between usable and not usable with a
+   thumb on a phone. */
+.dz-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: #2d3a1f;
+  background: #fbfdf9;
+  border: 1px solid #ddecd0;
+  border-left: 3px solid #c0d4a8;
+  border-radius: 7px;
+  padding: 9px 11px;
+  cursor: pointer;
+}
+.dz-line:hover { background: #f4f9ee; }
+.dz-line:focus-visible { outline: 2px solid #5a7040; outline-offset: 2px; }
+.dz-text { flex: 1 1 auto; min-width: 0; }
+
+/* One quiet word, and only when the row is NOT in its resting state. */
+.dz-mark {
+  flex: 0 0 auto;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #5a6b4a;
+}
+
+.dz-state-approved .dz-line { border-left-color: #5a7040; }
+.dz-state-approved .dz-mark { color: #374528; }
+.dz-state-edited .dz-line { border-left-color: #4a3a5c; }
+.dz-state-edited .dz-mark { color: #4a3a5c; }
+/* A removed sentence stays readable. Striking it out would make a technician
+   squint at the thing they are deciding about. */
+.dz-state-reverted .dz-line { background: #f4f4f1; border-left-color: #c7d3b5; color: #6b7360; }
+
+.dz-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 0 2px 11px;
+}
+.dz-act {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: #374528;
+  background: white;
+  border: 1px solid #c0d4a8;
+  border-radius: 6px;
+  padding: 7px 13px;
+  cursor: pointer;
+  min-height: 34px;
+}
+.dz-act:hover { background: #eef4e6; }
+.dz-act:focus-visible { outline: 2px solid #5a7040; outline-offset: 2px; }
+.dz-act-keep { border-color: #374528; background: #374528; color: white; }
+.dz-act-keep:hover { background: #2d3a1f; }
+
+.dz-edit {
+  width: 100%;
+  font: inherit;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: #2d3a1f;
+  background: white;
+  border: 1.5px solid #c0d4a8;
+  border-radius: 7px;
+  padding: 9px 11px;
+  resize: vertical;
+}

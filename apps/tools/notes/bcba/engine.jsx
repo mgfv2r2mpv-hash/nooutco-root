@@ -2988,6 +2988,34 @@ function App() {
     patchS({ suggestState: next });
   };
 
+  /* APPROVE IS A FOURTH ANSWER, and it is the one the old contract had no room
+     for. Reverting, rewording and doing nothing were all it could tell apart,
+     and doing nothing is the weakest evidence there is: a technician who never
+     read the sentence and one who read it and agreed both leave the same trace.
+
+     Approving changes nothing in the note. The sentence was already in. What it
+     changes is what the profile is allowed to conclude, which is the whole
+     reason it is worth a tap. */
+  const approveSuggestion = (key) => {
+    const prev = (S.suggestState || {})[key] || {};
+    patchS({ suggestState: { ...(S.suggestState || {}), [key]: { ...prev, approved: true, reverted: false } } });
+    audit("suggestion_approved", { round: S.triageRound || 1 });
+  };
+
+  /* One word for where a suggestion stands, derived rather than stored, so the
+     row and the answer that gets sent can never disagree.
+
+     Order matters. A technician who reworded a sentence and then removed it has
+     done the strongest thing available and then withdrawn it, and the row has to
+     say removed, because that is what the note now does. */
+  const suggestionDisposition = (qi, si) => {
+    const st = (S.suggestState || {})[suggestKey(qi, si)] || {};
+    if (!suggestionAccepted(qi, si)) return "reverted";
+    if (typeof st.text === "string") return "edited";
+    if (st.approved) return "approved";
+    return "default";
+  };
+
   // Editing does not accept: a technician can reword one they have undone and
   // leave it undone. The two flags are independent because the two decisions
   // are - what it should say, and whether it should be there at all.
@@ -4344,6 +4372,8 @@ function App() {
         suggestionAccepted={suggestionAccepted}
         onToggleSuggestion={toggleSuggestion}
         onEditSuggestion={editSuggestion}
+        suggestionDisposition={suggestionDisposition}
+        onApproveSuggestion={approveSuggestion}
         acceptedSuggestions={acceptedSuggestions().length}
         onSkipQuestions={skipQuestions}
         skipCooldown={modelAsked() ? skipSecondsFor(S.readiness) : 0}
