@@ -65,7 +65,7 @@ function stateFor(mark, currentText) {
   return mark.h === hashText(currentText) ? "copied" : "changed";
 }
 
-var STATE_WORD = { pending: "not copied", copied: "copied", changed: "changed" };
+var MAP_WORD = { pending: "not copied", copied: "copied", changed: "changed" };
 
 /* The summary line. It exists because a technician should not have to read six
    tiles to learn there is nothing to do. Counts only, in words, and the changed
@@ -123,12 +123,12 @@ function SectionMap(props) {
                 if (props.onJump) props.onJump(r.id);
               }}
               aria-label={
-                r.heading + ", " + STATE_WORD[r.state] +
+                r.heading + ", " + MAP_WORD[r.state] +
                 (wants ? ". Open it and copy it again." : ". Go to this section.")
               }
             >
               <span className="section-tile-name">{r.heading}</span>
-              <span className="section-tile-state">{STATE_WORD[r.state]}</span>
+              <span className="section-tile-state">{MAP_WORD[r.state]}</span>
             </button>
           );
         })}
