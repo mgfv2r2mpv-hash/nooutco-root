@@ -1473,6 +1473,15 @@ function App() {
      the only moment available: nothing in the tool marks a note as done. */
   const taughtRef = React.useRef(false);
 
+  /* What each corrected section was offered as, what was undone and how the
+     marks read, kept after "Edit by hand" puts a section's marks away. See
+     specimens.js: it is what lets the note teach a rejection, a rewording and
+     hand typing as three acts instead of one. */
+  const specimenBook = React.useRef(null);
+  React.useEffect(() => {
+    if (window.NoteSpecimens) specimenBook.current = NoteSpecimens.observe(specimenBook.current, S.corrections, S.markState);
+  }, [S.corrections, S.markState]);
+
   /* Copying is the moment the note leaves for the EHR - the right place to
      record how long it was looked at and how much of it was rewritten. Both
      copy paths call this, and it runs at most once, on whichever press comes
@@ -1505,12 +1514,9 @@ function App() {
     // copy time because that is when they are finished with it.
     const modelOut = lastModelOutput();
     if (!modelOut) return;
-    const ids = narrativeIds();
-    emitStyle(
-      ids.map((id) => String(modelOut[id] || "")).join("\n\n"),
-      ids.map((id) => String(S.output[id] || "")).join("\n\n"),
-      "manual",
-    );
+    if (!window.NoteSpecimens) return;
+    NoteSpecimens.pairs({ ids: narrativeIds(), draft: modelOut, book: specimenBook.current, shipped: S.output })
+      .forEach((p) => emitStyle(p.before, p.after, p.source, p.own));
   };
 
   const handleCopy = (id, text) => {
@@ -1922,7 +1928,7 @@ function App() {
      Both callers pass whole passages rather than individual sections: these are
      means and rates, and a two-sentence section produces a mean too unstable to
      learn anything from. */
-  const emitStyle = (before, after, source) => {
+  const emitStyle = (before, after, source, own = true) => {
     if (!before || !after || before === after) return;
 
     // Two consumers of the same difference, and they take different things.
@@ -1938,7 +1944,9 @@ function App() {
       const features = window.NoteStyleFeatures.compare(before, after, source);
       if (features.length) window.NotesGate.audit.corrections(features);
     }
-    if (window.VoiceCapture) {
+    // `own` is false for a rejection, whose after side is the model's draft put
+    // back rather than anything he wrote.
+    if (window.VoiceCapture && own) {
       const why = window.VoiceCapture.capture(before, after, {
         tool: tool.id,
         register: tool.voiceRegister || null,
@@ -2380,6 +2388,7 @@ function App() {
     setLoading(true);
     patchS({ output: null, proposal: null, conversation: [], questions: null, readiness: null, pendingValues: null, expert: null, corrections: null, markState: {} });
     taughtRef.current = false; // a new note may teach again; a revision may not
+    specimenBook.current = null;
     try {
       let userMsg = tool.buildUserPrompt(scrubbedValues);
       if (extra && extra.trim()) {
