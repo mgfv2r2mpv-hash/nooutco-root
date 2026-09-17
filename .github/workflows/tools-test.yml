@@ -17,6 +17,14 @@ name: Tools E2E Tests
 # code; check the failure before believing it.
 
 on:
+  # Run one browser on demand. The dev server has died mid-run on every red run
+  # since 2026-09-16, taking every later spec with it as ERR_CONNECTION_REFUSED,
+  # and it reproduces on no Mac, so the evidence has to be collected here.
+  workflow_dispatch:
+    inputs:
+      projects:
+        description: 'JSON array of {project, browser} to run'
+        default: '[{"project":"chromium","browser":"chromium"}]'
   push:
     branches: [main, dev]
     paths:
@@ -65,15 +73,8 @@ jobs:
         # the others take. Leaving it out of this list would have shipped a spec
         # file that never ran anywhere, which is the failure this whole workflow
         # exists to stop.
-        include:
-          - project: chromium
-            browser: chromium
-          - project: firefox
-            browser: firefox
-          - project: webkit
-            browser: webkit
-          - project: touch
-            browser: webkit
+        # A manual run may name its own list; a push always runs all four.
+        include: ${{ fromJSON(github.event.inputs.projects || '[{"project":"chromium","browser":"chromium"},{"project":"firefox","browser":"firefox"},{"project":"webkit","browser":"webkit"},{"project":"touch","browser":"webkit"}]') }}
     steps:
       - uses: actions/checkout@v4
 
@@ -91,11 +92,50 @@ jobs:
       - name: Install Playwright browser
         run: npx playwright install --with-deps ${{ matrix.browser }}
 
+      # The dev server dies mid-run and prints nothing on its way out, so this
+      # samples what was true while it did: memory, its own processes, and
+      # whether anything is still listening on 8789. Costs a few kB and one
+      # background shell; delete it once the cause is known.
+      - name: Start resource sampler
+        run: |
+          cat > "$RUNNER_TEMP/sample.sh" <<'SH'
+          while true; do
+            printf '%s mem_avail_mb=%s ' "$(date -u +%H:%M:%S)" "$(awk '/MemAvailable/{print int($2/1024)}' /proc/meminfo)"
+            printf 'listening=%s ' "$(ss -ltn 2>/dev/null | grep -c ':8789')"
+            ps -eo rss=,comm= | awk '/workerd|wrangler|node/ {rss[$2]+=$1} END {for (c in rss) printf "%s=%dMB ", c, rss[c]/1024}'
+            printf '\n'
+            sleep 5
+          done
+          SH
+          chmod +x "$RUNNER_TEMP/sample.sh"
+          nohup bash "$RUNNER_TEMP/sample.sh" > "$RUNNER_TEMP/resources.log" 2>&1 &
+          echo "sampler pid $!"
+
       - name: Run E2E tests
         # No port override is needed here: playwright.config.js already sets
         # `reuseExistingServer: !process.env.CI`, so a CI run always starts its
         # own wrangler rather than adopting whatever else answers on 8789.
         run: npx playwright test --project=${{ matrix.project }}
+
+      # Kernel messages name an OOM kill; the sampler shows the run-up to it.
+      - name: Collect server death evidence
+        if: always()
+        run: |
+          sudo dmesg -T 2>/dev/null | tail -120 > "$RUNNER_TEMP/dmesg.log" || echo "dmesg unavailable" > "$RUNNER_TEMP/dmesg.log"
+          echo "--- last 40 sampler lines ---"
+          tail -40 "$RUNNER_TEMP/resources.log" || true
+          echo "--- oom/kill lines in dmesg ---"
+          grep -iE 'killed process|out of memory|oom' "$RUNNER_TEMP/dmesg.log" || echo "none"
+
+      - name: Upload server death evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-evidence-tools-${{ matrix.project }}
+          path: |
+            ${{ runner.temp }}/resources.log
+            ${{ runner.temp }}/dmesg.log
+          retention-days: 14
 
       - name: Upload test results
         if: always()
