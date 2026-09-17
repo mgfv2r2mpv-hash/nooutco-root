@@ -1,0 +1,241 @@
+name: Incident
+run-name: "Incident: ${{ github.event.workflow_run.conclusion || 'test' }} ${{ github.event.workflow_run.head_sha || github.sha }} ${{ github.event.workflow_run.name || 'TEST' }}"
+
+# When a watched workflow fails on main or dev, this opens one Claude incident session per commit
+# (the "incident: nooutco-root" routine) and emails Kaleb. mail-watch reads the [Needs you], [Ledger]
+# and [Fixed] emails for its 5:30 digest. Add a new workflow to the list below or it goes unwatched.
+on:
+  workflow_run:
+    workflows:
+      - "Deploy Pages apps"
+      - "Deploy Cloudflare Worker"
+      - "Games E2E Tests"
+      - "Profile API Tests"
+      - "Rebuild stimulus manifests"
+      - "scrub-learning-nightly"
+      - "term-digest-weekly"
+      - "Tools E2E Tests"
+    types: [completed]
+    branches: [main, dev]
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+# One commit at a time, so two workflows failing on the same commit cannot both open a session.
+concurrency:
+  group: incident-${{ github.event.workflow_run.head_sha || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  incident:
+    # This repo can be public: a fork's pull request can finish a watched workflow on a branch it
+    # names main, and this job holds secrets. Only runs from this repo's own pushes, schedules and
+    # manual dispatches get through.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.head_repository.full_name == github.repository &&
+      contains(fromJSON('["push","schedule","workflow_dispatch"]'), github.event.workflow_run.event))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/github-script@v7
+        env:
+          CLAUDE_INCIDENT_TOKEN: ${{ secrets.CLAUDE_INCIDENT_TOKEN }}
+          RESEND_ALERTS_KEY: ${{ secrets.RESEND_ALERTS_KEY }}
+          ROUTINE_ID: trig_01FPBPd1mt1mrDNuu36XyAEJ
+        with:
+          script: |
+            // Runs inside actions/github-script. A watched workflow finishing on main or dev lands here.
+            // A failure opens one Claude incident session per commit and emails Kaleb; a later failure of
+            // another workflow on the same commit only emails a [Ledger] note; a pass after a failure emails
+            // [Fixed]. mail-watch's 5:30 digest reads those three subjects, so their shape is a contract.
+            // No multi-line template literals: this body is embedded in a YAML block scalar.
+            async function incident({ github, context, core, env, fetchImpl }) {
+              const { owner, repo } = context.repo;
+              const ALERT_TO = 'kaleb.fowles@gmail.com';
+              const ALERT_FROM = 'Mail watch <alerts@nooutco.me>';
+              const FAILED = new Set(['failure', 'timed_out', 'startup_failure']);
+              const FIRE_TEXT_MAX = 60000;
+              const LOG_TAIL_LINES = 150;
+              const LOG_TAIL_CHARS = 15000;
+              const MAX_FAILED_JOBS = 3;
+              const TITLE = /^Incident: (\S+) ([0-9a-f]{40}) (.+)$/;
+
+              async function sendEmail(subject, lines) {
+                if (!env.RESEND_ALERTS_KEY) throw new Error('the RESEND_ALERTS_KEY secret is missing');
+                const res = await fetchImpl('https://api.resend.com/emails', {
+                  method: 'POST',
+                  headers: { Authorization: 'Bearer ' + env.RESEND_ALERTS_KEY, 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ from: ALERT_FROM, to: [ALERT_TO], subject, text: lines.join('\n') }),
+                });
+                if (!res.ok) throw new Error('Resend answered ' + res.status + ': ' + (await res.text()).slice(0, 300));
+                core.info('Emailed: ' + subject);
+              }
+
+              async function fire(text) {
+                if (!env.CLAUDE_INCIDENT_TOKEN) throw new Error('the CLAUDE_INCIDENT_TOKEN secret is missing');
+                if (!env.ROUTINE_ID) throw new Error('ROUTINE_ID is not set');
+                const res = await fetchImpl('https://api.anthropic.com/v1/claude_code/routines/' + env.ROUTINE_ID + '/fire', {
+                  method: 'POST',
+                  headers: {
+                    Authorization: 'Bearer ' + env.CLAUDE_INCIDENT_TOKEN,
+                    'anthropic-beta': 'experimental-cc-routine-2026-04-01',
+                    'anthropic-version': '2023-06-01',
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({ text: text.slice(0, FIRE_TEXT_MAX) }),
+                });
+                const body = await res.text();
+                if (!res.ok) throw new Error('the routine fire answered ' + res.status + ': ' + body.slice(0, 300));
+                const url = JSON.parse(body).claude_code_session_url;
+                if (!url) throw new Error('the routine fire returned no session link');
+                return url;
+              }
+
+              // Earlier successful Incident runs name the commit, conclusion and workflow in their title.
+              async function recordedWorkflowsFor(sha) {
+                const { data } = await github.rest.actions.listWorkflowRuns({
+                  owner, repo, workflow_id: 'incident.yml', status: 'success', per_page: 100,
+                });
+                return data.workflow_runs
+                  .filter((r) => r.id !== context.runId)
+                  .map((r) => TITLE.exec(r.display_title || ''))
+                  .filter((m) => m && FAILED.has(m[1]) && m[2] === sha)
+                  .map((m) => m[3]);
+              }
+
+              async function previousConclusion(run) {
+                if (run.run_attempt > 1) {
+                  const { data } = await github.rest.actions.getWorkflowRunAttempt({
+                    owner, repo, run_id: run.id, attempt_number: run.run_attempt - 1,
+                  });
+                  return data.conclusion;
+                }
+                const { data } = await github.rest.actions.listWorkflowRuns({
+                  owner, repo, workflow_id: run.workflow_id, branch: run.head_branch, status: 'completed', per_page: 20,
+                });
+                const before = data.workflow_runs.find((r) => r.id !== run.id
+                  && new Date(r.created_at) < new Date(run.created_at)
+                  && !['cancelled', 'skipped'].includes(r.conclusion));
+                return before ? before.conclusion : null;
+              }
+
+              async function failedJobs(run) {
+                const { data } = await github.rest.actions.listJobsForWorkflowRun({
+                  owner, repo, run_id: run.id, filter: 'latest', per_page: 100,
+                });
+                const failed = data.jobs.filter((j) => FAILED.has(j.conclusion));
+                const details = [];
+                for (const job of failed.slice(0, MAX_FAILED_JOBS)) {
+                  const steps = (job.steps || []).filter((s) => FAILED.has(s.conclusion)).map((s) => s.name);
+                  let tail;
+                  try {
+                    const log = await github.rest.actions.downloadJobLogsForWorkflowRun({ owner, repo, job_id: job.id });
+                    tail = String(log.data).split('\n').slice(-LOG_TAIL_LINES).join('\n').slice(-LOG_TAIL_CHARS);
+                  } catch (err) {
+                    tail = '(log unavailable: ' + err.message + ')';
+                  }
+                  details.push({ name: job.name, steps, tail });
+                }
+                return { names: failed.map((j) => j.name), details };
+              }
+
+              if (context.eventName === 'workflow_dispatch') {
+                const sha = context.sha;
+                const short = sha.slice(0, 7);
+                const branch = (context.ref || '').replace('refs/heads/', '') || 'main';
+                let url = null;
+                let fireError = null;
+                try {
+                  url = await fire('TEST: incident path test for ' + owner + '/' + repo + ' at commit ' + sha + ', started by ' + context.actor + '.');
+                } catch (err) {
+                  fireError = err;
+                }
+                await sendEmail('[Needs you] ' + repo + ' ' + branch + ': TEST failed (' + short + ')', [
+                  'This is a test of the incident path, started by ' + context.actor + '.',
+                  url ? 'Claude session: ' + url : 'Claude session did not start: ' + fireError.message,
+                  '',
+                  'Paste in the session to name it: /rename ' + repo + ' ' + short + ': incident path test',
+                ]);
+                await sendEmail('[Fixed] ' + repo + ' ' + branch + ': TEST passing again (' + short + ')', [
+                  'Closes the TEST incident above, so the morning email does not count it as open.',
+                ]);
+                if (fireError) core.setFailed('The incident session did not start: ' + fireError.message);
+                return;
+              }
+
+              const run = context.payload.workflow_run;
+              const sha = run.head_sha;
+              const short = sha.slice(0, 7);
+              const where = repo + ' ' + run.head_branch + ': ' + run.name;
+
+              if (run.conclusion === 'success') {
+                const before = await previousConclusion(run);
+                if (FAILED.has(before)) {
+                  await sendEmail('[Fixed] ' + where + ' passing again (' + short + ')', [
+                    where + ' passed on ' + short + ' after failing.',
+                    'Run: ' + run.html_url,
+                  ]);
+                } else {
+                  core.info('Passed, and the run before it did not fail, so there is nothing to record.');
+                }
+                return;
+              }
+
+              if (!FAILED.has(run.conclusion)) {
+                core.info('Conclusion ' + run.conclusion + ' is neither a failure nor a pass.');
+                return;
+              }
+
+              const recorded = await recordedWorkflowsFor(sha);
+              if (recorded.includes(run.name)) {
+                core.info(run.name + ' already failed on ' + short + ' and was recorded.');
+                return;
+              }
+              if (recorded.length > 0) {
+                await sendEmail('[Ledger] ' + where + ' also failed (' + short + ')', [
+                  where + ' also failed on ' + short + ', which already has an incident (' + recorded.join(', ') + ').',
+                  'Run: ' + run.html_url,
+                ]);
+                return;
+              }
+
+              const jobs = await failedJobs(run);
+              const commitLine = ((run.head_commit && run.head_commit.message) || '').split('\n')[0];
+              const fireLines = [
+                'Repository: ' + owner + '/' + repo,
+                'Branch: ' + run.head_branch,
+                'Workflow: ' + run.name,
+                'Event: ' + run.event,
+                'Commit: ' + sha,
+                'Commit message: ' + commitLine,
+                'Run: ' + run.html_url,
+                'Failed jobs: ' + (jobs.names.join(', ') || '(none reported)'),
+              ];
+              for (const job of jobs.details) {
+                fireLines.push('', 'Failed steps in ' + job.name + ': ' + (job.steps.join(', ') || '(none reported)'));
+                fireLines.push('Log tail for ' + job.name + ':', job.tail);
+              }
+
+              let url = null;
+              let fireError = null;
+              try {
+                url = await fire(fireLines.join('\n'));
+              } catch (err) {
+                fireError = err;
+              }
+              await sendEmail('[Needs you] ' + where + ' failed (' + short + ')', [
+                where + ' failed on ' + short + ' (' + run.event + ').',
+                url ? 'Claude session: ' + url : 'Claude session did not start: ' + fireError.message,
+                'Run: ' + run.html_url,
+                'Failed jobs: ' + (jobs.names.join(', ') || '(none reported)'),
+                'Commit: ' + commitLine,
+                '',
+                'Paste in the session to name it: /rename ' + repo + ' ' + short + ': ' + run.name + ' failed',
+              ]);
+              if (fireError) core.setFailed('The incident session did not start: ' + fireError.message);
+            }
+
+            await incident({ github, context, core, env: process.env, fetchImpl: fetch });
