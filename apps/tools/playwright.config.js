@@ -57,7 +57,17 @@ export default defineConfig({
     // unlocks nothing beyond this local dev server, which has no API key and no
     // KV data. Tests that assert unauthenticated behaviour still get 401,
     // because a missing or forged token fails the HMAC check regardless.
-    command: `npx wrangler pages dev . --port ${PORT} --binding ADMIN_SECRET=playwright-local-test-secret`,
+    // `--log-level warn` drops wrangler's one-line-per-request info logging. A
+    // full chromium run serves ~50,000 requests and MEASURED on the runner
+    // 2026-09-17, that logging is what filled the heap.
+    command: `npx wrangler pages dev . --port ${PORT} --log-level warn --binding ADMIN_SECRET=playwright-local-test-secret`,
+    // The server is a node process and node sizes its default heap from the
+    // machine. A CI runner's default is small enough that `wrangler pages dev`
+    // died 21 minutes into every run from 2026-09-16: "V8 fatal error ... Reached
+    // heap limit" at 1376 MB, after which the socket on this port was simply
+    // gone and every later spec failed ERR_CONNECTION_REFUSED. A developer Mac
+    // gets a bigger default and never saw it, which is why it never reproduced.
+    env: { NODE_OPTIONS: '--max-old-space-size=4096' },
     url: `http://localhost:${PORT}`,
     // Never adopt a stranger's server on an explicitly chosen port. That is the
     // whole reason the option exists.
