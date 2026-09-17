@@ -52,7 +52,11 @@ for (const pageRel of PAGES) {
 
     const owners = new Map();
     for (const src of srcs) {
-      const file = path.resolve(path.dirname(path.join(APP, pageRel)), src);
+      // Site-absolute ("/notes/bcba/engine.jsx") resolves from the app root, the
+      // way the server serves it; relative resolves from the page's folder.
+      const file = src.startsWith('/')
+        ? path.join(APP, src)
+        : path.resolve(path.dirname(path.join(APP, pageRel)), src);
       expect(fs.existsSync(file), `${src} is listed by ${pageRel} but not on disk`).toBe(true);
       const base = path.basename(file);
       for (const line of fs.readFileSync(file, 'utf8').split('\n')) {

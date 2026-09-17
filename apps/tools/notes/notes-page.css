@@ -797,7 +797,8 @@ body.is-pointing, body.is-pointing * { cursor: crosshair !important; }
 
 .section-map {
   position: sticky;
-  top: 0;
+  /* Below the sticky nav bar, which would otherwise cover it once scrolled. */
+  top: var(--noaba-bar-height, 0px);
   z-index: 40;
   background: #eef1ea;
   border-bottom: 1px solid #c7d3b5;

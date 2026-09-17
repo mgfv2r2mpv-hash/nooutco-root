@@ -7,21 +7,33 @@ import { handleSuggest } from "./shared/suggest.js";
 const NOTES_TOOLS = ["bt", "sup", "parent", "assess", "sap", "graphva"];
 
 // Old URL → new URL prefix mapping (specific paths before their parent prefix).
-// The four BCBA note tools live on one unified page at /notes/bcba/?tool=<id>.
 const LEGACY_PREFIXES = [
   ['/NoteDrafter/BTNotes',       '/notes/bt/'],
-  ['/NoteDrafter/SupNotes',      '/notes/bcba/?tool=sup'],
-  ['/NoteDrafter/PTNotes',       '/notes/bcba/?tool=parent'],
-  ['/NoteDrafter/AssessNotes',   '/notes/bcba/?tool=assess'],
-  ['/NoteDrafter/SAPGoalsDrafter', '/notes/bcba/?tool=sap'],
-  ['/NoteDrafter',               '/notes/'],
+  ['/NoteDrafter/SupNotes',      '/notes/sup/'],
+  ['/NoteDrafter/PTNotes',       '/notes/parent/'],
+  ['/NoteDrafter/AssessNotes',   '/notes/assess/'],
+  ['/NoteDrafter/SAPGoalsDrafter', '/notes/sap/'],
+  ['/NoteDrafter',               '/'],
   ['/SessionFlow',               '/session-flow/'],
   ['/CPRAnalyzer',               '/cpr/'],
-  ['/notes/sup',                 '/notes/bcba/?tool=sup'],
-  ['/notes/sap',                 '/notes/bcba/?tool=sap'],
-  ['/notes/assess',              '/notes/bcba/?tool=assess'],
-  ['/notes/parent',              '/notes/bcba/?tool=parent'],
 ];
+
+// Addresses that name a page rather than a prefix. /cpr/index.html is the Vite
+// source entry, whose /src/ script is never deployed, so it rendered blank.
+const EXACT_REDIRECTS = {
+  '/cpr': '/cpr/dist/',
+  '/cpr/': '/cpr/dist/',
+  '/cpr/index.html': '/cpr/dist/',
+};
+
+// Each BCBA note tool has its own address, and all four share the page in
+// notes/bcba/, which reads the tool from the address (notes/bcba/tool-nav.js).
+// The Worker SERVES that page here instead of redirecting: until 2026-09 these
+// addresses answered 301 → /notes/bcba/?tool=<id>, browsers keep a 301
+// indefinitely, and redirecting ?tool= back to here would loop for anyone
+// holding the old one. Old ?tool= links load normally and the page rewrites
+// its own address.
+const NOTE_TOOL_PATH = /^\/notes\/(sup|assess|parent|sap)\/?$/;
 
 export default {
   // ctx only so the knowledge fetch log can be written after the response goes
@@ -185,6 +197,11 @@ export default {
       return handleTermDigest(request, env);
     }
 
+    const exact = EXACT_REDIRECTS[url.pathname];
+    if (exact) {
+      return Response.redirect(new URL(exact + url.search, request.url).href, 301);
+    }
+
     for (const [old, next] of LEGACY_PREFIXES) {
       if (url.pathname === old || url.pathname.startsWith(old + '/')) {
         // Targets with a query string are exact destinations - don't append the rest.
@@ -193,7 +210,10 @@ export default {
       }
     }
 
-    const response = await env.ASSETS.fetch(request);
+    const assetRequest = NOTE_TOOL_PATH.test(url.pathname)
+      ? new Request(new URL("/notes/bcba/", request.url), request)
+      : request;
+    const response = await env.ASSETS.fetch(assetRequest);
 
     const contentType = response.headers.get("content-type") || "";
     if (!contentType.includes("text/html")) {

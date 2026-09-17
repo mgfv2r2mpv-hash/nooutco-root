@@ -127,13 +127,9 @@ export default function App() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100">
       {/* ── Nav bar ── */}
       <header className="no-print bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-3 text-sm">
-        {/* Row 1: back / title / help / breadcrumb / desktop actions */}
+        {/* Row 1: title / help / breadcrumb / desktop actions. The way back to
+            the tools home is the shared <noaba-bar> above (index.html). */}
         <div className="flex items-center gap-2">
-          <a href="https://tools.nooutco.me"
-            className="text-xs px-3 py-1.5 rounded-md border border-gray-300 dark:border-gray-600
-              text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 shrink-0">
-            ← Back
-          </a>
           <button onClick={goHome}
             className="font-bold text-indigo-600 dark:text-indigo-400 min-w-0 truncate">
             Conditional Probability Record &amp; Analysis Tool

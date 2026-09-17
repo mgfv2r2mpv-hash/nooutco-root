@@ -5,8 +5,13 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CPR Analyzer</title>
+    <!-- Unified shared chrome - tokens before nav-bar.css so its variables resolve. -->
+    <link rel="stylesheet" href="/tokens.css">
+    <link rel="stylesheet" href="/assets/nav-bar.css">
+    <script src="/assets/nav-bar.js" defer></script>
   </head>
   <body>
+    <noaba-bar product="tools" crumbs="Conditional Probability Record &amp; Analysis" crumb-hrefs="/" no-admin></noaba-bar>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     <script src="/assets/error-button.js" defer></script>

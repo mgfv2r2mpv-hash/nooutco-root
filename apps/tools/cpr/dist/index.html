@@ -2,14 +2,24 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/CPRAnalyzer/dist/favicon.svg" />
+    <link rel="icon" type="image/svg+xml" href="/cpr/dist/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CPR Analyzer</title>
-    <script type="module" crossorigin src="/CPRAnalyzer/dist/assets/index-CjQCPwbI.js"></script>
-    <link rel="stylesheet" crossorigin href="/CPRAnalyzer/dist/assets/index-BtZH5mzZ.css">
+    <script type="module" crossorigin src="/cpr/dist/assets/index-CjQCPwbI.js"></script>
+    <link rel="stylesheet" crossorigin href="/cpr/dist/assets/index-BtZH5mzZ.css">
+    <!-- Unified shared chrome - tokens before nav-bar.css so its variables resolve. -->
+    <link rel="stylesheet" href="/tokens.css">
+    <link rel="stylesheet" href="/assets/nav-bar.css">
+    <script src="/assets/nav-bar.js" defer></script>
+    <!-- Hand-edited, not rebuilt: this bundle predates src/App.tsx dropping its
+         own "Back" link, which always opened the live site even from d-tools.
+         The shared bar replaces it. The next `npm run build:cpr` regenerates
+         this file from ../index.html and this rule goes with it. -->
+    <style>#root header a[href="https://tools.nooutco.me"] { display: none; }</style>
     <script src="/assets/error-button.js" defer></script>
   </head>
   <body>
+    <noaba-bar product="tools" crumbs="Conditional Probability Record &amp; Analysis" crumb-hrefs="/" no-admin></noaba-bar>
     <div id="root"></div>
   </body>
 </html>

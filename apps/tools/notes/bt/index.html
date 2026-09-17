@@ -29,11 +29,11 @@
   <link rel="stylesheet" href="/tokens.css">
   <link rel="stylesheet" href="/assets/nav-bar.css">
   <!-- Shared note-page chrome - the same file the BCBA page uses. -->
-  <link rel="stylesheet" href="../notes-page.css">
+  <link rel="stylesheet" href="/notes/notes-page.css">
   <script src="/assets/nav-bar.js" defer></script>
 </head>
 <body>
-  <noaba-bar product="tools" crumbs="Notes/BT session note" crumb-hrefs="/notes/"></noaba-bar>
+  <noaba-bar product="tools" crumbs="BT Direct Service Note" crumb-hrefs="/"></noaba-bar>
   <div id="root"></div>
   <!-- Gear ↔ NotesGate bridge. Visual unification only; the gate's auth logic is
        untouched. Gear opens login when logged out, logs out when logged in; the
@@ -69,36 +69,40 @@
   </script>
 
   <!-- Shared helpers used by the tool configs (plain JS, loaded before them) -->
-  <script src="../bcba/note-tools-util.js"></script>
+  <script src="/notes/bcba/note-tools-util.js"></script>
 
   <!-- One tool on this page. The engine hides its ribbon when only one is
        registered, so /notes/bt/ stays a single-purpose page while sharing every
        behaviour - conversation, prompt cache, scrub gate, hints, drafts - with
        the BCBA tools. -->
-  <script src="../bcba/register-rules.js"></script>
-  <script src="../bcba/triage-prompt.js"></script>
-  <script src="../bcba/absence.js"></script>
-  <script src="../bcba/hollow.js"></script>
-  <script src="../bcba/function-claim.js"></script>
-  <script src="../bcba/tools/bt.js"></script>
+  <script src="/notes/bcba/register-rules.js"></script>
+  <script src="/notes/bcba/triage-prompt.js"></script>
+  <script src="/notes/bcba/absence.js"></script>
+  <script src="/notes/bcba/hollow.js"></script>
+  <script src="/notes/bcba/function-claim.js"></script>
+  <script src="/notes/bcba/tools/bt.js"></script>
+
+  <!-- Which tool the address names: sets the crumb and tab title before the
+       bar renders, and rewrites an old ?tool= address in place. -->
+  <script src="/notes/bcba/tool-nav.js"></script>
 
   <!-- Word-level diff for the inline revision view (plain JS). -->
-  <script src="../bcba/diff.js"></script>
-  <script src="../bcba/note-rubric.js"></script>
-  <script src="../bcba/corrections.js"></script>
-  <script src="../bcba/style-features.js"></script>
-  <script src="../bcba/intake-voice.js"></script>
-  <script src="../bcba/speech.js"></script>
-  <script src="../bcba/note-metrics.js"></script>
+  <script src="/notes/bcba/diff.js"></script>
+  <script src="/notes/bcba/note-rubric.js"></script>
+  <script src="/notes/bcba/corrections.js"></script>
+  <script src="/notes/bcba/style-features.js"></script>
+  <script src="/notes/bcba/intake-voice.js"></script>
+  <script src="/notes/bcba/speech.js"></script>
+  <script src="/notes/bcba/note-metrics.js"></script>
 
   <!-- Assistant panel, then the engine that mounts it. Order matters: Babel
        standalone runs these in document order and the engine renders the panel. -->
-  <script type="text/babel" src="../bcba/disposition-row.jsx"></script>
-  <script type="text/babel" src="../bcba/section-map.jsx"></script>
-  <script type="text/babel" src="../bcba/question-inline.jsx"></script>
-  <script type="text/babel" src="../bcba/changes-drawer.jsx"></script>
-  <script type="text/babel" src="../bcba/revision-panel.jsx"></script>
-  <script type="text/babel" src="../bcba/corrections-view.jsx"></script>
-  <script type="text/babel" src="../bcba/engine.jsx"></script>
+  <script type="text/babel" src="/notes/bcba/disposition-row.jsx"></script>
+  <script type="text/babel" src="/notes/bcba/section-map.jsx"></script>
+  <script type="text/babel" src="/notes/bcba/question-inline.jsx"></script>
+  <script type="text/babel" src="/notes/bcba/changes-drawer.jsx"></script>
+  <script type="text/babel" src="/notes/bcba/revision-panel.jsx"></script>
+  <script type="text/babel" src="/notes/bcba/corrections-view.jsx"></script>
+  <script type="text/babel" src="/notes/bcba/engine.jsx"></script>
 </body>
 </html>

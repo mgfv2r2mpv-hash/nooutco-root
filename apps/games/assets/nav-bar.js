@@ -33,11 +33,21 @@
    or a bare boolean, for the same reason.
 
      <noaba-bar product="tools|games|apex"
-                crumbs="Notes/BT session note"
-                crumb-hrefs="/notes/"          (optional, comma-separated, parents only)
+                crumbs="Game Master/Image Manager"
+                crumb-hrefs="/,/GM/"           (optional, comma-separated: site home, then each parent)
                 logo="/logo-mark.svg"          (optional override)
-                admin-href="/admin/"           (optional override)
+                admin-href="/admin/"           (optional override; games defaults to /GM/)
                 games-href="..." tools-href="..."  (optional env overrides)>
+
+   THE TRAIL ALWAYS STARTS AT THE SITE HOME. A page names only itself and its
+   parents; the bar puts "Tools", "Games" or "Home" in front and links it to the
+   first crumb-href (default "/"). So `crumbs="Graph Visual Analysis"` renders
+   Tools › Graph Visual Analysis. Before this, a page with one crumb rendered
+   that crumb as its own dead title and left nothing on the bar that led back.
+   Below the home, the lit Games/Tools segment links home as well.
+
+   A page that changes location without reloading (the note tool ribbon) sets
+   `crumbs` again and the bar redraws in place, keeping the signed-in state.
 */
 (function () {
   "use strict";
@@ -153,11 +163,43 @@
     { key: "tools", glyph: "🗃️", label: "Tools" }
   ];
 
+  // First crumb of every trail, per site.
+  var ROOT_LABELS = { tools: "Tools", games: "Games", apex: "Home" };
+
+  // Games keeps its admin area at /GM/; tools and apex use /admin/.
+  var ADMIN_HREFS = { games: "/GM/" };
+
+  function splitList(value, sep) {
+    return String(value || "").split(sep).map(function (s) { return s.trim(); });
+  }
+
   class NoabaBar extends HTMLElement {
+    static get observedAttributes() {
+      return ["crumbs", "crumb-hrefs"];
+    }
+
+    attributeChangedCallback(name, oldValue, newValue) {
+      // Before mount, connectedCallback does the first render.
+      if (!this._mounted || oldValue === newValue) return;
+      this.render();
+      if (this._auth) this._setAuth(this._auth);
+    }
+
     connectedCallback() {
       if (this._mounted) return;
       this._mounted = true;
       this.render();
+      // The bar is sticky, so anything else a page pins to the top has to sit
+      // below it: `top: var(--noaba-bar-height, 0px)`. The height changes when
+      // the crumbs drop to their own line on a narrow screen, hence the observer.
+      if (typeof ResizeObserver === "function") {
+        var root = document.documentElement;
+        var bar = this;
+        this._resize = new ResizeObserver(function () {
+          root.style.setProperty("--noaba-bar-height", bar.offsetHeight + "px");
+        });
+        this._resize.observe(this);
+      }
       this._onAuth = this._onAuth.bind(this);
       document.addEventListener("noaba:auth-state", this._onAuth);
       // Initial authed state, if the page exposes a probe.
@@ -170,6 +212,7 @@
 
     disconnectedCallback() {
       document.removeEventListener("noaba:auth-state", this._onAuth);
+      if (this._resize) this._resize.disconnect();
       this._mounted = false;
     }
 
@@ -178,6 +221,8 @@
     }
 
     _setAuth(state) {
+      // Kept so a redraw after a crumb change restores it.
+      this._auth = state;
       if (this._gear) this._gear.setAttribute("data-authed", state.authed ? "true" : "false");
       // `hidden` rather than removal, so a page that signs the admin in without
       // a reload gets the control without re-rendering the whole bar.
@@ -191,6 +236,11 @@
         tools: this.getAttribute("tools-href")
       };
       var logo = this.getAttribute("logo") || "/logo-mark.svg";
+
+      var labels = splitList(this.getAttribute("crumbs"), "/").filter(Boolean);
+      var hrefs = splitList(this.getAttribute("crumb-hrefs"), ",");
+      var homeHref = hrefs[0] || "/";
+      var belowHome = labels.length > 0;
 
       var row = el("div", "noaba-row");
 
@@ -215,7 +265,11 @@
       SEGMENTS.forEach(function (seg) {
         var active = seg.key === product;
         var node;
-        if (active) {
+        if (active && belowHome) {
+          node = el("a", "noaba-seg");
+          node.href = homeHref;
+          node.setAttribute("aria-current", "true");
+        } else if (active) {
           node = el("span", "noaba-seg");
           node.setAttribute("aria-current", "page");
         } else {
@@ -232,32 +286,31 @@
       });
       row.appendChild(sw);
 
-      // Breadcrumb
-      var crumbsAttr = (this.getAttribute("crumbs") || "").trim();
-      if (crumbsAttr) {
-        var labels = crumbsAttr.split("/").map(function (s) { return s.trim(); }).filter(Boolean);
-        var hrefs = (this.getAttribute("crumb-hrefs") || "")
-          .split(",").map(function (s) { return s.trim(); });
+      // Breadcrumb: site home, then the page's parents, then the page itself.
+      if (belowHome) {
+        var trail = [{ label: ROOT_LABELS[product] || "Home", href: homeHref }];
+        labels.forEach(function (label, i) {
+          trail.push({ label: label, href: hrefs[i + 1] });
+        });
         var nav = el("nav", "noaba-crumbs");
         nav.setAttribute("aria-label", "Breadcrumb");
         // back chevron - only shows on collapsed layout (CSS)
         var chev = el("span", "noaba-back-chevron", "‹");
         chev.setAttribute("aria-hidden", "true");
         nav.appendChild(chev);
-        labels.forEach(function (label, i) {
-          var isCurrent = i === labels.length - 1;
+        trail.forEach(function (step, i) {
+          var isCurrent = i === trail.length - 1;
           if (i > 0) {
             var sep = el("span", "noaba-sep", "›");
             sep.setAttribute("aria-hidden", "true");
             nav.appendChild(sep);
           }
-          var href = hrefs[i];
           var crumb;
-          if (!isCurrent && href) {
-            crumb = el("a", "noaba-crumb", label);
-            crumb.href = href;
+          if (!isCurrent && step.href) {
+            crumb = el("a", "noaba-crumb", step.label);
+            crumb.href = step.href;
           } else {
-            crumb = el("span", "noaba-crumb", label);
+            crumb = el("span", "noaba-crumb", step.label);
             if (isCurrent) crumb.setAttribute("aria-current", "page");
           }
           nav.appendChild(crumb);
@@ -275,7 +328,7 @@
       // Admin area - a real link, so it opens in a tab like any other. Hidden
       // until the page reports an admin.
       var adminLink = el("a", "noaba-admin");
-      adminLink.href = this.getAttribute("admin-href") || "/admin/";
+      adminLink.href = this.getAttribute("admin-href") || ADMIN_HREFS[product] || "/admin/";
       adminLink.setAttribute("aria-label", "Admin area");
       adminLink.title = "Admin area";
       adminLink.hidden = true;

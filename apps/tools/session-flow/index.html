@@ -21,14 +21,17 @@
     font-size: 13px;
     line-height: 1.6;
   }
+  /* The nav bar runs edge to edge and sits at the very top; the body padding
+     above belongs to the content, not the bar. */
+  noaba-bar { margin: -20px -18px 0; }
   .wrap { max-width: 920px; margin: 0 auto; }
 
   /* Sticky top section nav */
   .topnav {
-    position: sticky; top: 0; z-index: 150;
+    position: sticky; top: var(--noaba-bar-height, 0px); z-index: 45;
     display: flex; align-items: center; gap: 5px;
     overflow-x: auto; -webkit-overflow-scrolling: touch;
-    padding: 8px 10px; margin: -20px -18px 18px;
+    padding: 8px 10px; margin: 0 -18px 18px;
     background: rgba(248,247,242,.96);
     -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
     border-bottom: 0.5px solid #e0ded4;
@@ -267,7 +270,7 @@
 </style>
 </head>
 <body>
-  <noaba-bar product="tools" crumbs="Session flow guide" crumb-hrefs="/" no-admin></noaba-bar>
+  <noaba-bar product="tools" crumbs="In-Home Session Flow" crumb-hrefs="/" no-admin></noaba-bar>
 <div class="wrap" id="top">
 
   <nav class="topnav" aria-label="Jump to section">

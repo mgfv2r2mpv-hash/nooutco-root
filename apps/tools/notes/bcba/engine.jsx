@@ -19,8 +19,12 @@ function toolById(id) {
   return null;
 }
 
+// Each tool has its own address (/notes/sup/); tool-nav.js reads it, and still
+// accepts the older ?tool=sup.
 function urlToolParam() {
-  const p = new URLSearchParams(location.search).get("tool");
+  const p = window.NoteToolNav
+    ? NoteToolNav.idFromLocation()
+    : new URLSearchParams(location.search).get("tool");
   return toolById(p) ? p : DEFAULT_TOOL;
 }
 
@@ -1454,6 +1458,11 @@ function App() {
     return () => window.removeEventListener("popstate", onPop);
   }, []);
 
+  // The crumb and tab title follow the active tool, however it changed.
+  React.useEffect(() => {
+    if (window.NoteToolNav) NoteToolNav.show(activeId);
+  }, [activeId]);
+
   // 1s tick drives the cache-expiry banner countdown.
   React.useEffect(() => {
     const iv = setInterval(() => setNowTick(Date.now()), 1000);
@@ -1500,9 +1509,13 @@ function App() {
 
   const switchTool = (id) => {
     if (id === activeId) return;
-    const u = new URL(location.href);
-    u.searchParams.set("tool", id);
-    history.pushState({}, "", u);
+    if (window.NoteToolNav) {
+      NoteToolNav.go(id, true);
+    } else {
+      const u = new URL(location.href);
+      u.searchParams.set("tool", id);
+      history.pushState({}, "", u);
+    }
     setActiveId(id);
     setCopied(null);
     setCopiedPrompt(false);

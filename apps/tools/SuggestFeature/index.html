@@ -18,6 +18,9 @@
       padding: 28px 20px 48px;
       min-height: 100vh;
     }
+    /* The nav bar runs edge to edge and sits at the very top; the body padding
+       above belongs to the content, not the bar. */
+    noaba-bar { margin: -28px -20px 0; }
     .wrap { max-width: 600px; margin: 0 auto; }
 
     /* ── Topbar ─────────────────────────────────────────────────────── */
@@ -125,7 +128,7 @@
   </style>
 </head>
 <body>
-  <noaba-bar product="tools" crumbs="Suggest a feature" crumb-hrefs="/" no-admin></noaba-bar>
+  <noaba-bar product="tools" crumbs="Suggest a Feature" crumb-hrefs="/" no-admin></noaba-bar>
 <div class="wrap">
 
   <div class="card">

@@ -57,8 +57,14 @@ domain (load `tokens.css` *before* `nav-bar.css`):
 <link rel="stylesheet" href="/assets/nav-bar.css">
 <script src="/assets/nav-bar.js" defer></script>
 ...
-<noaba-bar product="tools" crumbs="Notes/BT session note" crumb-hrefs="/notes/"></noaba-bar>
+<noaba-bar product="tools" crumbs="BT Direct Service Note" crumb-hrefs="/"></noaba-bar>
 ```
+
+A page names only itself and its parents. The bar puts the site home ("Tools", "Games"
+or "Home") first, so the tag above renders **Tools › BT Direct Service Note**.
+`crumb-hrefs` lists the home first, then one href per parent: `crumbs="Game Master/Image
+Manager" crumb-hrefs="/,/GM/"` renders Games › Game Master › Image Manager with both
+parents linked. A crumb label can't contain `/`, because the bar splits on it.
 
 ## Rules
 
