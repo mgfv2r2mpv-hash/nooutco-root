@@ -63,5 +63,13 @@ export default defineConfig({
     // whole reason the option exists.
     reuseExistingServer: !process.env.CI && !OWN_PORT,
     timeout: 120000,
+    // Playwright IGNORES a web server's stdout unless asked, and this suite has
+    // never asked. On 2026-09-17 the CI server stopped listening 21 minutes into
+    // a run - measured: the socket went away while node and workerd stayed up
+    // with 13 GB free and no kernel kill - and the log held nothing but the
+    // stderr it happened to forward. apps/games learned the same lesson first
+    // and its config carries the same two lines.
+    stdout: 'pipe',
+    stderr: 'pipe',
   },
 });
