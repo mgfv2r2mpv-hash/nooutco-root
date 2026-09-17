@@ -23,8 +23,8 @@ on:
   workflow_dispatch:
     inputs:
       projects:
-        description: 'JSON array of {project, browser} to run'
-        default: '[{"project":"chromium","browser":"chromium"}]'
+        description: 'JSON array of {project, browser, shards} to run'
+        default: '[{"project":"chromium","browser":"chromium","shards":3}]'
   push:
     branches: [main, dev]
     paths:
@@ -74,7 +74,7 @@ jobs:
         # file that never ran anywhere, which is the failure this whole workflow
         # exists to stop.
         # A manual run may name its own list; a push always runs all four.
-        include: ${{ fromJSON(github.event.inputs.projects || '[{"project":"chromium","browser":"chromium"},{"project":"firefox","browser":"firefox"},{"project":"webkit","browser":"webkit"},{"project":"touch","browser":"webkit"}]') }}
+        include: ${{ fromJSON(github.event.inputs.projects || '[{"project":"chromium","browser":"chromium","shards":3},{"project":"firefox","browser":"firefox","shards":3},{"project":"webkit","browser":"webkit","shards":3},{"project":"touch","browser":"webkit","shards":1}]') }}
     steps:
       - uses: actions/checkout@v4
 
@@ -112,10 +112,33 @@ jobs:
           echo "sampler pid $!"
 
       - name: Run E2E tests
+        # SHARDED SO THE DEV SERVER IS REPLACED THREE TIMES, not for speed - the
+        # shards run one after another in this one job and cost what one run
+        # cost. `wrangler pages dev` leaks per request (measured on the runner
+        # 2026-09-17: ~0.06 MB each, workerd 137 MB -> 3.1 GB over ~50,000
+        # requests), and it stops answering near the top of that climb: every
+        # spec after the 21st minute failed ERR_CONNECTION_REFUSED and read as a
+        # test failure. Playwright cannot restart a web server mid-run, so each
+        # shard gets a fresh one and none lives long enough to get there.
+        #
+        # Shards split by FILE and are deterministic, so a failure names the
+        # same shard on a re-run. touch is one file, hence shards: 1.
+        #
         # No port override is needed here: playwright.config.js already sets
         # `reuseExistingServer: !process.env.CI`, so a CI run always starts its
         # own wrangler rather than adopting whatever else answers on 8789.
-        run: npx playwright test --project=${{ matrix.project }}
+        run: |
+          failed=0
+          for shard in $(seq 1 ${{ matrix.shards }}); do
+            echo "::group::shard $shard of ${{ matrix.shards }}"
+            # A per-shard report directory, or each shard would overwrite the last.
+            PLAYWRIGHT_HTML_REPORT="playwright-report/shard-$shard" \
+            PLAYWRIGHT_HTML_OUTPUT_DIR="playwright-report/shard-$shard" \
+              npx playwright test --project=${{ matrix.project }} \
+              --shard=$shard/${{ matrix.shards }} || failed=1
+            echo "::endgroup::"
+          done
+          exit $failed
 
       # Kernel messages name an OOM kill; the sampler shows the run-up to it.
       - name: Collect server death evidence
