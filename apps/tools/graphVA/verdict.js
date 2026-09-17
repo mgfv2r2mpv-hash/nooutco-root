@@ -647,24 +647,34 @@
       // phase line is the strongest correlational evidence a record can carry.
       // It sits on the causal axis because it argues about attribution, and it
       // never promotes correlation to a functional relation.
-      causalNote: causalNote(analysis, decision),
+      causalNote: causalNote(analysis, decision, structure),
     };
   }
 
-  function causalNote(analysis, decision) {
+  // What the note says about phase changes follows the design, on his ruling of
+  // 2026-09-17. It used to say "with one phase change" on every record, so an
+  // ABAB drew "Functional relation supported" in the design line and, directly
+  // under it, a note saying this does not establish one. Counting is the
+  // design's job, so the note only names the one phase change where there is
+  // exactly one, and leaves the attribution to the design line everywhere else.
+  function causalNote(analysis, decision, structure) {
     if (!analysis) return null;
     if (decision && decision.severity === "hard") return null;
     var rev = analysis.trend.reversal;
     if (!rev || !rev.present) return null;
+    var single = !structure || !structure.design || structure.design.conditionChanges <= 1;
     if (rev.cyclicalCaution) {
       return "Behavior turned at the phase line, and this baseline swings fast enough that the turn could be the swing " +
-        "arriving rather than the plan working. Treat it as unresolved until a longer settled stretch, or a second " +
-        "phase change, tells the two apart.";
+        "arriving rather than the plan working. Treat it as unresolved until a longer settled stretch" +
+        (single ? ", or a second phase change," : "") +
+        " tells the two apart.";
     }
     return "Behavior was heading the wrong way and turned at the phase line" +
       (rev.immediate ? ", visibly within the opening sessions" : "") +
-      ". With one phase change this does not establish a functional relation, and a turn that lines up this closely " +
-      "makes history and maturation harder accounts to sustain.";
+      (single
+        ? ". With one phase change this does not establish a functional relation, and a turn that lines up this closely " +
+          "makes history and maturation harder accounts to sustain."
+        : ". A turn that lines up this closely makes history and maturation harder accounts to sustain.");
   }
 
   window.GVA_VERDICT = {
