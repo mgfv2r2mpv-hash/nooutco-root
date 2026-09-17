@@ -17,6 +17,19 @@ test('a game page shows Games › its name, with Games linking home', async ({ p
   await expect(page.locator('noaba-bar a.noaba-seg[aria-current]')).toHaveAttribute('href', '/');
 });
 
+// Glam is the one React game; its bar sits outside the <x-dc> app it renders.
+test('Glam Team Makeover shows the shared bar like every other game', async ({ page }) => {
+  await page.goto('/glam-team-makeover/');
+  const crumbs = page.locator('noaba-bar .noaba-crumb');
+  await expect(crumbs).toHaveCount(2);
+  await expect(crumbs.nth(0)).toHaveText('Games');
+  await expect(crumbs.nth(0)).toHaveAttribute('href', '/');
+  await expect(crumbs.nth(1)).toHaveText('Glam Team Makeover');
+  const box = await page.locator('noaba-bar').boundingBox();
+  expect({ x: Math.round(box.x), y: Math.round(box.y), w: Math.round(box.width) })
+    .toEqual({ x: 0, y: 0, w: page.viewportSize().width });
+});
+
 test('a Game Master manager links both parents', async ({ page }) => {
   await page.goto('/AdminTools/ImageManager/');
   const crumbs = page.locator('noaba-bar .noaba-crumb');
@@ -78,6 +91,6 @@ test('every rendered link on the games site resolves to a real page', async ({ p
   }
   expect(broken, `broken links:\n${broken.join('\n')}`).toEqual([]);
   // A walk that stopped early would also find nothing broken.
-  const mustReach = ['/think-or-say/', '/matching/', '/sequences/', '/emotions/', '/famous-person/'];
+  const mustReach = ['/think-or-say/', '/matching/', '/sequences/', '/emotions/', '/famous-person/', '/glam-team-makeover/'];
   expect(mustReach.filter((p) => !seen.has(p)), 'game pages the walk never reached').toEqual([]);
 });

@@ -8,6 +8,12 @@
 
 <!-- Shared design tokens + Atkinson fonts (compiled bundle, same as every game) -->
 <link rel="stylesheet" href="../tailwind.css">
+<!-- Shared site navigation, the same bar every game carries. It sits before the
+     design-canvas element in body, so the runtime never renders it. Never write
+     that element's tag name in a comment here: the runtime finds its template
+     by searching the page source for it. -->
+<link rel="stylesheet" href="/assets/nav-bar.css">
+<script src="/assets/nav-bar.js" defer></script>
 
 <style>
   body { margin:0; background:var(--surface-page); font-family:var(--font-sans); color:var(--text-body); }
@@ -137,7 +143,8 @@
      layout, and nothing here animates. */
   @container gtmrow (width < 614px){
     .gtm-stage{ height: var(--gtm-stage-fit, auto); --gtm-band: 30px;
-      position: sticky; top: 6px; z-index: 2; }
+      position: sticky; top: calc(var(--noaba-bar-height, 0px) + 6px); z-index: 2; }
+    /* Below the site's sticky nav bar, which would otherwise cover the face. */
   }
 
   /* THIRD PASS · Finding B - the turn indicator IS the vanity counter.
@@ -1097,6 +1104,7 @@ window.GlamStory = (function () {
 <script src="vendor/support.js"></script>
 </head>
 <body>
+<noaba-bar product="games" crumbs="Glam Team Makeover" crumb-hrefs="/" no-admin></noaba-bar>
 <x-dc>
 <div style="min-height:100vh;display:flex;flex-direction:column">
 
