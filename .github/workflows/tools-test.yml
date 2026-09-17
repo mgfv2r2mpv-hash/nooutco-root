@@ -92,10 +92,13 @@ jobs:
       - name: Install Playwright browser
         run: npx playwright install --with-deps ${{ matrix.browser }}
 
-      # The dev server dies mid-run and prints nothing on its way out, so this
-      # samples what was true while it did: memory, its own processes, and
-      # whether anything is still listening on 8789. Costs a few kB and one
-      # background shell; delete it once the cause is known.
+      # This is what turned "every spec after minute 21 failed" into a named
+      # cause, and it stays: the server's death leaves no message of its own, so
+      # without a sample of memory, its processes and the socket there is nothing
+      # to read afterwards. It also watches the headroom the fix depends on -
+      # measured 2026-09-17 with three shards, workerd peaks at 1831 MB and the
+      # server stopped answering at ~3.1 GB, so a suite that grows needs a fourth
+      # shard before it needs anything cleverer. Costs a few kB and one shell.
       - name: Start resource sampler
         run: |
           cat > "$RUNNER_TEMP/sample.sh" <<'SH'
@@ -120,6 +123,9 @@ jobs:
         # spec after the 21st minute failed ERR_CONNECTION_REFUSED and read as a
         # test failure. Playwright cannot restart a web server mid-run, so each
         # shard gets a fresh one and none lives long enough to get there.
+        # MEASURED with three shards on run 35286988727: workerd sawtooths to a
+        # 1831 MB peak and resets at each boundary, against ~3.1 GB where it
+        # died. Green, with about 1.3 GB of headroom rather than a wide margin.
         #
         # Shards split by FILE and are deterministic, so a failure names the
         # same shard on a re-run. touch is one file, hence shards: 1.
