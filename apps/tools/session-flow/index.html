@@ -223,20 +223,24 @@
     vertical-align: super; user-select: none; flex: none;
   }
   .cite:hover, .cite:focus { opacity: 1; outline: none; }
+  /* Closed popovers are display:none, not just invisible: a hidden one still
+     takes up width, and near the right edge that made the page scroll sideways.
+     --pop-shift is set by the script at the bottom to keep an open one on screen. */
   .cite .cite-pop {
-    position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
-    visibility: hidden; opacity: 0; transition: opacity .12s ease;
+    position: absolute; bottom: calc(100% + 8px); left: 50%;
+    transform: translateX(calc(-50% + var(--pop-shift, 0px)));
+    display: none;
     background: #2c2c2a; color: #fff; padding: 9px 12px; border-radius: 7px;
     width: 270px; max-width: 78vw; font-size: 11px; font-weight: 400; font-style: normal;
     line-height: 1.5; text-align: left; letter-spacing: 0; text-transform: none;
     z-index: 200; pointer-events: none; box-shadow: 0 5px 18px rgba(0,0,0,.28);
   }
   .cite .cite-pop::after {
-    content: ""; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+    content: ""; position: absolute; top: 100%; left: calc(50% - var(--pop-shift, 0px)); transform: translateX(-50%);
     border: 6px solid transparent; border-top-color: #2c2c2a;
   }
   .cite .cite-pop em { color: #cfcdfa; font-style: italic; }
-  .cite:hover .cite-pop, .cite:focus .cite-pop { visibility: visible; opacity: 1; }
+  .cite:hover .cite-pop, .cite:focus .cite-pop { display: block; }
 
   /* References */
   .refs { margin-top: 28px; }
@@ -648,6 +652,30 @@
       }, { rootMargin: '-20% 0px -70% 0px' });
       spyTargets.forEach(function (t) { obs.observe(t.el); });
     }
+  })();
+
+  // A citation opens centred on its ? mark. Near a screen edge that would cut
+  // it off, so it shifts back inside the screen and its arrow keeps pointing at
+  // the mark.
+  (function () {
+    var MARGIN = 8;
+    function place(cite) {
+      var pop = cite.querySelector('.cite-pop');
+      if (!pop) return;
+      pop.style.setProperty('--pop-shift', '0px');
+      var r = pop.getBoundingClientRect();
+      var vw = document.documentElement.clientWidth;
+      var shift = 0;
+      if (r.right > vw - MARGIN) shift = (vw - MARGIN) - r.right;
+      if (r.left + shift < MARGIN) shift = MARGIN - r.left;
+      pop.style.setProperty('--pop-shift', shift + 'px');
+    }
+    function onOpen(e) {
+      var cite = e.target.closest && e.target.closest('.cite');
+      if (cite) place(cite);
+    }
+    document.addEventListener('focusin', onOpen);
+    document.addEventListener('mouseover', onOpen);
   })();
 </script>
 <script src="/assets/error-button.js"></script>

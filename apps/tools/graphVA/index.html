@@ -99,6 +99,18 @@
   tbody td { font-family: var(--font-mono); }
   tbody td:first-child { font-family: var(--font-sans); }
   tr.tx td { background: var(--blue-50); }
+  /* Ten numeric columns cannot fit a phone. The card scrolls sideways on its
+     own so the page does not, and the phase name stays pinned at the left. */
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table-scroll th, .table-scroll td { white-space: nowrap; }
+  .table-scroll th:first-child, .table-scroll td:first-child {
+    position: sticky; left: 0; z-index: 1; background: var(--surface-card);
+    white-space: normal; min-width: 7.5em; box-shadow: inset -1px 0 0 var(--border-default); }
+  /* The card's side padding lives in the cells, so nothing scrolls past the
+     pinned column through a gap at the card's edge. */
+  .table-scroll th:first-child, .table-scroll td:first-child { padding-left: 20px; }
+  .table-scroll th:last-child, .table-scroll td:last-child { padding-right: 20px; }
+  .table-scroll tr.tx td:first-child { background: var(--blue-50); }
 
   .phase-row { display: grid; grid-template-columns: 1.5fr .8fr 3fr auto; gap: 10px;
     align-items: start; padding: 9px 0; border-bottom: 1px solid var(--border-default); }
@@ -230,7 +242,7 @@
 
 <section>
   <h2>Phase metrics</h2>
-  <div class="card" style="padding:6px 12px">
+  <div class="card table-scroll" style="padding:6px 0">
     <table id="metrics">
       <thead><tr>
         <th>Phase</th><th>Cond</th><th>n</th><th>Mean</th><th>Median</th><th>Range</th>
