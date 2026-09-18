@@ -242,6 +242,67 @@ test.describe('graph visual analysis', () => {
     expect(res.causal.level).toBe('correlation');
   });
 
+  // His ruling of 2026-09-17, "count": the clause about one phase change follows
+  // the design. On an ABAB the design line reads "Functional relation
+  // supported", and a note under it saying one phase change cannot establish one
+  // contradicted the verdict it sat beside. Sass pins the same two cases.
+  test('the one phase change clause appears only on a design with one phase change', async ({ page }) => {
+    const res = await page.evaluate(() => {
+      const V = window.GVA_VERDICT;
+      return {
+        ab: V.evaluate(
+          [
+            { name: 'Baseline', cond: 'base', data: '4,5,6,7,9,10,12' },
+            { name: 'Plan 1', cond: 'tx', data: '11,9,7,6,4,3,2,2' },
+          ],
+          { direction: 'dec' },
+        ),
+        abab: V.evaluate(
+          [
+            { name: 'Baseline', cond: 'base', data: '4,5,6,7,9,10,12' },
+            { name: 'Plan 1', cond: 'tx', data: '11,9,8,6,5,4,3' },
+            { name: 'Return', cond: 'base', data: '6,8,9,11,12' },
+            { name: 'Plan 2', cond: 'tx', data: '9,7,5,4,3' },
+          ],
+          { direction: 'dec' },
+        ),
+      };
+    });
+    expect(res.ab.structure.design.conditionChanges).toBe(1);
+    expect(res.ab.causalNote).toMatch(/With one phase change this does not establish a functional relation/);
+
+    expect(res.abab.structure.design.conditionChanges).toBe(3);
+    expect(res.abab.causal.headline).toBe('Functional relation supported');
+    expect(res.abab.causalNote).toMatch(/heading the wrong way and turned at the phase line/);
+    expect(res.abab.causalNote).not.toMatch(/one phase change/i);
+    expect(res.abab.causalNote).not.toMatch(/does not establish a functional relation/);
+    expect(res.abab.causalNote).toMatch(/makes history and maturation harder accounts to sustain/);
+  });
+
+  test('a swinging baseline only asks for a second phase change where there is not one yet', async ({ page }) => {
+    const res = await page.evaluate(() => {
+      const V = window.GVA_VERDICT;
+      const swing = { name: 'Baseline', cond: 'base', data: '2,9,3,11,4,13,5,15,6,17' };
+      const turn = { name: 'Plan 1', cond: 'tx', data: '14,11,9,7,5,4,3,2' };
+      return {
+        ab: V.evaluate([swing, turn], { direction: 'dec' }),
+        // The finding speaks to the LAST onset, so it is the return phase that
+        // has to swing for the caution to fire on the larger design.
+        abab: V.evaluate(
+          [swing, turn, { name: 'Return', cond: 'base', data: '2,9,3,11,4,13,5,15,6,17' }, turn],
+          { direction: 'dec' },
+        ),
+      };
+    });
+    expect(res.ab.primary.trend.reversal.cyclicalCaution).toBe(true);
+    expect(res.ab.causalNote).toMatch(/or a second phase change/);
+
+    expect(res.abab.structure.design.conditionChanges).toBe(3);
+    expect(res.abab.primary.trend.reversal.cyclicalCaution).toBe(true);
+    expect(res.abab.causalNote).not.toMatch(/second phase change/);
+    expect(res.abab.causalNote).toMatch(/unresolved until a longer settled stretch tells the two apart/);
+  });
+
   test('a flat baseline gives a trend change, not a reversal', async ({ page }) => {
     const res = await page.evaluate(() =>
       window.GVA_VERDICT.evaluate(
