@@ -117,10 +117,22 @@ async function ready(page, { speech = true } = {}) {
   await page.evaluate(() => localStorage.clear());
   await page.evaluate((tok) => localStorage.setItem('notes_auth_token', tok), tokenFor());
   await page.goto('/notes/bt/?aid=1');
-  // The panel has to be open for the composer to exist.
-  const fab = page.locator('.revision-fab');
-  if (await fab.isVisible({ timeout: 10000 }).catch(() => false)) await fab.click();
-  await expect(page.locator('.revision-input')).toBeVisible({ timeout: 10000 });
+  /* The panel has to be open for the composer to exist, and ONE click is not
+     enough to rely on. These pages compile their JSX in the browser, so the pill
+     can be painted a moment before its handler is wired; that click then lands
+     on nothing and the wait below times out with no hint of why. Measured as a
+     flake of roughly one run in thirty, on code that predates it - and it fails
+     in ready(), so it was reported against whichever test drew the short straw.
+     Clicking until the composer is actually there costs nothing when the first
+     click works. */
+  await expect
+    .poll(async () => {
+      if (await page.locator('.revision-input').isVisible().catch(() => false)) return true;
+      const fab = page.locator('.revision-fab');
+      if (await fab.isVisible().catch(() => false)) await fab.click().catch(() => {});
+      return false;
+    }, { timeout: 30000, intervals: [250, 500, 500, 1000] })
+    .toBe(true);
 }
 
 const holdAndSay = async (page, words) => {
