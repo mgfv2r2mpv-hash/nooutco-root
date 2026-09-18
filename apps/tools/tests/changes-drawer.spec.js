@@ -113,6 +113,26 @@ const shipped = async (page, section = 'antecedentNarrative') => {
   return page.evaluate(() => navigator.clipboard.readText());
 };
 
+/* READING THE REAL CLIPBOARD IS CHROMIUM-ONLY. `grantPermissions` throws
+   "Unknown permission: clipboard-read" on firefox and clipboard-write on
+   webkit, so these two tests failed in both engines from the day they landed
+   and nobody saw it: CI was dying of its own accord at the time.
+
+   Capturing the write keeps the assertion these tests exist for - what Copy
+   puts on the clipboard is what reaches the EHR - and runs everywhere. The page
+   still takes its normal path: engine.jsx calls navigator.clipboard.writeText
+   and nothing else. */
+const captureClipboard = (page) => page.addInitScript(() => {
+  const written = [];
+  Object.defineProperty(navigator, 'clipboard', {
+    configurable: true,
+    value: {
+      writeText: (text) => { written.push(String(text)); return Promise.resolve(); },
+      readText: () => Promise.resolve(written.length ? written[written.length - 1] : ''),
+    },
+  });
+});
+
 const collapse = async (page) => {
   const close = page.locator('.revision-panel-close');
   if (await close.isVisible({ timeout: 5000 }).catch(() => false)) await close.click();
@@ -292,7 +312,7 @@ test.describe('the drawer', () => {
   });
 
   test('approving changes the note not at all, which is the whole point of it', async ({ page }) => {
-    await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+    await captureClipboard(page);
     await draft(page, ONE_ADD);
     const before = await shipped(page);
     await openDrawer(page);
@@ -303,7 +323,7 @@ test.describe('the drawer', () => {
   });
 
   test('removing one takes it out of the note', async ({ page }) => {
-    await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+    await captureClipboard(page);
     await draft(page, ONE_ADD);
     expect(await shipped(page)).toContain('moved to the floor beside the client');
 

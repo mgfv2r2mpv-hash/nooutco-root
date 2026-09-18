@@ -92,6 +92,13 @@ async function draft(page, corrections = []) {
 async function selectInBox(page, phrase) {
   const field = page.locator('textarea[data-section-id="antecedentNarrative"]');
   await expect(field).toBeVisible({ timeout: 30000 });
+  /* ON SCREEN FIRST, and not for tidiness. Chromium scrolls a field into view
+     when it is focused and webkit does not, so without this the anchor sits
+     2300px below the fold on webkit, placeChip clamps it to the viewport edge,
+     and two different phrases produce the SAME chip position. Both tests below
+     then compare a clamped number with a clamped number. A person selecting a
+     phrase is by definition looking at it; this is that situation. */
+  await field.scrollIntoViewIfNeeded();
   await field.evaluate((el, p) => {
     const i = el.value.indexOf(p);
     if (i < 0) throw new Error('phrase not in the box: ' + p);
@@ -231,20 +238,24 @@ test.describe('on the phone they actually use', () => {
     await draft(page);
     const field = page.locator('textarea[data-section-id="antecedentNarrative"]');
     await expect(field).toBeVisible({ timeout: 30000 });
+    await field.scrollIntoViewIfNeeded();
     await page.evaluate(() => {
       document.dispatchEvent(new PointerEvent('pointerdown', { pointerType: 'touch', bubbles: true }));
     });
-    const rect = await field.evaluate((el) => {
+    const fieldBox = await field.boundingBox();
+    await field.evaluate((el) => {
       const i = el.value.indexOf('The client pushed the materials away');
       el.focus();
       el.setSelectionRange(i, i + 'The client pushed the materials away'.length);
       document.dispatchEvent(new Event('selectionchange'));
-      return el.getBoundingClientRect().top;
     });
     const chip = page.locator('[data-revise-chip]');
     await expect(chip).toBeVisible({ timeout: 5000 });
     const box = await chip.boundingBox();
+    /* Both numbers from boundingBox, which is page-relative. The old assertion
+       compared it against getBoundingClientRect().top, which is viewport-relative,
+       and only agreed while the page happened not to be scrolled. */
     // Below the first line of the box, which is where the selected phrase is.
-    expect(box.y).toBeGreaterThan(rect);
+    expect(box.y).toBeGreaterThan(fieldBox.y);
   });
 });
