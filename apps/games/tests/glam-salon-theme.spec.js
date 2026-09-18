@@ -180,12 +180,24 @@ test.describe('salon dressing + the choice echo (R5)', () => {
   test('the mirror warms gently behind the echo, without washing out the client', async ({ page }) => {
     await stage(page);
 
-    /* Mean luminance of a region. Over the whole stage panel the echo chip is
-       under 1% of the area, so a swing there can only come from the glow; over the
-       canvas alone it measures what lands on the client herself. */
+    /* Mean luminance, of a whole region and of a band across its top, from ONE
+       screenshot. Both numbers come off the same capture because the echo window
+       is short and a second capture inside it is a second chance to miss it.
+
+       MEASURED WHERE THE GLOW LANDS, fixed 2026-09-18. The glow is a cream
+       radial at 50% 0%, 44% tall, so it warms the top of the panel and fades out
+       before the middle. Averaged over the whole panel it moved the mean by 0.41
+       here and by 0.32 on CI's chromium, and the floor was 0.35: the bound sat
+       inside the spread between two machines rather than above the noise, which
+       is how a green suite went red on a commit that only added a nav bar.
+       Across the top fifth the same glow moves 1.44 (chromium), 1.49 (webkit)
+       and 1.70 (firefox), so the floor below clears CI's own weakest reading
+       with room to spare. The whole-panel number still carries the upper bound,
+       where being near zero costs nothing. */
+    const TOP_BAND = 0.20;
     const meanOf = async (loc) => {
       const shot = await loc.screenshot({ animations: 'disabled' });
-      return page.evaluate(async (b64) => {
+      return page.evaluate(async ([b64, band]) => {
         const img = new Image();
         img.src = 'data:image/png;base64,' + b64;
         await img.decode();
@@ -193,11 +205,14 @@ test.describe('salon dressing + the choice echo (R5)', () => {
         c.width = img.width; c.height = img.height;
         const x = c.getContext('2d');
         x.drawImage(img, 0, 0);
-        const d = x.getImageData(0, 0, c.width, c.height).data;
-        let s = 0;
-        for (let i = 0; i < d.length; i += 4) s += 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
-        return s / (d.length / 4);
-      }, shot.toString('base64'));
+        const mean = (height) => {
+          const d = x.getImageData(0, 0, c.width, Math.max(1, height)).data;
+          let s = 0;
+          for (let i = 0; i < d.length; i += 4) s += 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
+          return s / (d.length / 4);
+        };
+        return { all: mean(c.height), top: mean(Math.round(c.height * band)) };
+      }, [shot.toString('base64'), TOP_BAND]);
     };
 
     const panel = stagePanel(page);
@@ -213,14 +228,14 @@ test.describe('salon dressing + the choice echo (R5)', () => {
     await page.waitForTimeout(500); // the opacity transition back down
     const after = await meanOf(panel);
 
-    expect(during - before, 'the mirror warms behind the echo').toBeGreaterThan(0.35);
-    expect(during - before, 'but it is a warming, not a flare').toBeLessThan(4);
-    expect(Math.abs(after - before), 'and settles back to where it was').toBeLessThan(1);
+    expect(during.top - before.top, 'the mirror warms behind the echo').toBeGreaterThan(0.6);
+    expect(during.all - before.all, 'but it is a warming, not a flare').toBeLessThan(4);
+    expect(Math.abs(after.all - before.all), 'and settles back to where it was').toBeLessThan(1);
 
     /* The client's own art is what the flare was ruining. Applying a step DOES
        repaint the canvas (brows land), so this is bounded rather than pinned to
        zero - the old glow moved it by 24.6, which no tool stroke comes near. */
-    expect(Math.abs(faceDuring - faceBefore), 'the glow must not wash the client out').toBeLessThan(6);
+    expect(Math.abs(faceDuring.all - faceBefore.all), 'the glow must not wash the client out').toBeLessThan(6);
   });
 
   test('every animation this game ships stays on the compositor', async ({ page }) => {
