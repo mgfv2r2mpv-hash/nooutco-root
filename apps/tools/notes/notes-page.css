@@ -453,8 +453,14 @@ body {
    clinician's stored judgement, and the only one that answers without touching
    the note. Deliberately quieter than Send: asking for advice is a side errand,
    not the main loop, and it should not compete with revising for the eye. */
+/* nowrap, and that is the whole point of the row. Wrapping looks like the
+   forgiving choice and is the opposite: the moment the two labels do not fit,
+   the row silently becomes two rows and the footer grows by a whole line -
+   which is the thing this change exists to stop, happening invisibly on
+   whichever machine has the wider font. The advice button carries min-width:0,
+   so it wraps its own label inside itself instead. */
 .revision-errands {
-  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  display: flex; flex-wrap: nowrap; align-items: center; gap: 6px;
   margin-top: 8px;
 }
 .revision-errands .revision-report { margin-left: auto; }
@@ -517,6 +523,9 @@ body {
 /* While the microphone is open, the sentence that says so is the one thing in
    this line that is not a standing rule, so it darkens to full contrast. */
 .revision-foot-note .is-listening { color: #374528; font-weight: 700; }
+/* Shift+Enter needs a Shift key. Dropped on a phone, where it is untrue and
+   where it was the clause that pushed this line to a third row. */
+@media (max-width: 640px) { .foot-keys { display: none; } }
 
 /* PHI carries its own definition. A button rather than a title attribute so it
    works by tap on a tablet, where most of these notes are actually written. */
