@@ -1088,7 +1088,14 @@ function RevisionPanel({
           >
             PHI
           </button>
-          . Enter sends, Shift+Enter for a new line.
+          . Enter sends
+          {/* A KEYBOARD HINT ONLY WHERE THERE IS A KEYBOARD. On a phone there
+              is no Shift key to press, and this clause is the difference
+              between two lines of fine print and three: CI's chromium measured
+              the footer past its own bound on Linux fonts while a Mac read it
+              comfortably inside, which is the same shape as every other
+              measurement this repo has taken on one machine and believed. */}
+          <span className="foot-keys">, Shift+Enter for a new line</span>.
           {phiOpen && (
             <span className="phi-tip" role="note">
               Protected Health Information: anything that could identify a specific person.
