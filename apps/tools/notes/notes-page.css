@@ -380,41 +380,112 @@ body {
   font-family: inherit; font-size: 13px; line-height: 1.5; resize: vertical;
 }
 .revision-input:focus { outline: none; border-color: #6a7659; box-shadow: 0 0 0 3px rgba(106, 118, 89, 0.2); }
-.revision-send {
-  flex-shrink: 0; padding: 10px 18px; border-radius: 8px; border: none;
-  background: #374528; color: white; font-family: inherit;
-  font-size: 13px; font-weight: 700; cursor: pointer;
+/* THE COMPOSER ROW: box, mic, plane.
+   align-items:flex-end so the two squares stay on the box's bottom edge when it
+   grows with a long instruction, rather than floating beside its middle. */
+.revision-compose { display: flex; gap: 6px; align-items: flex-end; }
+
+/* ONE SHAPE FOR BOTH ICON BUTTONS. 46px is not a taste call: it is the thumb
+   target the speaking control was already held to, and tests/speech.spec.js
+   measures it on an iPhone profile. The square is what buys the row back -
+   "Hold to talk" needed the full width of the panel to say the same thing a
+   microphone says in 46px, and it was stacked under Send rather than beside it. */
+.icon-btn {
+  flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 46px; height: 46px; padding: 0;
+  border-radius: 10px;
+  font: inherit; cursor: pointer;
+  touch-action: none;
+  -webkit-user-select: none; user-select: none;
+  transition: background .13s, border-color .13s, color .13s;
 }
+.icon-btn-glyph { display: block; width: 22px; height: 22px; }
+.icon-btn-wait { font-size: 20px; line-height: 1; }
+/* The button's name and its state, in words, for a screen reader. Clipped
+   rather than display:none, which would take it out of the accessibility tree
+   along with the layout and leave both buttons announcing nothing at all. */
+.icon-btn-say {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%);
+  white-space: nowrap; border: 0;
+}
+.icon-btn:focus-visible { outline: 2px solid #374528; outline-offset: 2px; }
+
+.revision-send { border: none; background: #374528; color: white; }
+.revision-send:hover:not(:disabled) { background: #2d3a1f; }
 .revision-send:disabled { background: #a0b890; cursor: not-allowed; }
 
-/* "What would you do here?" - the only control that reaches the supervising
+/* The mic is the quieter of the two on purpose. Sending is the act that ends a
+   turn; talking is one of two ways to fill the box, and it should not read as
+   the louder choice than typing. */
+.speak-btn { color: #374528; background: #eef4e6; border: 1px solid #c0d4a8; }
+.speak-btn:hover { background: #e3ecd7; }
+/* LISTENING IS AMBER, AND THE FIRST ATTEMPT WAS NOT. It inverted to Send's own
+   dark green, which is what the full-width button did when it was the only
+   control on its row and nothing sat beside it. Screenshotted at 390px it was
+   two identical dark green squares in a row, and the only thing saying which
+   one was live was a ring you cannot see in a still.
+
+   Amber is the colour this page already spends on a live state wanting a look
+   at it - the cache timer running down, a note reading thin, the fault report -
+   so an open microphone is the same meaning rather than a new one. It is also
+   the one hue on the panel that is neither Send's green nor PHI's crimson,
+   which is what the row needed. #2d3a1f on #d9932b is 5.6:1. */
+.speak-btn.is-on {
+  color: #2d3a1f; background: #d9932b; border-color: #b87c1c;
+  animation: speak-pulse 1.4s ease-out infinite;
+}
+@keyframes speak-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(217, 147, 43, 0.6); }
+  70%  { box-shadow: 0 0 0 9px rgba(217, 147, 43, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(217, 147, 43, 0); }
+}
+@media (prefers-reduced-motion: reduce) { .speak-btn.is-on { animation: none; } }
+
+/* THE SIDE ERRANDS, ON ONE LINE. Asking the supervising clinician, exporting
+   captured pairs and reporting a problem each had a full-width row and the last
+   one had a divider above it. Three stacked full-width buttons read as three
+   decisions to make before typing; side by side at one weight they read as what
+   they are, which is the things you can also do here.
+
+   "What would you do here?" is the only control that reaches the supervising
    clinician's stored judgement, and the only one that answers without touching
    the note. Deliberately quieter than Send: asking for advice is a side errand,
    not the main loop, and it should not compete with revising for the eye. */
-.revision-advice-row { margin-top: 8px; }
+/* nowrap, and that is the whole point of the row. Wrapping looks like the
+   forgiving choice and is the opposite: the moment the two labels do not fit,
+   the row silently becomes two rows and the footer grows by a whole line -
+   which is the thing this change exists to stop, happening invisibly on
+   whichever machine has the wider font. The advice button carries min-width:0,
+   so it wraps its own label inside itself instead. */
+.revision-errands {
+  display: flex; flex-wrap: nowrap; align-items: center; gap: 6px;
+  margin-top: 8px;
+}
+.revision-errands .revision-report { margin-left: auto; }
 .revision-advice {
-  width: 100%; padding: 8px 12px; border-radius: 8px;
+  flex: 1 1 auto; min-width: 0;
+  padding: 7px 10px; border-radius: 8px;
   border: 1px dashed #c3d6ac; background: transparent; color: #4d5840;
   font-family: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer;
   text-align: center; transition: background .13s, border-color .13s;
 }
+.revision-export { flex: 0 1 auto; }
 .revision-advice:hover:not(:disabled) { background: #f2f7ec; border-color: #7a9460; }
 .revision-advice:disabled { color: #a0b890; border-color: #e2ebd8; cursor: not-allowed; }
 
 /* Reporting a problem used to be a second orange circle pinned to the same
    corner as the assistant pill, one on top of the other. It sits in the panel
-   now: quiet under the composer while things are working, and the only control
-   in the footer when nobody is signed in, because a login bug is reported from
-   the login screen or it is not reported at all. */
+   now: quiet at the end of the errands row while things are working, and the
+   only control in the footer when nobody is signed in, because a login bug is
+   reported from the login screen or it is not reported at all.
+
+   Signed in, the row below is not used - the button sits in .revision-errands
+   with the other errands. This is the signed-out shape, where it is alone and
+   is the whole point of the footer. */
 .revision-report-row {
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid #eef3e7;
   display: flex;
-  justify-content: flex-end;
-}
-.revision-report-row.revision-report-only {
-  margin-top: 0; padding-top: 0; border-top: none;
   justify-content: stretch;
 }
 .revision-report {
@@ -439,7 +510,22 @@ body {
 }
 .revision-report-only .revision-report:hover { background: #f7e6b8; border-color: #c9962a; }
 @media (prefers-reduced-motion: reduce) { .revision-report { transition: none; } }
-.revision-foot-note { margin: 7px 0 0; font-size: 11px; color: #9aab86; line-height: 1.4; position: relative; }
+/* ONE LINE, AND IT READS AT ARM'S LENGTH. This carries the rule about names
+   now as well as the one about PHI, and the speaking rule was always 12.5px on
+   the grounds that fine print is a rule nobody follows. 11px was fine for a
+   keyboard hint on its own and is not fine for this, so the whole line takes
+   the larger size; tests/speech.spec.js holds the floor at 12 on a phone.
+   #7d8a6d on white is 4.6:1, which clears WCAG AA for body text. */
+.revision-foot-note {
+  margin: 7px 0 0; font-size: 12.5px; color: #7d8a6d;
+  line-height: 1.45; position: relative;
+}
+/* While the microphone is open, the sentence that says so is the one thing in
+   this line that is not a standing rule, so it darkens to full contrast. */
+.revision-foot-note .is-listening { color: #374528; font-weight: 700; }
+/* Shift+Enter needs a Shift key. Dropped on a phone, where it is untrue and
+   where it was the clause that pushed this line to a third row. */
+@media (max-width: 640px) { .foot-keys { display: none; } }
 
 /* PHI carries its own definition. A button rather than a title attribute so it
    works by tap on a tablet, where most of these notes are actually written. */
@@ -1084,7 +1170,7 @@ body.is-pointing, body.is-pointing * { cursor: crosshair !important; }
 /* "Report a problem" stays reachable, because a technician who has found a
    fault in the question should not have to finish the round to say so. It just
    stops being a row of its own. */
-.revision-panel-foot.is-bar .revision-report-row { margin-top: 2px; }
+.revision-panel-foot.is-bar .revision-errands { margin-top: 2px; }
 
 @media (max-width: 720px) {
   .revision-panel-bar { max-height: none; }
@@ -1225,36 +1311,13 @@ body.is-pointing, body.is-pointing * { cursor: crosshair !important; }
   line-height: 1.6;
 }
 
-/* Hold to talk. The button is thumb sized because the phone is where it earns
-   its keep, and touch-action none keeps the browser from reading the hold as a
-   scroll and stealing the gesture halfway through a sentence. */
-.speak-row { margin: 8px 0 0; }
-.speak-btn {
-  display: block;
-  width: 100%;
-  min-height: 46px;
-  padding: 10px 12px;
-  font: inherit;
-  font-size: 15px;
-  font-weight: 700;
-  color: #374528;
-  background: #eef4e6;
-  border: 1px solid #c0d4a8;
-  border-radius: 10px;
-  cursor: pointer;
-  touch-action: none;
-  -webkit-user-select: none;
-  user-select: none;
-}
-.speak-btn.is-on { color: #fff; background: #374528; border-color: #374528; }
-/* The rule reads at arm's length. Fine print is a rule nobody follows. */
-.speak-rule {
-  margin: 4px 0 0;
-  font-size: 12.5px;
-  line-height: 1.35;
-  color: #5a6b4a;
-  text-align: center;
-}
+/* Hold to talk is a 46px square in the composer row now; its colours and its
+   thumb target live with the other icon button, beside .revision-send. The
+   rule about names moved into the one line of fine print under that row, which
+   is the size the rule already demanded rather than the size fine print used
+   to be. touch-action:none is on .icon-btn, and it is load bearing: without it
+   the browser reads the hold as a scroll and steals the gesture halfway
+   through a sentence. */
 
 /* THE PAGE MUST NOT ZOOM WHEN A THUMB TAPS A FIELD.
  *
