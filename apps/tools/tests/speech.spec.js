@@ -172,17 +172,48 @@ test.describe('the control to talk', () => {
   /* HIS RULING'S SECOND HALF, carried by the interface rather than by memory.
      It is a label on the affordance, so it costs nothing and it is there every
      single time. */
-  test('the rule about names is on the button, not in a queue of alerts', async ({ page }) => {
+  /* MEASURED ADJACENCY, NOT A SHARED PARENT. This asked whether the two
+     elements had the same parentElement, which was true while the control was
+     a full-width button with the rule as its own paragraph underneath. The
+     button is a 46px square in the composer row now and the rule is part of
+     the one line of fine print below it, so they no longer share a parent and
+     never will again.
+
+     The shared parent was only ever a proxy for the thing his ruling is about,
+     which is that a technician reaching for the microphone reads the rule
+     without going to look for it. So measure that instead: both on screen at
+     once, the rule below the button and close to it. That is a stricter test
+     than the old one - two elements can share a parent and still be a screen
+     apart, and this would catch it. */
+  test('the rule about names is beside the button, not in a queue of alerts', async ({ page }) => {
     await ready(page);
-    await expect(page.locator('[data-speak-rule]')).toHaveText(/say roles, not names/i);
-    const together = await page.evaluate(() => {
-      const btn = document.querySelector('[data-speak]');
-      const rule = document.querySelector('[data-speak-rule]');
-      return btn.parentElement === rule.parentElement;
+    const rule = page.locator('[data-speak-rule]');
+    await expect(rule).toHaveText(/say roles, not names/i);
+    await expect(rule).toBeVisible();
+    await expect(page.locator('[data-speak]')).toBeVisible();
+
+    const gap = await page.evaluate(() => {
+      const btn = document.querySelector('[data-speak]').getBoundingClientRect();
+      const txt = document.querySelector('[data-speak-rule]').getBoundingClientRect();
+      return { below: txt.top - btn.bottom, sameFooter: !!document.querySelector('.revision-panel-foot [data-speak-rule]') };
     });
-    expect(together).toBe(true);
+    expect(gap.sameFooter, 'the rule belongs in the composer footer with the control').toBe(true);
+    expect(gap.below, 'the rule sits below the mic').toBeGreaterThanOrEqual(0);
+    expect(gap.below, 'and close enough to read without looking for it').toBeLessThan(40);
+
     // And it is not an alert anybody has to dismiss.
-    await expect(page.locator('[data-speak-rule]')).not.toHaveAttribute('role', 'alert');
+    await expect(rule).not.toHaveAttribute('role', 'alert');
+  });
+
+  /* The rule does not go away while somebody is talking into it. His words
+     were that it is never not there, and the seconds during which a name could
+     actually be said out loud are the ones that sentence is about. */
+  test('the rule stays up while the microphone is open', async ({ page }) => {
+    await ready(page);
+    const btn = page.locator('[data-speak]');
+    await btn.dispatchEvent('pointerdown');
+    await expect(page.locator('[data-speak-rule]')).toHaveText(/say roles, not names/i);
+    await btn.dispatchEvent('pointerup');
   });
 
   test('holding it listens, and letting go stops', async ({ page }) => {
