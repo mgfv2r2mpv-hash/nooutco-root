@@ -447,6 +447,36 @@ function SkipAfterCooldown({ seconds, onSkip, loading, carrying }) {
   );
 }
 
+/* ── The two glyphs ───────────────────────────────────────────────────────
+   Drawn here rather than pulled from an icon font or a sprite sheet: the notes
+   pages compile their JSX in the browser and vendor everything they need, so a
+   second network dependency for two shapes would be the most expensive way to
+   save twenty lines. Stroked in currentColor, so the mic inverts with the
+   button when it is listening and neither needs a second colour rule.
+
+   aria-hidden on both, because the button beside them carries the name. An SVG
+   that announces itself would have a screen reader read the control twice. */
+function MicGlyph() {
+  return (
+    <svg className="icon-btn-glyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false"
+      fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="9" y="2" width="6" height="11" rx="3" />
+      <path d="M5 11a7 7 0 0 0 14 0" />
+      <path d="M12 18v3" />
+    </svg>
+  );
+}
+
+function SendGlyph() {
+  return (
+    <svg className="icon-btn-glyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false"
+      fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 3 10.5 13.5" />
+      <path d="M21 3 14.5 21 10.5 13.5 3 9.5z" />
+    </svg>
+  );
+}
+
 function RevisionPanel({
   open, onToggle, thread, annotation, onClearAnnotation,
   draft, onDraft, onSend, onAskAdvice, canAsk, onExportPairs, pairCount, loading, questions, onSkipQuestions, skipCooldown, skipHeld, unread, quality, suggestionDisposition, onApproveSuggestion, placedQuestions, pendingAnswers,
@@ -936,7 +966,19 @@ function RevisionPanel({
             </span>
           </div>
         )}
-        {!signedOut && !barMode && <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+        {/* ONE ROW FOR THE THREE THINGS THAT SEND WORDS. Typing, talking and
+            sending were three stacked full-width blocks, and measured on an
+            iPhone 14 profile the footer they made was 276px of a 664px screen:
+            more than a third of the phone spent on chrome, above a note the
+            technician is trying to read. Hold-to-talk was the biggest single
+            block and it is the same verb as Send, so it belongs beside it.
+
+            Icons rather than words for both, because a 46px square says
+            "press me" in a quarter of the width a label needs, and these two
+            are the most-used controls on the panel - the pair a technician
+            learns on day one and never has to read again. Everything that
+            cannot be learned once still says what it is, in the line below. */}
+        {!signedOut && !barMode && <div className="revision-compose">
           <textarea
             ref={inputRef}
             value={draft}
@@ -954,37 +996,26 @@ function RevisionPanel({
             }
             className="revision-input"
           />
-          <button
-            type="submit"
-            /* An answer typed under the question it answers is still an
-               answer. This used to read the panel's own box only, so the floor
-               plan's boxes could be full and Send dead. */
-            disabled={loading || (!draft.trim() && !pendingAnswers)}
-            className="revision-send"
-          >
-            {loading ? "…" : "Send"}
-          </button>
-        </div>}
-        {/* HIS RULING IS ON THE BUTTON. He allowed the audio path and asked
-            staff to keep names off it: "Staff should still avoid using client
-            names on this surface so they should not be dictating it to Apple as
-            well. This will be part of their training that I will do in person."
-            A rule that lives only in a training session is a rule somebody
-            forgets in month four, so it sits here as a label on the affordance
-            rather than as an alert in a queue. It costs the technician nothing
-            and it is never not there.
+          {/* HIS RULING IS ON THE AFFORDANCE. He allowed the audio path and asked
+              staff to keep names off it: "Staff should still avoid using client
+              names on this surface so they should not be dictating it to Apple as
+              well. This will be part of their training that I will do in person."
+              A rule that lives only in a training session is a rule somebody
+              forgets in month four, so it sits under this button rather than as
+              an alert in a queue. It costs the technician nothing and it is
+              never not there.
 
-            Offered only where the browser can actually hear, which is a
-            capability check and not a browser check: sniffing for Safari would
-            refuse a capable browser we did not think of AND offer the control
-            on a version that cannot do it. */}
-        {!signedOut && !barMode && window.NoteSpeech && window.NoteSpeech.available() && (
-          <div className="speak-row">
+              Offered only where the browser can actually hear, which is a
+              capability check and not a browser check: sniffing for Safari would
+              refuse a capable browser we did not think of AND offer the control
+              on a version that cannot do it. */}
+          {window.NoteSpeech && window.NoteSpeech.available() && (
             <button
               type="button"
               data-speak="true"
-              className={"speak-btn" + (listening ? " is-on" : "")}
+              className={"icon-btn speak-btn" + (listening ? " is-on" : "")}
               aria-pressed={listening ? "true" : "false"}
+              title={listening ? "Listening. Let go when you are done." : "Hold to talk"}
               /* Capturing the pointer means a thumb that slides off the button
                  while talking still ends the recording on the way up, rather
                  than leaving the microphone open. */
@@ -1002,60 +1033,52 @@ function RevisionPanel({
                 if (e.key === " " || e.key === "Enter") { e.preventDefault(); stopTalking(); }
               }}
             >
-              {listening ? "Listening. Let go when you are done." : "Hold to talk"}
+              <MicGlyph />
+              {/* The state in words, for a screen reader and for the test that
+                  asks whether this button says which of its two states it is
+                  in. Sighted people read the same thing off the colour and off
+                  the line under the row. */}
+              <span className="icon-btn-say">
+                {listening ? "Listening. Let go when you are done." : "Hold to talk"}
+              </span>
             </button>
-            <p className="speak-rule" data-speak-rule="true">{window.NoteSpeech.RULE}</p>
-          </div>
-        )}
-        {/* Asking is deliberately its own button rather than something inferred
-            from the wording of a revision. The supervising clinician's stored
-            judgement only reaches a note when someone asks for it, and a guess
-            about intent would put it into notes nobody asked to individualise.
-            It answers into the thread and never edits the note. */}
-        {!signedOut && !awaitingQuestions && onAskAdvice && (
-          <div className="revision-advice-row">
-            <button
-              type="button"
-              className="revision-advice"
-              /* Disabled until there is a note to advise on. It used to accept
-                 the click and answer "generate the note first", so four clicks
-                 stacked four identical refusals in the thread and nothing on the
-                 button ever said why. A control that cannot do its job should
-                 look like it, not explain itself afterwards. */
-              disabled={loading || !canAsk}
-              onClick={onAskAdvice}
-              title={!canAsk
-                ? "Generate the note first, then this can suggest what to do next."
-                : annotation
-                  ? "Ask what the supervising clinician would do about the selected section"
-                  : "Ask what the supervising clinician would do next. This answers in the panel and does not change the note."}
-            >
-              What would you do here?
-            </button>
-          </div>
-        )}
-        {/* Only the owning clinician captures pairs, so only he sees this, and
-            it only appears once there is something to take. Export is his
-            deliberate act: the file lands in Downloads and he moves it into
-            ~/Private/voice-corpus. Nothing here has ever been sent anywhere. */}
-        {!signedOut && pairCount > 0 && (
-          <div className="revision-advice-row">
-            <button
-              type="button"
-              className="revision-advice"
-              onClick={onExportPairs}
-              title="Save the captured before/after pairs to a file. Nothing has left this browser."
-            >
-              Export {pairCount} captured edit{pairCount === 1 ? "" : "s"}
-            </button>
-          </div>
-        )}
-        {/* "No PHI" assumes the reader already knows what counts. Spelling it
-            out inline would crowd the footer, so the term itself carries the
-            reminder. Click as well as hover, because on a tablet - which is what
-            a lot of sessions are written on - there is no hover. */}
-        {!signedOut && <p className="revision-foot-note">
-          Do not enter{" "}
+          )}
+          <button
+            type="submit"
+            /* An answer typed under the question it answers is still an
+               answer. This used to read the panel's own box only, so the floor
+               plan's boxes could be full and Send dead. */
+            disabled={loading || (!draft.trim() && !pendingAnswers)}
+            className="icon-btn revision-send"
+            title="Send"
+          >
+            {loading ? <span className="icon-btn-wait" aria-hidden="true">…</span> : <SendGlyph />}
+            <span className="icon-btn-say">{loading ? "Sending" : "Send"}</span>
+          </button>
+        </div>}
+        {/* ONE LINE OF FINE PRINT, NOT THREE. The rule about names, the rule
+            about PHI and what the Enter key does were a centred paragraph, a
+            left-aligned paragraph and a full-width button between them. They
+            are the same kind of thing - the stuff you read once - so they read
+            as one line now, at the size the speaking rule already demanded.
+
+            "No PHI" assumes the reader already knows what counts, so the term
+            itself carries the definition. Click as well as hover, because on a
+            tablet - which is what a lot of sessions are written on - there is
+            no hover. */}
+        {!signedOut && !barMode && <p className="revision-foot-note">
+          {/* The hint half swaps to the live state, because a microphone that
+              is listening has to say so somewhere a person is already looking,
+              and the icon alone cannot. The RULE half never swaps: his ruling
+              is that it is never not there, and "never" includes the seconds
+              somebody is actually speaking into it. */}
+          {window.NoteSpeech && window.NoteSpeech.available() && (
+            <span data-speak-rule="true" className={listening ? "is-listening" : undefined}>
+              {listening ? "Listening. Let go when you are done." : "Hold the mic to talk."}
+              {" "}{window.NoteSpeech.RULE}{" "}
+            </span>
+          )}
+          Never enter{" "}
           <button
             type="button"
             className="phi-term"
@@ -1074,7 +1097,54 @@ function RevisionPanel({
             </span>
           )}
         </p>}
-        {!signedOut && <div className="revision-report-row">{reportButton}</div>}
+        {/* THE ERRANDS, SIDE BY SIDE. Asking the supervising clinician, taking
+            the captured pairs and reporting a problem each had a full-width row
+            to themselves and a divider above the last one. None of them is the
+            main loop, and three stacked full-width buttons read as three
+            decisions to make before typing. One row, one weight.
+
+            Asking is deliberately its own button rather than something inferred
+            from the wording of a revision. The supervising clinician's stored
+            judgement only reaches a note when someone asks for it, and a guess
+            about intent would put it into notes nobody asked to individualise.
+            It answers into the thread and never edits the note. */}
+        {!signedOut && <div className="revision-errands">
+          {!awaitingQuestions && onAskAdvice && (
+            <button
+              type="button"
+              className="revision-advice"
+              /* Disabled until there is a note to advise on. It used to accept
+                 the click and answer "generate the note first", so four clicks
+                 stacked four identical refusals in the thread and nothing on the
+                 button ever said why. A control that cannot do its job should
+                 look like it, not explain itself afterwards. */
+              disabled={loading || !canAsk}
+              onClick={onAskAdvice}
+              title={!canAsk
+                ? "Generate the note first, then this can suggest what to do next."
+                : annotation
+                  ? "Ask what the supervising clinician would do about the selected section"
+                  : "Ask what the supervising clinician would do next. This answers in the panel and does not change the note."}
+            >
+              What would you do here?
+            </button>
+          )}
+          {/* Only the owning clinician captures pairs, so only he sees this, and
+              it only appears once there is something to take. Export is his
+              deliberate act: the file lands in Downloads and he moves it into
+              ~/Private/voice-corpus. Nothing here has ever been sent anywhere. */}
+          {pairCount > 0 && (
+            <button
+              type="button"
+              className="revision-advice revision-export"
+              onClick={onExportPairs}
+              title="Save the captured before/after pairs to a file. Nothing has left this browser."
+            >
+              Export {pairCount} pair{pairCount === 1 ? "" : "s"}
+            </button>
+          )}
+          {reportButton}
+        </div>}
       </form>
     </aside>
     </React.Fragment>
