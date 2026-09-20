@@ -4911,8 +4911,15 @@ function App() {
 
                 {putBackOn && (
                   <div style={{ padding: "10px 14px 12px" }}>
+                    {/* A GRID, NOT A WRAPPING FLEX ROW. On a 390px screen the flex
+                        version wrapped the input under the wider tokens and not
+                        under the narrow ones, so "Client--1" sat beside its box
+                        while "Caregiver--1" sat above its own. A three-column grid
+                        with a minmax(0,1fr) input shrinks instead of wrapping, so
+                        every row keeps one baseline at any width. No test sees
+                        this; a screenshot did. */}
                     {roleTokens.map((m) => (
-                      <div key={m.token} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 7 }}>
+                      <div key={m.token} style={{ display: "grid", gridTemplateColumns: "auto auto minmax(0, 1fr)", gap: 8, alignItems: "center", marginBottom: 7 }}>
                         <code style={{ fontSize: 12, background: "#fff", border: "1px solid #dde8cf", borderRadius: 5, padding: "3px 7px", color: "#5a6b4a", whiteSpace: "nowrap" }}>{m.token}</code>
                         <span style={{ color: "#9ab383", fontSize: 13 }}>→</span>
                         <input
@@ -4920,7 +4927,7 @@ function App() {
                           data-testid={"put-back-input-" + m.token}
                           value={putBack[m.token] === undefined ? m.name : putBack[m.token]}
                           onChange={(e) => setPutBack((p) => Object.assign({}, p, { [m.token]: e.target.value }))}
-                          style={{ flex: "1 1 160px", minWidth: 0, fontSize: 13, padding: "5px 9px", borderRadius: 6, border: "1.5px solid #c0d4a8", background: "#fff", color: "#2d3a1f" }}
+                          style={{ width: "100%", minWidth: 0, fontSize: 13, padding: "5px 9px", borderRadius: 6, border: "1.5px solid #c0d4a8", background: "#fff", color: "#2d3a1f" }}
                         />
                       </div>
                     ))}
