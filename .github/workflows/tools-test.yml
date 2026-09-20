@@ -49,13 +49,27 @@ jobs:
     # no test failure in the log. Its two siblings on the same commit finished
     # at 17:04 (chromium) and 24:57 (webkit), so the cap had roughly five
     # minutes of headroom for the second-slowest engine and none at all for the
-    # slowest. The suite is 924 tests and grows most weeks.
+    # slowest.
     #
-    # Raised rather than parallelised on purpose. `workers: 2` in
+    # 70 RATHER THAN 45, AND THE 45 WENT THE SAME WAY. On 2026-09-20 webkit on
+    # run 35489268071 was cancelled at 45:17 having failed NOTHING: shard 1
+    # passed 421 tests in 15.1m, shard 2 passed 420 in 14.0m, and shard 3 was
+    # a minute or so from the end when the cap killed it. Its siblings on that
+    # commit finished at 28m and 30m. webkit had gone green twice at 38m in the
+    # days before, so the margin was seven minutes and ordinary runner variance
+    # spent it. The suite was 924 tests when the 30 was raised; it is 1262 now,
+    # and it grows most weeks, so read this number as rented rather than fixed.
+    #
+    # Raised rather than parallelised on purpose, twice now. `workers: 2` in
     # playwright.config.js is a deliberate cap - every page compiles JSX in the
     # browser and that CPU is shared with the Pages dev server - so buying time
-    # by widening it would buy flakes instead.
-    timeout-minutes: 45
+    # by widening it would buy flakes instead. The three shards are sequential
+    # inside one job because that is what replaces the leaking `wrangler pages
+    # dev` twice mid-run, so a fourth shard buys memory headroom and COSTS wall
+    # clock. The move that buys wall clock is project x shard as parallel jobs,
+    # which is a rewrite of this file rather than a number, and is the thing to
+    # do when 70 runs out.
+    timeout-minutes: 70
     strategy:
       # One browser failing must not cancel the other two - knowing whether a
       # failure is browser-specific is most of the diagnosis.
