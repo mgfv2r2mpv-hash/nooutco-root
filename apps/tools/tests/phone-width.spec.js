@@ -9,8 +9,19 @@ import { test, expect } from '@playwright/test';
 
 test.use({ viewport: { width: 390, height: 664 } });
 
-const pageIsWide = (page) => page.evaluate(() =>
-  document.documentElement.scrollWidth > document.documentElement.clientWidth);
+/* Polled rather than sampled once, for the reason written out in
+   question-inline.spec.js: webkit can report a wider document for about a tenth
+   of a second while a page is still settling, with no box anywhere near the
+   wrong place. These two pages are static and have not flaked, but the defect
+   is in the shape of the assertion rather than in the page it was pointed at,
+   so both siblings get the same fix rather than waiting their turn to go red.
+
+   A page that really is too wide never settles, so it still fails here. */
+const expectNotWide = (page) => expect
+  .poll(() => page.evaluate(() =>
+    document.documentElement.scrollWidth > document.documentElement.clientWidth),
+  { timeout: 5000, intervals: [100, 200, 400, 1000] })
+  .toBe(false);
 
 test.describe('graph visual analysis on a phone', () => {
   test.beforeEach(async ({ page }) => {
@@ -19,7 +30,7 @@ test.describe('graph visual analysis on a phone', () => {
   });
 
   test('the page does not scroll sideways', async ({ page }) => {
-    expect(await pageIsWide(page)).toBe(false);
+    await expectNotWide(page);
   });
 
   test('the metrics table scrolls inside its card and keeps the phase column in view', async ({ page }) => {
@@ -48,7 +59,7 @@ test.describe('session flow on a phone', () => {
   });
 
   test('the page does not scroll sideways', async ({ page }) => {
-    expect(await pageIsWide(page)).toBe(false);
+    await expectNotWide(page);
   });
 
   test('every citation opens fully on screen', async ({ page }) => {
@@ -67,6 +78,6 @@ test.describe('session flow on a phone', () => {
       await cite.blur();
     }
     expect(offscreen, 'citations cut off at the screen edge').toEqual([]);
-    expect(await pageIsWide(page)).toBe(false);
+    await expectNotWide(page);
   });
 });
