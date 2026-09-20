@@ -1520,6 +1520,11 @@ function App() {
     setCopied(null);
     setCopiedPrompt(false);
     setCopyMarks((prev) => Object.assign({}, prev, { [tool.id]: {} }));
+    /* The put-back table is keyed by token, and "Client--1" means a different
+       person on the next tool. Carrying it across would quietly paste one
+       client's name into another's note. */
+    setPutBack({});
+    setPutBackOn(false);
   };
 
   const collectFreeText = () =>
@@ -1604,10 +1609,83 @@ function App() {
     });
   };
 
+  /* ── Putting his own words back, on the way out ─────────────────────
+   *
+   * A role token is deliberately not restored into the note: NotesScrub mints
+   * "Client--1" precisely so the technician cannot forget to substitute their
+   * own word before signing, and restoreOutput leaves it alone on purpose.
+   * That trade costs a retype of every token on every section, which is what
+   * the maintainer asked to remove on 2026-09-19: "local on-page find/replace
+   * would help to rehydrate for client and caregiver".
+   *
+   * SO IT HAPPENS AT THE CLIPBOARD AND NOWHERE ELSE. The clipboard is the
+   * moment the note leaves for the EHR, where the client's name is the record
+   * rather than something in transit. Three things follow from doing it here
+   * instead of in state, and all three are the reason:
+   *
+   *   - The note ON THE PAGE keeps its tokens, so the banner above it stays
+   *     true and a glance still shows what was taken out.
+   *   - S.output is untouched, so a revision turn still sends the tokenised
+   *     text. The name cannot reach the model through this door.
+   *   - Nothing is persisted, so the draft store gains no name it did not
+   *     already hold in the scrub map.
+   *
+   * The replacement is pre-filled with what they actually typed and is theirs
+   * to edit, because "Client--1" may want to be "Mom" in one field and the
+   * child's name in another. */
+  const [putBack, setPutBack] = React.useState({});
+  const [putBackOn, setPutBackOn] = React.useState(false);
+
+  // Role tokens only. Identifiers restore themselves, and opaque tokens were
+  // already round-tripped before the draft reached the page.
+  const roleTokens = (S.scrubMap || []).filter((m) => !m.restore && m.name && m.token);
+
+  const forEhr = (text) => {
+    if (!putBackOn || !roleTokens.length) return text;
+    let t = String(text || "");
+    // Longest token first: "Client--1" is a prefix of "Client--12".
+    roleTokens
+      .slice()
+      .sort((a, b) => String(b.token).length - String(a.token).length)
+      .forEach((e) => {
+        const rep = (putBack[e.token] === undefined ? e.name : putBack[e.token]).trim();
+        if (rep) t = t.split(e.token).join(rep);
+      });
+    return t;
+  };
+
+  /* THE READER'S COPY OF A SECTION IS NOT THE MODEL'S COPY.
+   *
+   * S.output holds the RESTORED draft - that is what finalize() is for. A
+   * revision prompt quotes the current section back so the model can edit it,
+   * and from 2026-09-19 that copy contains the clinician's real dates, phone
+   * numbers and addresses, because identifiers now restore. Quoting it verbatim
+   * would put them on the wire, which is the one thing the scrub exists to stop,
+   * and it would do it silently: the note would look right and the request body
+   * would carry the DOB.
+   *
+   * So the quote is re-tokenised on the way out. Restore for the reader,
+   * re-scrub for the model, from the same map.
+   *
+   * IDENTIFIERS ONLY, DELIBERATELY. Role tokens were never restored into the
+   * note, so they are already tokens here and the pass is a no-op on them.
+   * Opaque words were restored before this change and have always travelled this
+   * way, so re-tokenising them would alter a wire this change has no business
+   * altering. */
+  const sectionBodyForModel = (section) => {
+    const text = sectionBody(section, S.output, S.values);
+    const ids = (scrubMapRef.current || []).filter((e) => e.identifier);
+    return ids.length ? NotesScrub.applyMap(text, ids) : text;
+  };
+
   const handleCopy = (id, text) => {
-    navigator.clipboard.writeText(text);
+    navigator.clipboard.writeText(forEhr(text));
     setCopied(id);
     setTimeout(() => setCopied(null), 1800);
+    /* Marked against the STATE's text, never the rehydrated one. The mark is a
+       hash used to tell "already pasted" from "changed since", and hashing the
+       substituted string would make every copied section read as changed the
+       instant it was copied. */
     if (String(id).indexOf("sec-") === 0) markCopied([{ id: String(id).slice(4), text }]);
     recordNoteLeft();
   };
@@ -3146,7 +3224,7 @@ function App() {
       section
         ? `The clinician is asking what to do about "${section.heading}" (JSON key: ${ann.id}).`
         : `The clinician is asking what to do next for this case.`,
-      section ? `\nCurrent content of that section:\n${sectionBody(section, S.output, S.values)}` : "",
+      section ? `\nCurrent content of that section:\n${sectionBodyForModel(section)}` : "",
       ``,
       `Answer in prose, as ${asker === "clinician" ? "advice to a supervising clinician" : `a board certified behavior analyst answering a ${asker}`}.`,
       `Do NOT return the note JSON and do not change any section.`,
@@ -3293,7 +3371,7 @@ function App() {
           ? [
               `Section the answer points at: "${section.heading}" (JSON key: ${ann.id})`,
               `Current content of that section as shown to them (may include manual edits):`,
-              sectionBody(section, S.output, S.values),
+              sectionBodyForModel(section),
               ``,
             ]
           : []),
@@ -3314,7 +3392,7 @@ function App() {
         `"${ann.text}"`,
         ``,
         `Current content of that section as shown to them (may include manual edits):`,
-        sectionBody(section, S.output, S.values),
+        sectionBodyForModel(section),
         ``,
         `Instruction: ${scrubbedInstruction}`,
         ``,
@@ -3326,7 +3404,7 @@ function App() {
         `REVISION REQUEST`,
         `Target section: "${section.heading}" (JSON key: ${ann.id})`,
         `Current content of that section as shown to the clinician (may include their manual edits):`,
-        sectionBody(section, S.output, S.values),
+        sectionBodyForModel(section),
         ``,
         `Instruction: ${scrubbedInstruction}`,
         ``,
@@ -4040,7 +4118,7 @@ function App() {
 
   const handleCopyAll = () => {
     if (!S.output) return;
-    navigator.clipboard.writeText(copyBlocks(tool, S.output, S.values).join("\n\n"));
+    navigator.clipboard.writeText(forEhr(copyBlocks(tool, S.output, S.values).join("\n\n")));
     /* Every section went over, whatever shape the blocks were grouped into. A
        tool with copyGroups hands the EHR four blocks built from thirteen cards,
        and all thirteen are now in the EHR, so all thirteen get a mark. */
@@ -4095,6 +4173,9 @@ function App() {
     scrubMapRef.current = [];
     setCopied(null);
     setCopiedPrompt(false);
+    // Same reason the ref is cleared: the tokens it names no longer exist.
+    setPutBack({});
+    setPutBackOn(false);
   };
 
   /* ── Note-freshness countdown ──────────────────────────────────────── */
@@ -4806,6 +4887,50 @@ function App() {
             <p style={{ fontSize: 13, color: "#7a9460", marginBottom: 20, lineHeight: 1.55 }}>
               Checkbox suggestions are inferred from your notes - verify before ticking your form. Narratives are editable. <strong style={{ color: "#5a6b4a" }}>Click a section to revise it, or select a phrase inside one to revise just that</strong> - the assistant panel takes it from there. 💡 flags what might be missing, ⚠ flags what a funder could reject the claim over.
             </p>
+
+            {/* Find and replace, scoped to the clipboard. Only shown when this
+                note actually carries role tokens, because on a note with none
+                it is a control that would do nothing. */}
+            {roleTokens.length > 0 && (
+              <div data-testid="put-back-panel" style={{ margin: "0 0 20px", borderRadius: 10, border: "1.5px solid #c0d4a8", background: "#f7faf3", overflow: "hidden" }}>
+                <label style={{ display: "flex", gap: 9, alignItems: "flex-start", padding: "10px 14px", cursor: "pointer", borderBottom: putBackOn ? "1px solid #dde8cf" : "none" }}>
+                  <input
+                    type="checkbox"
+                    data-testid="put-back-toggle"
+                    checked={putBackOn}
+                    onChange={(e) => setPutBackOn(e.target.checked)}
+                    style={{ marginTop: 2, width: 16, height: 16, flex: "0 0 auto" }}
+                  />
+                  <span style={{ fontSize: 13, color: "#3a4326", lineHeight: 1.5 }}>
+                    <strong>Put my words back when I copy</strong>
+                    <span style={{ display: "block", fontSize: 12, color: "#7a9460", marginTop: 2 }}>
+                      The note on this page keeps its tokens and nothing is sent anywhere - only what lands on your clipboard changes.
+                    </span>
+                  </span>
+                </label>
+
+                {putBackOn && (
+                  <div style={{ padding: "10px 14px 12px" }}>
+                    {roleTokens.map((m) => (
+                      <div key={m.token} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 7 }}>
+                        <code style={{ fontSize: 12, background: "#fff", border: "1px solid #dde8cf", borderRadius: 5, padding: "3px 7px", color: "#5a6b4a", whiteSpace: "nowrap" }}>{m.token}</code>
+                        <span style={{ color: "#9ab383", fontSize: 13 }}>→</span>
+                        <input
+                          type="text"
+                          data-testid={"put-back-input-" + m.token}
+                          value={putBack[m.token] === undefined ? m.name : putBack[m.token]}
+                          onChange={(e) => setPutBack((p) => Object.assign({}, p, { [m.token]: e.target.value }))}
+                          style={{ flex: "1 1 160px", minWidth: 0, fontSize: 13, padding: "5px 9px", borderRadius: 6, border: "1.5px solid #c0d4a8", background: "#fff", color: "#2d3a1f" }}
+                        />
+                      </div>
+                    ))}
+                    <p style={{ fontSize: 11.5, color: "#7a9460", margin: "8px 0 0", lineHeight: 1.5 }}>
+                      Pre-filled with what you typed. Blank one out to leave that token in place.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* The strip sits at the top of the output and sticks there, because
                 the question it answers ("what have I not pasted yet") is the one

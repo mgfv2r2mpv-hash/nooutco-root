@@ -96,3 +96,82 @@ test.describe('non-name identifier detection', () => {
     expect(await detect(page, null)).toEqual([]);
   });
 });
+
+/* The clinician read "declined to 20% (1 of 5) from 87% on [DATE_1]" in a signed
+ * supervision note on 2026-09-19. Everything upstream of the restore was already
+ * right - the date was tokenised, the model only ever saw the token, and the map
+ * holding the real date was in the browser the whole time. It was dropped at the
+ * last step, because identifier entries were minted without a `restore` flag and
+ * restoreOutput keeps only flagged entries.
+ *
+ * THESE DRIVE restoreOutput, NOT restoreDeep, AND THE DIFFERENCE IS THE WHOLE
+ * TEST. restoreDeep substitutes whatever map it is handed, so calling it
+ * directly restores the date even on the broken build - the first draft of this
+ * file did exactly that and passed against the bug it was written for. The
+ * defect lives in restoreOutput's `map.filter(e => e.restore)`, which is the
+ * call finalize() actually makes, so that is the seam worth driving.
+ */
+test.describe('a detected identifier comes back', () => {
+  async function roundTrip(page, text, asModelReturnedIt) {
+    return page.evaluate(({ t, returned }) => {
+      const s = window.NotesGate._scrub;
+      const map = s.buildIdentifierMap(t);
+      const scrubbed = s.applyScrub(t, map);
+      // The model sees `scrubbed` and nothing else. What it hands back is the
+      // second argument when a test wants to reshape it, or the scrubbed text
+      // itself when the token survives the trip intact.
+      const back = returned === null ? scrubbed : returned;
+      return { map, scrubbed, restored: window.NotesScrub.restoreOutput(back, map) };
+    }, { t: text, returned: asModelReturnedIt ?? null });
+  }
+
+  test('the date the clinician typed is in the note again', async ({ page }) => {
+    const text = 'Prompt "you can do it" declined to 20% from 87% on 09/03/2026.';
+    const { scrubbed, restored } = await roundTrip(page, text);
+
+    // The wire never carried it - that half must not regress either.
+    expect(scrubbed).not.toContain('09/03/2026');
+    expect(scrubbed).toContain('[DATE_1]');
+    // And the clinician gets their own date back.
+    expect(restored).toContain('09/03/2026');
+    expect(restored).not.toMatch(/\[DATE[_\s-]?\d+\]/i);
+  });
+
+  test('every identifier class comes back, not only dates', async ({ page }) => {
+    const text = 'DOB 03/14/2016, mom at (555) 213-4477, lives at 1420 Maple Street.';
+    const { restored } = await roundTrip(page, text);
+    expect(restored).toContain('03/14/2016');
+    expect(restored).toContain('555');
+    expect(restored).toContain('Maple Street');
+  });
+
+  // The one thing an echo mock can never catch: a real model reshapes the token
+  // it was given. [[T3]] came back as [T3] and rode into a note once already.
+  const RESHAPED = ['[date_1]', '[DATE 1]', '[ DATE_1 ]', '[[DATE_1]]', '[Date-1]'];
+  for (const shape of RESHAPED) {
+    test(`restores when the model hands it back as ${shape}`, async ({ page }) => {
+      // The note issues DATE_1 for the written date, and the model returns the
+      // token in a shape it mangled on the way through.
+      const { restored } = await roundTrip(
+        page,
+        'Reassessment due September 3, 2026 per the plan.',
+        `Reassessment noted on ${shape} per the plan.`,
+      );
+      expect(restored, `${shape} was left in the note`).toContain('September 3, 2026');
+      expect(restored).not.toContain(shape);
+    });
+  }
+
+  test('a number this note never issued is the clinician\'s own writing and stays', async ({ page }) => {
+    const text = 'Session on 09/03/2026 went well.';
+    const { restored } = await roundTrip(page, text, 'Compare [DATE_9] against [DATE_1].');
+    expect(restored).toContain('[DATE_9]');
+    expect(restored).toContain('09/03/2026');
+  });
+
+  test('the map entry is flagged restorable, which is what the filter reads', async ({ page }) => {
+    const map = await mapFor(page, 'DOB 03/14/2016 per the intake packet');
+    expect(map.length).toBeGreaterThan(0);
+    for (const e of map) expect(e.restore, `${e.token} would be dropped by restoreOutput`).toBe(true);
+  });
+});
