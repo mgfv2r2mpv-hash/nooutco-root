@@ -274,11 +274,32 @@ test.describe('on the phone he actually hands them', () => {
     expect(share, 'the panel should be a bar, not most of the screen').toBeLessThan(0.4);
   });
 
+  /* POLLED, BECAUSE THE PAGE IS STILL SETTLING WHEN THE QUESTION APPEARS.
+     Sampled once, this went red on webkit - every run on a Mac, and one CI job
+     on 2026-09-19 where all three retries failed. Traced by sampling every
+     100ms from the instant the old assertion fired:
+
+       t=0ms     scrollWidth 501, clientWidth 390
+       t=101ms   scrollWidth 390, clientWidth 390
+
+     Nothing is genuinely outside the viewport at either moment. The panel's
+     children only read as overflowing if you add the page's scroll offset to
+     boxes that live inside a position:fixed panel, which is a measurement
+     error rather than a layout one. So webkit reports a wider document for
+     about a tenth of a second after the panel switches into bar mode, and the
+     old assertion read it in that window. WHY it reports that is not
+     identified; what is identified is that it is gone before anyone could see
+     it and that no box is ever in the wrong place.
+
+     Polling keeps the protection this test exists for: a page that really is
+     too wide never settles, so it still fails, just by timeout instead. */
   test('nothing on the page scrolls sideways', async ({ page }) => {
     await ask(page, TWO_PLACED);
     await expect(page.locator('[data-question-inline="fBehavior"]')).toBeVisible({ timeout: 25000 });
-    const wide = await page.evaluate(() =>
-      document.documentElement.scrollWidth > document.documentElement.clientWidth);
-    expect(wide).toBe(false);
+    await expect
+      .poll(() => page.evaluate(() =>
+        document.documentElement.scrollWidth > document.documentElement.clientWidth),
+      { timeout: 5000, intervals: [100, 200, 400, 1000] })
+      .toBe(false);
   });
 });
