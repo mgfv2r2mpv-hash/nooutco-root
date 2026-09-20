@@ -1508,15 +1508,31 @@
   /* `seedCounts` is {type: highest number already issued} and carries the
      numbering across a second scrub of the same note. Without it a phone number
      given in a revision is tokenised [phone_1] a second time, and the note then
-     shows one token standing for two different numbers - which is exactly the
-     collision the opaque tokens had, in the one class of entry that is never
-     restored and so stays in the record. */
+     shows one token standing for two different numbers - the same collision the
+     opaque tokens had. It matters more now than it did, not less: a token that
+     restores and stands for two different numbers puts the WRONG number in the
+     note, where one that stayed a token merely looked wrong.
+
+     IDENTIFIERS RESTORE, AS OF 2026-09-19. They did not before, and the
+     clinician read [DATE_1] in a signed supervision note because of it. The old
+     reasoning was that a session note has no business carrying a phone number,
+     so leaving the token visible made the clinician delete it. The maintainer
+     overruled that: the note is going into an EHR, where this information
+     belongs, and the tool's job is to keep it off the WIRE, not out of the
+     record. applyScrub on the outbound path is what enforces that, and it is
+     untouched. Nothing restored here has ever been seen by the model. */
   function buildIdentifierMap(text, seedCounts) {
     var counts = {};
     if (seedCounts) Object.keys(seedCounts).forEach(function (k) { counts[k] = seedCounts[k]; });
     return detectIdentifiers(text).map(function (h) {
       counts[h.type] = (counts[h.type] || 0) + 1;
-      return { name: h.text, token: "[" + h.type + "_" + counts[h.type] + "]", identifier: true };
+      return {
+        name: h.text,
+        token: "[" + h.type + "_" + counts[h.type] + "]",
+        identifier: true,
+        kind: h.type.toLowerCase(),
+        restore: true,
+      };
     });
   }
 
@@ -1687,15 +1703,48 @@
     });
   }
 
+  /* The same tolerance, for the [TYPE_N] family.
+   *
+   * Written for the same reason restoreLooseOpaque exists: the shape that leaves
+   * the browser is not reliably the shape that comes back. A model writing prose
+   * lowercases a token inside a sentence, drops the underscore, or pads the
+   * brackets, and every one of those misses a literal match. The identity here is
+   * the TYPE plus the NUMBER; the brackets, the case and the separator are
+   * decoration.
+   *
+   * THE SAFETY IS THE SAME AND IT IS NOT THE REGEX. Nothing is substituted unless
+   * this note actually issued that type and number. [DATE_9] in a note that minted
+   * one date stays exactly as the clinician wrote it, so somebody bracketing a
+   * term of their own keeps it. A permissive pattern with a closed index is safe;
+   * the index is what makes it so.
+   */
+  function restoreLooseIdentifier(text, map) {
+    var byKey = {};
+    (map || []).forEach(function (e) {
+      var m = /^\[([A-Za-z]{2,12})_(\d+)\]$/.exec(String((e && e.token) || ""));
+      if (m) byKey[m[1].toUpperCase() + "_" + m[2]] = e.name;
+    });
+    if (!Object.keys(byKey).length) return text;
+    /* Built per call, not hoisted: a /g regex at module scope carries lastIndex
+       between calls and every caller of this is in a loop. */
+    return text.replace(
+      /\[{1,2}\s*([A-Za-z]{2,12})\s*[_\s-]\s*(\d+)\s*\]{1,2}/g,
+      function (whole, type, n) {
+        var key = type.toUpperCase() + "_" + n;
+        return Object.prototype.hasOwnProperty.call(byKey, key) ? byKey[key] : whole;
+      }
+    );
+  }
+
   function restoreDeep(value, map) {
     if (typeof value === "string") {
       var s = value;
       var ordered = map.slice().sort(function (a, b) { return b.token.length - a.token.length; });
       ordered.forEach(function (e) { s = s.split(e.token).join(e.name); });
       /* The literal pass ran first and still wins, so a token the model echoed
-         back correctly never reaches the tolerant one. This only ever sees the
+         back correctly never reaches the tolerant ones. These only ever see the
          survivors. */
-      return restoreLooseOpaque(s, map);
+      return restoreLooseIdentifier(restoreLooseOpaque(s, map), map);
     }
     if (Array.isArray(value)) return value.map(function (v) { return restoreDeep(v, map); });
     if (value && typeof value === "object") {

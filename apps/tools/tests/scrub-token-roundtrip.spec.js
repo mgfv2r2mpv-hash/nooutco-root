@@ -273,7 +273,7 @@ const json = (obj) => ({
 
 /* Draft, then revise. The revision reply carries whatever opaque tokens the page
    put on the wire in the turns before it, which is what the live model did. */
-async function reviseAfterDraft(page, instruction) {
+async function reviseAfterDraft(page, instruction, intakeText = INTAKE, sectionKey = null) {
   let turn = 0;
   const sent = [];
   await page.route('**/api/llm-call**', async (route) => {
@@ -298,12 +298,20 @@ async function reviseAfterDraft(page, instruction) {
   });
 
   await loggedIn(page);
-  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill(INTAKE);
+  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill(intakeText);
   await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first-then board before demands');
   await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked and redirected');
   await page.getByRole('button', { name: 'Generate Note' }).click();
   await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 30000 });
 
+  /* Targeting a SECTION is what makes the prompt quote that section's current
+     content back to the model. Without it the revision takes the untargeted
+     branch, which quotes nothing, and a test of what the quote carries proves
+     nothing at all. Clicked at the top-left so the hit lands on the card's
+     heading rather than inside the textarea, which the handler ignores. */
+  if (sectionKey) {
+    await page.locator(`[data-section-key="${sectionKey}"]`).click({ position: { x: 6, y: 6 } });
+  }
   await page.locator('.revision-input').fill(instruction);
   await page.locator('.revision-send').click();
   await expect(page.locator('.diff-view').first()).toBeVisible({ timeout: 30000 });
@@ -346,6 +354,40 @@ test.describe('a revision does not lose the words the draft round-tripped', () =
     // Carrying the map forward must not turn into restoring on the way OUT.
     expect(wire, 'a client name crossed the wire on a later turn').not.toContain('Jacob');
     expect(wire).not.toContain('Sarah');
+  });
+
+  /* THE TEST THIS CHANGE MOST NEEDED.
+   *
+   * Identifiers restore into the draft from 2026-09-19, so S.output holds the
+   * clinician's real date. A revision quotes the current section back to the
+   * model so it can edit it, and quoting the restored copy would put that date
+   * on the wire while the note on screen looked perfectly correct. Nothing on
+   * the page would show it; only the request body would.
+   *
+   * Written against the wire itself rather than against a helper, because the
+   * helper is the thing that would be wrong.
+   */
+  test('a restored date is a token again on the revision turn', async ({ page }) => {
+    /* The date goes INSIDE the echoed sentence on purpose. The mock echoes the
+       line matching /labeled/, so that is the only text that reaches the note,
+       and a date anywhere else in the intake never lands in a section - which
+       is how the first version of this test passed against the bug. */
+    const DATED = INTAKE.replace('cards correctly.', 'cards correctly on 09/03/2026.');
+    const { sent } = await reviseAfterDraft(
+      page,
+      'tighten the lesson narrative',
+      DATED,
+      'lessonProgressNarrative',
+    );
+    expect(sent.length, 'no revision turn was sent, so this proved nothing').toBeGreaterThan(1);
+    const quoted = JSON.stringify(sent.slice(1));
+    expect(quoted, 'the revision never quoted the section, so this proved nothing')
+      .toContain('Current content of that section');
+
+    const wire = JSON.stringify(sent);
+    expect(wire, 'the date crossed the wire once identifiers began restoring').not.toContain('09/03/2026');
+    // And it went as the token, so the model still knows a date belongs there.
+    expect(wire, 'the date was dropped rather than tokenised').toContain('DATE_1');
   });
 
   test('the substitution banner still says what to put back after a revision', async ({ page }) => {
@@ -396,9 +438,11 @@ test.describe('numbering continues across scrubs of the same note', () => {
       });
       return [...first.map, ...second.map].filter((e) => e.identifier).map((e) => e.token);
     });
-    // An identifier is never restored, so a reissued [phone_1] does not put a
-    // wrong word in the note - it puts one token in the note standing for two
-    // different numbers, which cannot be substituted back at all.
+    // This assertion mattered more from 2026-09-19, when identifiers began
+    // restoring. It used to mean one token stood for two numbers and neither
+    // could be substituted back; it now means the note would show the FIRST
+    // number where the clinician wrote the second. Seeding the counts is what
+    // prevents it, and this is the test that proves the seeding still runs.
     expect(tokens.length).toBeGreaterThanOrEqual(2);
     expect(new Set(tokens).size).toBe(tokens.length);
   });
@@ -594,5 +638,99 @@ test.describe('the ledger outlives the page', () => {
     );
     expect(names, 'the cleared note’s word came back through the ref').not.toContain('Magenta');
     expect(names).toContain('Turquoise');
+  });
+});
+
+/* THE ROLE TOKEN STAYS IN THE NOTE AND LEAVES ON THE CLIPBOARD.
+ *
+ * "Client--1" is deliberately never restored into the draft: its oddness is what
+ * stops a technician signing a note with a code word still in it. The cost was
+ * retyping every token in every EHR field, and the maintainer asked for that
+ * back on 2026-09-19 - "local on-page find/replace would help to rehydrate for
+ * client and caregiver".
+ *
+ * These pin the three properties that make doing it at the clipboard safe rather
+ * than convenient: the page keeps the token, the clipboard gets the word, and
+ * the model is never told either way.
+ */
+async function stubClipboard(page) {
+  await page.evaluate(() => {
+    window.__copied = [];
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText: (t) => {
+          window.__copied.push(String(t));
+          return Promise.resolve();
+        },
+      },
+    });
+  });
+}
+
+const copiedText = (page) => page.evaluate(() => (window.__copied || []).join('\n'));
+
+/* The BT tool hides Copy All on the maintainer's ruling about the technician's
+   EHR workflow, so this copies the one section that actually carries the token:
+   the echoed narrative. Targeting it by section key rather than clicking every
+   Copy button keeps the assertion about a known string. */
+async function copyTokenSection(page) {
+  const card = page.locator('[data-section-key="lessonProgressNarrative"]');
+  await expect(card, 'the echoed narrative section is not on the note').toBeVisible({ timeout: 10000 });
+  await card.getByRole('button', { name: /^Copy$/ }).click();
+}
+
+test.describe('putting the clinician’s own words back on the way to the EHR', () => {
+  test('the clipboard carries the real name while the page keeps the token', async ({ page }) => {
+    const { noteText, calls } = await draft(page);
+    expect(noteText, 'the note under test never carried a role token').toMatch(/Client--\d/);
+
+    await stubClipboard(page);
+    await page.getByTestId('put-back-toggle').check();
+    await copyTokenSection(page);
+
+    const copied = await copiedText(page);
+    expect(copied, 'the clinician’s own word did not reach the clipboard').toContain('Jacob');
+    expect(copied, 'a token rode out to the EHR anyway').not.toMatch(/Client--\d/);
+
+    /* THE HALF THAT MATTERS MOST. Substituting at the clipboard is only safe
+       while the name cannot travel any other way, so this asserts the wire for
+       the same note rather than trusting that it did not change. */
+    expect(JSON.stringify(calls)).not.toContain('Jacob');
+  });
+
+  test('the note on the page is untouched, so the banner above it stays true', async ({ page }) => {
+    await draft(page);
+    await stubClipboard(page);
+    await page.getByTestId('put-back-toggle').check();
+    await copyTokenSection(page);
+
+    const onPage = await page.getByTestId('generated-note').evaluate((el) =>
+      [el.innerText, ...[...el.querySelectorAll('textarea')].map((t) => t.value)].join('\n')
+    );
+    expect(onPage, 'the substitution was written into the note itself').toMatch(/Client--\d/);
+    expect(onPage).not.toContain('Jacob');
+  });
+
+  test('with the control off the clipboard is exactly what is on the page', async ({ page }) => {
+    await draft(page);
+    await stubClipboard(page);
+    await copyTokenSection(page);
+
+    const copied = await copiedText(page);
+    expect(copied).toMatch(/Client--\d/);
+    expect(copied).not.toContain('Jacob');
+  });
+
+  test('a replacement the clinician types wins over the name they typed', async ({ page }) => {
+    await draft(page);
+    await stubClipboard(page);
+    await page.getByTestId('put-back-toggle').check();
+    await page.getByTestId('put-back-input-Client--1').fill('the client');
+    await copyTokenSection(page);
+
+    const copied = await copiedText(page);
+    expect(copied).toContain('the client');
+    expect(copied, 'the pre-filled name was used instead of the edit').not.toContain('Jacob');
   });
 });
