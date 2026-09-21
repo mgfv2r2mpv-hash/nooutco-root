@@ -820,6 +820,64 @@ body.is-pointing, body.is-pointing * { cursor: crosshair !important; }
 .cx-cut-why { display: block; margin-top: 2px; font-size: 11px; color: #6a7a58; font-style: italic; }
 .cx-cut-act { flex: none; align-self: center; }
 
+/* ── The queue, in the panel ──────────────────────────────────────────────
+   The rows are in the note, under the sections they are about. This is the
+   count and the one Send, which his ruling puts here and nowhere else. */
+.revision-asks {
+  margin: 0 10px 8px; padding: 8px 10px;
+  border: 1.5px solid #ddd6fe; background: #f5f3ff; border-radius: 8px;
+}
+.revision-asks-head {
+  margin: 0 0 6px; font-size: 10px; font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase; color: #5b21b6;
+}
+.revision-ask-row {
+  display: block; width: 100%; text-align: left; margin-bottom: 4px;
+  padding: 5px 8px; border: none; border-left: 3px solid #c4b5fd;
+  background: white; border-radius: 4px; cursor: pointer;
+  font-family: inherit; font-size: 12.5px; color: #3c3060;
+}
+.revision-ask-row:hover, .revision-ask-row:focus-visible { background: #ede9fe; }
+.revision-ask-where { display: block; font-size: 10.5px; color: #7a6ea8; font-weight: 700; }
+.revision-ask-what { display: block; }
+.revision-ask-send {
+  width: 100%; margin-top: 6px; padding: 8px 12px; border-radius: 7px;
+  border: none; background: #7c3aed; color: white;
+  font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+}
+.revision-ask-send:hover:not(:disabled) { background: #5b21b6; }
+.revision-ask-send:disabled { opacity: .6; cursor: default; }
+.revision-asks-foot { margin: 6px 0 0; font-size: 11px; color: #6a7a58; }
+
+/* ── The NoMe queue ───────────────────────────────────────────────────────
+   Queued asks sit under the section they are about, and the one Send is in the
+   Ask NoMe panel. His ruling, 2026-09-20: "queue them in-line like this Lavish
+   editor and then send them all to NoMe in one move in the NoMe panel", so a
+   note with three of them costs one turn rather than three.
+
+   Violet, because it is neither the note (green, blue) nor what left it (red).
+   It is a thing the technician is about to say. */
+.cx-asks { margin-top: 8px; }
+.cx-asks-head {
+  margin: 0 0 6px; font-size: 10px; font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase; color: #5b21b6;
+}
+.cx-ask-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px; align-items: center;
+  padding: 6px 10px; border-left: 3px solid #ddd6fe;
+  background: #f5f3ff; border-radius: 4px; font-size: 12.5px; color: #3c3060;
+}
+.cx-ask-row + .cx-ask-row { margin-top: 4px; }
+.cx-ask-about { display: block; font-size: 11px; color: #7a6ea8; margin-bottom: 2px; }
+.cx-asks-foot { margin: 6px 0 0; font-size: 11px; color: #6a7a58; }
+.cx-ask {
+  display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  margin-left: 4px; padding: 2px 6px; border-radius: 6px;
+  background: #ffffff; border: 1.5px solid #ddd6fe; vertical-align: baseline;
+  white-space: normal;
+}
+
 /* ── The inline popover on a changed phrase ───────────────────────────────
    It replaces the tick-then-menu gesture. Every answer is a word, per his
    ruling that a page of glyphs is a form and not a note. */
