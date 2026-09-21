@@ -310,70 +310,169 @@ function Bubble({ role, children, muted }) {
    states on purpose: a technician learns this contract once, on the corrections
    marks, and a second interaction model for one row type would cost more than
    the extra click it saves. */
-function SuggestionRow({ id, text, accepted, alternatives, onToggle, onEdit }) {
-  const [open, setOpen] = React.useState(false);
-  const [editing, setEditing] = React.useState(false);
-  const [buffer, setBuffer] = React.useState(text);
+/* ── An option NoMe offered, and the four things you can do to it ─────────
+ *
+ * His ruling, 2026-09-21: "the current button flow is wonky".
+ *
+ * THE CONTROL SAYS WHAT THE ROW IS. A row either holds the answer or it does
+ * not, and the icon on it is the difference:
+ *
+ *   the CHOSEN row      carries a PENCIL, because the only thing left to do to
+ *                       it is change the words
+ *   an UNCHOSEN row     carries a CHECKMARK, because the only thing left to do
+ *                       to it is make it the one
+ *
+ * Clicking an unchosen checkmark swaps them: it takes the pencil, the one that
+ * stood takes the checkmark. There is never a menu, never a two-step, and never
+ * a glyph whose meaning depends on a state you have to remember.
+ *
+ * THE PENCIL IS ALSO THE SAVE BUTTON, which is the part that makes the row
+ * cost one click instead of two. Gray while the text is what it was. GREEN the
+ * moment there is a delta, and green means "press me to keep this". Gray again
+ * once saved. Enter does the same thing as pressing it, and shift-Enter is a
+ * newline, so a technician who types and hits Enter never has to find a button.
+ *
+ * REVERTING IS ALWAYS TO THE ORIGINAL SUGGESTION, in both states, and the
+ * colour says which state you are in. Red beside a green pencil: you have
+ * unsaved words and this throws them away. Gray beside a gray pencil: you saved
+ * an edit and this puts NoMe's wording back.
+ *
+ * AND EVERY QUESTION GETS AN EMPTY ROW. His words: sometimes it asks a question
+ * without offering choices, and he was left choosing between the multiple
+ * choice and the free-text box, or typing all of it into the box. So the third
+ * row is a blank field with the same controls, and what he types there goes to
+ * the model with the rest.
+ */
+function SuggestionRow({ id, text, original, accepted, alternatives, own, onToggle, onEdit }) {
+  const [buffer, setBuffer] = React.useState(text || "");
+  const ref = React.useRef(null);
 
-  React.useEffect(() => { setBuffer(text); }, [text]);
+  // The saved text is the truth; the buffer only differs while they are typing.
+  React.useEffect(() => { setBuffer(text || ""); }, [text]);
 
-  if (editing) {
-    return (
-      <div className="tg-suggestion is-editing">
-        <input
-          className="cx-edit"
-          value={buffer}
-          autoFocus
-          aria-label="Reword this suggestion"
-          data-suggestion-edit={id}
-          onChange={(e) => setBuffer(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") { e.preventDefault(); onEdit(buffer); setEditing(false); }
-            if (e.key === "Escape") { setBuffer(text); setEditing(false); }
-          }}
-        />
-        <span className="cx-ctl">
-          <button type="button" className="cx-ck" title="Save" data-suggestion-save={id}
-            onClick={() => { onEdit(buffer); setEditing(false); }}>✓</button>
-          <button type="button" className="cx-ck" title="Cancel" data-suggestion-cancel={id}
-            onClick={() => { setBuffer(text); setEditing(false); }}>✕</button>
-        </span>
-      </div>
-    );
-  }
+  const dirty = buffer !== (text || "");
+  const edited = !own && typeof original === "string" && (text || "") !== original;
+  const blank = own && !(text || "").trim() && !dirty;
+  const canRevert = dirty || edited || (own && !!(text || "").trim());
+
+  const save = () => { if (dirty) onEdit(buffer); };
+  const revert = () => {
+    /* One behaviour in both states, which is why one control carries both
+       colours: put back what NoMe offered. For the empty row there was never a
+       suggestion, so back is empty. */
+    const back = own ? "" : (typeof original === "string" ? original : text || "");
+    setBuffer(back);
+    onEdit(back);
+  };
+
+  const autosize = (el) => {
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + "px";
+  };
+  React.useEffect(() => { autosize(ref.current); }, [buffer]);
 
   return (
-    <div className={"tg-suggestion" + (accepted ? "" : " is-dropped")}>
-      <span
-        className="tg-suggestion-text"
-        data-suggestion={id}
-        data-suggestion-accepted={accepted ? "1" : "0"}
-      >
-        {text}
-      </span>
-      {open ? (
-        <span className="cx-ctl">
-          <button type="button" className="cx-ck" data-suggestion-toggle={id}
-            title={accepted
-              ? (alternatives ? "Drop it, and answer this one yourself" : "Drop this one")
-              : (alternatives ? "Use this one instead" : "Put it back")}
-            onClick={() => { onToggle(); setOpen(false); }}>{accepted ? "↶" : "↷"}</button>
-          <button type="button" className="cx-ck" title="Reword it" data-suggestion-pencil={id}
-            onClick={() => { setEditing(true); setOpen(false); }}>✎</button>
-        </span>
+    <div className={"tg-suggestion" + (accepted ? "" : " is-dropped") + (own ? " is-own" : "")}>
+      {accepted || own ? (
+        <textarea
+          ref={ref}
+          className="tg-suggestion-field"
+          rows={1}
+          value={buffer}
+          placeholder={own ? "Or answer it in your own words" : undefined}
+          aria-label={own ? "Answer this question in your own words" : "Reword this suggestion"}
+          data-suggestion-field={id}
+          /* The empty row is NOT one of the model's suggestions, and anything
+             counting what was offered must not count it. */
+          data-suggestion={own ? undefined : id}
+          data-suggestion-own={own ? id : undefined}
+          data-suggestion-accepted={own ? undefined : (accepted ? "1" : "0")}
+          onChange={(e) => setBuffer(e.target.value)}
+          onKeyDown={(e) => {
+            /* Enter saves THIS field, which is his ruling and the reason the
+               row needs no button at all in the common case. Shift-Enter is
+               the newline, because some of these answers are two sentences. */
+            if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); save(); e.currentTarget.blur(); }
+            if (e.key === "Escape") { e.preventDefault(); setBuffer(text || ""); }
+          }}
+        />
       ) : (
-        <button
-          type="button"
-          className={"cx-ck" + (accepted ? " is-ghost" : "")}
-          title={accepted
-            ? "Included. Click to change it."
-            : (alternatives ? "Not the one you picked. Click to choose it." : "Dropped. Click to change it.")}
-          data-suggestion-tick={id}
-          onClick={() => setOpen(true)}
+        <span
+          className="tg-suggestion-text"
+          data-suggestion={id}
+          data-suggestion-accepted="0"
         >
-          {accepted ? "✓" : "✗"}
-        </button>
+          {text}
+        </span>
       )}
+
+      <span className="cx-ctl tg-suggestion-ctl">
+        {accepted || own ? (
+          <React.Fragment>
+            <button
+              type="button"
+              className={"tg-pencil" + (dirty ? " is-dirty" : "")}
+              data-suggestion-pencil={id}
+              data-suggestion-dirty={dirty ? "1" : "0"}
+              disabled={blank}
+              title={dirty ? "Keep what you typed" : (blank ? "Type an answer first" : "Change the wording")}
+              aria-label={dirty ? "Save this wording" : "Edit this wording"}
+              onClick={() => { if (dirty) save(); else if (ref.current) ref.current.focus(); }}
+            >
+              &#9998;
+            </button>
+            {canRevert && (
+              <button
+                type="button"
+                className={"tg-revert" + (dirty ? " is-dirty" : "")}
+                data-suggestion-revert={id}
+                title={dirty
+                  ? "Throw away what you typed and put the suggestion back"
+                  : (own ? "Clear this" : "Put NoMe's wording back")}
+                aria-label={own ? "Clear this answer" : "Revert to the original suggestion"}
+                onClick={revert}
+              >
+                &#8617;
+              </button>
+            )}
+            {/* DECLINING, which his three-row ruling had no room for and which
+                two specs pin: dropping the one that stands leaves the question
+                with NO answer, the gate closes again because nothing would
+                reach the note, and that is a state technicians are allowed to
+                be in. It is the safe one, because the drafter then works from
+                the standing defaults rather than from a reading nobody chose.
+
+                He said the checkmark "toggles it as the choice", so this is
+                that same checkmark already on, rather than a fourth glyph to
+                learn. On the chosen row it means drop; on any other row it
+                means take. */}
+            {!own && (
+              <button
+                type="button"
+                className="tg-check is-on"
+                data-suggestion-tick={id}
+                title="Drop this one, and answer in your own words instead"
+                aria-label="Drop this suggestion"
+                onClick={onToggle}
+              >
+                &#10003;
+              </button>
+            )}
+          </React.Fragment>
+        ) : (
+          <button
+            type="button"
+            className="tg-check"
+            data-suggestion-tick={id}
+            title={alternatives ? "Use this one instead" : "Use this one"}
+            aria-label="Choose this suggestion"
+            onClick={onToggle}
+          >
+            &#10003;
+          </button>
+        )}
+      </span>
     </div>
   );
 }
@@ -908,6 +1007,7 @@ function RevisionPanel({
                           key={key}
                           id={key}
                           text={typeof st.text === "string" ? st.text : raw}
+                          original={raw}
                           accepted={accepted}
                           alternatives={q.suggestions.length > 1}
                           onToggle={() => onToggleSuggestion(key)}
@@ -915,6 +1015,20 @@ function RevisionPanel({
                         />
                       );
                     })}
+                    {/* THE THIRD ROW, on every question that offers anything.
+                        His words: sometimes it asks without offering choices,
+                        and he was left choosing between the multiple choice and
+                        the free-text box, or typing all of it into the box. */}
+                    <SuggestionRow
+                      key={i + ":own"}
+                      id={i + ":own"}
+                      own
+                      text={((suggestState || {})[i + ":own"] || {}).text || ""}
+                      accepted={false}
+                      alternatives={false}
+                      onToggle={() => {}}
+                      onEdit={(text) => onEditSuggestion(i + ":own", text)}
+                    />
                   </div>
                 )}
               </React.Fragment>

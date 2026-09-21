@@ -3111,10 +3111,24 @@ function App() {
     return st && typeof st.text === "string" ? st.text : raw;
   };
 
-  // In the order they were offered, so the answer reads down the questions.
+  /* In the order they were offered, so the answer reads down the questions.
+
+     The `:own` slot is the empty third row his 2026-09-21 ruling added. It
+     carries whatever the technician typed in their own words, and it rides out
+     with the accepted suggestions rather than on a path of its own, so the
+     model reads it in the same turn and can tell for itself whether it is a
+     rewording of the question's answer or something for the expert. */
+  const ownAnswer = (qi) => {
+    const st = (S.suggestState || {})[qi + ":own"];
+    return st && typeof st.text === "string" ? st.text : "";
+  };
+
   const acceptedSuggestions = () =>
     (S.questions || [])
-      .flatMap((q, qi) => (q.suggestions || []).map((raw, si) => suggestionText(qi, si, raw)))
+      .flatMap((q, qi) => [
+        ...(q.suggestions || []).map((raw, si) => suggestionText(qi, si, raw)),
+        ownAnswer(qi),
+      ])
       .filter((t) => t && t.trim());
 
   /* Picking one drops its alternatives. Dropping the one that stands leaves the

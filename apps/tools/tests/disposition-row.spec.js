@@ -107,9 +107,12 @@ const row = (page, id) => page.locator(`[data-disposition="${id}"]`);
 test.describe('what the tool added', () => {
   /* THE CONTROL. Without the flag the technicians get the row they have today,
      ticks and all. If this fails, the flag has stopped being a flag. */
-  test('without the flag the tick-and-cross row is still what renders', async ({ page }) => {
+  test('without the flag the pencil-and-checkmark row is still what renders', async ({ page }) => {
     await ask(page, ONE, { aid: false });
-    await expect(page.locator('[data-suggestion-tick="0:0"]')).toBeVisible({ timeout: 20000 });
+    // The chosen row carries the pencil; a lone one also keeps its checkmark on,
+    // so it can still be dropped. His 2026-09-21 ruling.
+    await expect(page.locator('[data-suggestion-pencil="0:0"]')).toBeVisible({ timeout: 20000 });
+    await expect(page.locator('[data-suggestion-tick="0:0"]')).toBeVisible();
     await expect(page.locator('[data-disposition="0:0"]')).toHaveCount(0);
   });
 
@@ -118,7 +121,7 @@ test.describe('what the tool added', () => {
     await expect(row(page, '0:0')).toBeVisible({ timeout: 20000 });
     await expect(page.locator('[data-suggestion-tick]')).toHaveCount(0);
     await expect(page.locator('[data-suggestion-pencil]')).toHaveCount(0);
-    await expect(page.locator('[data-suggestion-toggle]')).toHaveCount(0);
+    await expect(page.locator('[data-suggestion-revert]')).toHaveCount(0);
     await expect(row(page, '0:0')).not.toContainText('✓');
     await expect(row(page, '0:0')).not.toContainText('✗');
   });
