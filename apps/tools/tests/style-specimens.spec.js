@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { captureClipboard } from './helpers/clipboard.js';
 import { isTriageCall } from './helpers/llm-call.js';
 
 /* WHERE THE STYLE MEASUREMENT FIRES (slice 5b).
@@ -256,9 +257,12 @@ test.describe('what the partition keeps out', () => {
   test('a page that failed to load the specimen module still drafts and copies, and throws nothing', async ({ page }) => {
     const errors = [];
     page.on('pageerror', (e) => errors.push(String(e && e.message)));
-    // Headless Chromium refuses the clipboard by default, and that rejection is
-    // an error of its own that has nothing to do with this module.
-    await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+    /* Headless Chromium refuses the clipboard by default, and that rejection is
+       an error of its own that has nothing to do with this module. It used to be
+       answered with grantPermissions, which THROWS on firefox and webkit and
+       failed this test in both on its first CI run. The shim needs no permission
+       at all, so nothing can refuse it. See tests/helpers/clipboard.js. */
+    await captureClipboard(page);
     await page.route('**/notes/bcba/specimens.js', (route) => route.abort());
     const wire = await draft(page);
     await undo(page, await insertKey(page, 'behaviorPlanNarrative'));
