@@ -287,9 +287,10 @@ test.describe('below the bar the tool will not draft yet', () => {
     // button is the one that carries them.
     await expect(page.locator('.revision-skip')).toHaveText(/Use these and generate/);
 
-    // Drop it and the gate closes again, because now nothing would reach the note.
+    /* Drop it and the gate closes again, because now nothing would reach the
+       note. One click since 2026-09-21: a lone suggestion carries its checkmark
+       already on, and pressing it turns it off. */
     await page.locator('[data-suggestion-tick="0:0"]').click();
-    await page.locator('[data-suggestion-toggle="0:0"]').click();
     await expect(page.locator('.revision-skip')).toHaveCount(0);
     await expect(page.locator('[data-skip-held]')).toContainText('Keep one of the suggestions');
   });

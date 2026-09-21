@@ -99,12 +99,13 @@ const TWO = {
   }],
 };
 
-/* The same two clicks whichever row it lands on: open the mark, then take its
-   arrow. On the one standing that drops it. On a struck alternative it moves the
-   pick, and strikes whichever one was standing. */
+/* ONE CLICK NOW, on the checkmark, whichever row it lands on. His 2026-09-21
+   ruling: the chosen row carries a pencil and every other row carries a
+   checkmark, so there is no menu to open first. On the one standing, which only
+   has a checkmark when it is alone, that drops it. On an alternative it moves
+   the pick and hands the checkmark to whichever one was standing. */
 const press = async (page, id) => {
   await page.locator(`[data-suggestion-tick="${id}"]`).click();
-  await page.locator(`[data-suggestion-toggle="${id}"]`).click();
 };
 
 /* ── The prompt, which is the only place the safety rule can live ────────── */
@@ -185,8 +186,126 @@ test.describe('the posted schema', () => {
     // Two is his number. A question wearing five pre-accepted answers is a
     // paragraph the tool wrote and dared the technician to read.
     await expect(page.locator('[data-suggestion]')).toHaveCount(2);
-    await expect(page.locator('[data-suggestion="0:0"]')).toHaveText('One.');
+    /* The chosen row is a field and the other is not, since 2026-09-21: the one
+       standing is editable in place because the pencil on it is also its save
+       button. The empty third row carries data-suggestion-own and is
+       deliberately not counted above, because it is not something the model
+       offered. */
+    await expect(page.locator('[data-suggestion="0:0"]')).toHaveValue('One.');
     await expect(page.locator('[data-suggestion="0:1"]')).toHaveText('Two.');
+    await expect(page.locator('[data-suggestion-own="0:own"]')).toHaveCount(1);
+  });
+});
+
+/* ── THE BUTTON FLOW HE RULED ON 2026-09-21 ───────────────────────────────
+   "the current button flow is wonky." What replaces it:
+
+     the CHOSEN row carries a PENCIL, an UNCHOSEN row carries a CHECKMARK
+     the pencil IS the save button, gray at rest and GREEN on a delta
+     a red revert beside a green pencil throws the unsaved words away
+     Enter saves THAT field, shift-Enter is a newline
+     every question gets a third, EMPTY row for their own wording
+*/
+test.describe('the button flow', () => {
+  test('the chosen row carries the pencil and the other carries the checkmark, and one click swaps them', async ({ page }) => {
+    await ask(page, TWO);
+    await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
+
+    await expect(page.locator('[data-suggestion-pencil="0:0"]')).toBeVisible();
+    await expect(page.locator('[data-suggestion-pencil="0:1"]')).toHaveCount(0);
+    await expect(page.locator('[data-suggestion-tick="0:1"]')).toBeVisible();
+
+    // One click, no menu.
+    await page.locator('[data-suggestion-tick="0:1"]').click();
+
+    await expect(page.locator('[data-suggestion-pencil="0:1"]')).toBeVisible();
+    await expect(page.locator('[data-suggestion-pencil="0:0"]')).toHaveCount(0);
+    await expect(page.locator('[data-suggestion="0:1"]')).toHaveAttribute('data-suggestion-accepted', '1');
+  });
+
+  test('THE PENCIL GOES GREEN ON A DELTA AND GRAY AGAIN ON SAVE', async ({ page }) => {
+    await ask(page, TWO);
+    await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
+    const pencil = page.locator('[data-suggestion-pencil="0:0"]');
+
+    await expect(pencil).toHaveAttribute('data-suggestion-dirty', '0');
+    await page.locator('[data-suggestion-field="0:0"]').fill('He settled on the floor inside a minute.');
+    await expect(pencil).toHaveAttribute('data-suggestion-dirty', '1');
+
+    // Measured on the channel, not the class name: green has to actually be green.
+    const green = await pencil.evaluate((el) => window.getComputedStyle(el).color);
+    const [gr, gg, gb] = green.match(/\d+/g).map(Number);
+    expect(gg, 'the dirty pencil is not green').toBeGreaterThan(gr + 20);
+    expect(gg).toBeGreaterThan(gb + 20);
+
+    await pencil.click();
+    await expect(pencil).toHaveAttribute('data-suggestion-dirty', '0');
+  });
+
+  test('a red revert sits beside the green pencil and throws the unsaved words away', async ({ page }) => {
+    await ask(page, TWO);
+    await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
+    const field = page.locator('[data-suggestion-field="0:0"]');
+    const revert = page.locator('[data-suggestion-revert="0:0"]');
+
+    await field.fill('Something else entirely.');
+    await expect(revert).toBeVisible();
+    const red = await revert.evaluate((el) => window.getComputedStyle(el).color);
+    const [rr, rg, rb] = red.match(/\d+/g).map(Number);
+    expect(rr, 'the dirty revert is not red').toBeGreaterThan(rg + 40);
+    expect(rr).toBeGreaterThan(rb + 40);
+
+    await revert.click();
+    await expect(field).toHaveValue('Moving to the floor settled him faster than the break did.');
+  });
+
+  test('ENTER SAVES THAT FIELD, and shift-Enter is a newline instead', async ({ page }) => {
+    await ask(page, TWO);
+    await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
+    const field = page.locator('[data-suggestion-field="0:0"]');
+    const pencil = page.locator('[data-suggestion-pencil="0:0"]');
+
+    await field.click();
+    await field.fill('Line one.');
+    await field.press('Shift+Enter');
+    await field.type('Line two.');
+    // Still unsaved, and now two lines rather than one.
+    await expect(pencil).toHaveAttribute('data-suggestion-dirty', '1');
+    expect(await field.inputValue()).toContain('\n');
+
+    await field.press('Enter');
+    await expect(pencil).toHaveAttribute('data-suggestion-dirty', '0');
+  });
+
+  test('EVERY QUESTION GETS AN EMPTY ROW, and what is typed there reaches the model', async ({ page }) => {
+    const seen = await ask(page, TWO);
+    await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
+
+    const own = page.locator('[data-suggestion-own="0:own"]');
+    await expect(own).toHaveCount(1);
+    await expect(own).toHaveValue('');
+    // It is not one of the model's suggestions and must not be counted as one.
+    await expect(page.locator('[data-suggestion]')).toHaveCount(2);
+
+    await own.fill('It was in the plan, we added floor seating last month.');
+    await own.press('Enter');
+
+    const skip = page.locator('.revision-skip');
+    await expect(skip).toBeEnabled({ timeout: 40000 });
+    await skip.click();
+    await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 20000 });
+    expect(seen.noteAsk).toContain('we added floor seating last month');
+  });
+
+  test('the empty row offers nothing to revert until something is in it', async ({ page }) => {
+    await ask(page, TWO);
+    await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
+    await expect(page.locator('[data-suggestion-revert="0:own"]')).toHaveCount(0);
+    await expect(page.locator('[data-suggestion-pencil="0:own"]')).toBeDisabled();
+
+    await page.locator('[data-suggestion-own="0:own"]').fill('My own answer.');
+    await expect(page.locator('[data-suggestion-pencil="0:own"]')).toBeEnabled();
+    await expect(page.locator('[data-suggestion-revert="0:own"]')).toBeVisible();
   });
 });
 
@@ -204,9 +323,12 @@ test.describe('what the technician does with them', () => {
     await expect(page.locator('[data-suggestion-accepted="1"]')).toHaveCount(1);
     await expect(page.locator('[data-suggestion="0:0"]')).toHaveAttribute('data-suggestion-accepted', '1');
     await expect(page.locator('[data-suggestion="0:1"]')).toHaveAttribute('data-suggestion-accepted', '0');
-    // Ghost, not solid: the one standing is the resting state, and a column of
-    // bright ticks is a column nobody reads.
-    await expect(page.locator('[data-suggestion-tick="0:0"]')).toHaveClass(/is-ghost/);
+    /* The one standing carries the PENCIL, because the only thing left to do to
+       it is change the words. The other carries the checkmark, because the only
+       thing left to do to it is make it the one. His ruling, 2026-09-21. */
+    await expect(page.locator('[data-suggestion-pencil="0:0"]')).toBeVisible();
+    await expect(page.locator('[data-suggestion-tick="0:1"]')).toBeVisible();
+    await expect(page.locator('[data-suggestion-pencil="0:1"]')).toHaveCount(0);
 
     // The skip button is the accept path, because sending needs typed text and
     // agreeing with a suggestion needs none.
@@ -271,11 +393,16 @@ test.describe('what the technician does with them', () => {
     const seen = await ask(page, TWO);
     await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
 
-    await page.locator('[data-suggestion-tick="0:0"]').click();
+    /* The row is a field, and the PENCIL IS THE SAVE BUTTON: gray while the
+       text is what it was, green the moment there is a delta, gray again once
+       saved. His ruling, 2026-09-21. */
+    const field = page.locator('[data-suggestion-field="0:0"]');
+    await expect(page.locator('[data-suggestion-pencil="0:0"]')).toHaveAttribute('data-suggestion-dirty', '0');
+    await field.fill('Floor seating settled him within a minute.');
+    await expect(page.locator('[data-suggestion-pencil="0:0"]')).toHaveAttribute('data-suggestion-dirty', '1');
     await page.locator('[data-suggestion-pencil="0:0"]').click();
-    await page.locator('[data-suggestion-edit="0:0"]').fill('Floor seating settled him within a minute.');
-    await page.locator('[data-suggestion-save="0:0"]').click();
-    await expect(page.locator('[data-suggestion="0:0"]')).toHaveText('Floor seating settled him within a minute.');
+    await expect(page.locator('[data-suggestion-pencil="0:0"]')).toHaveAttribute('data-suggestion-dirty', '0');
+    await expect(field).toHaveValue('Floor seating settled him within a minute.');
 
     const skip = page.locator('.revision-skip');
     await expect(skip).toBeEnabled({ timeout: 40000 });
