@@ -268,7 +268,16 @@ test.describe('what the partition keeps out', () => {
     await undo(page, await insertKey(page, 'behaviorPlanNarrative'));
     await copyAndSettle(page, wire);
     expect(await page.evaluate(() => typeof window.NoteSpecimens)).toBe('undefined');
-    expect(errors).toEqual([]);
+    /* WEBKIT CALLS A BLOCKED SUBRESOURCE A PAGE ERROR and the other two do not.
+       /api/style-card.js is fetched with a token this fixture never sets, so
+       webkit adds "due to access control checks" to the list while chromium and
+       firefox say nothing about it. That is a different script and a different
+       question from the one this test asks.
+
+       Filtered BY NAME rather than by count, so a real throw out of the missing
+       module still fails here, which is the whole assertion. Same filter as
+       voice-write-path.spec.js, for the same reason. */
+    expect(errors.filter((e) => !/style-card\.js/.test(e))).toEqual([]);
   });
 
   test('a rejection is never filed as the owner\'s own prose in the voice capture', async ({ page }) => {
