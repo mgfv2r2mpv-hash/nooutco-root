@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { captureClipboard } from './helpers/clipboard.js';
 import { createHmac } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { createContext, runInContext } from 'node:vm';
@@ -314,14 +315,24 @@ test.describe('a note reaches voice_level and diction_level through the Pages wo
   test('a page that failed to load voice-note.js still drafts and copies, and throws nothing', async ({ page }) => {
     const errors = [];
     page.on('pageerror', (e) => errors.push(String(e && e.message)));
-    await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+    /* Not grantPermissions: it throws on firefox and webkit, and failed this
+       test in both on its first CI run. See tests/helpers/clipboard.js. */
+    await captureClipboard(page);
     await page.route('**/notes/bcba/voice-note.js', (route) => route.abort());
     const c = chain();
     await draft(page, c);
     await page.locator('textarea[data-section-id="behaviorPlanNarrative"]').fill(TYPED_PLAN);
     await copyAndSettle(page, c);
     expect(await page.evaluate(() => typeof window.NoteVoice)).toBe('undefined');
-    expect(errors).toEqual([]);
+    /* WEBKIT CALLS A BLOCKED SUBRESOURCE A PAGE ERROR and the other two do not.
+       /api/style-card.js is fetched with a token this fixture never sets, so
+       webkit adds "due to access control checks" to the list while chromium and
+       firefox say nothing about it. That is a different script and a different
+       question from the one this test asks.
+
+       Filtered BY NAME rather than by count, so a real throw out of the missing
+       module still fails here, which is the whole assertion. */
+    expect(errors.filter((e) => !/style-card\.js/.test(e))).toEqual([]);
   });
 
   test('both note pages load voice-note.js', async ({ page }) => {
