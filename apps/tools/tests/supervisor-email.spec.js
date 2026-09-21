@@ -151,10 +151,16 @@ test.describe('the admin page can actually set one', () => {
   /* The API tests above prove the worker keeps an address. They say nothing
      about whether anyone can put one there, and a field that only curl can
      reach is not a field he has. */
+  /* Seeded before the first load rather than after it. Arriving with no token
+     shows the login card, and that is what mounts Turnstile - a cross-origin
+     https iframe in an http test server, which webkit reports as a page error.
+     No test here collects page errors, so this one could not go red on it, but
+     it is the same dead pattern that failed expert-topic-bench.spec.js on the
+     webkit shard of run 35609752562 and it buys nothing: the page is signed in
+     either way, in one load instead of two. */
   const signInAsAdmin = async (page) => {
+    await page.addInitScript((t) => localStorage.setItem('notes_auth_token', t), tokenFor('admin'));
     await page.goto('/admin/index.html');
-    await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), tokenFor('admin'));
-    await page.reload();
   };
 
   test('the add form offers a supervisor box, and what it sends comes back in the row', async ({ page }) => {

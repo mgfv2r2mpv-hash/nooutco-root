@@ -13,6 +13,7 @@ import { createHmac } from 'node:crypto';
  */
 
 const SECRET = 'playwright-local-test-secret';
+const TOKEN_KEY = 'notes_auth_token';
 const b64url = (b) => Buffer.from(b).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 function adminToken() {
   const p = { role: 'admin', kid: 'pw:admin', exp: Math.floor(Date.now() / 1000) + 3600 };
@@ -35,12 +36,58 @@ async function openBench(page, onChat) {
       }),
     });
   });
+  /* SIGNED IN BEFORE THE FIRST LOAD, rather than after it.
+   *
+   * This helper used to land on /admin/ with no token, set one, and reload. That
+   * first load has no token, so show() reveals the login card, and revealing the
+   * card is exactly what calls ensureLoginGate() - which mounts Turnstile, which
+   * draws a cross-origin https iframe into this http test server. Webkit raises
+   * that as a page error ("Protocols must match") and the other two engines do
+   * not, so the two tests in this file that collect page errors could fail on a
+   * throw belonging to the login widget rather than to the bench.
+   *
+   * aa860c37 already fixed the half of this that was in the page: a signed-IN
+   * admin no longer mounts the widget. It could not fix this half, because this
+   * helper was arriving signed OUT and mounting it anyway. Whether the iframe
+   * won its race against the reload decided whether the error landed, which is
+   * why it passed for two weeks and then took the webkit shard of run
+   * 35609752562 red, three attempts in a row, on a commit that touched none of
+   * this.
+   *
+   * Every other admin helper in this suite already seeds the token this way -
+   * expert-bench, expert-oracle, expert-scrub, expert-knowledge-console and
+   * expert-research. This one was the odd one out. It also costs one page load
+   * rather than two. */
+  await page.addInitScript(([key, tok]) => localStorage.setItem(key, tok), [TOKEN_KEY, adminToken()]);
   await page.goto('/admin/index.html');
-  await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), adminToken());
-  await page.reload();
   await page.locator('.tab-btn[data-tab=expert]').click();
   return sent;
 }
+
+test('opening the bench never puts the login card on screen, so no challenge is mounted', async ({ page }) => {
+  /* The guard on the paragraph above, and the reason it measures the CARD
+     rather than the iframe: the iframe needs challenges.cloudflare.com to
+     answer, so a test asserting on it would pass on any machine that cannot
+     reach the CDN and prove nothing. The card being revealed is the whole of
+     the precondition - ensureLoginGate() is called from one place, the branch
+     of show() that reveals it - and it is true or false on every engine and
+     with the network up or down.
+
+     Recorded from inside the page and kept in sessionStorage because it is a
+     state each document passes THROUGH: the old helper showed the card, then
+     reloaded past it, and by the time the helper returned the card was hidden
+     again in both versions. Asserting at the end would have passed against the
+     bug. Checked: it fails against the goto-then-reload helper this replaces. */
+  await page.addInitScript(() => {
+    addEventListener('DOMContentLoaded', () => {
+      const card = document.getElementById('loginCard');
+      if (card && !card.classList.contains('hidden')) sessionStorage.setItem('sawLoginCard', '1');
+    });
+  });
+  await openBench(page);
+  const saw = await page.evaluate(() => sessionStorage.getItem('sawLoginCard'));
+  expect(saw, 'the bench arrived signed out, so Turnstile was mounted behind it').toBeNull();
+});
 
 test.describe('he can talk to the expert without pasting an intake', () => {
   test('the standing-question card is there before anything has been run', async ({ page }) => {
