@@ -1360,6 +1360,23 @@ function freshSession(tool) {
        the reason a fresh note ships corrected without a click. */
     corrections: null,
     markState: {},
+    /* What the technician has asked NoMe to change, not yet sent. Keyed the
+       same way `markState` is, so an ask survives a re-render and dies with the
+       note it was about.
+
+       NEVER PERSISTED. It holds the technician's own words about a passage of a
+       note, and raw note text is not stored anywhere in this tool.
+
+       His ruling, 2026-09-20: the asks are queued in line under the section
+       they are about, and the one Send lives in the Ask NoMe panel, so a note
+       with three of them costs one turn rather than three. */
+    askQueue: {},
+    /* Wording the technician has taken out, across every pass on this note.
+       His third ruling, 2026-09-20: a removal they took out stays out, and the
+       next pass is told so. It has to outlive `markState`, because a send
+       rebuilds the marks from scratch and the decision would otherwise be
+       forgotten exactly when it is needed. */
+    heldOut: [],
 
     // ── Assistant panel ──────────────────────────────────────────────────
     // What the clinician sees, which is not what the model sees: `conversation`
@@ -1427,6 +1444,10 @@ function App() {
     return map;
   });
   const [loading, setLoading] = React.useState(false);
+  /* The scrubbed intake the corrections pass was given. A later queue send has
+     to ask against the SAME text, and re-deriving it would mean running the PHI
+     gate again over a value that has already been through it. */
+  const passIntakeRef = React.useRef("");
   const [copied, setCopied] = React.useState(null);
   const [copiedPrompt, setCopiedPrompt] = React.useState(false);
   const [loggedIn, setLoggedIn] = React.useState(() => !!(window.NotesGate && NotesGate.isLoggedIn()));
@@ -2558,7 +2579,7 @@ function App() {
 
   const draftNote = async (scrubbedValues, extra) => {
     setLoading(true);
-    patchS({ output: null, proposal: null, conversation: [], questions: null, readiness: null, pendingValues: null, expert: null, corrections: null, markState: {} });
+    patchS({ output: null, proposal: null, conversation: [], questions: null, readiness: null, pendingValues: null, expert: null, corrections: null, markState: {}, askQueue: {}, heldOut: [] });
     taughtRef.current = false; // a new note may teach again; a revision may not
     specimenBook.current = null;
     try {
@@ -2714,11 +2735,12 @@ function App() {
             .filter((sec) => sec.kind === "narrative" && sec.key)
             .map((sec) => ({ id: sec.key, heading: sec.heading, text: String(finalDraft.output[sec.key] || "") }))
             .filter((d) => d.text.trim());
+          passIntakeRef.current = intakeBody(scrubbedValues) +
+            (extra && extra.trim() ? "\n\n[ANSWERED FOLLOW-UP QUESTIONS]\n" + extra.trim() : "");
           const pass = draftSections.length
             ? await NotesGate.correctionsPass({
                 tool: tool.id,
-                intake: intakeBody(scrubbedValues) +
-                  (extra && extra.trim() ? "\n\n[ANSWERED FOLLOW-UP QUESTIONS]\n" + extra.trim() : ""),
+                intake: passIntakeRef.current,
                 draft: draftSections,
               })
             : null;
@@ -2752,6 +2774,8 @@ function App() {
         lastCallAt: Date.now(),
         corrections: marks,
         markState: {},
+        askQueue: {},
+        heldOut: [],
         // Read off the draft rather than off `corrected`: the corrections pass
         // rewrites prose and never touches these, and reading the post-pass
         // copy would make a tool that has no design channel clear one it never
@@ -3873,6 +3897,158 @@ function App() {
      flag here, because a move is one event with a mark at each end: clearing
      this key alone would put the sentence back where it arrived while leaving
      it struck where it left, and the note would then carry it twice. */
+  /* ── Asking NoMe for something else ──────────────────────────────────────
+     His fourth disposition, and the strongest style signal of the four: the
+     technician wanted the content and not the wording. Rejecting throws the
+     change away; this says what they wanted instead.
+
+     Queued rather than sent, because his ruling is one send for the whole note:
+     "queue them in-line like this Lavish editor and then send them all to NoMe
+     in one move in the NoMe panel". Three asks in three sections cost one turn.
+
+     Nothing leaves the page here. The only thing that sends is the panel. */
+  const queueAsk = (key, text) => {
+    const said = String(text == null ? "" : text).trim();
+    if (!S.corrections) return;
+    if (!said) { dropAsk(key); return; }
+    const mark = (S.corrections.marks || []).find((m) => m.key === key);
+    if (!mark) return;
+    patchS((st) => ({
+      askQueue: {
+        ...st.askQueue,
+        [key]: {
+          key,
+          id: mark.id,
+          heading: correctionHeadings[mark.id] || mark.id,
+          // The wording the ask is ABOUT, so the turn can quote it back rather
+          // than making the model find it from an index it has never seen.
+          about: (st.markState[key] && typeof st.markState[key].text === "string")
+            ? st.markState[key].text
+            : mark.text,
+          text: said,
+        },
+      },
+    }));
+    audit("corrections_mark", { asked: 1 });
+  };
+
+  /* THE ONE SEND. His ruling: the queue is spent in a single turn for the whole
+     note, from the Ask NoMe panel and nowhere else.
+
+     It carries two things the first pass never had. The asks, each quoting the
+     wording it is about, because the model has never seen a mark and cannot be
+     handed an index into one. And everything the technician has taken out on
+     this note, so the pass does not re-propose what they already overruled -
+     which it would otherwise do on every send, since a rebuild starts the marks
+     from nothing and the decision lives only in the marks. */
+  const heldOutNow = () => {
+    const seen = {};
+    const out = [];
+    (S.heldOut || []).forEach((h) => {
+      if (seen[h.id + "\u0000" + h.text]) return;
+      seen[h.id + "\u0000" + h.text] = 1;
+      out.push(h);
+    });
+    const marks = (S.corrections && S.corrections.marks) || [];
+    marks.forEach((m) => {
+      const st = (S.markState || {})[m.key];
+      if (!st || !st.reverted) return;
+      /* ONLY AN ADDITION. All four kinds look identical in markState, as a
+         `reverted` flag, and only one of them means "I do not want these words".
+
+           ins       reverted -> they declined it. HOLD IT OUT.
+           del       reverted -> they kept their OWN sentence. Holding it out
+                                 would tell the pass to delete the very thing
+                                 they just rescued.
+           move-in   reverted -> the move was undone, so the sentence is back at
+                                 its origin and IS STILL IN THE NOTE. Holding it
+                                 out would ask the pass to delete it from there.
+           move-out  reverted -> the same event, read from the other end.
+
+         The move pair is the one that reads as an addition and is not: a
+         reverted move-in contributes nothing at the destination, which looks
+         exactly like a declined ins until you remember where the words went. */
+      if (m.type !== "ins") return;
+      const text = String(m.text || "").trim();
+      if (!text || seen[m.id + "\u0000" + text]) return;
+      seen[m.id + "\u0000" + text] = 1;
+      out.push({ id: m.id, text });
+    });
+    return out;
+  };
+
+  const sendAsks = async () => {
+    const asks = Object.keys(S.askQueue || {}).map((k) => S.askQueue[k]);
+    if (!asks.length || loading || !S.output) return;
+    if (!window.NotesGate || !NotesGate.correctionsPass) return;
+
+    const draftSections = tool.formSections
+      .filter((sec) => sec.kind === "narrative" && sec.key)
+      .map((sec) => ({ id: sec.key, heading: sec.heading, text: String(S.output[sec.key] || "") }))
+      .filter((d) => d.text.trim());
+    if (!draftSections.length) return;
+
+    const held = heldOutNow();
+    setLoading(true);
+    try {
+      const pass = await NotesGate.correctionsPass({
+        tool: tool.id,
+        intake: passIntakeRef.current || "",
+        draft: draftSections,
+        asks: asks.map((a) => ({ id: a.id, about: a.about, text: a.text })),
+        heldOut: held,
+      });
+      const before = {};
+      draftSections.forEach((d) => { before[d.id] = d.text; });
+      const built = pass && window.NoteCorrections
+        ? NoteCorrections.build({ before, corrections: pass.corrections })
+        : null;
+      // Counts and enums only, as everywhere else on this route. Never a word
+      // of what was asked and never a word of the note it was asked about.
+      audit("corrections_ask_send", {
+        asks: asks.length,
+        heldOut: held.length,
+        sections: (pass && pass.corrections ? pass.corrections.length : 0),
+        marks: built ? built.count : 0,
+        inTokens: (pass && pass.usage && pass.usage.input_tokens) || 0,
+        outTokens: (pass && pass.usage && pass.usage.output_tokens) || 0,
+      });
+      if (built && built.count) {
+        patchS({
+          output: { ...S.output, ...NoteCorrections.outputFor(built.sections, {}) },
+          corrections: built,
+          markState: {},
+          askQueue: {},
+          heldOut: held,
+        });
+        pushThread("assistant", "status", asks.length === 1
+          ? "Done. The change you asked for is in the note."
+          : "Done. All " + asks.length + " changes are in the note.");
+      } else {
+        /* An empty answer is a real answer on this route, and saying so beats a
+           queue that empties with nothing visibly different. */
+        patchS({ askQueue: {}, heldOut: held });
+        pushThread("assistant", "status",
+          "I could not make those changes from what you wrote in your notes, so the note is unchanged.");
+      }
+    } catch (e) {
+      // The queue is deliberately left standing, so a failed send costs nothing
+      // but a second press.
+      pushThread("assistant", "status", "That did not reach NoMe. Your queue is still here, so you can send it again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const dropAsk = (key) => {
+    patchS((st) => {
+      if (!st.askQueue || !st.askQueue[key]) return {};
+      const askQueue = { ...st.askQueue };
+      delete askQueue[key];
+      return { askQueue };
+    });
+  };
+
   const approveChange = (key) => {
     if (!S.corrections) return;
     let next = S.markState || {};
@@ -3897,7 +4073,7 @@ function App() {
       const mine = st.corrections.marks.filter((m) => m.id === id);
       const kept = mine.filter((m) => !(st.markState[m.key] && st.markState[m.key].reverted)).length;
       audit("corrections_done", { kept, undone: mine.length - kept });
-      if (!marks.length) return { corrections: null, markState: {} };
+      if (!marks.length) return { corrections: null, markState: {}, askQueue: {} };
       const sections = {};
       Object.keys(st.corrections.sections).forEach((k) => {
         if (k !== id) sections[k] = st.corrections.sections[k];
@@ -3906,9 +4082,17 @@ function App() {
       Object.keys(st.markState).forEach((k) => {
         if (!k.startsWith(id + ":")) markState[k] = st.markState[k];
       });
+      // An ask is about a mark. Putting the section back as a textarea takes
+      // the marks away, so the asks about them go too rather than being sent
+      // later against wording that no longer exists.
+      const askQueue = {};
+      Object.keys(st.askQueue || {}).forEach((k) => {
+        if (!k.startsWith(id + ":")) askQueue[k] = st.askQueue[k];
+      });
       return {
         corrections: { ...st.corrections, sections, marks, changed: Object.keys(sections), count: marks.length },
         markState,
+        askQueue,
       };
     });
   };
@@ -4431,6 +4615,12 @@ function App() {
               onToggle={toggleCorrection}
               onEdit={editCorrection}
               onGoToOrigin={goToOrigin}
+              /* Queued asks are drawn here, under the section they are about.
+                 The one Send is NOT here: it lives in the Ask NoMe panel, per
+                 his ruling that the whole note goes in one move. */
+              queue={S.askQueue}
+              onAsk={queueAsk}
+              onDropAsk={dropAsk}
             />
             <button
               type="button"
@@ -4696,6 +4886,12 @@ function App() {
         onRevertChange={toggleCorrection}
         onEditChange={editCorrection}
         onGoToSection={goToOrigin}
+        /* The queue's rows are in the note; the count and the one Send are here,
+           which is his ruling. Passed as a list so the panel can name where each
+           one is and jump to it. */
+        asks={Object.keys(S.askQueue || {}).map((k) => S.askQueue[k])}
+        onSendAsks={sendAsks}
+        onGoToAsk={goToOrigin}
         suggestionAccepted={suggestionAccepted}
         onToggleSuggestion={toggleSuggestion}
         onEditSuggestion={editSuggestion}

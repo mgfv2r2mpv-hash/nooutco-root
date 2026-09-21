@@ -1532,7 +1532,41 @@ export function correctionsRequest(body) {
   // is not billed for a turn that can only answer with an empty list.
   if (!draft.some((d) => d.text.trim())) return { error: "The draft has no narrative to correct." };
 
-  return { tool: base.tool, intake: base.intake, draft };
+  /* WHAT THE TECHNICIAN ASKED FOR, AND WHAT THEY ALREADY OVERRULED.
+     Both are new on 2026-09-20 and both are optional, so a first pass sends
+     neither and reads exactly as it did.
+
+     `asks` is his queue: several changes written in line against the wording
+     they are about, spent in ONE turn for the whole note rather than a turn
+     each. `heldOut` is his third ruling and the one that is easy to skip: a
+     removal the technician has taken out stays out, and the pass is told so.
+     Without it the pass re-proposes what they already overruled, they overrule
+     it again, and the ledger records a disagreement that the tool manufactured.
+
+     An entry naming a section that was never sent is DROPPED rather than
+     trusted, on the same reasoning as a correction naming one. */
+  const ids = new Set(draft.map((d) => d.id));
+  const shortList = (raw, cap) => {
+    const out = [];
+    let spent = 0;
+    for (const x of Array.isArray(raw) ? raw : []) {
+      if (!x || typeof x !== "object") continue;
+      if (out.length >= cap) break;
+      const id = typeof x.id === "string" ? x.id : "";
+      if (!ids.has(id)) continue;
+      const text = typeof x.text === "string" ? x.text.trim() : "";
+      if (!text) continue;
+      const about = typeof x.about === "string" ? x.about.trim().slice(0, 400) : "";
+      spent += text.length + about.length;
+      if (spent > MAX_MESSAGE_CHARS) break;
+      out.push({ id, about, text: text.slice(0, 1000) });
+    }
+    return out;
+  };
+  const asks = shortList(b.asks, 20);
+  const heldOut = shortList(b.heldOut, 40);
+
+  return { tool: base.tool, intake: base.intake, draft, asks, heldOut };
 }
 
 export function correctionsLimits() {
@@ -1553,10 +1587,41 @@ export function correctionsTurns(parsed) {
   const draft = parsed.draft
     .map((d) => "[" + d.id + "] " + (d.heading || d.id) + "\n" + (d.text || "").trim())
     .join("\n\n");
-  return [
+  const turns = [
     { role: "user", content: parsed.intake },
     { role: "user", content: "THE DRAFT WRITTEN FROM THOSE NOTES:\n\n" + draft },
   ];
+
+  /* The technician's own asks, all of them in this one turn. Each names the
+     section and quotes the wording it is about, because the model has never
+     seen a mark and cannot be handed an index into one. */
+  if ((parsed.asks || []).length) {
+    turns.push({
+      role: "user",
+      content:
+        "THE TECHNICIAN HAS ASKED YOU FOR THESE CHANGES. Make each one, in the section named, " +
+        "and return that whole section as usual. If an ask cannot be made from what they wrote in their notes, " +
+        "leave that section alone rather than inventing the material.\n\n" +
+        parsed.asks
+          .map((a) => "[" + a.id + "]" + (a.about ? "\nabout: " + a.about : "") + "\nasked: " + a.text)
+          .join("\n\n"),
+    });
+  }
+
+  /* HIS THIRD RULING, 2026-09-20. A removal they took out stays out. This is
+     the whole of the mechanism: the wording is named, and the pass is told not
+     to bring it back. */
+  if ((parsed.heldOut || []).length) {
+    turns.push({
+      role: "user",
+      content:
+        "THE TECHNICIAN HAS ALREADY TAKEN THIS WORDING OUT. Do not put any of it back, do not offer it again, " +
+        "and do not argue for it. They have read it and decided.\n\n" +
+        parsed.heldOut.map((h) => "[" + h.id + "] " + h.text).join("\n\n"),
+    });
+  }
+
+  return turns;
 }
 
 /* The response schema, built here rather than accepted from the browser. Same
@@ -3640,6 +3705,20 @@ export const AUDIT_TYPES = new Set([
      sentence, not the question that produced it. The maintainer's rule on this
      ledger has not moved: counts and pass names, never the word. */
   "suggestion_approved",
+  /* THE QUEUE SEND, added 2026-09-20 in the same commit as the browser call
+     that emits it, which is what the block above exists to insist on. It was
+     caught by audit-events.spec.js before it ever ran, which is that scan
+     doing exactly the job its comment claims.
+
+     It answers two questions nothing else can. How many changes a technician
+     queues before spending a turn, which says whether one-send-for-the-whole
+     -note was the right shape or whether they send one at a time anyway. And
+     how much wording they are holding out by the time they send, which is the
+     tool's own disagreement rate with them, measured rather than assumed.
+
+     Counts and token totals. Not a word of what was asked, not a word of what
+     was held out, and not a word of the note either was about. */
+  "corrections_ask_send",
 ]);
 
 export function sanitizeAuditEvent(raw) {

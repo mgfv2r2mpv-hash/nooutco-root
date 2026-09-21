@@ -110,11 +110,14 @@ function pairedAddition(removed, ops, state, id) {
   return bestScore >= 2 ? best : null;
 }
 
-function CorrectionsView({ id, ops, marks, state, onToggle, onEdit, onGoToOrigin, headings, quiet }) {
+function CorrectionsView({ id, ops, marks, state, onToggle, onEdit, onGoToOrigin, headings, quiet, queue, onAsk, onDropAsk }) {
   const [openKey, setOpenKey] = React.useState(null);
   const [editKey, setEditKey] = React.useState(null);
   const [buffer, setBuffer] = React.useState("");
   const [litKey, setLitKey] = React.useState(null);
+  const [askKey, setAskKey] = React.useState(null);
+  const [askBuffer, setAskBuffer] = React.useState("");
+  const asks = Object.keys(queue || {}).map(function (k) { return queue[k]; }).filter(function (a) { return a.id === id; });
 
   /* What an op puts in the note right now, given what the technician has done
      to it. This mirrors NoteCorrections.contribution deliberately: if the two
@@ -300,6 +303,37 @@ function CorrectionsView({ id, ops, marks, state, onToggle, onEdit, onGoToOrigin
                   <button type="button" className="cx-ck" data-correction-pencil={p.key}
                           title="Say it in your own words"
                           onClick={() => startEdit(p.key, p.text)}>Reword it</button>
+                  {/* His fourth answer: keep the content, ask for different
+                      wording. It queues rather than sending, because the send
+                      is one move for the whole note and it lives in the panel. */}
+                  <button type="button" className="cx-ck" data-correction-ask={p.key}
+                          title="Say what you want instead, and send it with the rest"
+                          onClick={() => {
+                            const had = (queue || {})[p.key];
+                            setAskBuffer(had ? had.text : "");
+                            setAskKey(p.key);
+                            setOpenKey(null);
+                          }}>Ask for a change</button>
+                </span>
+              )}
+              {!quiet && askKey === p.key && (
+                <span className="cx-ask" data-correction-ask-box={p.key}>
+                  <input
+                    className="cx-edit"
+                    data-correction-ask-input={p.key}
+                    value={askBuffer}
+                    autoFocus
+                    placeholder="What should it say instead"
+                    onChange={(e) => setAskBuffer(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") { e.preventDefault(); onAsk(p.key, askBuffer); setAskKey(null); }
+                      if (e.key === "Escape") { e.preventDefault(); setAskKey(null); }
+                    }}
+                  />
+                  <button type="button" className="cx-ck" data-correction-ask-save={p.key}
+                          onClick={() => { onAsk(p.key, askBuffer); setAskKey(null); }}>Queue it</button>
+                  <button type="button" className="cx-ck" data-correction-ask-cancel={p.key}
+                          onClick={() => setAskKey(null)}>Cancel</button>
                 </span>
               )}
             </React.Fragment>
@@ -345,6 +379,28 @@ function CorrectionsView({ id, ops, marks, state, onToggle, onEdit, onGoToOrigin
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* QUEUED ASKS, under the section they are about. His ruling puts them
+          here and the Send in the Ask NoMe panel, so a note with three of them
+          costs one turn rather than three. Nothing here sends. */}
+      {asks.length > 0 && (
+        <div className="cx-asks" data-corrections-asks={id}>
+          <p className="cx-asks-head">{asks.length === 1 ? "Queued for NoMe" : asks.length + " queued for NoMe"}</p>
+          {asks.map((a) => (
+            <div key={a.key} className="cx-ask-row" data-corrections-ask-row={a.key}>
+              <span className="cx-ask-text">
+                <span className="cx-ask-about">On: {String(a.about || "").trim().slice(0, 60)}</span>
+                {a.text}
+              </span>
+              {!quiet && (
+                <button type="button" className="cx-ck" data-correction-ask-drop={a.key}
+                        title="Take this off the queue" onClick={() => onDropAsk(a.key)}>Drop</button>
+              )}
+            </div>
+          ))}
+          <p className="cx-asks-foot">Send them from the Ask NoMe panel, all at once.</p>
         </div>
       )}
 

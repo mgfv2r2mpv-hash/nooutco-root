@@ -587,6 +587,7 @@ function RevisionPanel({
   ticketOffer, ticketFiling, onFileTicket, onDismissTicket,
   pointMode, onPointMode, pointScope,
   changes, onApproveChange, onRevertChange, onEditChange, onGoToSection,
+  asks, onSendAsks, onGoToAsk,
 }) {
   const scrollRef = React.useRef(null);
   const inputRef = React.useRef(null);
@@ -1092,6 +1093,44 @@ function RevisionPanel({
             are the most-used controls on the panel - the pair a technician
             learns on day one and never has to read again. Everything that
             cannot be learned once still says what it is, in the line below. */}
+        {/* THE QUEUE, AND THE ONE SEND. His ruling, 2026-09-20: the asks are
+            queued in line under the sections they are about, and the button
+            that spends them lives here, so a note with three of them costs one
+            turn rather than three.
+
+            It sits above the composer rather than inside it because it is not
+            a message being written: it is a set of messages already written,
+            waiting on one press. */}
+        {!signedOut && !barMode && (asks || []).length > 0 && (
+          <div className="revision-asks" data-panel-asks={(asks || []).length}>
+            <p className="revision-asks-head">
+              {asks.length === 1 ? "1 change queued" : asks.length + " changes queued"}
+            </p>
+            {asks.map((a) => (
+              <button
+                key={a.key}
+                type="button"
+                className="revision-ask-row"
+                data-panel-ask={a.key}
+                title={"Go to " + a.heading}
+                onClick={() => onGoToAsk && onGoToAsk(a.id)}
+              >
+                <span className="revision-ask-where">{a.heading}</span>
+                <span className="revision-ask-what">{a.text}</span>
+              </button>
+            ))}
+            <button
+              type="button"
+              className="revision-ask-send"
+              data-panel-ask-send={asks.length}
+              disabled={loading}
+              onClick={onSendAsks}
+            >
+              {loading ? "Sending…" : "Send " + asks.length + (asks.length === 1 ? " change" : " changes") + " to NoMe"}
+            </button>
+            <p className="revision-asks-foot">One turn, all of them together. Nothing has been sent yet.</p>
+          </div>
+        )}
         {!signedOut && !barMode && <div className="revision-compose">
           <textarea
             ref={inputRef}

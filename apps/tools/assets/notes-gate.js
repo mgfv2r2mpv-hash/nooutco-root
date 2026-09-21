@@ -702,6 +702,12 @@
         tool: o.tool,
         intake: o.intake,
         draft: Array.isArray(o.draft) ? o.draft : [],
+        /* Both optional and both new on 2026-09-20. `asks` is the technician's
+           queue, spent in one turn for the whole note. `heldOut` is the wording
+           they already took out, so the pass is told not to bring it back.
+           A first pass sends neither and reads exactly as it did. */
+        asks: Array.isArray(o.asks) ? o.asks : [],
+        heldOut: Array.isArray(o.heldOut) ? o.heldOut : [],
       }),
     }, EXPERT_TIMEOUT_MS, "The corrections pass timed out.")
       .then(function (res) {
