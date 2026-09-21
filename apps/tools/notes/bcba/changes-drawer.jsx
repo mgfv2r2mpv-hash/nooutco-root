@@ -134,6 +134,8 @@ function ChangesDrawerLine(props) {
         onApprove={function () { props.onApprove(e.key); }}
         onRevert={function () { props.onRevert(e.key); }}
         onEdit={function (text) { props.onEdit(e.key, text); }}
+        queued={(props.queue || {})[e.key] ? (props.queue || {})[e.key].text : ""}
+        onAsk={props.onAsk ? function (text) { props.onAsk(e.key, text); } : null}
       />
     </li>
   );
@@ -167,6 +169,8 @@ function ChangesDrawer(props) {
               onApprove={props.onApprove}
               onRevert={props.onRevert}
               onEdit={props.onEdit}
+              queue={props.queue}
+              onAsk={props.onAsk}
               onGoTo={props.onGoTo}
             />
           );

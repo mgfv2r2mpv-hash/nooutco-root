@@ -587,7 +587,7 @@ function RevisionPanel({
   ticketOffer, ticketFiling, onFileTicket, onDismissTicket,
   pointMode, onPointMode, pointScope,
   changes, onApproveChange, onRevertChange, onEditChange, onGoToSection,
-  asks, onSendAsks, onGoToAsk,
+  asks, onSendAsks, onGoToAsk, onAskChange,
 }) {
   const scrollRef = React.useRef(null);
   const inputRef = React.useRef(null);
@@ -882,6 +882,12 @@ function RevisionPanel({
             onApprove={onApproveChange}
             onRevert={onRevertChange}
             onEdit={onEditChange}
+            /* The queue, reachable from the drawer. Quiet mode suppresses the
+               inline popover the ask used to live in, so without this a
+               technician with the flag on could see queued asks and never make
+               one. His ruling, 2026-09-21: make the queue reachable. */
+            queue={(asks || []).reduce(function (acc, a) { acc[a.key] = a; return acc; }, {})}
+            onAsk={onAskChange}
             onGoTo={onGoToSection}
           />
         )}
@@ -1104,7 +1110,7 @@ function RevisionPanel({
         {!signedOut && !barMode && (asks || []).length > 0 && (
           <div className="revision-asks" data-panel-asks={(asks || []).length}>
             <p className="revision-asks-head">
-              {asks.length === 1 ? "1 change queued" : asks.length + " changes queued"}
+              {asks.length === 1 ? "Queued" : "Queued \u00b7 " + asks.length}
             </p>
             {asks.map((a) => (
               <button

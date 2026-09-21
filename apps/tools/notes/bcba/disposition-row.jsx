@@ -71,6 +71,44 @@ function DispositionRow(props) {
   var [buffer, setBuffer] = React.useState(text);
   React.useEffect(function () { setBuffer(text); bufRef.current = text; }, [text]);
 
+  /* THE FIFTH ANSWER, added 2026-09-21. Asking for something else is not one of
+     the four: approve, edit and revert all settle the sentence here and now,
+     and this one hands it back to NoMe with a reason. It was reachable only
+     from the inline popover, which quiet mode suppresses along with everything
+     else that decides, so with the flag on a technician could see queued asks
+     and never make one. His ruling: make the queue reachable. */
+  var [asking, setAsking] = React.useState(false);
+  var [ask, setAsk] = React.useState("");
+  var queued = props.queued || "";
+  React.useEffect(function () { setAsk(queued); }, [queued]);
+
+  if (asking) {
+    return (
+      <div className="dz-row is-editing">
+        <textarea
+          className="dz-edit"
+          value={ask}
+          autoFocus
+          rows={2}
+          placeholder="What should it say instead"
+          aria-label="Say what you want NoMe to change"
+          data-disposition-ask-edit={props.id}
+          onChange={function (e) { setAsk(e.target.value); }}
+          onKeyDown={function (e) {
+            if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); props.onAsk(ask); setAsking(false); setOpen(false); }
+            if (e.key === "Escape") { setAsk(queued); setAsking(false); }
+          }}
+        />
+        <div className="dz-actions">
+          <button type="button" className="dz-act dz-act-keep" data-disposition-ask-save={props.id}
+            onClick={function () { props.onAsk(ask); setAsking(false); setOpen(false); }}>Add to the queue</button>
+          <button type="button" className="dz-act" data-disposition-ask-cancel={props.id}
+            onClick={function () { setAsk(queued); setAsking(false); }}>Cancel</button>
+        </div>
+      </div>
+    );
+  }
+
   if (editing) {
     return (
       <div className="dz-row is-editing">
@@ -124,6 +162,12 @@ function DispositionRow(props) {
           </button>
           <button type="button" className="dz-act" data-disposition-editbtn={props.id}
             onClick={function () { setEditing(true); }}>Edit</button>
+          {props.onAsk && (
+            <button type="button" className="dz-act" data-disposition-ask={props.id}
+              onClick={function () { setAsking(true); }}>
+              {queued ? "Change what you asked" : "Ask for a change"}
+            </button>
+          )}
           <button type="button" className="dz-act" data-disposition-revert={props.id}
             onClick={function () { props.onRevert(); setOpen(false); }}>
             {state === "reverted"
@@ -169,6 +213,8 @@ function AidSuggestion(props) {
       onApprove={props.onApprove}
       onRevert={props.onRevert}
       onEdit={props.onEdit}
+      queued={props.queued}
+      onAsk={props.onAsk}
     />
   );
 }
