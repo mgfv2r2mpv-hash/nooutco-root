@@ -1579,7 +1579,7 @@ export function correctionsSchema(sectionIds) {
         items: {
           type: "object",
           additionalProperties: false,
-          required: ["section", "text", "why"],
+          required: ["section", "text", "why", "reasons"],
           properties: {
             section: { type: "string", enum: ids },
             text: {
@@ -1593,6 +1593,41 @@ export function correctionsSchema(sectionIds) {
               description:
                 "One short line the technician will read, naming what you changed and which of their own notes it came from. " +
                 "Not a rule number and not a lecture on their field.",
+            },
+            /* HIS RULING, 2026-09-20: every change carries its own reason, so a
+               removal in the rail under the note can answer for itself instead
+               of sharing one line with the rest of the section.
+
+               It has to be met by QUOTING rather than by keying, and that is a
+               real limitation worth stating here. This route asks for the
+               COMPLETE rewritten section, so the model never emits a "change"
+               at all: the browser word-diffs old against new in diff.js, and a
+               mark is a client-side artifact with no id the model has seen. The
+               quote is how corrections.js finds the run again, and a quote that
+               matches nothing leaves its mark on the section line above. */
+            reasons: {
+              type: "array",
+              description:
+                "One entry for each separate thing you changed in this section. Empty is a real answer only if you changed nothing.",
+              items: {
+                type: "object",
+                additionalProperties: false,
+                required: ["quote", "why"],
+                properties: {
+                  quote: {
+                    type: "string",
+                    description:
+                      "VERBATIM from the wording you REMOVED, or verbatim from the wording you ADDED. Copy it exactly, character for character. " +
+                      "Keep it short - four to twelve words is enough to find it again - and do not paraphrase it, because it is matched against the text.",
+                  },
+                  why: {
+                    type: "string",
+                    description:
+                      "One short line naming why that particular wording changed. The technician reads this beside the words themselves, " +
+                      "so it does not need to repeat them.",
+                  },
+                },
+              },
             },
           },
         },
@@ -1632,7 +1667,10 @@ export function correctionsFound(api, draft) {
     // than in the browser keeps "how many did it change" one number rather than
     // two that disagree.
     if (next.trim() === String(known.get(section)).trim()) { dropped++; continue; }
-    corrections.push({ section, text: next, why: typeof c.why === "string" ? c.why : "" });
+    const reasons = (Array.isArray(c.reasons) ? c.reasons : [])
+      .filter((r) => r && typeof r.quote === "string" && typeof r.why === "string" && r.quote.trim() && r.why.trim())
+      .map((r) => ({ quote: r.quote, why: r.why }));
+    corrections.push({ section, text: next, why: typeof c.why === "string" ? c.why : "", reasons });
   }
   return { corrections, dropped };
 }

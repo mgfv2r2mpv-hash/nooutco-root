@@ -123,20 +123,25 @@ async function draft(page, { corrections = HEDGE_ADDED, role = 'user' } = {}) {
 const insertKey = (page, section) =>
   page.locator(`[data-corrections-section="${section}"] [data-correction-type="ins"]`).first().getAttribute('data-correction');
 
+/* THE GESTURE CHANGED ON 2026-09-20 AND WHAT IT MEANS DID NOT. A change is now
+   clicked on itself rather than on a tick beside it, and an undone addition
+   leaves a watermark where its words were, with the words themselves in the
+   rail under the note. So "undone" is read off the watermark rather than off a
+   struck-through copy sitting inside the box, and putting it back is done from
+   the rail, because that is the only place the words still are. */
 async function undo(page, key) {
-  await page.locator(`[data-correction-tick="${key}"]`).click();
+  await page.locator(`[data-correction="${key}"]`).click();
   await page.locator(`[data-correction-undo="${key}"]`).click();
-  await expect(page.locator(`[data-correction="${key}"]`)).toHaveAttribute('data-correction-reverted', 'true');
+  await expect(page.locator(`[data-correction-mark="${key}"]`)).toBeVisible();
 }
 
 async function putBack(page, key) {
-  await page.locator(`[data-correction-tick="${key}"]`).click();
   await page.locator(`[data-correction-undo="${key}"]`).click();
   await expect(page.locator(`[data-correction="${key}"]`)).toHaveAttribute('data-correction-reverted', 'false');
 }
 
 async function reword(page, key, text) {
-  await page.locator(`[data-correction-tick="${key}"]`).click();
+  await page.locator(`[data-correction="${key}"]`).click();
   await page.locator(`[data-correction-pencil="${key}"]`).click();
   await page.locator(`[data-correction-edit="${key}"]`).fill(text);
   await page.locator(`[data-correction-save="${key}"]`).click();

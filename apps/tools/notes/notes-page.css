@@ -722,21 +722,15 @@ body.is-pointing, body.is-pointing * { cursor: crosshair !important; }
 }
 .diff-note { font-size: 11.5px; color: #8a7430; margin: 0; }
 
-/* ── Corrections marks ───────────────────────────────────────────────────────
-   The corrections pass writes into the note, so every difference it made is
-   drawn over the draft. Three colours, three meanings, and no two of them share
-   one:
+/* ── The corrections pass, drawn ──────────────────────────────────────────
+   HIS THREE COLOURS: green added, red deleted, blue moved. What changed on
+   2026-09-20 is not the colours, it is that red and the origin half of blue
+   stopped spending words. Each is now a watermark, and the words it stood for
+   sit in the rail under the box.
 
-     green   something was added, drawn from what the technician wrote
-     red     something was removed
-     blue    something MOVED, and it is drawn at both ends
-
-   His ruling on the origin of a move, 1 September 2026: blue at both ends, with
-   a light strikethrough where the sentence left. Red is reserved for content
-   that is going away, and painting a move's origin red would say the sentence
-   was thrown out when the whole point of teaching the diff about moves was that
-   it was not. The strike says it is not sitting in two places; the blue says it
-   went somewhere. */
+   Red is still reserved for content that is going away. A move's origin is blue
+   because the sentence was not thrown out, it is somewhere else in the same
+   note, and painting it red would say otherwise. */
 
 .cx-view {
   padding: 10px; border-radius: 7px;
@@ -746,37 +740,107 @@ body.is-pointing, body.is-pointing * { cursor: crosshair !important; }
 }
 .cx { border-radius: 3px; padding: 1px 2px; }
 .cx-ins { background: rgba(56, 142, 60, .16); color: #1f6b2a; box-shadow: inset 0 -1px 0 rgba(56, 142, 60, .5); }
-.cx-del { background: rgba(198, 40, 40, .13); color: #a02020; text-decoration: line-through; }
 .cx-move-in { background: rgba(33, 90, 180, .14); color: #1c4f9c; box-shadow: inset 0 -1px 0 rgba(33, 90, 180, .45); }
-.cx-move-out {
-  background: rgba(33, 90, 180, .09); color: #4a72ab;
-  text-decoration: line-through;
-  /* Light on purpose. It has to say "not here any more" without reading as the
-     deletion two lines up, which is a different mark meaning a different thing. */
-  text-decoration-color: rgba(74, 114, 171, .55);
-  text-decoration-thickness: 1px;
+.cx.is-touchable { cursor: pointer; }
+.cx.is-touchable:hover, .cx.is-touchable:focus-visible { box-shadow: inset 0 -2px 0 currentColor; }
+.cx.is-touchable:focus-visible { outline: 2px solid #2f68c4; outline-offset: 1px; }
+
+/* Wording the technician put back. It is theirs, so it gets no colour and no
+   mark, only a faint neutral rule so that a second pass can still see a
+   decision was made here. His ruling, 2026-09-20. */
+.cx-restored {
+  background: none; color: inherit;
+  box-shadow: inset 0 -1px 0 rgba(45, 58, 31, .28);
 }
-/* An undone mark stops being a mark. It reads as ordinary note text, faintly,
-   because the technician has already decided about it. */
-.cx-reverted {
-  background: none; color: inherit; box-shadow: none;
-  text-decoration: none; opacity: .72;
+
+/* ── THE WATERMARK ────────────────────────────────────────────────────────
+   Tall, narrow, and holding NO TEXT NODE. His words: "I used [] to represent a
+   tall narrow watermark without any characters to make sure that nothing looks
+   (or does) copy out."
+
+   Measured five ways before this shape was chosen:
+     <span>[]</span>                     drag-select: "[]"   textContent: "[]"
+     "[]" + user-select:none             drag-select: clean  textContent: "[]"
+     no text node, numeral from ::after  drag-select: clean  textContent: clean
+
+   The middle row is the trap: user-select blocks the mouse and leaves the text
+   node sitting there, and textContent is exactly what the Copy button reads.
+   So the numeral is generated content, and there is no stripping step anywhere
+   in the copy path, because none of this is text.
+
+   DO NOT give .cx-wm children. */
+.cx-wm {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 12px; height: 1.25em; margin: 0 2px; vertical-align: -0.28em;
+  border-radius: 3px; border: 1px solid transparent;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-weight: 700; line-height: 1;
+  cursor: pointer; user-select: none; -webkit-user-select: none;
 }
+/* The numeral is sized here rather than on .cx-wm, so that the mark's own
+   1.25em height resolves against the note's 14px and it stands as TALL as a
+   line of text. Sizing the box at 9px made it 11px high and squat, which is
+   the opposite of what he asked for. */
+.cx-wm::after { content: attr(data-n); font-size: 9px; }
+.cx-wm-cut  { background: rgba(198, 40, 40, .15); color: #a02020; border-color: rgba(198, 40, 40, .22); }
+.cx-wm-move { background: rgba(33, 90, 180, .15); color: #1c4f9c; border-color: rgba(33, 90, 180, .22); }
+.cx-wm-cut:hover,  .cx-wm-cut.is-lit  { background: rgba(198, 40, 40, .28); border-color: #c62828; }
+.cx-wm-move:hover, .cx-wm-move.is-lit { background: rgba(33, 90, 180, .28); border-color: #215ab4; }
+.cx-wm:focus-visible { outline: 2px solid #2f68c4; outline-offset: 1px; }
+.cx-wm.is-dim { opacity: .45; }
+/* The one in the rail is a label, not a control. */
+.cx-wm-key { cursor: default; }
+
+/* ── THE RAIL ─────────────────────────────────────────────────────────────
+   Outside the box and under it, which is his ruling and also the only place it
+   can go: anything inside the box would be text the clipboard does not carry,
+   which is the fault this whole redesign exists to remove. */
+.cx-rail { margin-top: 8px; }
+.cx-rail-head {
+  margin: 0 0 6px; font-size: 10px; font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase; color: #a02020;
+}
+.cx-cut {
+  display: grid; grid-template-columns: 18px minmax(0, 1fr) auto;
+  gap: 8px; align-items: start;
+  padding: 6px 10px; border-left: 3px solid rgba(198, 40, 40, .2);
+  border-radius: 4px;
+}
+.cx-cut + .cx-cut { margin-top: 4px; }
+.cx-cut.is-lit { background: rgba(198, 40, 40, .07); border-left-color: #c62828; }
+.cx-cut.is-lit .cx-cut-text { font-weight: 700; color: #2d3a1f; }
+/* NO strikethrough. The rail is headed "removed" and sits outside the box, so a
+   strike says a second time what the position already says, and it is the exact
+   treatment this redesign exists to get rid of. His note, 2026-09-20. */
+.cx-cut-text { font-size: 12.5px; color: #55603f; line-height: 1.55; }
+/* The words that survived the rewrite into the green text above. Dimmed rather
+   than removed, so the line still reads as the sentence the technician wrote and
+   Restore cannot disagree with its own label. */
+.cx-cut-kept { opacity: .42; }
+.cx-cut-why { display: block; margin-top: 2px; font-size: 11px; color: #6a7a58; font-style: italic; }
+.cx-cut-act { flex: none; align-self: center; }
+
+/* ── The inline popover on a changed phrase ───────────────────────────────
+   It replaces the tick-then-menu gesture. Every answer is a word, per his
+   ruling that a page of glyphs is a form and not a note. */
+.cx-pop {
+  display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  margin-left: 4px; padding: 2px 6px; border-radius: 6px;
+  background: #ffffff; border: 1.5px solid #b7cba2; vertical-align: baseline;
+  white-space: normal;
+}
+.cx-pop-why { font-size: 11px; color: #6a7a58; font-style: italic; max-width: 32ch; }
 
 .cx-ctl {
   display: inline-flex; align-items: center; gap: 3px;
   vertical-align: baseline; margin-left: 3px; white-space: nowrap;
 }
 .cx-ck {
-  cursor: pointer; font-size: 12px; line-height: 1; border: none;
-  background: none; padding: 2px 4px; border-radius: 4px;
-  color: inherit; font-family: inherit;
+  cursor: pointer; font-size: 12px; line-height: 1; border: 1.5px solid #b7cba2;
+  background: white; padding: 3px 8px; border-radius: 5px;
+  color: #3c5029; font-family: inherit; font-weight: 600;
 }
-.cx-ck:hover, .cx-ck:focus-visible { background: rgba(55, 69, 40, .14); }
-/* Accepted is the resting state, so its tick is nearly invisible: the note is
-   what matters, and a page of solid checkmarks is a page nobody reads. */
-.cx-ck.is-ghost { opacity: .34; }
-.cx-ck.is-ghost:hover, .cx-ck.is-ghost:focus-visible { opacity: .9; background: rgba(55, 69, 40, .14); }
+.cx-ck:hover, .cx-ck:focus-visible { background: #f0f6ea; border-color: #8aa473; }
 
 .cx-dot {
   display: inline-block; width: 8px; height: 8px; border-radius: 50%;

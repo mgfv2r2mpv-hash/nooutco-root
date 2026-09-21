@@ -133,7 +133,10 @@ test.describe('reading the answer', () => {
       api({ corrections: [{ section: 'nope', text: 'x', why: '' }, { section: 'a', text: 'kept', why: 'w' }] }),
       [{ id: 'a', text: 'draft' }],
     );
-    expect(found.corrections).toEqual([{ section: 'a', text: 'kept', why: 'w' }]);
+    // `reasons` rides along from 2026-09-20 so the rail under a note can give
+    // each removal its own line. An answer that sent none is an empty list, not
+    // a missing field, because the browser reads it without checking.
+    expect(found.corrections).toEqual([{ section: 'a', text: 'kept', why: 'w', reasons: [] }]);
     expect(found.dropped).toBe(1);
   });
 
