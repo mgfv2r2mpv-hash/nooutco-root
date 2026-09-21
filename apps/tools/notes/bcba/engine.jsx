@@ -4891,6 +4891,7 @@ function App() {
            one is and jump to it. */
         asks={Object.keys(S.askQueue || {}).map((k) => S.askQueue[k])}
         onSendAsks={sendAsks}
+        onAskChange={queueAsk}
         onGoToAsk={goToOrigin}
         suggestionAccepted={suggestionAccepted}
         onToggleSuggestion={toggleSuggestion}

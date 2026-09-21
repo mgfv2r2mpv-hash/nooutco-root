@@ -373,3 +373,82 @@ test.describe('what the technician took out stays out', () => {
     expect(held.some((h) => /dislikes transitions/.test(h.text))).toBe(false);
   });
 });
+
+test.describe('the queue is reachable with the author-aid flag on', () => {
+  /* HIS RULING, 2026-09-21: "address the aid gap. Make the queue reachable."
+
+     Quiet mode moves every decision into the changes drawer and suppresses the
+     inline popover, which is where "Ask for a change" lived. So with the flag
+     on a technician could SEE queued asks and never make one. The fifth answer
+     now sits in the drawer beside approve, edit and revert. */
+  const openDrawer = async (page) => {
+    const fab = page.locator('.revision-fab');
+    if (await fab.isVisible({ timeout: 3000 }).catch(() => false)) await fab.click();
+    await expect(page.locator('[data-changes-drawer]')).toBeVisible({ timeout: 15000 });
+  };
+
+  test('the drawer offers Ask for a change, and it reaches the queue', async ({ page }) => {
+    const seen = [];
+    await stubSeen(page, seen);
+    await page.goto('/notes/bt/?aid=1');
+    await fillRequiredAndGenerate(page);
+    await expect(page.locator('[data-corrections-section]').first()).toBeVisible({ timeout: 30000 });
+
+    await openDrawer(page);
+    await page.locator('.dz-line').first().click();
+    const askBtn = page.locator('[data-disposition-ask]').first();
+    await expect(askBtn).toBeVisible();
+    await askBtn.click();
+    await page.locator('[data-disposition-ask-edit]').first().fill('say it plainer');
+    await page.locator('[data-disposition-ask-save]').first().click();
+
+    // It is on the queue, and the panel carries the one Send.
+    await expect(page.locator('[data-panel-asks]')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('[data-panel-ask-send]')).toHaveCount(1);
+  });
+
+  test('and sending from the panel spends it, with the flag on', async ({ page }) => {
+    const seen = [];
+    await stubSeen(page, seen);
+    await page.goto('/notes/bt/?aid=1');
+    await fillRequiredAndGenerate(page);
+    await expect(page.locator('[data-corrections-section]').first()).toBeVisible({ timeout: 30000 });
+
+    await openDrawer(page);
+    await page.locator('.dz-line').first().click();
+    await page.locator('[data-disposition-ask]').first().click();
+    await page.locator('[data-disposition-ask-edit]').first().fill('say it plainer');
+    await page.locator('[data-disposition-ask-save]').first().click();
+
+    await page.locator('[data-panel-ask-send]').click();
+    await expect.poll(() => seen.length, { timeout: 20000 }).toBe(2);
+    expect(seen[1].asks.length).toBe(1);
+    expect(seen[1].asks[0].text).toBe('say it plainer');
+  });
+});
+
+test.describe('the headers say what they are and stop', () => {
+  /* His words, 2026-09-21: "I *hate* the ', and not part of the copy'. Good
+     section headers are concise and do not telegraph like this." */
+  test('the rail is headed Deletions, and argues nothing', async ({ page }) => {
+    await stubSeen(page, []);
+    await page.goto('/notes/bt/');
+    await fillRequiredAndGenerate(page);
+    await expect(page.locator('[data-corrections-rail]').first()).toBeVisible({ timeout: 30000 });
+
+    const head = page.locator('[data-corrections-rail] .cx-rail-head').first();
+    await expect(head).toHaveText('Deletions');
+    await expect(head).not.toContainText('not part of the copy');
+  });
+
+  test('the queued group is headed Queued', async ({ page }) => {
+    const seen = [];
+    await stubSeen(page, seen);
+    await page.goto('/notes/bt/');
+    await fillRequiredAndGenerate(page);
+    await expect(page.locator('[data-corrections-section="behaviorPlanNarrative"]')).toBeVisible({ timeout: 30000 });
+
+    await askOn(page, 'behaviorPlanNarrative', 'say it in one sentence');
+    await expect(page.locator('.cx-asks-head').first()).toHaveText('Queued');
+  });
+});

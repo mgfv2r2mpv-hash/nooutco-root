@@ -346,7 +346,12 @@ function CorrectionsView({ id, ops, marks, state, onToggle, onEdit, onGoToOrigin
           clipboard does not carry. */}
       {rail.length > 0 && (
         <div className="cx-rail" data-corrections-rail={id}>
-          <p className="cx-rail-head">Removed from this section, and not part of the copy</p>
+          {/* ONE WORD. It said "Removed from this section, and not part of the
+              copy", which he called telegraphing: a header that argues its own
+              case has stopped being a header. The rail sits under the box and
+              its lines are struck from nothing, so where it is already says
+              what it is. */}
+          <p className="cx-rail-head">Deletions</p>
           {rail.map((r) => (
             <div
               key={r.key}
@@ -387,7 +392,7 @@ function CorrectionsView({ id, ops, marks, state, onToggle, onEdit, onGoToOrigin
           costs one turn rather than three. Nothing here sends. */}
       {asks.length > 0 && (
         <div className="cx-asks" data-corrections-asks={id}>
-          <p className="cx-asks-head">{asks.length === 1 ? "Queued for NoMe" : asks.length + " queued for NoMe"}</p>
+          <p className="cx-asks-head">Queued</p>
           {asks.map((a) => (
             <div key={a.key} className="cx-ask-row" data-corrections-ask-row={a.key}>
               <span className="cx-ask-text">
