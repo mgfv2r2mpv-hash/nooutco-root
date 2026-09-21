@@ -4401,7 +4401,16 @@ function App() {
             <CorrectionsView
               id={id}
               ops={marked}
-              marks={{ why: (S.corrections.marks.find((m) => m.id === id) || {}).why || "" }}
+              /* `why` is the section line, kept as the fallback for a change
+                 the pass quoted nothing for. `reasons` is per mark, which is
+                 his 2026-09-20 ruling and what the rail under the note reads. */
+              marks={{
+                why: (S.corrections.marks.find((m) => m.id === id) || {}).sectionWhy || "",
+                reasons: S.corrections.marks.reduce((acc, m) => {
+                  if (m.id === id && m.why) acc[m.key] = m.why;
+                  return acc;
+                }, {}),
+              }}
               state={S.markState}
               headings={correctionHeadings}
               quiet={authorAidEnabled()}

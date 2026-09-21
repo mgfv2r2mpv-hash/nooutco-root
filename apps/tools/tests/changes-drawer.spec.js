@@ -251,11 +251,17 @@ test.describe('a pass becomes rows', () => {
 /* ── The reading path, and what is no longer in it ───────────────────────── */
 
 test.describe('the note keeps the mark and loses the control', () => {
-  /* THE CONTROL. Without the flag the tick is exactly where it was, so this
-     test fails the moment quiet mode is applied to everybody. */
-  test('without the flag the ghost tick is still on every change', async ({ page }) => {
+  /* THE CONTROL. Without the flag a change can still be acted on where it sits,
+     so this test fails the moment quiet mode is applied to everybody. The tick
+     it used to look for went with the 2026-09-20 redesign; the phrase itself is
+     the control now, and it opens the same two answers. */
+  test('without the flag a change still answers to a click, where it sits', async ({ page }) => {
     await draft(page, ONE_ADD, { aid: false });
-    await expect(page.locator('[data-correction-tick]').first()).toBeVisible();
+    const ins = page.locator('[data-correction-type="ins"]').first();
+    await expect(ins).toBeVisible();
+    await ins.click();
+    await expect(page.locator('[data-correction-undo]').first()).toBeVisible();
+    await expect(page.locator('[data-correction-pencil]').first()).toBeVisible();
   });
 
   test('with the flag the change is still drawn, and nothing is clickable beside it', async ({ page }) => {
@@ -331,8 +337,16 @@ test.describe('the drawer', () => {
     await page.locator('.dz-line').first().click();
     await page.locator('[data-disposition-revert]').first().click();
     await expect(page.locator('[data-change]').first()).toHaveAttribute('data-change-state', 'reverted');
-    // Struck in the note, so the technician can see what left.
-    await expect(page.locator('[data-correction-type="ins"]').first()).toHaveAttribute('data-correction-reverted', 'true');
+    /* Marked in the note, so the technician can see something left here, with
+       the words themselves in the rail underneath rather than struck through
+       inside the box. That was the 2026-09-20 ruling: the box holds exactly
+       what Copy gives you, so wording the clipboard will not take cannot be
+       drawn in it. */
+    await expect(page.locator('[data-correction-mark]').first()).toBeVisible();
+    await expect(page.locator('[data-corrections-rail]').first())
+      .toContainText('moved to the floor beside the client');
+    await expect(page.locator('[data-corrections-section]').first())
+      .not.toContainText('moved to the floor beside the client');
     // And gone from what the EHR gets.
     expect(await shipped(page)).not.toContain('moved to the floor beside the client');
   });

@@ -218,9 +218,12 @@ test.describe('a note reaches voice_level and diction_level through the Pages wo
     const c = chain();
     await draft(page, c, { corrections: [{ section: 'behaviorPlanNarrative', text: PLAN + HEDGED, why: 'test' }] });
     const key = await page.locator('[data-corrections-section="behaviorPlanNarrative"] [data-correction-type="ins"]').first().getAttribute('data-correction');
-    await page.locator(`[data-correction-tick="${key}"]`).click();
+    /* The gesture changed on 2026-09-20: a change is clicked on itself rather
+       than on a tick beside it, and an undone addition leaves a watermark where
+       its words were instead of a struck-through copy of them in the box. */
+    await page.locator(`[data-correction="${key}"]`).click();
     await page.locator(`[data-correction-undo="${key}"]`).click();
-    await expect(page.locator(`[data-correction="${key}"]`)).toHaveAttribute('data-correction-reverted', 'true');
+    await expect(page.locator(`[data-correction-mark="${key}"]`)).toBeVisible();
     await copyAndSettle(page, c);
 
     // Not vacuous: the rejection was measured as style, so the pair existed.

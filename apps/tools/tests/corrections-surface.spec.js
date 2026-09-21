@@ -196,7 +196,7 @@ test.describe('how a move is drawn', () => {
     await expect(page.locator('[data-corrections-section]').first()).toBeVisible({ timeout: 20000 });
   });
 
-  test('BOTH ENDS ARE BLUE, AND THE ORIGIN IS STRUCK THROUGH RATHER THAN RED', async ({ page }) => {
+  test('BOTH ENDS ARE BLUE, AND THE ORIGIN SPENDS NO WORDS', async ({ page }) => {
     const out = page.locator('[data-correction-type="move-out"]');
     const into = page.locator('[data-correction-type="move-in"]');
     await expect(out).toHaveCount(1);
@@ -205,7 +205,7 @@ test.describe('how a move is drawn', () => {
     const paint = await page.evaluate(() => {
       const read = (el) => {
         const s = getComputedStyle(el);
-        return { color: s.color, line: s.textDecorationLine };
+        return { color: s.color, line: s.textDecorationLine, text: el.textContent };
       };
       return {
         out: read(document.querySelector('[data-correction-type="move-out"]')),
@@ -221,9 +221,13 @@ test.describe('how a move is drawn', () => {
       expect(b, `the ${end} end of the move is not blue`).toBeGreaterThan(r + 20);
       expect(b, `the ${end} end of the move is not blue`).toBeGreaterThan(g + 20);
     }
-    // And the origin says the sentence is not sitting in two places.
-    expect(paint.out.line).toContain('line-through');
-    expect(paint.in.line).not.toContain('line-through');
+    /* And the origin says the sentence is not sitting in two places. It used to
+       say it with a strikethrough over a second copy of the words, which is the
+       duplication he objected to on 2026-09-20: a sentence drawn twice, once as
+       history. It now says it by spending no words at all. The watermark holds
+       the place; the sentence exists once, at the other end. */
+    expect(paint.out.text, 'the origin is still drawing the moved sentence').toBe('');
+    expect(paint.in.text).toContain('functional communication response');
   });
 
   test('the destination carries a dot back to where the sentence came from', async ({ page }) => {
@@ -234,15 +238,20 @@ test.describe('how a move is drawn', () => {
   });
 
   test('UNDOING ONE END UNDOES BOTH, so the sentence is never in two places', async ({ page }) => {
-    const outKey = await page.locator('[data-correction-type="move-out"]').getAttribute('data-correction');
-    await page.locator(`[data-correction-tick="${outKey}"]`).click();
-    await page.locator(`[data-correction-undo="${outKey}"]`).click();
+    /* Acted on at the destination, because that is where the words are. The
+       origin is a watermark now and clicking it navigates rather than decides. */
+    const inKey = await page.locator('[data-correction-type="move-in"]').getAttribute('data-correction');
+    await page.locator(`[data-correction="${inKey}"]`).click();
+    await page.locator(`[data-correction-undo="${inKey}"]`).click();
 
-    await expect(page.locator('[data-correction-type="move-out"]')).toHaveAttribute('data-correction-reverted', 'true');
-    await expect(page.locator('[data-correction-type="move-in"]')).toHaveAttribute('data-correction-reverted', 'true');
+    // Undone at both ends means the move is simply not there any more: the
+    // origin has its own wording back and the destination draws nothing.
+    await expect(page.locator('[data-correction-type="move-out"]')).toHaveCount(0);
+    await expect(page.locator('[data-correction-type="move-in"]')).toHaveCount(0);
+    await expect(page.locator('[data-correction-restored="true"]').first()).toBeVisible();
 
-    // The marks still DRAW the undone text at both ends, so what is asserted
-    // here is the note itself. "Edit by hand" hands back the real value.
+    // What is asserted below is the note itself, which is the only reading the
+    // EHR ever sees. "Edit by hand" hands back the real value.
     await page.locator('[data-corrections-done="antecedentNarrative"]').click();
     await page.locator('[data-corrections-done="behaviorPlanNarrative"]').click();
     await expect(sectionBox(page, 'antecedentNarrative'))
@@ -260,22 +269,23 @@ test.describe('acting on a mark', () => {
     await expect(page.locator('[data-corrections-section]').first()).toBeVisible({ timeout: 20000 });
   });
 
-  test('the resting state is one ghosted tick, and the controls arrive on a click', async ({ page }) => {
+  test('the resting state is the note, and the controls arrive on a click', async ({ page }) => {
     const ins = page.locator('[data-correction-type="ins"]').first();
     const key = await ins.getAttribute('data-correction');
-    // Nothing but the tick until it is asked for: a dozen visible button pairs
-    // would make a note read as a form.
+    /* Nothing beside the phrase until it is asked for: a dozen visible button
+       pairs would make a note read as a form. The tick that used to sit here is
+       gone with the 2026-09-20 redesign, and the phrase itself is the target. */
     await expect(page.locator(`[data-correction-undo="${key}"]`)).toHaveCount(0);
     await expect(page.locator(`[data-correction-pencil="${key}"]`)).toHaveCount(0);
 
-    await page.locator(`[data-correction-tick="${key}"]`).click();
+    await ins.click();
     await expect(page.locator(`[data-correction-undo="${key}"]`)).toHaveCount(1);
     await expect(page.locator(`[data-correction-pencil="${key}"]`)).toHaveCount(1);
   });
 
   test('the pencil rewords what ships without undoing it', async ({ page }) => {
     const key = await page.locator('[data-correction-type="ins"]').first().getAttribute('data-correction');
-    await page.locator(`[data-correction-tick="${key}"]`).click();
+    await page.locator(`[data-correction="${key}"]`).click();
     await page.locator(`[data-correction-pencil="${key}"]`).click();
     const box = page.locator(`[data-correction-edit="${key}"]`);
     await expect(box).toBeVisible();

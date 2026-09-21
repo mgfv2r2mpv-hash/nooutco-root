@@ -56,6 +56,36 @@
     return op.text;
   }
 
+  /* THE PASS'S OWN REASON, attached to the run it is about.
+
+     THE MODEL NEVER SEES A MARK. correctionsSchema asks for the COMPLETE
+     rewritten section and NoteDiff word-diffs it here, so a mark is made in
+     this file and has no id the Worker could have used. His ruling that every
+     change carries its own reason is therefore met by MATCHING: the model
+     quotes a short span of what it removed or added, and the quote is looked
+     for among the runs.
+
+     Normalised on whitespace and case, and nothing else. Anything cleverer
+     starts guessing, and a wrong reason against a removal is worse than none:
+     it tells a technician the tool took out a sentence for a reason that
+     belongs to a different sentence. A quote that finds nothing leaves its mark
+     on the section line, which is why that line survives. */
+  function normalised(s) {
+    return String(s == null ? "" : s).toLowerCase().replace(/\s+/g, " ").trim();
+  }
+
+  function reasonFor(op, reasons) {
+    if (!reasons || !reasons.length) return "";
+    var hay = normalised(op && op.text);
+    if (!hay) return "";
+    for (var i = 0; i < reasons.length; i++) {
+      var q = normalised(reasons[i].quote);
+      if (!q) continue;
+      if (hay.indexOf(q) !== -1 || q.indexOf(hay) !== -1) return reasons[i].why;
+    }
+    return "";
+  }
+
   // Every mark belonging to the same move, by key. Both ends of a move share a
   // moveId; anything else is only ever itself.
   function pairedKeys(sections, op) {
@@ -99,8 +129,13 @@
     var sections = window.NoteDiff.sections(scopedBefore, after);
 
     var why = {};
+    var quoted = {};
     list.forEach(function (c) {
-      if (c && typeof c.section === "string" && typeof c.why === "string") why[c.section] = c.why;
+      if (!c || typeof c.section !== "string") return;
+      if (typeof c.why === "string") why[c.section] = c.why;
+      quoted[c.section] = (Array.isArray(c.reasons) ? c.reasons : []).filter(function (r) {
+        return r && typeof r.quote === "string" && typeof r.why === "string";
+      });
     });
 
     var marks = [];
@@ -116,7 +151,10 @@
           to: op.to || "",
           from: op.from || "",
           text: op.text,
-          why: why[id] || "",
+          // The mark's OWN reason, with the section line as the fallback for a
+          // run no quote reached.
+          why: reasonFor(op, quoted[id]) || why[id] || "",
+          sectionWhy: why[id] || "",
         });
       });
     });
