@@ -94,7 +94,15 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          # 22, not 20. voice-write-path.spec.js drives the real profile-api
+          # schema through apps/profile-api/test/helpers/d1-sqlite.js, which
+          # imports node:sqlite. That module does not exist in Node 20 at all,
+          # so every shard died at import time with "No such built-in module:
+          # node:sqlite" before a single test ran - three red browser jobs that
+          # said nothing about the code. 22 has it, behind an experimental
+          # warning and no flag, and it is what profile-api-test.yml already
+          # uses.
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: apps/tools/package-lock.json
 
