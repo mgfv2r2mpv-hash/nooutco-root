@@ -30,8 +30,8 @@
    ORDER IS DATA. The array order is the deck order under `order: sequential`,
    and it is arranged so the answers do not run in step with the tile
    counterbalance (which alternates on the trial index). Blocks of four run
-   THINK, SAY, SAY, THINK; the tail runs SAY. Reordering this array can create a
-   perfect position cue - think-or-say-levels.spec.js measures it.
+   THINK, SAY, SAY, THINK; the tail is one THINK. Reordering this array can
+   create a perfect position cue - think-or-say-levels.spec.js measures it.
    ----------------------------------------------------------------------- */
 (function (global) {
   'use strict';
@@ -49,7 +49,7 @@
        before anyone can be expected to follow it.
 
        Declared HERE, once, and never on a card. A per-card rule line would be
-       35 copies free to drift apart, and a card that states its own rule
+       53 copies free to drift apart, and a card that states its own rule
        states its own answer.
 
        BOTH branches are always on screen together, and that is what keeps the
@@ -83,7 +83,7 @@
          card may satisfy a THINK question and a SAY question at once - a rule
          whose correctness depends on which line you happen to read first is
          not a rule a learner can hold. `when` is what makes that checkable:
-         think-or-say-review.spec.js walks all 35 cards through these
+         think-or-say-review.spec.js walks all 53 cards through these
          predicates and fails if any card is undecided, contradicted, or
          answered both ways. Edit a card's features and the rule is re-proved
          against it. */
@@ -341,13 +341,109 @@
         vary: { setting: 'school', person: 'peer', topic: 'body', form: 'question' },
         reason: 'Think it for now. How they got hurt is private, and asking in front of everyone could embarrass them.' },
 
-      // ── tail ──
+      // ── block 9 ──
+      // The Level 1 pool grew from 35 to 53 cards to even the answer split and
+      // to spread the can-have features into settings, people and topics the
+      // first 35 barely touched (the shop, the bus, home, strangers, family,
+      // smells, looks). New cards come as minimum-difference pairs wherever the
+      // situation allows: the same scene twice with one feature flipped, so the
+      // flip is the only thing that can explain the answer changing. They are
+      // teaching exemplars, not the level's formal `pairs` list below.
+      //
+      // Grandma's kitchen: the same cook, the same smell question, and only
+      // whether the words would hurt or lift decides it.
+      { id: 'L1-36', level: 1, cat: 'smells', answer: 'think',
+        situation: 'Your grandma cooks fish for dinner. You do not like how it smells.',
+        utterance: 'That smells yucky!', sayVerb: 'say', object: 'these words',
+        features: { selfEsteem: 'hurts' },
+        vary: { setting: 'home', person: 'family', topic: 'smell', form: 'exclamation' },
+        reason: 'Think it. Grandma worked hard to cook dinner - these words would hurt her feelings.' },
+      { id: 'L1-37', level: 1, cat: 'smells', answer: 'say',
+        situation: 'Your grandma bakes fresh bread. You love how it smells.',
+        utterance: 'The whole house smells so good.', sayVerb: 'say', object: 'these words',
+        features: { selfEsteem: 'lifts' },
+        vary: { setting: 'home', person: 'family', topic: 'smell', form: 'statement' },
+        reason: 'Say it! A kind, true compliment will make Grandma feel proud of her baking.' },
+      // The coat-hook pair (L1-05 / L1-06) again, moved to a shop queue and a
+      // stranger: a stranger is not an automatic THINK, and whether she can fix
+      // it right now is what decides.
+      { id: 'L1-38', level: 1, cat: 'other', answer: 'say',
+        situation: 'You are in line at the grocery store. The lady right in front of you drops her glove and does not notice. Nobody else is close.',
+        utterance: 'You dropped your glove.', sayVerb: 'say', object: 'these words',
+        features: { changeability: 'fixable-now', audience: 'just-them', relationship: 'stranger' },
+        vary: { setting: 'shop', person: 'stranger', topic: 'belongings', form: 'statement' },
+        reason: 'Say it - just to her. You do not know her, but she can pick it up right now, so telling her helps.' },
+      { id: 'L1-39', level: 1, cat: 'work', answer: 'think',
+        situation: 'You are in line at the grocery store. The lady right in front of you has a small hole in the back of her old coat. Nobody else is close.',
+        utterance: 'Why does your coat have a hole?', sayVerb: 'ask', object: 'this question',
+        features: { changeability: 'not-fixable', audience: 'just-them', relationship: 'stranger' },
+        vary: { setting: 'shop', person: 'stranger', topic: 'belongings', form: 'question' },
+        reason: 'Think it. You do not know her, and she cannot fix her coat in the store, so asking would only make her feel bad.' },
+
+      // ── block 10 ──
+      // The same toothpaste on the same sister: only who can hear flips.
+      { id: 'L1-40', level: 1, cat: 'looks', answer: 'think',
+        situation: 'Your big sister is at the front of the crowded bus, and you are at the back. She has a blob of toothpaste on her chin.',
+        utterance: 'You have toothpaste on your chin!', sayVerb: 'say', object: 'these words',
+        features: { audience: 'others-hear', changeability: 'fixable-now' },
+        vary: { setting: 'bus', person: 'sibling', topic: 'looks', form: 'exclamation' },
+        reason: 'Think it for now. Shouting it down the bus means everyone hears, and that would embarrass her. Tell her when you are next to her.' },
+      { id: 'L1-41', level: 1, cat: 'looks', answer: 'say',
+        situation: 'You are sitting right next to your big sister on the bus. Nobody else can hear. She has a blob of toothpaste on her chin.',
+        utterance: 'You have toothpaste on your chin.', sayVerb: 'say', object: 'these words',
+        features: { audience: 'just-them', changeability: 'fixable-now' },
+        vary: { setting: 'bus', person: 'sibling', topic: 'looks', form: 'statement' },
+        reason: 'Say it - quietly, just to her. She can wipe it off right now, so telling her helps.' },
+      // The teacher timing pair (L1-11 / L1-12) at the shop with Dad: the same
+      // news, and only whether he is busy flips.
+      { id: 'L1-42', level: 1, cat: 'other', answer: 'say',
+        situation: 'You are at the grocery store with your dad. He has finished paying and turns to smile at you. You want to tell him you scored a goal at practice.',
+        utterance: 'I scored a goal today!', sayVerb: 'tell', object: 'this news',
+        features: { relationship: 'grown-up', timing: 'right-moment' },
+        vary: { setting: 'shop', person: 'family', topic: 'work', form: 'exclamation' },
+        reason: 'Say it! Dad is free now, so this is a good moment to tell your grown-up your news.' },
+      { id: 'L1-43', level: 1, cat: 'other', answer: 'think',
+        situation: 'You are at the grocery store with your dad. He is paying the cashier and counting out his money. You want to tell him you scored a goal at practice.',
+        utterance: 'I scored a goal today!', sayVerb: 'tell', object: 'this news',
+        features: { relationship: 'grown-up', timing: 'wrong-moment' },
+        vary: { setting: 'shop', person: 'family', topic: 'work', form: 'exclamation' },
+        reason: 'Think it for now. Dad is busy paying - you can tell him when he is finished.' },
+
+      // ── block 11 ──
+      // A second truth defeater, shaped like L1-15 / L1-16: both utterances are
+      // true, and only whether they would hurt or lift decides.
+      { id: 'L1-44', level: 1, cat: 'work', answer: 'think',
+        situation: 'At your birthday party, your friend gives you a present. You open it, and it is a book you already have.',
+        utterance: 'I already have this book.', sayVerb: 'say', object: 'these words',
+        features: { truthRank: 'true', selfEsteem: 'hurts' },
+        vary: { setting: 'home', person: 'peer', topic: 'belongings', form: 'statement' },
+        reason: 'Think it. It is true, but true is not as important as kind - your friend picked it for you, and it would hurt their feelings.' },
+      { id: 'L1-45', level: 1, cat: 'kind', answer: 'say',
+        situation: 'At your birthday party, your friend gives you a present. You open it, and it is the game you really wanted.',
+        utterance: 'I love it, thank you!', sayVerb: 'say', object: 'these words',
+        features: { truthRank: 'true', selfEsteem: 'lifts' },
+        vary: { setting: 'home', person: 'peer', topic: 'belongings', form: 'exclamation' },
+        reason: 'Say it! It is true and it is kind - here true and kind point the same way.' },
       { id: 'L1-32', level: 1, cat: 'kind', answer: 'say',
         situation: 'It is your friend’s birthday and they are wearing a big birthday badge.',
         utterance: 'Happy birthday!', sayVerb: 'say', object: 'these words',
         features: { selfEsteem: 'lifts', timing: 'right-moment', relationship: 'close-friend' },
         vary: { setting: 'school', person: 'peer', topic: 'belongings', form: 'exclamation' },
         reason: 'Say it! Wishing a friend happy birthday makes them feel special.' },
+      { id: 'L1-46', level: 1, cat: 'work', answer: 'think',
+        situation: 'Your big brother is playing a video game at home. He keeps losing on the same level.',
+        utterance: 'You are bad at this game.', sayVerb: 'say', object: 'these words',
+        features: { selfEsteem: 'hurts' },
+        vary: { setting: 'home', person: 'sibling', topic: 'work', form: 'statement' },
+        reason: 'Think it. He is already trying hard, and these words would hurt his feelings.' },
+
+      // ── block 12 ──
+      { id: 'L1-47', level: 1, cat: 'looks', answer: 'think',
+        situation: 'You are at the park. A grown-up you have never met walks past, and he has no hair on his head.',
+        utterance: 'Where did your hair go?', sayVerb: 'ask', object: 'this question',
+        features: { selfEsteem: 'hurts', changeability: 'not-fixable', relationship: 'stranger' },
+        vary: { setting: 'playground', person: 'stranger', topic: 'looks', form: 'question' },
+        reason: 'Think it. You do not know him, and he cannot change how his head looks - asking could hurt his feelings.' },
       { id: 'L1-33', level: 1, cat: 'kind', answer: 'say',
         situation: 'A classmate is sitting alone on the playground and looks sad.',
         utterance: 'Are you okay?', sayVerb: 'ask', object: 'this question',
@@ -360,6 +456,52 @@
         features: { selfEsteem: 'lifts', timing: 'right-moment' },
         vary: { setting: 'school', person: 'teacher', topic: 'work', form: 'exclamation' },
         reason: 'Say it! Sharing happy news about yourself is great.' },
+      { id: 'L1-48', level: 1, cat: 'private', answer: 'think',
+        situation: 'This morning your friend told you quietly that they still sleep with a night-light. Now you are at the lunch table with lots of kids.',
+        utterance: 'You sleep with a night-light!', sayVerb: 'say', object: 'these words',
+        features: { privacy: 'private', audience: 'others-hear', selfEsteem: 'hurts' },
+        vary: { setting: 'school', person: 'peer', topic: 'belongings', form: 'exclamation' },
+        reason: 'Think it. They told only you, so it is private - and at the lunch table everyone would hear, and that would embarrass them.' },
+
+      // ── block 13 ──
+      // A teacher on the THINK side and a looks card on the SAY side, which the
+      // pool had almost none of. The same sleeve, the same quiet desk: only
+      // whether she can fix it right now flips.
+      { id: 'L1-50', level: 1, cat: 'looks', answer: 'think',
+        situation: 'You are at your teacher\'s desk, and nobody else is close. There is a big coffee stain on her sleeve.',
+        utterance: 'Did you spill coffee on your sleeve?', sayVerb: 'ask', object: 'this question',
+        features: { changeability: 'not-fixable', audience: 'just-them' },
+        vary: { setting: 'school', person: 'teacher', topic: 'looks', form: 'question' },
+        reason: 'Think it. She cannot change her shirt at school, so asking would only make her feel bad.' },
+      { id: 'L1-51', level: 1, cat: 'looks', answer: 'say',
+        situation: 'You are at your teacher\'s desk, and nobody else is close. There is a sticky note stuck to her sleeve.',
+        utterance: 'There is a sticky note on your sleeve.', sayVerb: 'say', object: 'these words',
+        features: { changeability: 'fixable-now', audience: 'just-them' },
+        vary: { setting: 'school', person: 'teacher', topic: 'looks', form: 'statement' },
+        reason: 'Say it - quietly, just to her. She can pull it off right now, so telling her helps.' },
+      // The L1-03 / L1-04 privacy contrast at the family dinner table: both
+      // utterances are kind, and only whether the news was shared with everyone
+      // or told quietly decides.
+      { id: 'L1-52', level: 1, cat: 'kind', answer: 'say',
+        situation: 'At dinner, your big brother tells the whole family that he got a part in the school play.',
+        utterance: 'You got a part in the play!', sayVerb: 'say', object: 'these words',
+        features: { privacy: 'not-private', selfEsteem: 'lifts' },
+        vary: { setting: 'home', person: 'sibling', topic: 'work', form: 'exclamation' },
+        reason: 'Say it! He shared his happy news with everyone, and hearing it back makes him feel proud.' },
+      { id: 'L1-53', level: 1, cat: 'private', answer: 'think',
+        situation: 'This morning your big brother told you quietly that he got a part in the school play. He wants to tell everyone himself. Now the whole family is at dinner.',
+        utterance: 'You got a part in the play!', sayVerb: 'say', object: 'these words',
+        features: { privacy: 'private', selfEsteem: 'lifts' },
+        vary: { setting: 'home', person: 'sibling', topic: 'work', form: 'exclamation' },
+        reason: 'Think it. Kind words can still be private words. He told only you, so it is his news to share, not yours.' },
+
+      // ── tail ──
+      { id: 'L1-49', level: 1, cat: 'other', answer: 'think',
+        situation: 'At recess, kids are picking teams for a ball game. Your classmate is picked last, and everyone is standing around.',
+        utterance: 'You got picked last!', sayVerb: 'say', object: 'these words',
+        features: { truthRank: 'true', selfEsteem: 'hurts', audience: 'others-hear' },
+        vary: { setting: 'playground', person: 'peer', topic: 'work', form: 'exclamation' },
+        reason: 'Think it. It is true, but true is not as important as kind - it would hurt, and everyone would hear.' },
     ],
     // One matched minimum-difference pair per criterial dimension. `defeater` is
     // dimension 8: truth is held CONSTANT across both cards and something else
