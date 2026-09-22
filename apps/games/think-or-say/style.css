@@ -210,20 +210,146 @@
   height: 100%;
   border: 0;
 }
-.learn-lead { font-size: 1.05rem; line-height: 1.5; margin-bottom: 12px; color: #2d3748; }
-.learn-ask  { font-weight: 700; color: #1a2438; margin-bottom: 8px; }
-.learn-list { list-style: none; display: flex; flex-direction: column; gap: 10px; margin: 0 0 14px; }
-.learn-list li {
+.learn-lead { font-size: 1.05rem; line-height: 1.5; margin-bottom: 16px; color: #2d3748; text-align: center; }
+
+/* The ladder: a numbered rail down the left, one short card per tier. */
+.learn-ladder-head {
   display: flex;
-  align-items: center;
+  align-items: baseline;
+  justify-content: space-between;
   gap: 10px;
-  font-size: 1rem;
-  line-height: 1.4;
-  color: #2d3748;
+  margin-bottom: 8px;
+}
+.learn-ladder-title {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #5a6b8a;
+}
+.learn-wins {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--accent-dark);
+  background: var(--accent-soft);
+  border-radius: 999px;
+  padding: 2px 10px;
+  white-space: nowrap;
+}
+.learn-ladder {
+  list-style: none;
+  margin: 0 0 20px;
+  padding: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+/* The rail: strong at the top, fading down - higher rules win. */
+.learn-ladder::before {
+  content: "";
+  position: absolute;
+  left: 13px;
+  top: 14px;
+  bottom: 14px;
+  width: 3px;
+  border-radius: 2px;
+  background: linear-gradient(var(--accent), #c9d3ea);
+}
+.learn-tier {
+  position: relative;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+.learn-tier-num {
+  position: relative;
+  width: 29px;
+  height: 29px;
+  margin-top: 8px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  font-size: 0.85rem;
+  color: #fff;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px #fff;
+}
+.learn-tier[data-tier="4"] .learn-tier-num,
+.learn-tier[data-tier="5"] .learn-tier-num { background: #7d8fb8; }
+.learn-tier-card {
   background: #f7f9fc;
   border: 1px solid var(--accent-soft);
-  border-radius: 10px;
+  border-radius: 12px;
+  padding: 9px 12px 10px;
+  min-width: 0;
+}
+.learn-tier[data-tier="1"] .learn-tier-card { background: #fdf3f2; border-color: #f3d2cd; }
+.learn-tier-head { display: flex; align-items: center; gap: 7px; }
+.learn-tier-icon { font-size: 1.1rem; line-height: 1; }
+.learn-tier-name { font-weight: 900; font-size: 1.02rem; color: #1a2438; }
+.learn-tier-why { margin: 3px 0 6px; font-size: 0.95rem; line-height: 1.4; color: #2d3748; }
+.learn-qs { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 5px; }
+.learn-q {
+  font-size: 0.8rem;
+  line-height: 1.3;
+  color: #4a5568;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  padding: 2px 9px;
+}
+
+/* The worked example: one matched pair, side by side. */
+.learn-pair {
+  border-top: 1px dashed #d9dfeb;
+  padding-top: 14px;
+  margin-bottom: 20px;
+}
+#learn-pair-title { font-size: 1.08rem; color: #1a2438; text-align: center; margin: 0 0 4px; }
+.learn-pair-ask { text-align: center; font-size: 0.9rem; color: #5a6b8a; margin: 0 0 10px; }
+.learn-pair-ask strong { color: #1a2438; }
+.learn-sides { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.learn-side {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-radius: 12px;
   padding: 10px 12px;
+  border: 1px solid #8fd1a8;
+  border-left-width: 5px;
+  background: #f5fbf7;
+  min-width: 0;
+}
+.learn-side-think { border-color: #e7c463; background: #fffaf0; }
+.learn-sit { margin: 0; font-size: 0.88rem; line-height: 1.4; color: #4a5568; }
+.learn-utt { margin: 0; font-size: 1rem; font-weight: 800; color: #1a2438; }
+.learn-side-foot {
+  margin-top: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.learn-flip-chip {
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: #fff3bf;
+  box-shadow: inset 0 0 0 1.5px #e7c463;
+}
+
+@media (max-width: 560px) {
+  #learn-screen { padding: 12px 12px 24px; }
+  .learn-inner { padding: 18px 14px 18px; }
+  #learn-title { font-size: 1.2rem; margin-bottom: 10px; }
+  .learn-lead { font-size: 0.98rem; }
+  .learn-sides { grid-template-columns: 1fr; }
+  .learn-tier-why { font-size: 0.9rem; }
 }
 .tag {
   flex-shrink: 0;
@@ -235,7 +361,6 @@
 }
 .tag-think { background: var(--think-soft); color: #6b4e0a; border: 1px solid #e7c463; }
 .tag-say   { background: var(--say-soft);   color: #1f5c39; border: 1px solid #8fd1a8; }
-.learn-tip { font-size: 0.95rem; color: #5a6b8a; margin-bottom: 18px; text-align: center; }
 #btn-learn-start { display: block; margin: 0 auto; padding: 11px 30px; font-size: 1.05rem; }
 
 /* ── Reveal panel (staff taps to show the choices) ─────────────────── */
@@ -642,6 +767,58 @@
   cursor: pointer;
 }
 #done-card button:hover { background: var(--accent-dark); }
+
+/* Rule badges: the rules that decided this session's cards, kept like cards. */
+.done-rules { margin: 0 0 18px; }
+.done-rules-title {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #5a6b8a;
+  margin: 0 0 8px;
+}
+.rule-badges {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+.rule-badge {
+  position: relative;
+  width: 96px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 6px 8px;
+  background: #f7f9fc;
+  border: 1px solid #c9d3ea;
+  border-radius: 12px;
+  box-shadow: 0 2px 0 #e1e7f3;
+}
+.rule-badge-icon { font-size: 1.5rem; line-height: 1.2; }
+.rule-badge-name { font-size: 0.82rem; font-weight: 800; color: #1a2438; line-height: 1.2; }
+.rule-badge-tier { font-size: 0.68rem; font-weight: 700; color: #718096; text-transform: uppercase; letter-spacing: 0.04em; }
+.rule-badge-count {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  min-width: 24px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 800;
+  box-shadow: 0 0 0 2px #fff;
+}
+@media (max-width: 560px) {
+  #done-card { padding: 22px 16px; }
+}
 
 /* ── Bottom bar ────────────────────────────────────────────────────── */
 #bottom-bar {

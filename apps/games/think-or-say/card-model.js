@@ -116,12 +116,20 @@
      a classmate and "not sure" only remove a reason, so they pull neither
      way. */
 
+  // `why` is the tier's one-line reason, in the learner's words. The Learn
+  // screen renders its ladder from this list, so the copy lives here, beside
+  // the ranking it explains, rather than in a second place that can drift.
   var WHY_TIERS = [
-    { tier: 1, key: 'safety',     label: 'Safety' },
-    { tier: 2, key: 'kind',       label: 'Kind' },
-    { tier: 3, key: 'where-when', label: 'Where & when' },
-    { tier: 4, key: 'who',        label: 'Who' },
-    { tier: 5, key: 'true',       label: 'True' },
+    { tier: 1, key: 'safety',     label: 'Safety',
+      why: 'Someone hurt or not safe? Say it, even at a bad time.' },
+    { tier: 2, key: 'kind',       label: 'Kind',
+      why: 'Words can hurt, and private things are theirs to share.' },
+    { tier: 3, key: 'where-when', label: 'Where & when',
+      why: 'Who hears it and when changes everything.' },
+    { tier: 4, key: 'who',        label: 'Who',
+      why: 'Grown-ups who help you, friends, strangers.' },
+    { tier: 5, key: 'true',       label: 'True',
+      why: 'True is not enough on its own - kind and safe come first.' },
   ];
 
   var WHY = {

@@ -626,7 +626,65 @@ function showLearnScreen() {
     el.learnVideo.innerHTML = '';
     el.learnVideo.hidden = true;
   }
+  renderLearnLadder();
+  renderLearnPair();
   el.learnScreen.hidden = false;
+}
+
+/**
+ * The Learn screen's ladder: one card per tier, top to bottom, drawn from the
+ * same WHY_TIERS and WHY the Why panel uses after each card. Short on purpose -
+ * the Teaching Interaction Procedure (Leaf et al. 2012) is a label, a reason
+ * and an example, not a paragraph: each tier is its name, its questions and one
+ * line of why.
+ */
+function renderLearnLadder() {
+  const ladder = $('learn-ladder');
+  if (!ladder || ladder.firstChild) return;
+  const dims = Object.keys(MODEL.WHY);
+  ladder.innerHTML = MODEL.WHY_TIERS.map(t => {
+    const qs = dims.filter(k => MODEL.WHY[k].tier === t.tier).map(k => MODEL.WHY[k]);
+    const icon = qs.length ? qs[0].icon : '';
+    const pills = qs.map(q =>
+      `<li class="learn-q"><span aria-hidden="true">${q.icon}</span> ${escapeHtml(q.question)}</li>`).join('');
+    return `<li class="learn-tier" data-tier="${t.tier}" data-key="${t.key}">` +
+      `<span class="learn-tier-num" aria-hidden="true">${t.tier}</span>` +
+      '<div class="learn-tier-card">' +
+        `<div class="learn-tier-head"><span class="learn-tier-icon" aria-hidden="true">${icon}</span>` +
+        `<span class="learn-tier-name">${escapeHtml(t.label)}</span></div>` +
+        `<p class="learn-tier-why">${escapeHtml(t.why || '')}</p>` +
+        `<ul class="learn-qs">${pills}</ul>` +
+      '</div></li>';
+  }).join('');
+}
+
+/**
+ * The worked example: the first Level 1 minimum-difference pair that flips on
+ * one dimension (Horner, Albin & Ralph 1986), read off the level's own pairs
+ * list, shown side by side with the one chip that changed.
+ */
+function renderLearnPair() {
+  const body = $('learn-pair-body');
+  if (!body || body.firstChild) return;
+  const lv = CARDS.level(1);
+  const byId = {};
+  lv.cards.forEach(c => { byId[c.id] = c; });
+  const pair = lv.pairs.find(p => p.kind === 'flip' && byId[p.a] && byId[p.b]);
+  if (!pair) { $('learn-pair').hidden = true; return; }
+  const def = MODEL.WHY[pair.flips];
+  const side = card => {
+    const val = (def && def.values[card.features[pair.flips]]) || { chip: card.features[pair.flips] };
+    return `<div class="learn-side learn-side-${card.answer}" data-card="${card.id}" data-answer="${card.answer}">` +
+      `<p class="learn-sit">${escapeHtml(card.situation)}</p>` +
+      `<p class="learn-utt">\u201C${escapeHtml(card.utterance)}\u201D</p>` +
+      '<div class="learn-side-foot">' +
+        `<span class="learn-flip-chip" data-dim="${pair.flips}">${def ? def.icon + ' ' : ''}${escapeHtml(val.chip)}</span>` +
+        `<span class="tag tag-${card.answer}">${ANSWER_LABELS[card.answer]}</span>` +
+      '</div></div>';
+  };
+  body.innerHTML =
+    (def ? `<p class="learn-pair-ask">Only one thing changed: <strong>${escapeHtml(def.question)}</strong></p>` : '') +
+    `<div class="learn-sides">${side(byId[pair.a])}${side(byId[pair.b])}</div>`;
 }
 
 // ── Staff guide ────────────────────────────────────────────────────────
@@ -1293,6 +1351,7 @@ function finishSession() {
 
   const total = state.results.length;
   const firstTry = state.results.filter(r => r.errors === 0 && !r.prompted).length;
+  const badges = ruleBadges();
 
   // Render the sheet as the session ends rather than only when Print is pressed,
   // so what the technician hands the BCBA is already built and already current.
@@ -1305,10 +1364,62 @@ function finishSession() {
     '<div class="done-emoji">🎉</div>' +
     '<h2>Set complete!</h2>' +
     `<p>${firstTry} of ${total} correct on the first try.</p>` +
+    badges +
     '<button type="button" id="btn-again">Play again</button>';
   el.gameArea.appendChild(card);
   $('btn-again').addEventListener('click', () => beginSession('play'));
 }
+
+/**
+ * The rules that decided this session's cards, as small collectible badges
+ * (the Power Card idea: a short rule with an icon, kept). One badge per
+ * deciding dimension - the Why ladder row marked `decides` - counted over the
+ * cards answered right on the first try. Probe trials are left out: a probe
+ * withholds the ladder, so it taught no rule to collect.
+ */
+function ruleBadges() {
+  const byId = new Map();
+  CARDS.ALL.forEach(c => byId.set(c.id, c));
+  state.deck.forEach(c => { if (c && c.id) byId.set(c.id, c); });
+  const counts = new Map();
+  state.results.forEach(r => {
+    if (r.errors !== 0 || r.prompted || r.probeTags) return;
+    const card = byId.get(r.cardId);
+    if (!card) return;
+    const row = MODEL.whyLadder(card).find(x => x.decides);
+    if (!row) return;
+    counts.set(row.dim, (counts.get(row.dim) || 0) + 1);
+  });
+  if (!counts.size) return '';
+  const tierName = {};
+  MODEL.WHY_TIERS.forEach(t => { tierName[t.tier] = t.label; });
+  const items = [...counts.entries()]
+    .sort((a, b) => (b[1] - a[1]) || (MODEL.WHY[a[0]].tier - MODEL.WHY[b[0]].tier))
+    .map(([dim, n]) => {
+      const def = MODEL.WHY[dim];
+      return `<li class="rule-badge" data-dim="${dim}" data-count="${n}">` +
+        `<span class="rule-badge-icon" aria-hidden="true">${def.icon}</span>` +
+        `<span class="rule-badge-name">${escapeHtml(RULE_NAMES[dim] || tierName[def.tier])}</span>` +
+        `<span class="rule-badge-tier">${escapeHtml(tierName[def.tier])}</span>` +
+        `<span class="rule-badge-count" aria-label="${n} ${n === 1 ? 'card' : 'cards'}">\u00D7${n}</span>` +
+        '</li>';
+    }).join('');
+  return '<div id="done-rules" class="done-rules">' +
+    '<h3 class="done-rules-title">Rules that decided your cards</h3>' +
+    `<ul class="rule-badges">${items}</ul></div>`;
+}
+
+/** A badge's short name: the rule a deciding row stands for, in two or three words. */
+const RULE_NAMES = {
+  override: 'Keep people safe',
+  selfEsteem: 'Feelings',
+  changeability: 'Fix it now',
+  privacy: 'Private things',
+  audience: 'Who hears it',
+  timing: 'Right moment',
+  relationship: 'Who they are',
+  truthRank: 'Is it true?',
+};
 
 function removeDoneCard() {
   const d = $('done-card');
@@ -1358,6 +1469,8 @@ function recordResult() {
   const cls = classifyTrial(sc);
   const row = {
     level: sc.level,
+    // Which card this was, so the done card can name the rule that decided it.
+    cardId: sc.id,
     cat: CATEGORIES[sc.cat] || sc.cat,
     scenario: sc.situation,
     answer: ANSWER_LABELS[sc.answer],

@@ -212,15 +212,22 @@
       <div id="learn-video" hidden></div>
 
       <div id="learn-rule">
-        <p class="learn-lead">Some thoughts we keep <strong>inside</strong> our head. Some thoughts are kind or helpful, so we can say them <strong>out loud</strong>.</p>
-        <p class="learn-ask">Before you say a thought, ask yourself:</p>
-        <ul class="learn-list">
-          <li><span class="tag tag-think">THINK IT</span> Could it <strong>hurt someone’s feelings</strong>? Keep it inside.</li>
-          <li><span class="tag tag-think">THINK IT</span> Is it about something <strong>private</strong> or embarrassing? Keep it inside.</li>
-          <li><span class="tag tag-say">SAY IT</span> Is it <strong>kind</strong> or a nice compliment? You can say it!</li>
-          <li><span class="tag tag-say">SAY IT</span> Is it <strong>helpful</strong>, or does it keep someone <strong>safe</strong>? Say it!</li>
-        </ul>
-        <p class="learn-tip">Not sure? It’s okay to keep it inside - or ask a grown-up.</p>
+        <p class="learn-lead">Some thoughts stay <strong>inside</strong>. Kind, helpful or safe ones can be <strong>said out loud</strong>.</p>
+
+        <!-- The ladder: one card per tier, rendered by game.js from
+             ThinkOrSayModel.WHY_TIERS and WHY, so this screen and the Why panel
+             after each card state the same ranking in the same words. -->
+        <div class="learn-ladder-head">
+          <span class="learn-ladder-title">Ask from the top</span>
+          <span class="learn-wins"><span aria-hidden="true">&#8595;</span> Higher rules win.</span>
+        </div>
+        <ol id="learn-ladder" class="learn-ladder"></ol>
+
+        <!-- One Level 1 matched pair, read off the level's pairs list. -->
+        <section id="learn-pair" class="learn-pair" aria-labelledby="learn-pair-title">
+          <h3 id="learn-pair-title">Same thought? Different answer.</h3>
+          <div id="learn-pair-body"></div>
+        </section>
       </div>
 
       <button id="btn-learn-start" class="btn-primary" type="button">Start practice ▶</button>
