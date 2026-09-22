@@ -60,21 +60,31 @@
   // goes stale in silence. Re-read the real thing before you trust any line
   // above.
   //
-  // STATE ON 2026-09-22, read off both projects the same way:
+  // READ THE API, NOT `pages download config`, FOR PREVIEW. That command emits
+  // no env.preview section whatever preview actually holds, so on 22 September
+  // it reported preview as empty on both projects and preview in fact carried
+  // both KV namespaces the whole time. An absent section there means the
+  // command does not write one, never that the environment is bare. Use
+  // GET /accounts/{a}/pages/projects/{p} and read deployment_configs.preview.
   //
-  //   tools-nooutco-me       production PROFILE -> bt-profile-api, PROMPTS -> nooutco-prompt-api
-  //                          preview    NOTHING. No env.preview section at all.
-  //   dev-tools-nooutco-me   production PROFILE -> bt-profile-api, PROMPTS -> nooutco-prompt-api
-  //                          preview    NOTHING. No env.preview section at all.
+  // STATE ON 2026-09-22, read that way, after the change below:
   //
-  // THE env.preview BLOCK BELOW IS A PLAN, NOT A READING, and it is the only
-  // block in this file that is not describing something live. Kaleb ruled on 21
-  // September that preview gets its own bindings and its own profile store. The
-  // store and the Worker exist as of 22 September (bt-profiles-preview and
-  // bt-profile-api-preview, see apps/profile-api/wrangler.toml), and NEITHER
-  // PAGES PROJECT POINTS AT THEM YET, because that is a project setting and
-  // nothing in this repo can set one. Delete this paragraph the day the reading
-  // above says preview has four bindings, and not before.
+  //   tools-nooutco-me       production PROFILE -> bt-profile-api,         PROMPTS -> nooutco-prompt-api
+  //                          preview    PROFILE -> bt-profile-api-preview, PROMPTS -> nooutco-prompt-api
+  //   dev-tools-nooutco-me   production PROFILE -> bt-profile-api,         PROMPTS -> nooutco-prompt-api
+  //                          preview    PROFILE -> bt-profile-api-preview, PROMPTS -> nooutco-prompt-api
+  //
+  // Both preview environments also carry API_PASSWORDS and SUGGEST_DUPES, and
+  // they already did. Kaleb ruled on 21 September that preview gets its own
+  // bindings and its own profile store; the store and Worker were built on 22
+  // September (see apps/profile-api/wrangler.toml) and both projects were
+  // pointed at them the same day through the API, because a deploy cannot do it.
+  //
+  // PREVIEW STILL HAS NO ENVIRONMENT VARIABLES, which is not an oversight in
+  // this file but a thing Kaleb has to set: ADMIN_SECRET (without it /api/login
+  // answers 503 and nobody reaches a tool at all) and ANTHROPIC_API_KEY.
+  // TURNSTILE_SECRET is deliberately left off, since the bot check runs only
+  // when it is set and the password gate does not depend on it.
   //
   // Preview deliberately reuses the PRODUCTION KV namespaces. API_PASSWORDS is
   // what makes a real login work on a preview, which is the point of having one,
