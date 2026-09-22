@@ -120,6 +120,11 @@ const el = {
   thought:         $('scenario-thought'),
   question:        $('scenario-question'),
   reason:          $('scenario-reason'),
+  whyPanel:        $('why-panel'),
+  whyVerdict:      $('why-verdict'),
+  whyRows:         $('why-rows'),
+  whyFlip:         $('why-flip'),
+  whyTiers:        $('why-tiers'),
   revealPanel:     $('reveal-panel'),
   choiceLabel:     $('choice-label'),
   choices:         $('choices'),
@@ -725,8 +730,7 @@ function renderTrial() {
   renderThought(sc);
   el.question.textContent = sc.question;
 
-  el.reason.hidden = true;
-  el.reason.className = '';
+  hideWhy();
 
   choiceEls().forEach(c => {
     c.className = 'choice choice-' + c.dataset.answer;
@@ -974,11 +978,148 @@ function answerWrong(card) {
   }
 }
 
-// ── Reason ─────────────────────────────────────────────────────────────
+// ── Reason: the Why ladder ─────────────────────────────────────────────
+/**
+ * Show why the answer is the answer.
+ *
+ * The header is the verdict in the tile vocabulary plus the card's own reason
+ * line (still #scenario-reason, still the authored text). Under it, the rules
+ * in play on this card only, in the order of the hierarchy card-model.js
+ * declares, so the ranking the reason line states in words is visible: the
+ * row that decides it is marked, and a row pulling the other way is struck
+ * as outranked. Callers gate it exactly as they gated the bare reason line.
+ */
 function showReason() {
-  el.reason.textContent = state.current.reason;
-  el.reason.className = state.current.answer === 'think' ? 'reason-think' : 'reason-say';
+  const sc = state.current;
+  if (!sc) return;
+  el.reason.textContent = sc.reason;
+  el.reason.className = sc.answer === 'think' ? 'reason-think' : 'reason-say';
   el.reason.hidden = false;
+  el.whyVerdict.className = 'tag tag-' + sc.answer;
+  el.whyVerdict.textContent = ANSWER_LABELS[sc.answer];
+
+  const rows = MODEL.whyLadder(sc);
+  const flip = flipFor(sc);
+  el.whyRows.replaceChildren(...rows.map((r, i) => whyRow(r, i, flip)));
+  renderFlip(flip, rows.length);
+  renderTiers(rows);
+  el.whyPanel.className = 'why-panel why-' + sc.answer;
+  el.whyPanel.hidden = false;
+}
+
+function hideWhy() {
+  el.reason.hidden = true;
+  el.reason.className = '';
+  el.whyPanel.hidden = true;
+  el.whyRows.replaceChildren();
+  el.whyFlip.replaceChildren();
+  el.whyFlip.hidden = true;
+  el.whyTiers.replaceChildren();
+}
+
+/** A small THINK / SAY badge. The word is always printed; colour only repeats it. */
+function leanBadge(lean) {
+  const b = document.createElement('span');
+  b.className = 'why-lean why-lean-' + (lean || 'none');
+  b.textContent = lean ? '\u2192 ' + lean.toUpperCase() : 'either way';
+  return b;
+}
+
+function whyRow(r, i, flip) {
+  const li = document.createElement('li');
+  const cls = ['why-row', 'why-' + r.stance];
+  if (r.decides) cls.push('is-decider');
+  if (r.outranked) cls.push('is-outranked');
+  if (flip && flip.dim === r.dim) cls.push('is-flip-dim');
+  li.className = cls.join(' ');
+  li.dataset.dim = r.dim;
+  li.dataset.tier = String(r.tier);
+  li.style.setProperty('--i', String(i));
+
+  const icon = document.createElement('span');
+  icon.className = 'why-icon';
+  icon.setAttribute('aria-hidden', 'true');
+  icon.textContent = r.icon;
+  const q = document.createElement('span');
+  q.className = 'why-q';
+  q.textContent = r.question;
+  const chip = document.createElement('span');
+  chip.className = 'why-chip';
+  chip.textContent = r.chip;
+  li.append(icon, q, chip, leanBadge(r.lean));
+
+  let mark = '';
+  if (r.decides) mark = 'decides it';
+  else if (r.outranked) mark = 'outranked';
+  else if (r.stance === 'against') mark = 'not this time';
+  else if (r.weak && r.stance === 'agree') mark = 'not enough alone';
+  if (mark) {
+    const m = document.createElement('span');
+    m.className = 'why-mark';
+    m.textContent = mark;
+    li.appendChild(m);
+  }
+  return li;
+}
+
+/**
+ * The card's matched minimum-difference partner (Horner, Albin & Ralph 1986),
+ * if it has one: the card that differs on exactly one rule and answers the
+ * other way. A card anchoring two pairs shows the first one declared.
+ */
+function flipFor(sc) {
+  const lv = CARDS.LEVELS.find(l => l.id === sc.level);
+  if (!lv) return null;
+  const pair = lv.pairs.find(p => p.a === sc.id || p.b === sc.id);
+  if (!pair) return null;
+  const partner = lv.cards.find(c => c.id === (pair.a === sc.id ? pair.b : pair.a));
+  if (!partner) return null;
+  const def = MODEL.WHY[pair.flips];
+  const val = def && def.values[partner.features[pair.flips]];
+  return { dim: pair.flips, partner, chip: val ? val.chip : '' };
+}
+
+const FLIP_MAX_CHARS = 90;
+
+function truncate(text, max) {
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max - 1);
+  const sp = cut.lastIndexOf(' ');
+  return (sp > max * 0.6 ? cut.slice(0, sp) : cut).replace(/[\s,.;:-]+$/, '') + '\u2026';
+}
+
+function renderFlip(flip, index) {
+  if (!flip) { el.whyFlip.hidden = true; el.whyFlip.replaceChildren(); return; }
+  const lab = document.createElement('span');
+  lab.className = 'why-flip-label';
+  lab.textContent = 'Flip it:';
+  const chip = document.createElement('span');
+  chip.className = 'why-chip why-chip-flip';
+  chip.textContent = flip.chip;
+  const text = document.createElement('span');
+  text.className = 'why-flip-text';
+  text.textContent = truncate(flip.partner.situation, FLIP_MAX_CHARS);
+  const tag = document.createElement('span');
+  tag.className = 'tag tag-' + flip.partner.answer;
+  tag.textContent = ANSWER_LABELS[flip.partner.answer];
+  const arrow = document.createElement('span');
+  arrow.className = 'why-flip-arrow';
+  arrow.setAttribute('aria-hidden', 'true');
+  arrow.textContent = '\u2192';
+  el.whyFlip.replaceChildren(lab, chip, arrow, tag, text);
+  el.whyFlip.style.setProperty('--i', String(index));
+  el.whyFlip.hidden = false;
+}
+
+/** The five tiers as one slim line, the tiers in play on this card lit. */
+function renderTiers(rows) {
+  const lit = new Set(rows.map(r => r.tier));
+  el.whyTiers.replaceChildren(...MODEL.WHY_TIERS.map(t => {
+    const li = document.createElement('li');
+    li.className = 'why-tier' + (lit.has(t.tier) ? ' is-lit' : '');
+    li.textContent = t.label;
+    return li;
+  }));
 }
 
 // ── Level 3: the spoken rationale ──────────────────────────────────────
@@ -1043,6 +1184,9 @@ function pickRationale(score) {
   if (!needsRationale(state.current)) return;
   state.rationaleScore = score;
   scoreButtons().forEach(b => b.classList.toggle('is-picked', b.dataset.score === score));
+  // Scored, so the ladder is no longer the answer sheet. Same gating as the
+  // exemplar reveal: withheld on a probe, shown in learn mode.
+  if (supportOn('showReason') || state.learnMode) showReason();
   showNextButton();
 }
 
@@ -1506,6 +1650,10 @@ window.__thinkOrSay = Object.freeze({
   // against the declaration rather than against the buttons rendered from it.
   rationaleScores: RATIONALE_SCORES.slice(),
   rationaleLabels: Object.assign({}, RATIONALE_LABELS),
+  // The Why ladder's model, so a spec picks its cards by what the ladder will
+  // show rather than by hard-coded id.
+  whyLadder: MODEL.whyLadder,
+  whyTiers: MODEL.WHY_TIERS,
   // The running session, for the specs that have to watch the lifecycle rather
   // than the data model: which deck positions hold probes, and what has already
   // yielded its generalization datum. Copies, never the live structures.
