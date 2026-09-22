@@ -286,3 +286,46 @@ test('the ladder fits a phone without horizontal scroll', async ({ page }) => {
   expect(box.x).toBeGreaterThanOrEqual(0);
   expect(box.x + box.width).toBeLessThanOrEqual(390);
 });
+
+test('the thought bubble settles to said or kept after a correct answer, and resets', async ({ page }) => {
+  await seed(page, plain(1));
+  await page.goto(URL);
+  await booted(page);
+  await page.locator('#btn-play').click();
+  const deck = (await session(page)).deck;
+  const thought = page.locator('#scenario-thought');
+  const i = deck.findIndex(c => c.answer === 'say');
+  const j = deck.findIndex(c => c.answer === 'think');
+  expect(i, 'the deck holds a SAY card').toBeGreaterThanOrEqual(0);
+  expect(j, 'the deck holds a THINK card').toBeGreaterThanOrEqual(0);
+
+  for (let k = 0; k <= Math.max(i, j); k++) {
+    await expect(thought).toHaveClass(/thought-bubble/);
+    await expect(thought).not.toHaveClass(/is-said|is-kept/);
+    await expect(thought.locator('.thought-caption')).toBeHidden();
+    const quoteBefore = await thought.locator('.quote').textContent();
+    await chooseTile(page, k);
+    if (deck[k].answer === 'say') {
+      await expect(thought).toHaveClass(/is-said/);
+      await expect(thought.locator('.thought-caption')).toHaveText('said out loud');
+    } else {
+      await expect(thought).toHaveClass(/is-kept/);
+      await expect(thought.locator('.thought-caption')).toContainText('kept inside');
+    }
+    // The lead-in and the quote are untouched by the morph.
+    await expect(thought.locator('.lead-in')).toHaveText('You have a thought:');
+    await expect(thought.locator('.quote')).toHaveText(quoteBefore);
+    await page.locator('#btn-next').click();
+  }
+});
+
+test('a probe keeps the thought bubble unsettled', async ({ page }) => {
+  await seed(page, plain(1, { probes1: true, probeCount1: 1, probePlacement1: 'before' }));
+  await page.goto(URL);
+  await booted(page);
+  await page.locator('#btn-play').click();
+  expect((await session(page)).deck[0].isProbe).toBe(true);
+  await chooseTile(page, 0);
+  await expect(page.locator('#btn-next')).toBeVisible();
+  await expect(page.locator('#scenario-thought')).not.toHaveClass(/is-said|is-kept/);
+});
