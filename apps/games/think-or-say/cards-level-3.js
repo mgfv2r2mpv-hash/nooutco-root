@@ -543,44 +543,44 @@
         ] },
       // TRIPLET 1 - safety over "they cannot fix it" and "everyone hears".
       //   (a) L3-33  squeaky bike, just the two of you        THINK (changeability)
-      //   (b) L3-34  brakes do not work, just the two of you  SAY   (override)
-      //   (c) L3-35  brakes do not work, the whole class hears SAY  (override)
+      //   (b) L3-34  brake cable snapped, just the two of you  SAY   (override)
+      //   (c) L3-35  brake cable snapped, the whole class hears SAY (override)
       // L3-33/L3-34 is an override pair: override moves from none to
       // help-or-safety and nothing else does. The squeak and the brakes are
       // both things they cannot fix out here, so on L3-34 "cannot fix it" is
       // OUTRANKED rather than absent. L3-35 then turns audience against the
       // answer too, and the answer holds.
       { id: 'L3-33', level: 3, cat: 'other', answer: 'think',
-        situation: 'You and your close friend are on your own at the park, about to ride your bikes home down the big hill. Every time they pedal, their bike squeaks loudly, and there are no tools here to fix it.',
-        utterance: 'Why does your bike squeak so much?', sayVerb: 'ask', object: 'this question',
-        features: { override: 'none', changeability: 'not-fixable', audience: 'just-them' },
-        vary: { setting: 'playground', person: 'peer', topic: 'belongings', form: 'question' },
-        reason: 'Think it. Nobody is in danger, and only your close friend would hear - but they cannot fix a squeak out here, so asking would only bother them about their bike.',
+        situation: 'You and your close friend are on your own at the park, about to ride your bikes home down the big hill. Every time they pedal, their bike squeaks loudly. They already know about it, and there are no tools here to fix it.',
+        utterance: 'Your bike squeaks so much.', sayVerb: 'say', object: 'these words',
+        features: { override: 'none', changeability: 'not-fixable', audience: 'just-them', relationship: 'close-friend' },
+        vary: { setting: 'playground', person: 'peer', topic: 'belongings', form: 'statement' },
+        reason: 'Think it. Nobody is in danger, and only your friend would hear - but they already know, and they cannot fix a squeak out here, so saying it would only bother them.',
         rationales: [
-          'You cannot fix the squeak out here, so asking would only bother you.',
-          'It is just the two of us, but that still does not make it worth asking.',
+          'You already know it squeaks, and you cannot fix it out here, so telling you would only bother you.',
+          'It is just the two of us, but that still does not make it worth saying.',
           'A squeak does not make you unsafe, so I can keep it in my head.',
         ] },
       { id: 'L3-34', level: 3, cat: 'other', answer: 'say',
-        situation: 'You and your close friend are on your own at the park, about to ride your bikes home down the big hill. When they squeezed their brakes a minute ago, the bike did not slow down at all, and there are no tools here to fix it.',
+        situation: 'You and your close friend are on your own at the park, about to ride your bikes home down the big hill. You notice that the cable on their front brake has snapped and is hanging loose, and there are no tools here to fix it.',
         utterance: 'Your brakes are not working!', sayVerb: 'say', object: 'these words',
-        features: { override: 'help-or-safety', changeability: 'not-fixable', audience: 'just-them' },
+        features: { override: 'help-or-safety', changeability: 'not-fixable', audience: 'just-them', relationship: 'close-friend' },
         vary: { setting: 'playground', person: 'peer', topic: 'belongings', form: 'exclamation' },
-        reason: 'Say it - right now. They cannot fix the brakes out here, but they could crash going down the hill, and safety always comes first. They can walk the bike instead.',
+        reason: 'Say it - right now. They cannot fix the brakes out here, but they could crash going down the hill, and safety always comes first. They can walk the bike home and tell a grown-up.',
         rationales: [
           'You could crash going down the hill, so I have to tell you.',
-          'You cannot fix your brakes here, but you can walk your bike home instead of riding it.',
+          'You cannot fix your brakes here, but you can walk your bike home, and a grown-up can fix it.',
           'Keeping you safe matters more than anything else about your bike.',
         ] },
       { id: 'L3-35', level: 3, cat: 'other', answer: 'say',
-        situation: 'The whole class is at the school bike rack, about to ride home down the big hill. When your close friend squeezed their brakes a minute ago, the bike did not slow down at all, and there are no tools here to fix it.',
+        situation: 'The whole class is at the school bike rack, about to ride home down the big hill. You notice that the cable on your close friend’s front brake has snapped and is hanging loose, and there are no tools here to fix it.',
         utterance: 'Your brakes are not working!', sayVerb: 'say', object: 'these words',
-        features: { override: 'help-or-safety', changeability: 'not-fixable', audience: 'others-hear' },
+        features: { override: 'help-or-safety', changeability: 'not-fixable', audience: 'others-hear', relationship: 'close-friend' },
         vary: { setting: 'school', person: 'peer', topic: 'belongings', form: 'exclamation' },
         reason: 'Say it - right now. Even though the whole class will hear and they cannot fix the brakes here, they could crash, and safety always comes first. Then tell a grown-up.',
         rationales: [
           'Even though everyone can hear, you are not safe, so I have to say it.',
-          'Here, in front of everyone, you might feel embarrassed; there, just the two of us, would be easier - but you could crash before then.',
+          'Here, in front of everyone, you might feel embarrassed. Over there, away from the others, would be easier - but you might ride off before we get there.',
           'You cannot fix it here, but you can walk your bike, and a grown-up can help.',
         ] },
 
@@ -588,8 +588,8 @@
       // TRIPLET 3 - kind over "a good moment". It runs the other way from the
       // two safety triplets: the higher rule flips SAY to THINK.
       //   (a) L3-39  where the shark books are, she is free   SAY   (timing)
-      //   (b) L3-40  the spot on her chin, she is free        THINK (selfEsteem)
-      //   (c) L3-41  the spot on her chin, she is busy        THINK (selfEsteem)
+      //   (b) L3-40  the spot on her cheek, she is free       THINK (selfEsteem)
+      //   (c) L3-41  the spot on her cheek, nobody else hears THINK (selfEsteem)
       // L3-39/L3-40 cannot be a formal pair. No kind-tier value leans neither
       // way, so a card that a lower rule decides cannot carry selfEsteem at
       // all - the key set differs, and definePairs refuses it. The triplet is
@@ -597,33 +597,33 @@
       // reason names (an everyday question); it leans neither way, so timing
       // still decides. Placed (b), (c), (a) to keep the block pattern.
       { id: 'L3-40', level: 3, cat: 'looks', answer: 'think',
-        situation: 'At the school library, the librarian finishes helping another child, looks at you, and asks if you need any help. You can see she has a big red spot on her chin.',
-        utterance: 'What is that big spot on your chin?', sayVerb: 'ask', object: 'this question',
+        situation: 'At the school library, the librarian finishes helping another child, looks at you, and asks if you need any help. You notice a red spot on her cheek.',
+        utterance: 'What is that red spot on your cheek?', sayVerb: 'ask', object: 'this question',
         features: { selfEsteem: 'hurts', timing: 'right-moment', relationship: 'grown-up' },
         vary: { setting: 'school', person: 'teacher', topic: 'looks', form: 'question' },
         reason: 'Think it. She asked if you need help, so it is a good moment, and you know her - but asking about a spot on her face would make her feel bad about how she looks, and kind comes before a good moment.',
         rationales: [
           'You asked if I need help, but that does not make it okay to ask about your face.',
           'If I asked, you might feel bad about how you look.',
-          'Now is a good time to ask you about books, not about your chin.',
+          'Now is a good time to ask you about books, not about your cheek.',
         ] },
       { id: 'L3-41', level: 3, cat: 'looks', answer: 'think',
-        situation: 'At the school library, the librarian is busy checking out books for a long line of children. You can see she has a big red spot on her chin.',
-        utterance: 'What is that big spot on your chin?', sayVerb: 'ask', object: 'this question',
-        features: { selfEsteem: 'hurts', timing: 'wrong-moment', relationship: 'grown-up' },
+        situation: 'At the school library, nobody else is around. The librarian looks up from her desk and asks if you need any help. You notice a red spot on her cheek.',
+        utterance: 'What is that red spot on your cheek?', sayVerb: 'ask', object: 'this question',
+        features: { selfEsteem: 'hurts', timing: 'right-moment', relationship: 'grown-up', audience: 'just-them' },
         vary: { setting: 'school', person: 'teacher', topic: 'looks', form: 'question' },
-        reason: 'Think it. She is busy, but that is not the reason - even when she is free, asking about a spot on her face would make her feel bad about how she looks.',
+        reason: 'Think it. She asked if you need help, and nobody else would hear - but asking about a spot on her face would make her feel bad about how she looks. Kind comes before who hears.',
         rationales: [
-          'Now is not the time, and later is not the time either - it would still make you feel bad.',
-          'Even if you were not busy, asking about your face would hurt your feelings.',
-          'When you are free, I can ask you where the books are instead.',
+          'Here, with nobody else around, only you would hear me - but it would still make you feel bad.',
+          'If I asked about your face, you might feel bad about how you look.',
+          'You asked if I need help, so I can ask you where the books are instead.',
         ] },
       { id: 'L3-39', level: 3, cat: 'other', answer: 'say',
         situation: 'At the school library, the librarian finishes helping another child, looks at you, and asks if you need any help. You want to find the books about sharks.',
         utterance: 'Where are the shark books?', sayVerb: 'ask', object: 'this question',
         features: { timing: 'right-moment', relationship: 'grown-up', override: 'none' },
         vary: { setting: 'school', person: 'teacher', topic: 'work', form: 'question' },
-        reason: 'Say it. Nothing here is about safety - it is an everyday question - and she just finished helping and asked if you need help, so now is the right moment. She is a grown-up you know whose job is helping you find books.',
+        reason: 'Say it. It is an everyday question and nobody is in danger. She just finished helping and asked if you need help, so now is the right moment - and she is a grown-up you know whose job is helping you find books.',
         rationales: [
           'You just asked if I need help, so now is the right time to ask you.',
           'A minute ago you were helping someone else; now you are free, so I can ask.',
@@ -634,42 +634,42 @@
       //   (b) L3-37  kids push her on the bus, Mom asks        SAY   (override)
       //   (c) L3-38  kids push her on the bus, Mom is talking  SAY   (override)
       // L3-36/L3-37 is an override pair: both are your sister’s secret, told
-      // you on your own, and both come up at a good moment. Only the danger
+      // you when it was just the two of you, and both come up at a good moment. Only the danger
       // moves. L3-38 turns timing against the answer - Mom is mid-conversation
       // - and the bus pulling up is why it cannot wait. Placed (b), (a), (c)
       // across the end of block 10 and the tail.
       { id: 'L3-37', level: 3, cat: 'other', answer: 'say',
-        situation: 'At bedtime, Mom sits on your bed and asks what you and your little sister were whispering about. Your sister told you on your own that some big kids push her on the bus every day, and she asked you not to tell anyone.',
+        situation: 'At bedtime, Mom sits on your bed and asks what you and your little sister were whispering about. Your sister told you when it was just the two of you that some big kids push her on the bus every day, and she asked you not to tell anyone.',
         utterance: 'Some big kids push her on the bus every day.', sayVerb: 'tell', object: 'this news',
         features: { override: 'help-or-safety', privacy: 'private', timing: 'right-moment' },
         vary: { setting: 'home', person: 'sibling', topic: 'body', form: 'statement' },
         reason: 'Say it. Your sister told you in private and asked you to keep it, but she is getting hurt, and safety always comes before a secret. Mom can help keep her safe.',
         rationales: [
-          'You are getting hurt, so keeping you safe matters more than keeping your secret.',
-          'You asked me, Mom, and now is a good time - but I would tell you even if it were not.',
-          'A grown-up can make the bus safe for you, and I cannot do that on my own.',
+          'She is getting hurt, so keeping her safe matters more than keeping her secret from you.',
+          'You asked me, and now is a good time - but I would tell you even if it were not.',
+          'You can make the bus safe for her, and I cannot do that on my own.',
         ] },
 
       // ── tail ──
       { id: 'L3-36', level: 3, cat: 'private', answer: 'think',
-        situation: 'At bedtime, Mom sits on your bed and asks what you and your little sister were whispering about. Your sister told you on your own that she is planning a surprise party for Mom’s birthday.',
+        situation: 'At bedtime, Mom sits on your bed and asks what you and your little sister were whispering about. Your sister told you when it was just the two of you that she is planning a surprise party for Mom’s birthday.',
         utterance: 'She is planning a surprise party for you!', sayVerb: 'tell', object: 'this news',
         features: { override: 'none', privacy: 'private', timing: 'right-moment' },
         vary: { setting: 'home', person: 'sibling', topic: 'work', form: 'exclamation' },
-        reason: 'Think it. Mom asked, so it is a good moment to talk, and nobody is in danger - but the party is your sister’s secret, and a good moment does not outrank private.',
+        reason: 'Think it. Mom asked, so it is a good moment to talk, and nobody is in danger - but the party is your sister’s surprise to share, and a good moment does not outrank private.',
         rationales: [
           'She told me in private, so it is hers to tell you, not mine.',
           'Now is a good time to talk, but the party is for later - if I tell you now, it will not be a surprise then.',
-          'Nobody is hurt or in danger, so there is no reason to give away her secret.',
+          'Nobody is hurt or in danger, so there is no reason to spoil her surprise.',
         ] },
       { id: 'L3-38', level: 3, cat: 'other', answer: 'say',
-        situation: 'You are at the bus stop in the morning with Mom and your little sister, and Mom is in the middle of talking with a neighbor. Last night your sister told you on your own that some big kids push her on the bus every day, and she asked you not to tell anyone. The bus is pulling up now.',
+        situation: 'You are at the bus stop in the morning with Mom and your little sister, and Mom is in the middle of talking with a neighbor. Last night, when it was just the two of you, your sister told you that some big kids push her on the bus every day, and she asked you not to tell anyone. The bus is pulling up now.',
         utterance: 'Some big kids push her on the bus every day.', sayVerb: 'tell', object: 'this news',
         features: { override: 'help-or-safety', privacy: 'private', timing: 'wrong-moment' },
         vary: { setting: 'bus', person: 'sibling', topic: 'body', form: 'statement' },
         reason: 'Say it - now, even though Mom is talking. It is not a good moment and your sister asked you to keep it, but she is about to get on that bus and could get hurt, so safety decides.',
         rationales: [
-          'Now is not a good moment, and later would be easier - but by then you would be on the bus.',
+          'Now is not a good moment, and later would be easier - but by then she would be on the bus.',
           'Even though you are talking, my sister could get hurt, so I have to say it.',
           'It is her secret, but keeping her safe matters more than keeping it.',
         ] },
