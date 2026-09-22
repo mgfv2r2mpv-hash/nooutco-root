@@ -62,6 +62,25 @@ export const MOVES_PER_NOTE = 2;
  */
 export const BAND_SDS = 1;
 
+/**
+ * How far above their own mean "a great work day" sits, in the author's OWN
+ * sample sds, for a feature whose house direction is "higher". One, the same
+ * width as the band: a great day is the top of the range the tool already
+ * calls theirs, not a value outside it.
+ *
+ * WHY THE OFFSET IS OFF THEIR SPREAD AND NOT OFF THE HOUSE. If it pointed at
+ * the house mean it would pull the same way shrinkage does, and every author
+ * would converge on the house ideal while the tool appeared to be learning
+ * them. Off their own sd, two authors with different means at the same n get
+ * different targets. The test named for that is the one that matters.
+ *
+ * WHY IT IS SCALED BY w BEFORE SHRINKAGE SCALES IT AGAIN. A spread estimated
+ * from n notes is a weaker number than a mean from the same n, so it pays for
+ * evidence twice: once here, and once when the whole author term is shrunk. At
+ * n = 1 the sd is 0 and the offset is exactly 0, so a first note buys nothing.
+ */
+export const GREAT_DAY_SDS = 1;
+
 /* ---- the per author accumulators ------------------------------------------
  *
  * The same shape shape_profile already uses: running sums, no per note history,
@@ -135,7 +154,19 @@ export function authorTarget(feature, row) {
    * something no test would notice breaking. */
   const authorMean = seen.n > 0 ? seen.mean : prior.mean;
   const w = seen.n / (seen.n + prior.k);
-  const shrunk = prior.mean + w * (authorMean - prior.mean);
+
+  /* THE GREAT-DAY TERM. Only where the house says a better end exists, which
+     is one feature today (house-prior.js, `direction`). Everywhere else the
+     author term is their mean and this is a no-op, pinned by test: a personal
+     feature pushed toward an end is someone made to write less like themselves.
+     It goes in BEFORE shrinkage and the clamp, in that order, unchanged: shrink
+     so it is bought with evidence, clamp last so a great day still writes
+     inside the range the house will sign. */
+  const offset = prior.direction === "higher" && seen.n > 1
+    ? GREAT_DAY_SDS * w * seen.sd
+    : 0;
+  const greatDay = authorMean + offset;
+  const shrunk = prior.mean + w * (greatDay - prior.mean);
   const value = Math.min(prior.ceiling, Math.max(prior.floor, shrunk));
 
   const half = BAND_SDS * Math.sqrt(prior.within_var);
@@ -154,6 +185,9 @@ export function authorTarget(feature, row) {
     w,
     houseMean: prior.mean,
     authorMean: seen.n > 0 ? seen.mean : null,
+    direction: prior.direction,
+    offset,
+    greatDay: seen.n > 0 ? greatDay : null,
     shrunk,
     value,
     clamped: value !== shrunk,

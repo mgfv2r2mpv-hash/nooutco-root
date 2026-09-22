@@ -45,6 +45,26 @@
 export const HOUSE_PROVENANCE = Object.freeze(["maintainer_bar", "bcba_authored"]);
 
 /**
+ * WHICH WAY IS BETTER, per feature, and it is a closed enum on purpose.
+ *
+ * Kaleb's ask, 2026-09-21: voice that sounds like "them on a great work day".
+ * A great day is only a DIFFERENT value for a feature that has a better end,
+ * and reading this file says one of the four does. `actor_naming` is a bar
+ * sourced from his voice rule 1, so higher is better. `hedging` has an optimum
+ * (its floor is load bearing: marking an unknown as unknown is a house
+ * requirement, and hedging everything is a fault too). `within_cv` and
+ * `step_rel` are personal: shape.js calls variability "effectively personal",
+ * and the step reads 0.296 in coursework against 0.297 in clinical plans, so a
+ * push on either makes someone write LESS like themselves.
+ *
+ * This lives here and not in voice-shrink.js because it is a house judgement.
+ * housePrior() cannot be handed an observation, so a technician cannot move what
+ * "better" means, which is his 2026-09-16 ruling one layer down. Two values
+ * only: a third, like "lower", is refused rather than admitted with a sign flip.
+ */
+export const HOUSE_DIRECTION = Object.freeze(["higher", "none"]);
+
+/**
  * Allowlist of keys a corpus entry may carry. Anything else is refused.
  *
  * An allowlist rather than a denylist of author-bearing names, because a
@@ -53,7 +73,7 @@ export const HOUSE_PROVENANCE = Object.freeze(["maintainer_bar", "bcba_authored"
  */
 const ENTRY_KEYS = Object.freeze([
   "feature", "label", "mean", "within_var", "between_var", "floor", "ceiling",
-  "provenance", "basis",
+  "provenance", "basis", "direction",
 ]);
 
 /* The corpus.
@@ -93,6 +113,8 @@ const CORPUS = [
     // of the corpus rather than its min and max.
     floor: 0.336,
     ceiling: 0.600,
+    // Personal. More variability is not better; it is just theirs.
+    direction: "none",
     provenance: "bcba_authored",
     basis: "108 documents behind shape.js, 101 coursework and 7 clinical plans",
   },
@@ -111,6 +133,8 @@ const CORPUS = [
     between_var: 0.0036,
     floor: 0.104,           // shape.js STEP_FLOOR
     ceiling: 0.584,         // shape.js STEP_CEILING
+    // Stable across registers, so the weakest candidate for a direction.
+    direction: "none",
     provenance: "bcba_authored",
     basis: "108 documents behind shape.js, 101 coursework and 7 clinical plans",
   },
@@ -135,6 +159,8 @@ const CORPUS = [
        so their own estimate stops here however much evidence they bring. */
     floor: 0.40,
     ceiling: 1.30,
+    // The one feature with a better end: name the actor and the condition.
+    direction: "higher",
     provenance: "maintainer_bar",
     basis: "maintainer voice rule 1, name the actor and the condition",
   },
@@ -156,6 +182,8 @@ const CORPUS = [
        note is flat assertion cannot drive their own target to zero hedging. */
     floor: 0.004,
     ceiling: 0.045,
+    // An optimum, not a direction. Too little is a fault and so is too much.
+    direction: "none",
     provenance: "maintainer_bar",
     basis: "maintainer voice rule 5, mark uncertainty as uncertainty",
   },
@@ -201,6 +229,9 @@ export function buildHousePrior(entries) {
     if (!HOUSE_PROVENANCE.includes(entry.provenance)) {
       refuse("provenance is not one the house accepts: " + String(entry.provenance));
     }
+    if (!HOUSE_DIRECTION.includes(entry.direction)) {
+      refuse("direction is not one the house accepts: " + String(entry.direction));
+    }
     if (typeof entry.feature !== "string" || !entry.feature) {
       refuse("feature must be a non empty string");
     }
@@ -226,6 +257,7 @@ export function buildHousePrior(entries) {
       ceiling: entry.ceiling,
       provenance: entry.provenance,
       basis: entry.basis,
+      direction: entry.direction,
       // k = withinVariance / betweenVariance, the shrinkage constant. Computed
       // once here so no caller can supply a different one.
       k: entry.within_var / entry.between_var,
