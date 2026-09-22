@@ -374,7 +374,7 @@
         vary: { setting: 'shop', person: 'stranger', topic: 'belongings', form: 'statement' },
         reason: 'Say it - just to her. You do not know her, but she can pick it up right now, so telling her helps.' },
       { id: 'L1-39', level: 1, cat: 'work', answer: 'think',
-        situation: 'You are in line at the grocery store. The lady right in front of you has a small hole in the back of her old coat. Nobody else is close.',
+        situation: 'You are in line at the grocery store. The lady right in front of you has a small hole in the back of her coat. Nobody else is close.',
         utterance: 'Why does your coat have a hole?', sayVerb: 'ask', object: 'this question',
         features: { changeability: 'not-fixable', audience: 'just-them', relationship: 'stranger' },
         vary: { setting: 'shop', person: 'stranger', topic: 'belongings', form: 'question' },
@@ -401,7 +401,7 @@
         utterance: 'I scored a goal today!', sayVerb: 'tell', object: 'this news',
         features: { relationship: 'grown-up', timing: 'right-moment' },
         vary: { setting: 'shop', person: 'family', topic: 'work', form: 'exclamation' },
-        reason: 'Say it! Dad is free now, so this is a good moment to tell your grown-up your news.' },
+        reason: 'Say it! Dad has finished paying and is looking at you, so this is a good moment to tell him your news.' },
       { id: 'L1-43', level: 1, cat: 'other', answer: 'think',
         situation: 'You are at the grocery store with your dad. He is paying the cashier and counting out his money. You want to tell him you scored a goal at practice.',
         utterance: 'I scored a goal today!', sayVerb: 'tell', object: 'this news',
@@ -439,11 +439,11 @@
 
       // ── block 12 ──
       { id: 'L1-47', level: 1, cat: 'looks', answer: 'think',
-        situation: 'You are at the park. A grown-up you have never met walks past, and he has no hair on his head.',
-        utterance: 'Where did your hair go?', sayVerb: 'ask', object: 'this question',
+        situation: 'You are at the park. A grown-up you have never met sits on the next bench. He has a very long, bushy beard.',
+        utterance: 'Why is your beard so big?', sayVerb: 'ask', object: 'this question',
         features: { selfEsteem: 'hurts', changeability: 'not-fixable', relationship: 'stranger' },
         vary: { setting: 'playground', person: 'stranger', topic: 'looks', form: 'question' },
-        reason: 'Think it. You do not know him, and he cannot change how his head looks - asking could hurt his feelings.' },
+        reason: 'Think it. You do not know him, and he cannot change his beard right now - asking about how he looks could make him feel bad.' },
       { id: 'L1-33', level: 1, cat: 'kind', answer: 'say',
         situation: 'A classmate is sitting alone on the playground and looks sad.',
         utterance: 'Are you okay?', sayVerb: 'ask', object: 'this question',
@@ -465,16 +465,16 @@
 
       // ── block 13 ──
       // A teacher on the THINK side and a looks card on the SAY side, which the
-      // pool had almost none of. The same sleeve, the same quiet desk: only
+      // pool had almost none of. The same sweater, the same quiet desk: only
       // whether she can fix it right now flips.
       { id: 'L1-50', level: 1, cat: 'looks', answer: 'think',
-        situation: 'You are at your teacher\'s desk, and nobody else is close. There is a big coffee stain on her sleeve.',
-        utterance: 'Did you spill coffee on your sleeve?', sayVerb: 'ask', object: 'this question',
+        situation: 'You are at your teacher\'s desk, and nobody else is close. Her sweater is old, and the color has faded in patches.',
+        utterance: 'Your sweater looks really old.', sayVerb: 'say', object: 'these words',
         features: { changeability: 'not-fixable', audience: 'just-them' },
-        vary: { setting: 'school', person: 'teacher', topic: 'looks', form: 'question' },
-        reason: 'Think it. She cannot change her shirt at school, so asking would only make her feel bad.' },
+        vary: { setting: 'school', person: 'teacher', topic: 'looks', form: 'statement' },
+        reason: 'Think it. She cannot change her sweater at school, so saying it would only make her feel bad.' },
       { id: 'L1-51', level: 1, cat: 'looks', answer: 'say',
-        situation: 'You are at your teacher\'s desk, and nobody else is close. There is a sticky note stuck to her sleeve.',
+        situation: 'You are at your teacher\'s desk, and nobody else is close. There is a sticky note stuck to the sleeve of her sweater.',
         utterance: 'There is a sticky note on your sleeve.', sayVerb: 'say', object: 'these words',
         features: { changeability: 'fixable-now', audience: 'just-them' },
         vary: { setting: 'school', person: 'teacher', topic: 'looks', form: 'statement' },

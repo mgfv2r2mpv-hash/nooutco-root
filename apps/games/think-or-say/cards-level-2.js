@@ -204,7 +204,7 @@
       // L2-22's partner on changeability: the same grandma and the same hair, and
       // the only thing that moves is whether she can do something about it now.
       { id: 'L2-37', level: 2, cat: 'looks', answer: 'say',
-        situation: 'Your grandma comes to visit. She has been out in the garden, and there is a leaf stuck in her hair.',
+        situation: 'Your grandma comes to visit. She has been out in the yard, and there is a leaf stuck in her hair.',
         utterance: 'You have a leaf in your hair.', sayVerb: 'say', object: 'these words',
         features: { selfEsteem: 'hurts', relationship: 'grown-up', changeability: 'fixable-now' },
         vary: { setting: 'home', person: 'family', topic: 'looks', form: 'statement' },
@@ -265,7 +265,7 @@
         vary: { setting: 'school', person: 'peer', topic: 'body', form: 'statement' },
         reason: 'Think it. That is private - saying it with everyone around would embarrass them.' },
       { id: 'L2-46', level: 2, cat: 'other', answer: 'say',
-        situation: 'You and the kid from next door are walking to the playground, and nobody else is near. The zip on the back of their backpack is open.',
+        situation: 'You and the kid from next door are walking to the playground, and nobody else is near. The zipper on the back of their backpack is open.',
         utterance: 'Your backpack is open.', sayVerb: 'say', object: 'these words',
         features: { changeability: 'fixable-now', audience: 'just-them', privacy: 'not-private' },
         vary: { setting: 'playground', person: 'peer', topic: 'belongings', form: 'statement' },
@@ -274,11 +274,11 @@
       // only whether the thing you noticed is private moves. A stranger is a reason
       // to hold back, not a rule that you never speak.
       { id: 'L2-29', level: 2, cat: 'other', answer: 'say',
-        situation: 'A person you have never met is in the shop line in front of you, and the line has stopped moving. Their glove has just fallen out of their pocket onto the floor.',
-        utterance: 'You dropped your glove.', sayVerb: 'say', object: 'these words',
+        situation: 'A person you have never met is in the store line in front of you, and the line has stopped moving. An orange has just rolled out of their shopping bag onto the floor.',
+        utterance: 'An orange fell out of your bag.', sayVerb: 'say', object: 'these words',
         features: { relationship: 'stranger', privacy: 'not-private', timing: 'right-moment' },
         vary: { setting: 'shop', person: 'stranger', topic: 'belongings', form: 'statement' },
-        reason: 'Say it. You do not know them, but a dropped glove is not a private thing, and the line has stopped so there is time - telling them helps them get it back.' },
+        reason: 'Say it. You do not know them, but a fallen orange is not a private thing, and the line has stopped so there is time - telling them helps them get it back.' },
 
       // ── block 9 ──
       { id: 'L2-23', level: 2, cat: 'looks', answer: 'think',
@@ -319,7 +319,7 @@
       // Same shape as L2-30/L2-31 on a different field: the coach is busy either
       // way, and only being hurt turns the wrong moment into the right one.
       { id: 'L2-32', level: 2, cat: 'other', answer: 'think',
-        situation: 'You are in the middle of a soccer game at the park, and your coach is busy calling out to the players. You are bored of your spot on the field and want to try a different one.',
+        situation: 'You are in the middle of a soccer game at the park, and your coach is busy calling out to the players. You are bored with your spot on the field and want to try a different one.',
         utterance: 'Coach, can I play a different spot?', sayVerb: 'ask', object: 'this question',
         features: { override: 'none', timing: 'wrong-moment' },
         vary: { setting: 'playground', person: 'teacher', topic: 'work', form: 'question' },
@@ -329,7 +329,7 @@
         utterance: 'The pan on the stove is smoking!', sayVerb: 'say', object: 'these words',
         features: { override: 'help-or-safety', timing: 'wrong-moment' },
         vary: { setting: 'home', person: 'sibling', topic: 'smell', form: 'exclamation' },
-        reason: 'Say it! She asked not to be bothered, and she is in the middle of her game - but smoke on the stove is not safe, and safety always comes first.' },
+        reason: 'Say it! She asked not to be bothered, and she is in the middle of her game - but smoke on the stove is not safe, and safety always comes first. Stay away from the pan, and get a grown-up too.' },
       { id: 'L2-33', level: 2, cat: 'other', answer: 'say',
         situation: 'You are in the middle of a soccer game at the park, and your coach is busy calling out to the players. You twisted your ankle, and it hurts every time you run.',
         utterance: 'Coach, I hurt my ankle.', sayVerb: 'tell', object: 'this news',
@@ -338,14 +338,14 @@
         reason: 'Say it! It is the middle of the game and your coach is busy - but you are hurt, and getting help always comes first.' },
 
       // ── block 11 ──
-      // The L2-34/L2-35 pair is the lunch-table audience contrast moved onto the
-      // bus with a cousin: same tag, same quick fix, and only who can hear moves.
+      // The L2-34/L2-35 pair is the lunch-table audience contrast moved into the
+      // store with a cousin: same tag, same quick fix, and only who can hear moves.
       { id: 'L2-34', level: 2, cat: 'looks', answer: 'think',
-        situation: 'Your cousin is sitting at the very front of the bus, and you are at the back with lots of kids in between. The tag on the back of her shirt is sticking up.',
+        situation: 'Your cousin is at the far end of the busy shop, with lots of shoppers in between. The tag on the back of her shirt is sticking up.',
         utterance: 'Your tag is sticking out!', sayVerb: 'say', object: 'these words',
         features: { audience: 'others-hear', changeability: 'fixable-now', privacy: 'not-private' },
-        vary: { setting: 'bus', person: 'family', topic: 'belongings', form: 'exclamation' },
-        reason: 'Think it for now. It is not private and she could fix it in a second - but you would have to call it down the whole bus, and everybody would hear. Tell her quietly when you get off.' },
+        vary: { setting: 'shop', person: 'family', topic: 'belongings', form: 'exclamation' },
+        reason: 'Think it for now. It is not private and she could fix it in a second - but you would have to call it across the whole shop, and everybody would hear. Tell her quietly when you are next to her.' },
       // The L2-38/L2-39 pair: the same promise and the same grown-up asking. A
       // secret is kept until keeping it would leave someone unsafe.
       { id: 'L2-38', level: 2, cat: 'private', answer: 'think',
@@ -353,12 +353,12 @@
         utterance: 'She still sleeps with a night-light.', sayVerb: 'tell', object: 'this news',
         features: { override: 'none', privacy: 'private' },
         vary: { setting: 'home', person: 'family', topic: 'belongings', form: 'statement' },
-        reason: 'Think it. It is private, and nobody needs help or is unsafe - so her secret stays hers to tell.' },
+        reason: 'Think it. It is private, and nobody needs help or is unsafe - so her secret stays hers to tell. You can tell Mom, \'It is her secret, and nobody is in danger.\'' },
       { id: 'L2-35', level: 2, cat: 'looks', answer: 'say',
-        situation: 'Your cousin is sitting right beside you on the bus, and nobody else can hear you. The tag on the back of her shirt is sticking up.',
+        situation: 'Your cousin is right beside you in the shop, and nobody else can hear you. The tag on the back of her shirt is sticking up.',
         utterance: 'Your tag is sticking out.', sayVerb: 'say', object: 'these words',
         features: { audience: 'just-them', changeability: 'fixable-now', privacy: 'not-private' },
-        vary: { setting: 'bus', person: 'family', topic: 'belongings', form: 'statement' },
+        vary: { setting: 'shop', person: 'family', topic: 'belongings', form: 'statement' },
         reason: 'Say it - quietly, just to her. It is not private, she can tuck it in right now, and nobody else can hear.' },
       { id: 'L2-39', level: 2, cat: 'private', answer: 'say',
         situation: 'Your cousin tells you a secret and makes you promise not to tell: she is going to walk to the lake by herself tonight, after everyone is asleep. Later your mom asks what you two were whispering about.',
@@ -376,7 +376,7 @@
         utterance: 'That does not look like our dog.', sayVerb: 'say', object: 'these words',
         features: { truthRank: 'true', selfEsteem: 'hurts' },
         vary: { setting: 'home', person: 'sibling', topic: 'work', form: 'statement' },
-        reason: 'Think it. It really does not look like him, but true is not as important as kind - he worked all afternoon, and these words would take away the good he feels.' },
+        reason: 'Think it. It really does not look like your dog, but true is not as important as kind - your brother worked all afternoon, and these words would take away the good he feels.' },
       { id: 'L2-41', level: 2, cat: 'work', answer: 'say',
         situation: 'Your little brother spent all afternoon drawing your dog, and he gives you the picture. It does not look much like your dog, but you watched him work on it the whole time.',
         utterance: 'You worked so hard on this!', sayVerb: 'say', object: 'these words',
