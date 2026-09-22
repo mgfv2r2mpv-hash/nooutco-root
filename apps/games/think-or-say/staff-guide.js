@@ -184,11 +184,17 @@
             'only the rules this card involves, in a fixed order: Safety, then Kind (feelings, ' +
             'private, can they fix it now), then Where and when (who hears, timing), then Who (the ' +
             'relationship), then True. A rule pointing the same way as the answer is lit, and the ' +
-            'top lit rule is marked “decides it”. A rule pointing the other way is marked ' +
-            '“outranked” - it is true, but it would hurt, for example.' },
+            'top lit rule is marked “decides it”. A rule pointing the other way is struck and ' +
+            'marked with the rule that beat it, for example “Kind wins” under “Is it true? Yes”. ' +
+            '“Can they fix it now” and “Not private” are permissions, not reasons: when they hold ' +
+            'but another rule keeps the thought inside, they show “✓ OK - not enough here”.' },
           { term: 'Flip it', text:
             'on a card with a matched partner, the partner’s situation and its opposite answer, ' +
-            'with the one feature that changed highlighted.' },
+            'with the words that changed highlighted.' },
+          { term: 'The tiles and the thought', text:
+            'after a correct answer the two tiles fold to the one chosen, and the thought bubble ' +
+            'becomes a speech bubble (“said out loud”) or stays a thought (“kept inside”). At ' +
+            'Level 3 your score folds to one line, and “Change” reopens it.' },
         ] },
         { t: 'note', text:
           'The order of the rules is the model the cards were written to. No study has tested it ' +
