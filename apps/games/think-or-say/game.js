@@ -818,6 +818,7 @@ function renderTrial() {
 
   hideWhy();
 
+  el.choices.classList.remove('is-answered');
   choiceEls().forEach(c => {
     c.className = 'choice choice-' + c.dataset.answer;
     c.disabled = false;
@@ -1080,6 +1081,10 @@ function answerCorrect(card) {
   });
   card.classList.remove('prompt-sparkle', 'prompt-outline');
   card.classList.add('correct');
+  // Answered: the chosen tile folds to a compact row and the other one goes
+  // (the verdict tag repeats the answer), so on a phone the thought bubble and
+  // the Why ladder are not pushed apart by two big tiles. renderTrial() resets.
+  el.choices.classList.add('is-answered');
 
   // At Level 3 the tile is only half the trial: the response the programme
   // targets is the spoken REASON. The trial is therefore neither revealed nor
@@ -1132,9 +1137,11 @@ function showReason() {
   el.whyVerdict.className = 'tag tag-' + sc.answer;
   el.whyVerdict.textContent = ANSWER_LABELS[sc.answer];
 
-  const rows = MODEL.whyLadder(sc);
+  const rows = MODEL.whyLadder(sc).filter(r => !isNeutralRow(r));
   const flip = flipFor(sc);
-  el.whyRows.replaceChildren(...rows.map((r, i) => whyRow(r, i, flip)));
+  const decider = rows.find(r => r.decides);
+  const winner = decider && MODEL.WHY_TIERS.find(t => t.tier === decider.tier);
+  el.whyRows.replaceChildren(...rows.map((r, i) => whyRow(r, i, flip, winner)));
   renderFlip(flip, rows.length);
   renderTiers(rows);
   el.whyPanel.className = 'why-panel why-' + sc.answer;
@@ -1144,31 +1151,60 @@ function showReason() {
 }
 
 /**
- * Scroll just enough that the ladder is on screen, so on a phone the learner
- * is not left hunting below the tiles; scrolling no further keeps as much of
- * the settled thought bubble in view as fits. The fixed print / clear bar
- * counts as covered space wherever it sits over the panel, and if the scroll
- * would park Next under it, Next is brought clear too. The panel's top always
- * wins. No smooth scroll under reduced motion.
+ * Scroll so the answer and its reason read together.
+ *
+ * Covered space is the sticky site nav at the top (measured, never assumed:
+ * it is two rows on a phone) and the fixed print / clear bar wherever it sits
+ * over the thing being checked. In priority order:
+ *   1. the panel's top is never parked under the nav;
+ *   2. the thought bubble stays on screen with the panel's top, where both fit;
+ *   3. Next is fully on screen and clear of the print bar.
+ * Where 3 would cost 2, 2 wins unless the bubble and Next can never share the
+ * screen anyway (a tall ladder on a phone), in which case the panel top and
+ * the bubble are what the learner sees and Next is one short scroll away.
+ * No smooth scroll under reduced motion.
  */
+function coveredTop() {
+  const nav = document.querySelector('noaba-bar');
+  if (!nav) return 0;
+  const pos = getComputedStyle(nav).position;
+  if (pos !== 'sticky' && pos !== 'fixed') return 0;
+  const r = nav.getBoundingClientRect();
+  return r.height > 0 ? r.height : 0;
+}
+
 function bringWhyIntoView() {
   if (el.whyPanel.hidden) return;
   const PAD = 12;
+  const PEEK = 96;      // enough of the panel to show the verdict line
   const vh = window.innerHeight;
+  const top = coveredTop() + PAD;
   const panel = el.whyPanel.getBoundingClientRect();
   const barEl = $('bottom-bar');
   const bar = barEl ? barEl.getBoundingClientRect() : null;
   const across = r => !!bar && bar.width > 0 && r.left < bar.right && bar.left < r.right;
   const floor = r => (across(r) ? bar.top : vh) - PAD;
 
-  let dy = Math.max(0, panel.bottom - floor(panel));
   const nextEl = $('btn-next');
-  if (nextEl) {
-    const next = nextEl.getBoundingClientRect();
-    const under = across(next) && next.bottom - dy > bar.top && next.top - dy < bar.bottom;
-    if (under) dy = next.bottom - floor(next);
+  const next = nextEl ? nextEl.getBoundingClientRect() : panel;
+  const want = next.bottom - floor(next);             // Next fully clear
+  const maxDy = panel.top - top;                      // 1: panel top below the nav
+  const minDy = panel.top + PEEK - floor(panel);      // the panel's head on screen
+  const thoughtEl = el.thought;
+  const bubble = thoughtEl && !thoughtEl.hidden ? thoughtEl.getBoundingClientRect() : null;
+  const keepBubble = bubble ? bubble.top - top : Infinity;   // 2
+
+  let dy = want;
+  if (dy > keepBubble && keepBubble >= minDy) dy = keepBubble;
+  // Next may wait below the fold, but never UNDER the print bar, where a tap
+  // lands on the bar. Pull back so it sits just below the bar if that still
+  // shows the panel's head; otherwise scroll on until Next is clear.
+  if (nextEl && across(next) && next.top - dy < bar.bottom && next.bottom - dy > bar.top) {
+    const pull = Math.floor(next.top - bar.bottom) - 2;
+    dy = pull >= minDy ? pull : want;
   }
-  if (panel.top - dy < PAD) dy = panel.top - PAD;
+  dy = Math.min(dy, maxDy);
+  dy = Math.max(dy, Math.min(minDy, maxDy));
   if (Math.abs(dy) < 2) return;
   const still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   window.scrollBy({ top: dy, behavior: still ? 'auto' : 'smooth' });
@@ -1184,19 +1220,55 @@ function hideWhy() {
   el.whyTiers.replaceChildren();
 }
 
+/**
+ * A row that pulls neither way adds nothing to "why": it is left off the
+ * ladder (and so off the lit tiers). Older ladders mark it only by a null lean.
+ */
+function isNeutralRow(r) {
+  return r.stance === 'neutral' || (r.lean == null && r.stance !== 'moot');
+}
+
+/**
+ * A permission condition that held ("They can fix it now", "Not private"),
+ * or a weak reason ("Yes, it is true"): it has to hold, but it cannot carry
+ * the card. `met` is a gate that held on a card that went the other way.
+ */
+const isNeededRow = r => !r.decides &&
+  (r.stance === 'met' || ((r.weak || r.gate) && r.stance === 'agree'));
+
 /** A small THINK / SAY badge. The word is always printed; colour only repeats it. */
-function leanBadge(lean) {
+function leanBadge(r) {
   const b = document.createElement('span');
-  b.className = 'why-lean why-lean-' + (lean || 'none');
-  b.textContent = lean ? '\u2192 ' + lean.toUpperCase() : 'either way';
+  if (isNeededRow(r)) {
+    b.className = 'why-lean why-lean-ok';
+    b.textContent = '\u2713 OK';
+    return b;
+  }
+  if (r.stance === 'moot') {
+    b.className = 'why-lean why-lean-none';
+    b.textContent = 'does not apply';
+    return b;
+  }
+  b.className = 'why-lean why-lean-' + (r.lean || 'none');
+  b.textContent = r.lean ? '\u2192 ' + r.lean.toUpperCase() : 'either way';
   return b;
 }
 
-function whyRow(r, i, flip) {
+function whyMark(r, winner) {
+  if (r.decides) return 'decides it';
+  if (r.outranked) return winner ? winner.label + ' wins' : 'not enough here';
+  if (r.stance === 'against') return 'not enough here';
+  if (r.stance === 'met') return 'not enough here';
+  if (isNeededRow(r)) return 'needed, not enough alone';
+  return '';
+}
+
+function whyRow(r, i, flip, winner) {
   const li = document.createElement('li');
   const cls = ['why-row', 'why-' + r.stance];
   if (r.decides) cls.push('is-decider');
   if (r.outranked) cls.push('is-outranked');
+  if (isNeededRow(r)) cls.push('is-needed');
   if (flip && flip.dim === r.dim) cls.push('is-flip-dim');
   li.className = cls.join(' ');
   li.dataset.dim = r.dim;
@@ -1213,13 +1285,9 @@ function whyRow(r, i, flip) {
   const chip = document.createElement('span');
   chip.className = 'why-chip';
   chip.textContent = r.chip;
-  li.append(icon, q, chip, leanBadge(r.lean));
+  li.append(icon, q, chip, leanBadge(r));
 
-  let mark = '';
-  if (r.decides) mark = 'decides it';
-  else if (r.outranked) mark = 'outranked';
-  else if (r.stance === 'against') mark = 'not this time';
-  else if (r.weak && r.stance === 'agree') mark = 'not enough alone';
+  const mark = whyMark(r, winner);
   if (mark) {
     const m = document.createElement('span');
     m.className = 'why-mark';
@@ -1304,6 +1372,19 @@ function diffNodes(from, to) {
   return nodes;
 }
 
+/** Share of the partner's text (in characters) that the diff marks as changed. */
+function changedShare(from, to) {
+  const toks = wordDiff(from, to);
+  const total = toks.reduce((n, t) => n + t.word.length, 0);
+  const changed = toks.reduce((n, t) => n + (t.changed ? t.word.length : 0), 0);
+  return total ? changed / total : 0;
+}
+
+// Past this share the partner is a different story, not a one-thing change:
+// the whole paragraph in highlighter teaches nothing, so the chip says what
+// changed and only the quoted thought is shown.
+const FLIP_MAX_CHANGED = 0.4;
+
 function renderFlip(flip, index) {
   if (!flip) { el.whyFlip.hidden = true; el.whyFlip.replaceChildren(); return; }
   const sc = state.current;
@@ -1313,9 +1394,6 @@ function renderFlip(flip, index) {
   const chip = document.createElement('span');
   chip.className = 'why-chip why-chip-flip';
   chip.textContent = flip.chip;
-  const text = document.createElement('span');
-  text.className = 'why-flip-text';
-  text.append(...diffNodes(sc.situation, flip.partner.situation));
   const tag = document.createElement('span');
   tag.className = 'tag tag-' + flip.partner.answer;
   tag.textContent = ANSWER_LABELS[flip.partner.answer];
@@ -1323,13 +1401,26 @@ function renderFlip(flip, index) {
   arrow.className = 'why-flip-arrow';
   arrow.setAttribute('aria-hidden', 'true');
   arrow.textContent = '\u2192';
-  const parts = [lab, chip, arrow, tag, text];
-  if (flip.partner.utterance && flip.partner.utterance !== sc.utterance) {
+  // Chip, arrow and tag never wrap apart, so the tag cannot orphan on a phone.
+  const outcome = document.createElement('span');
+  outcome.className = 'why-flip-outcome';
+  outcome.append(chip, arrow, tag);
+  const parts = [lab, outcome];
+
+  const heavy = changedShare(sc.situation, flip.partner.situation) > FLIP_MAX_CHANGED;
+  if (!heavy) {
+    const text = document.createElement('span');
+    text.className = 'why-flip-text';
+    text.append(...diffNodes(sc.situation, flip.partner.situation));
+    parts.push(text);
+  }
+  if (flip.partner.utterance && (heavy || flip.partner.utterance !== sc.utterance)) {
     const said = document.createElement('span');
     said.className = 'why-flip-said';
     said.append('\u201c', ...diffNodes(sc.utterance, flip.partner.utterance), '\u201d');
     parts.push(said);
   }
+  el.whyFlip.classList.toggle('is-brief', heavy);
   el.whyFlip.replaceChildren(...parts);
   el.whyFlip.style.setProperty('--i', String(index));
   el.whyFlip.hidden = false;
@@ -1367,6 +1458,35 @@ function resetRationale() {
   el.rationaleList.replaceChildren();
   el.rationaleNote.value = '';
   scoreButtons().forEach(b => b.classList.remove('is-picked'));
+  el.rationalePanel.classList.remove('is-scored');
+  const chip = $('rationale-scored');
+  if (chip) chip.remove();
+}
+
+/**
+ * Once scored, the panel folds to one line so the ladder sits under the
+ * answer. The score is kept exactly as picked; Change reopens the panel (to
+ * re-score or add a note), and a new pick folds it again.
+ */
+function foldRationale(score) {
+  let chip = $('rationale-scored');
+  if (!chip) {
+    chip = document.createElement('div');
+    chip.id = 'rationale-scored';
+    const text = document.createElement('span');
+    text.className = 'rationale-scored-text';
+    const change = document.createElement('button');
+    change.type = 'button';
+    change.className = 'rationale-scored-change';
+    change.textContent = 'Change';
+    change.addEventListener('click', () => el.rationalePanel.classList.remove('is-scored'));
+    chip.append(text, change);
+    el.rationalePanel.appendChild(chip);
+  }
+  const note = el.rationaleNote.value.trim();
+  chip.querySelector('.rationale-scored-text').textContent =
+    'Scored: ' + RATIONALE_LABELS[score] + (note ? ' (note saved)' : '');
+  el.rationalePanel.classList.add('is-scored');
 }
 
 const scoreButtons = () => Array.from(el.rationaleScores.querySelectorAll('button'));
@@ -1408,6 +1528,7 @@ function pickRationale(score) {
   if (!needsRationale(state.current)) return;
   state.rationaleScore = score;
   scoreButtons().forEach(b => b.classList.toggle('is-picked', b.dataset.score === score));
+  foldRationale(score);
   // Scored, so the ladder is no longer the answer sheet. Same gating as the
   // exemplar reveal: withheld on a probe, shown in learn mode.
   if (supportOn('showReason') || state.learnMode) showReason();

@@ -82,8 +82,16 @@ test('a correct Level 1 answer shows one ladder row per rule in play', async ({ 
   await expect(page.locator('#scenario-reason')).toHaveText(card.reason);
   await expect(page.locator('#why-verdict')).toHaveText(card.answer === 'think' ? 'THINK IT' : 'SAY IT');
 
+  // A row that pulls neither way is left off: it is no part of "why".
+  const shown = await page.evaluate(() => {
+    const T = window.__thinkOrSay;
+    return T.whyLadder(T.level(1).cards[0])
+      .filter(r => r.stance !== 'neutral' && !(r.lean == null && r.stance !== 'moot'))
+      .map(r => r.dim);
+  });
   const dims = await page.locator('#why-rows > li').evaluateAll(els => els.map(e => e.dataset.dim));
-  expect(dims.sort()).toEqual(Object.keys(card.features).sort());
+  expect(dims.sort()).toEqual(shown.sort());
+  await expect(page.locator('#why-rows .why-neutral')).toHaveCount(0);
 
   // Ordered by tier, top rule first.
   const tiers = await page.locator('#why-rows > li').evaluateAll(els => els.map(e => Number(e.dataset.tier)));
@@ -93,14 +101,14 @@ test('a correct Level 1 answer shows one ladder row per rule in play', async ({ 
   await expect(page.locator('#why-rows .is-decider')).toHaveCount(1);
   await expect(page.locator('#why-rows .is-decider .why-mark')).toHaveText('decides it');
   const leans = await page.locator('#why-rows .why-lean').allTextContents();
-  for (const t of leans) expect(t).toMatch(/THINK|SAY|either way/);
+  for (const t of leans) expect(t).toMatch(/THINK|SAY|OK|does not apply/);
 
   // The tier legend lights the tiers this card touches, and only those.
   const lit = await page.locator('#why-tiers .why-tier.is-lit').count();
   expect(lit).toBe(new Set(tiers).size);
 });
 
-test('a rule that pulls the other way is shown struck as outranked', async ({ page }) => {
+test('a rule that pulls the other way is struck, and says which tier won', async ({ page }) => {
   await seed(page, plain(1));
   await page.goto(URL);
   await booted(page);
@@ -117,7 +125,20 @@ test('a rule that pulls the other way is shown struck as outranked', async ({ pa
   }, i);
   const out = page.locator('#why-rows .is-outranked');
   await expect(out).toHaveCount(expected.length);
-  await expect(out.first().locator('.why-mark')).toHaveText('outranked');
+  // Child words: the tier that decided it wins ("Safety wins", "Kind wins").
+  const winner = await page.evaluate(n => {
+    const T = window.__thinkOrSay;
+    const d = T.whyLadder(T.level(1).cards[n]).find(r => r.decides);
+    return T.whyTiers.find(t => t.tier === d.tier).label;
+  }, i);
+  await expect(out.first().locator('.why-mark')).toHaveText(`${winner} wins`);
+  // Set back by colour and a left rule, never by opacity (contrast).
+  const style = await out.first().locator('.why-q').evaluate(e => {
+    const cs = getComputedStyle(e);
+    return { opacity: cs.opacity, color: cs.color };
+  });
+  expect(style.opacity).toBe('1');
+  expect(style.color).toBe('rgb(90, 100, 116)');
   // The losing rule leans the OTHER way, and says so in words.
   const card = (await session(page)).deck[i];
   const other = card.answer === 'think' ? 'SAY' : 'THINK';
@@ -150,9 +171,20 @@ test('a paired card shows its minimum-difference partner as Flip it', async ({ p
   await expect(flip).toBeVisible();
   await expect(flip).toContainText('Flip it:');
   await expect(flip.locator('.tag')).toHaveText(partner.answer === 'think' ? 'THINK IT' : 'SAY IT');
-  // The partner's situation is shown whole, never cut short.
+  // The partner's situation is given whole (clamped on screen, never cut in
+  // the text), unless most of it changed: then it is a different story, and
+  // only the chip, the tag and the quoted thought are shown.
   const words = s => s.split(/\s+/).filter(Boolean).join(' ');
-  await expect(flip.locator('.why-flip-text')).toHaveText(words(partner.situation));
+  if (await flip.evaluate(e => e.classList.contains('is-brief'))) {
+    await expect(flip.locator('.why-flip-text')).toHaveCount(0);
+    await expect(flip.locator('.why-flip-said')).toBeVisible();
+  } else {
+    await expect(flip.locator('.why-flip-text')).toHaveText(words(partner.situation));
+  }
+  // The chip, arrow and tag sit in one unbreakable group.
+  const outcome = flip.locator('.why-flip-outcome');
+  await expect(outcome.locator('.tag')).toHaveCount(1);
+  expect(await outcome.evaluate(e => getComputedStyle(e).whiteSpace)).toBe('nowrap');
   // The flipped rule is the one highlighted in the ladder.
   await expect(page.locator(`#why-rows li[data-dim="${flips}"]`)).toHaveClass(/is-flip-dim/);
 });
@@ -181,14 +213,21 @@ test('Flip it marks the words that changed, and only those', async ({ page }) =>
   await seed(page, plain(2));
   await page.goto(URL);
   await booted(page);
-  const i = await firstWhere(page, 2, '(c, rows, pairs) => pairs.some(p => p.a === c.id || p.b === c.id)');
-  expect(i).toBeGreaterThanOrEqual(0);
-  const { card, partner } = await page.evaluate(n => {
+  // The paired card whose partner changes the fewest words, so its situation
+  // is shown (a partner that is mostly new text is shown brief, see below).
+  const paired = await page.evaluate(() => {
     const L = window.__thinkOrSay.level(2);
-    const c = L.cards[n];
-    const p = L.pairs.find(x => x.a === c.id || x.b === c.id);
-    return { card: c, partner: L.cards.find(x => x.id === (p.a === c.id ? p.b : p.a)) };
-  }, i);
+    return L.cards.map((c, n) => {
+      const p = L.pairs.find(x => x.a === c.id || x.b === c.id);
+      return p && { n, card: c, partner: L.cards.find(x => x.id === (p.a === c.id ? p.b : p.a)) };
+    }).filter(Boolean);
+  });
+  expect(paired.length).toBeGreaterThan(0);
+  const share = ({ card: c, partner: q }) =>
+    1 - lcsLength(keys(c.situation), keys(q.situation)) / keys(q.situation).length;
+  const moved = paired.filter(x => share(x) > 0);
+  expect(moved.length).toBeGreaterThan(0);
+  const { n: i, card, partner } = moved.reduce((a, b) => (share(b) < share(a) ? b : a));
 
   await page.locator('#btn-play').click();
   await advanceTo(page, i);
@@ -374,4 +413,118 @@ test('the decides-it row pulses once, and not under reduced motion', async ({ pa
 
   await page.emulateMedia({ reducedMotion: 'reduce' });
   expect(await names()).toBe('none');
+});
+
+// ── Round 3 polish: answered tiles, scroll geometry, words ─────────────────
+
+test('a correct answer folds the tiles to one compact row, and the next card restores them', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await seed(page, plain(1));
+  await page.goto(URL);
+  await booted(page);
+  await page.locator('#btn-play').click();
+  const deck = (await session(page)).deck;
+  await chooseTile(page, 0);
+
+  const choices = page.locator('#choices');
+  await expect(choices).toHaveClass(/is-answered/);
+  const chosen = page.locator(`#choices .choice[data-answer="${deck[0].answer}"]`);
+  const other = page.locator(`#choices .choice:not([data-answer="${deck[0].answer}"])`);
+  // The chosen tile keeps its element, its answer and its classes.
+  await expect(chosen).toHaveClass(/correct/);
+  await expect(chosen).toBeVisible();
+  await expect(other).toHaveCount(1);
+  await expect(other).toBeHidden();
+  const box = await chosen.boundingBox();
+  expect(box.height).toBeLessThanOrEqual(64);
+
+  await page.locator('#btn-next').click();
+  await expect(choices).not.toHaveClass(/is-answered/);
+  await page.locator('#reveal-panel').click();
+  await expect(page.locator('#choices .choice')).toHaveCount(2);
+  for (const c of await page.locator('#choices .choice').all()) {
+    await expect(c).toBeVisible();
+    expect((await c.boundingBox()).height).toBeGreaterThan(120);
+  }
+});
+
+/** The height the sticky site nav covers at the top of the viewport. */
+const navHeight = page => page.evaluate(() => {
+  const n = document.querySelector('noaba-bar');
+  return n ? n.getBoundingClientRect().height : 0;
+});
+
+test('on a phone a correct answer leaves the thought bubble and the ladder top both on screen', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  for (const level of [1, 2]) {
+    await seed(page, plain(level));
+    await page.goto(URL);
+    await booted(page);
+    await page.locator('#btn-play').click();
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await chooseTile(page, 0);
+    await page.waitForTimeout(150);
+    const nav = await navHeight(page);
+    const bubble = await page.locator('#scenario-thought').boundingBox();
+    const panel = await page.locator('#why-panel').boundingBox();
+    expect(panel.y, `level ${level}: panel top below the nav`).toBeGreaterThanOrEqual(nav);
+    expect(panel.y + 40, `level ${level}: panel top on screen`).toBeLessThanOrEqual(844);
+    expect(bubble.y, `level ${level}: bubble below the nav`).toBeGreaterThanOrEqual(nav);
+    expect(bubble.y + bubble.height, `level ${level}: bubble on screen`).toBeLessThanOrEqual(844);
+  }
+});
+
+test('on a 1280x800 desktop Next lands fully on screen and clear of the print bar', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  for (const level of [1, 2]) {
+    await seed(page, plain(level));
+    await page.goto(URL);
+    await booted(page);
+    await page.locator('#btn-play').click();
+    for (let k = 0; k < 3; k++) {
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await chooseTile(page, k);
+      await page.waitForTimeout(150);
+      const nav = await navHeight(page);
+      const n = await page.locator('#btn-next').boundingBox();
+      const bar = await page.locator('#bottom-bar').boundingBox();
+      const panel = await page.locator('#why-panel').boundingBox();
+      const where = `level ${level} card ${k}`;
+      expect(n.y, where).toBeGreaterThanOrEqual(0);
+      expect(n.y + n.height, where).toBeLessThanOrEqual(800);
+      const overlap = n.x < bar.x + bar.width && bar.x < n.x + n.width &&
+                      n.y < bar.y + bar.height && bar.y < n.y + n.height;
+      expect(overlap, `${where}: Next under the print bar`).toBe(false);
+      expect(panel.y, `${where}: panel top below the nav`).toBeGreaterThanOrEqual(nav);
+      await page.locator('#btn-next').click();
+    }
+  }
+});
+
+test('the Level 3 rationale folds to one Scored line once a score is picked', async ({ page }) => {
+  await seed(page, plain(3));
+  await page.goto(URL);
+  await booted(page);
+  await page.locator('#btn-play').click();
+  await chooseTile(page, 0);
+  await page.locator('#rationale-note').fill('said it hurts');
+  await page.locator('#rationale-scores button[data-score="partial"]').click();
+  await expect(page.locator('#rationale-scored')).toContainText('Scored: Partly correct');
+  await expect(page.locator('#rationale-scores')).toBeHidden();
+  await expect(page.locator('#rationale-note')).toBeHidden();
+  // Change reopens it, with the pick still marked.
+  await page.locator('#rationale-scored button').click();
+  await expect(page.locator('#rationale-scores button.is-picked')).toHaveAttribute('data-score', 'partial');
+  await page.locator('#btn-next').click();
+  const rows = (await session(page)).results;
+  expect(rows[0].rationaleScore).toBe('partial');
+  expect(rows[0].rationaleNote).toBe('said it hurts');
+  await expect(page.locator('#rationale-scored')).toHaveCount(0);
+});
+
+test('index.html carries no em or en dash', async ({ request }) => {
+  const html = await (await request.get(URL)).text();
+  expect(html).not.toMatch(/—|–|&mdash;|&ndash;/);
 });
