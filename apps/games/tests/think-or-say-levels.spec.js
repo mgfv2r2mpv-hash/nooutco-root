@@ -133,7 +133,10 @@ test.describe('the three pools', () => {
     const { levels: lv, dimensions } = await levels(page);
 
     for (const level of lv) {
-      expect(level.pairs.map(p => p.dim).sort(), `level ${level.id} pairs`)
+      // Every dimension carries at least one pair. A pool may carry more than one
+      // for a dimension - the same contrast in a new setting - and each extra
+      // pair is held to the same minimum-difference checks below.
+      expect([...new Set(level.pairs.map(p => p.dim))].sort(), `level ${level.id} pairs`)
         .toEqual(dimensions.slice().sort());
 
       for (const pair of level.pairs) {
