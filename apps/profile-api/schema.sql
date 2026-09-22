@@ -149,6 +149,12 @@ CREATE TABLE IF NOT EXISTS voice_level (
   n        INTEGER NOT NULL DEFAULT 0,
   sum      REAL    NOT NULL DEFAULT 0,
   sum_sq   REAL    NOT NULL DEFAULT 0,
+  -- The same sums weighted by engagement, the share of each note that was the
+  -- technician's own. Read for the features house-prior.js marks "engaged";
+  -- all zero on a row written before 2026-09-22-voice-level-weight.sql.
+  w_n      REAL    NOT NULL DEFAULT 0,
+  w_sum    REAL    NOT NULL DEFAULT 0,
+  w_sum_sq REAL    NOT NULL DEFAULT 0,
   updated  INTEGER NOT NULL,
   PRIMARY KEY (kid, tool, feature)
 );

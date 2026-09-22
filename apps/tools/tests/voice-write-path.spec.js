@@ -191,14 +191,21 @@ test.describe('a note reaches voice_level and diction_level through the Pages wo
     const sent = voiceSent(c);
     expect(sent.length, 'one note, one entry').toBe(1);
     expect(sent[0].tool).toBe('bt');
+    /* Engagement rides with the note: the share of its specimen pairs that are
+       the technician's own. Two sections typed over by hand, so it is a real
+       share and not a default. The store weights the two shape features by it. */
+    expect(sent[0].engagement).toBeGreaterThan(0);
+    expect(sent[0].engagement).toBeLessThanOrEqual(1);
 
-    const stored = c.rows(`SELECT tool, feature, n, sum, sum_sq FROM voice_level WHERE kid = ? ORDER BY feature`, KID);
+    const stored = c.rows(`SELECT tool, feature, n, sum, sum_sq, w_n, w_sum FROM voice_level WHERE kid = ? ORDER BY feature`, KID);
     expect(stored.map((r) => r.feature)).toEqual(['actor_naming', 'hedging', 'step_rel', 'within_cv']);
     for (const r of stored) {
       expect(r.tool).toBe('bt');
       expect(r.n).toBe(1);
       expect(r.sum).toBeCloseTo(sent[0].levels[r.feature], 9);
       expect(r.sum_sq).toBeCloseTo(sent[0].levels[r.feature] ** 2, 9);
+      expect(r.w_n).toBeCloseTo(sent[0].engagement, 9);
+      expect(r.w_sum).toBeCloseTo(sent[0].engagement * sent[0].levels[r.feature], 9);
     }
     // The typed hedges are in the reading, so this is the note that was copied
     // and not the model's draft.

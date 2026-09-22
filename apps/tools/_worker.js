@@ -3877,7 +3877,11 @@ export function sanitizeVoiceNote(raw) {
   }
 
   if (!Object.keys(levels).length && !diction.length) return null;
-  return { tool: raw.tool, levels, diction };
+  // Engagement, the share of the note that was the technician's own, rides
+  // through as a share or not at all; profile-api refuses a malformed one and
+  // reads an absent one as full weight.
+  const engagement = Number.isFinite(raw.engagement) && raw.engagement >= 0 && raw.engagement <= 1 ? raw.engagement : undefined;
+  return engagement === undefined ? { tool: raw.tool, levels, diction } : { tool: raw.tool, levels, diction, engagement };
 }
 
 /**

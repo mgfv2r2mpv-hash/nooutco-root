@@ -78,7 +78,7 @@ test("levels are read by house feature name, so a key the payload made up is nev
     tool: "bt",
     levels: { hedging: 0.02, actor_naming: 0.9, prompted: 0.5, "the technician prompted": 0.4, sentence_length: 14 },
   }]);
-  assert.deepEqual(notes, [{ tool: "bt", levels: { actor_naming: 0.9, hedging: 0.02 }, diction: [] }]);
+  assert.deepEqual(notes, [{ tool: "bt", levels: { actor_naming: 0.9, hedging: 0.02 }, diction: [], engagement: 1 }]);
 });
 
 test("a level that is not a plausible reading is refused, not clamped", () => {
@@ -101,8 +101,30 @@ test("diction rows go through the house gate, and an entry left with nothing is 
     { tool: "sup", diction: [{ family_id: "prompted", variant_index: 0, count: 2 }, { family_id: "mand", variant_index: 1, count: 2 }] },
     { tool: "sup", diction: [{ family_id: "prompted", variant_index: 0, count: 2 }], levels: { tone: 1 } },
   ]);
-  assert.deepEqual(notes, [{ tool: "sup", levels: {}, diction: [{ family_id: "mand", variant_index: 1, count: 2 }] }]);
+  assert.deepEqual(notes, [{ tool: "sup", levels: {}, diction: [{ family_id: "mand", variant_index: 1, count: 2 }], engagement: 1 }]);
   assert.equal(refused, 1);
+});
+
+test("engagement rides with the note: kept when it is a share, one when absent, and a note with a malformed one is refused", () => {
+  const kept = acceptVoice([{ tool: "bt", levels: { hedging: 0.02 }, engagement: 0.4 }]).notes[0];
+  assert.equal(kept.engagement, 0.4);
+  const absent = acceptVoice([{ tool: "bt", levels: { hedging: 0.02 } }]).notes[0];
+  assert.equal(absent.engagement, 1);
+  for (const bad of [-0.1, 1.5, "0.5", NaN, Infinity, null, [0.5]]) {
+    const { notes, refused } = acceptVoice([{ tool: "bt", levels: { hedging: 0.02 }, engagement: bad }]);
+    assert.deepEqual(notes, [], "engagement " + String(bad) + " was folded in");
+    assert.equal(refused, 1);
+  }
+});
+
+test("a note's engagement weights its fold: the raw triple by one, the weighted triple by the share", () => {
+  const stored = { bt: { levels: [{ feature: "within_cv", n: 2, sum: 0.9, sum_sq: 0.41, w_n: 1.5, w_sum: 0.7, w_sum_sq: 0.33 }], diction: [] } };
+  const { levels } = foldVoice(stored, [{ tool: "bt", levels: { within_cv: 0.5 }, diction: [], engagement: 0.25 }]);
+  assert.equal(levels[0].n, 3);
+  assert.ok(Math.abs(levels[0].sum - 1.4) < 1e-12);
+  assert.ok(Math.abs(levels[0].w_n - 1.75) < 1e-12);
+  assert.ok(Math.abs(levels[0].w_sum - 0.825) < 1e-12);
+  assert.ok(Math.abs(levels[0].w_sum_sq - 0.3925) < 1e-12);
 });
 
 test("one request reads at most MAX_VOICE_NOTES notes", () => {
@@ -190,6 +212,20 @@ test("/events writes a note's levels and diction, and a second request accumulat
     rows(DB, `SELECT family, variant, count, notes FROM diction_level WHERE kid = ?`, KID),
     [{ family: "prompting", variant: 1, count: 2 + MAX_COUNT_PER_NOTE, notes: 2 }],
   );
+});
+
+test("/events writes the weighted triple beside the raw one, and an older client with no engagement writes weight one", async () => {
+  const DB = d1Sqlite(SCHEMA);
+  const withWeight = { kid: KID, tool: "bt", voice: [{ tool: "bt", levels: { within_cv: 0.4 }, diction: [], engagement: 0.5 }] };
+  const older = { kid: KID, tool: "bt", voice: [{ tool: "bt", levels: { within_cv: 0.6 }, diction: [] }] };
+  assert.equal((await worker.fetch(post("/events", withWeight), { DB })).status, 200);
+  assert.equal((await worker.fetch(post("/events", older), { DB })).status, 200);
+  const [r] = rows(DB, `SELECT n, sum, w_n, w_sum, w_sum_sq FROM voice_level WHERE kid = ? AND tool = 'bt' AND feature = 'within_cv'`, KID);
+  assert.equal(r.n, 2);
+  assert.ok(Math.abs(r.sum - 1.0) < 1e-12);
+  assert.ok(Math.abs(r.w_n - 1.5) < 1e-12);
+  assert.ok(Math.abs(r.w_sum - 0.8) < 1e-12);
+  assert.ok(Math.abs(r.w_sum_sq - 0.44) < 1e-12);
 });
 
 test("a request with no voice entry writes no voice row", async () => {

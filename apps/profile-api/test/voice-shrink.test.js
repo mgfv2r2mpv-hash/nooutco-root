@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  housePrior, buildHousePrior, HOUSE_FEATURES, HOUSE_PRIOR, HOUSE_PROVENANCE,
+  housePrior, buildHousePrior, HOUSE_FEATURES, HOUSE_PRIOR, HOUSE_PROVENANCE, HOUSE_EVIDENCE,
   HOUSE_DIRECTION,
 } from "../src/house-prior.js";
 import {
@@ -517,7 +517,7 @@ test("a corpus entry sourced from a technician is refused, by provenance", () =>
   const legal = {
     feature: "made_up", label: "x", mean: 0.5, within_var: 0.01, between_var: 0.01,
     floor: 0, ceiling: 1, provenance: "bcba_authored", basis: "test",
-    direction: "none",
+    direction: "none", evidence: "all",
   };
   // The control: this entry builds, so every refusal below is about the one
   // thing it changed and not about the entry being malformed.
@@ -536,7 +536,7 @@ test("a corpus entry carrying an author is refused, whatever it calls the field"
   const legal = {
     feature: "made_up", label: "x", mean: 0.5, within_var: 0.01, between_var: 0.01,
     floor: 0, ceiling: 1, provenance: "bcba_authored", basis: "test",
-    direction: "none",
+    direction: "none", evidence: "all",
   };
   /* The allowlist is what makes this work on a field nobody has thought of yet.
      A denylist would have to already know the name. */
@@ -568,7 +568,7 @@ test("a malformed house entry is refused rather than defaulted", () => {
   const legal = {
     feature: "made_up", label: "x", mean: 0.5, within_var: 0.01, between_var: 0.01,
     floor: 0, ceiling: 1, provenance: "bcba_authored", basis: "test",
-    direction: "none",
+    direction: "none", evidence: "all",
   };
   assert.throws(() => buildHousePrior([{ ...legal, between_var: 0 }]), /between_var must be above zero/);
   assert.throws(() => buildHousePrior([{ ...legal, within_var: -1 }]), /within_var must be above zero/);
@@ -719,4 +719,83 @@ test("a cold author reports no great day, and a warm one reports the term the ta
   assert.equal(authorTarget("actor_naming", null).offset, 0);
   const t = authorTarget("actor_naming", rowFor(0.70, 0.10));
   near(t.greatDay, t.authorMean + t.offset);
+});
+
+
+/* ── PASS TWO: engagement weights the evidence, for the two shape features ──
+ *
+ * His 2026-09-22 ruling: a great day for a feature with no better end is their
+ * OWN value on the notes they were actually present for. Pollux's reason is the
+ * one that holds: an edited note holds that technician's sentences and a copied
+ * one holds the model's, so the weight selects the notes that are evidence at
+ * all. And her correction: hedging is never weighted, because answering the gap
+ * questions resolves the unknowns and the estimate would drift down inside the
+ * band where the clamp cannot catch it.
+ */
+
+test("evidence is a closed enum, and a third value is refused rather than admitted", () => {
+  assert.deepEqual([...HOUSE_EVIDENCE], ["engaged", "all"]);
+  const base = { ...HOUSE_PRIOR.within_cv };
+  delete base.k;
+  for (const bad of ["weighted", "engagement", 1, true, null, undefined]) {
+    assert.throws(() => buildHousePrior([{ ...base, evidence: bad }]),
+      /evidence is not one the house accepts/, "evidence " + String(bad));
+  }
+  const missing = { ...base };
+  delete missing.evidence;
+  assert.throws(() => buildHousePrior([missing]), /missing evidence/);
+});
+
+test("exactly the two shape features weight their evidence by engagement; hedging and the bar do not", () => {
+  const engaged = HOUSE_FEATURES.filter((f) => housePrior(f).evidence === "engaged").sort();
+  assert.deepEqual(engaged, ["step_rel", "within_cv"]);
+  assert.equal(housePrior("hedging").evidence, "all");
+  assert.equal(housePrior("actor_naming").evidence, "all");
+});
+
+test("a weight adds to the weighted triple by its share and to the raw triple by one", () => {
+  const row = accumulateLevel(null, 0.5, 0.2);
+  assert.deepEqual(row, { n: 1, sum: 0.5, sum_sq: 0.25, w_n: 0.2, w_sum: 0.1, w_sum_sq: 0.05 });
+  const next = accumulateLevel(row, 0.3, 1);
+  near(next.n, 2); near(next.sum, 0.8); near(next.w_n, 1.2); near(next.w_sum, 0.4); near(next.w_sum_sq, 0.14);
+});
+
+test("a missing weight is one, and a weight outside 0 to 1 or not a number is treated as one rather than trusted", () => {
+  assert.deepEqual(accumulateLevel(null, 0.5), accumulateLevel(null, 0.5, 1));
+  for (const bad of [-0.1, 1.5, NaN, Infinity, "0.5", null, [0.5]]) {
+    assert.deepEqual(accumulateLevel(null, 0.5, bad), accumulateLevel(null, 0.5, 1), "weight " + String(bad));
+  }
+});
+
+test("a pre-migration row, whose weighted triple is all zero, summarises from the raw triple even for an engaged feature", () => {
+  const old = { n: 3, sum: 1.2, sum_sq: 0.5 };
+  assert.deepEqual(summariseLevel(old, "engaged"), summariseLevel(old, "all"));
+  assert.equal(summariseLevel(old, "engaged").n, 3);
+});
+
+test("for an engaged feature the summary reads the weighted triple; for an all feature it reads the raw one", () => {
+  // Two notes at 0.4 and 0.6. The first fully theirs, the second barely touched.
+  const row = accumulateLevel(accumulateLevel(null, 0.4, 1), 0.6, 0.1);
+  const raw = summariseLevel(row, "all");
+  near(raw.mean, 0.5); assert.equal(raw.n, 2);
+  const eng = summariseLevel(row, "engaged");
+  near(eng.n, 1.1);
+  near(eng.mean, (0.4 + 0.06) / 1.1);
+  assert.ok(eng.mean < raw.mean, "the barely touched note should pull less");
+});
+
+test("ENGAGEMENT MOVES within_cv AND NOT hedging: the same two notes, weighted and unweighted, from a cold author", () => {
+  const full = accumulateLevel(null, 0.30, 1);
+  const thin = accumulateLevel(null, 0.30, 0.2);
+  // within_cv is engaged: a barely touched note buys less distance from the house.
+  const house = housePrior("within_cv").mean;
+  const tFull = authorTarget("within_cv", full), tThin = authorTarget("within_cv", thin);
+  assert.equal(tFull.evidence, "engaged");
+  assert.ok(Math.abs(tThin.value - house) < Math.abs(tFull.value - house),
+    "thin " + tThin.value + " should sit nearer the house " + house + " than full " + tFull.value);
+  // hedging is all: the same weights change nothing.
+  const hFull = authorTarget("hedging", accumulateLevel(null, 0.02, 1));
+  const hThin = authorTarget("hedging", accumulateLevel(null, 0.02, 0.2));
+  assert.equal(hFull.evidence, "all");
+  assert.equal(hThin.value, hFull.value);
 });

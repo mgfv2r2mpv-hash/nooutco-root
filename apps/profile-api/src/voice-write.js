@@ -57,12 +57,16 @@ export const MAX_VOICE_NOTES = 20;
 // Number.isFinite is false for anything that is not a number, so "0.5", null and
 // [0.5] never reach the comparisons, where JavaScript would coerce them.
 const isLevel = (v) => Number.isFinite(v) && v >= 0 && v <= LEVEL_MAX;
+// Engagement is a share of the note that was the technician's own. Absent means
+// an older client, and counts as one; present and malformed refuses the note,
+// because defaulting garbage to full weight is the one way to over-count it.
+const isShare = (v) => Number.isFinite(v) && v >= 0 && v <= 1;
 
 /**
  * What may be written, rebuilt from scratch.
  *
  * @param {unknown} input  body.voice as it arrived
- * @returns {{notes: Array<{tool, levels, diction}>, refused: number}}
+ * @returns {{notes: Array<{tool, levels, diction, engagement}>, refused: number}}
  */
 export function acceptVoice(input) {
   const notes = [];
@@ -79,9 +83,11 @@ export function acceptVoice(input) {
       if (isLevel(given[feature])) levels[feature] = given[feature];
     }
     const { counts } = accept(entry.diction);
+    const engagement = entry.engagement === undefined ? 1 : (isShare(entry.engagement) ? entry.engagement : null);
 
+    if (engagement === null) { refused += 1; continue; }
     if (!Object.keys(levels).length && !counts.length) { refused += 1; continue; }
-    notes.push({ tool, levels, diction: counts });
+    notes.push({ tool, levels, diction: counts, engagement });
   }
   return { notes, refused };
 }
@@ -110,7 +116,7 @@ export function foldVoice(stored, notes) {
       const before = levelRows.has(key)
         ? levelRows.get(key)
         : (Array.isArray(held.levels) ? held.levels : []).find((r) => r && r.feature === feature) || null;
-      levelRows.set(key, { tool: note.tool, feature, ...accumulateLevel(before, note.levels[feature]) });
+      levelRows.set(key, { tool: note.tool, feature, ...accumulateLevel(before, note.levels[feature], note.engagement) });
     }
 
     if (!note.diction.length) continue;
@@ -144,7 +150,7 @@ export async function voiceStatements(db, kid, notes, now) {
   const stored = {};
   for (const tool of [...new Set(notes.map((n) => n.tool))]) {
     const [levels, diction] = await Promise.all([
-      db.prepare(`SELECT feature, n, sum, sum_sq FROM voice_level WHERE kid = ? AND tool = ?`).bind(kid, tool).all(),
+      db.prepare(`SELECT feature, n, sum, sum_sq, w_n, w_sum, w_sum_sq FROM voice_level WHERE kid = ? AND tool = ?`).bind(kid, tool).all(),
       db.prepare(
         `SELECT family AS family_id, variant AS variant_index, count, notes
            FROM diction_level WHERE kid = ? AND tool = ?`,
@@ -157,11 +163,13 @@ export async function voiceStatements(db, kid, notes, now) {
   return [
     ...folded.levels.map((r) =>
       db.prepare(
-        `INSERT INTO voice_level (kid, tool, feature, n, sum, sum_sq, updated)
-         VALUES (?, ?, ?, ?, ?, ?, ?)
+        `INSERT INTO voice_level (kid, tool, feature, n, sum, sum_sq, w_n, w_sum, w_sum_sq, updated)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(kid, tool, feature) DO UPDATE SET
-           n = excluded.n, sum = excluded.sum, sum_sq = excluded.sum_sq, updated = excluded.updated`,
-      ).bind(kid, r.tool, r.feature, r.n, r.sum, r.sum_sq, now)),
+           n = excluded.n, sum = excluded.sum, sum_sq = excluded.sum_sq,
+           w_n = excluded.w_n, w_sum = excluded.w_sum, w_sum_sq = excluded.w_sum_sq,
+           updated = excluded.updated`,
+      ).bind(kid, r.tool, r.feature, r.n, r.sum, r.sum_sq, r.w_n, r.w_sum, r.w_sum_sq, now)),
     ...folded.diction.map((r) =>
       db.prepare(
         `INSERT INTO diction_level (kid, tool, family, variant, count, notes, updated)
