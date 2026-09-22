@@ -152,6 +152,9 @@
         situation: 'Your close friend is sitting beside you. Their eyes are red and wet, and you are not sure what has happened.',
         utterance: 'Are you okay?', sayVerb: 'ask', object: 'this question',
         features: { relationship: 'close-friend', privacy: 'private', truthRank: 'not-sure' },
+        // Privacy stays coded private for the pair (L3-09); a gentle question
+        // leaves the friend to choose what to share, so it does not apply here.
+        whyMoot: { privacy: 'Private, but theirs to choose' },
         vary: { setting: 'school', person: 'peer', topic: 'body', form: 'question' },
         reason: 'Say it. You are not sure what has happened, and asking a close friend gently is how you find out - they can choose what to tell you.',
         rationales: [

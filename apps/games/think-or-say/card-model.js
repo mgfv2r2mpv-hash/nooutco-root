@@ -114,7 +114,21 @@
      pulls toward SAY, a stranger toward THINK), and so does privacy, whose
      pairs flip on it (L3-15 has nothing else to decide it). `override: none`,
      a classmate and "not sure" only remove a reason, so they pull neither
-     way. */
+     way.
+
+     GATES. "They can fix it now" and "not private" are PERMISSIONS, not
+     pushes: each is needed before a hard truth can be said, and neither is a
+     reason to say it on its own (everyone could still hear, it could still be
+     the wrong moment). They carry `gate: true`. On a THINK card a gate is
+     `met`, never `against`: the permission held and a where-and-when rule
+     still kept it inside, which is not a higher rule losing. On a SAY card
+     "they can fix it now" is the reason the truth helps, so it decides as it
+     always did. "Not private" only removes a reason, so it also carries
+     `fallback: true`: it decides only when no other agreeing rule can (L3-15
+     has nothing else). A gate row that does not decide is marked weak -
+     needed, not enough alone. Their opposites stay real pushes toward THINK:
+     "they cannot change it" and "it is private" are reasons to keep it
+     inside, and they can decide a card. */
 
   // `why` is the tier's one-line reason, in the learner's words. The Learn
   // screen renders its ladder from this list, so the copy lives here, beside
@@ -145,13 +159,13 @@
       } },
     changeability: { tier: 2, icon: '\u{1F527}', question: 'Can they fix it right now?',
       values: {
-        'fixable-now': { chip: 'They can fix it now', lean: 'say' },
+        'fixable-now': { chip: 'They can fix it now', lean: 'say', gate: true },
         'not-fixable': { chip: 'They cannot change it', lean: 'think' },
       } },
     privacy: { tier: 2, icon: '\u{1F512}', question: 'Is it private?',
       values: {
         private:       { chip: 'It is private', lean: 'think' },
-        'not-private': { chip: 'Not private', lean: 'say' },
+        'not-private': { chip: 'Not private', lean: 'say', gate: true, fallback: true },
       } },
     audience: { tier: 3, icon: '\u{1F442}', question: 'Who would hear it?',
       values: {
@@ -183,12 +197,32 @@
    * against the card's answer.
    *
    *   agree   - the value pulls toward the answer.
-   *   decides - the top-most agreeing row that is not weak. One per card.
+   *   decides - the top-most agreeing row that is not weak and not a
+   *             `fallback` value; when that row is missing or sits below a
+   *             live `against` row, the top-most agreeing fallback row above
+   *             every such row. One per card.
    *   against - the value pulls the other way. Below the deciding row it was
    *             OUTRANKED; above it, the pull was real but did not hold on
    *             this card ("not this time" - e.g. they could fix it, but
    *             everyone would hear).
-   *   neutral - the value pulls neither way.
+   *   neutral - the value pulls neither way (e.g. "nobody is in danger" on a
+   *             card where safety is not at stake). Kept as data; a renderer
+   *             may quiet or omit it.
+   *   met     - a GATE (`gate: true`: fixable now, not private) on a THINK
+   *             card. The permission held, but it is not enough alone, so it
+   *             neither agrees with THINK nor pushes against it. On a SAY card
+   *             a gate is `agree` and, being weak, never decides.
+   *   moot    - a value the card declares does not apply here, through the
+   *             card's `whyMoot` map ({ dim: chip }). Only for a rule that
+   *             would otherwise sit ABOVE the decider pulling the other way
+   *             - where showing it as a live pull would claim a higher rule
+   *             lost. Its chip is replaced by the card's explanation (e.g.
+   *             "Private, but it is yours to tell"); lean keeps the value's
+   *             own pull.
+   *
+   * THE INVARIANT, checked over every card by think-or-say-ladder.spec.js:
+   * exactly one row decides, it is neither weak nor a gate, and no `against`
+   * row sits above it - "higher rules win" holds on every card.
    *
    * Within a tier an agreeing row sorts first, so a same-tier contest reads
    * the way the reason line states it: "it would hurt" sits under "they can
@@ -199,29 +233,41 @@
    */
   function whyLadder(card) {
     var features = (card && card.features) || {};
+    var moot = (card && card.whyMoot) || {};
     var order = Object.keys(WHY);
     var rows = Object.keys(features).filter(function (k) { return WHY[k]; }).map(function (k) {
       var def = WHY[k];
       var val = def.values[features[k]] || { chip: String(features[k]), lean: null };
       var stance = val.lean === null ? 'neutral' : (val.lean === card.answer ? 'agree' : 'against');
+      if (val.gate && stance === 'against') stance = 'met';
+      var chip = val.chip;
+      if (moot[k]) { stance = 'moot'; chip = moot[k]; }
       return {
         dim: k, tier: def.tier, icon: def.icon, question: def.question,
-        value: features[k], chip: val.chip, lean: val.lean, weak: !!val.weak,
-        stance: stance, decides: false, outranked: false,
+        value: features[k], chip: chip, lean: val.lean, weak: !!val.weak,
+        gate: !!val.gate, stance: stance, decides: false, outranked: false,
       };
     });
-    var rankOf = { agree: 0, neutral: 1, against: 2 };
+    var rankOf = { agree: 0, neutral: 1, met: 1, moot: 1, against: 2 };
     rows.sort(function (a, b) {
       return (a.tier - b.tier) || (rankOf[a.stance] - rankOf[b.stance]) ||
         (order.indexOf(a.dim) - order.indexOf(b.dim));
     });
-    var decider = -1;
-    for (var i = 0; i < rows.length; i++) {
-      if (rows[i].stance === 'agree' && !rows[i].weak) { decider = i; break; }
+    var fallbackDim = {};
+    rows.forEach(function (r) { if (WHY[r.dim].values[r.value] && WHY[r.dim].values[r.value].fallback) fallbackDim[r.dim] = true; });
+    var firstAgainst = rows.findIndex(function (r) { return r.stance === 'against'; });
+    var clear = function (i) { return firstAgainst < 0 || i < firstAgainst; };
+    var canDecide = function (r) { return r.stance === 'agree' && !r.weak; };
+    var decider = rows.findIndex(function (r) { return canDecide(r) && !fallbackDim[r.dim]; });
+    if (decider < 0 || !clear(decider)) {
+      var byFallback = rows.findIndex(function (r, i) { return canDecide(r) && clear(i); });
+      if (byFallback >= 0) decider = byFallback;
     }
     return rows.map(function (r, i) {
       r.decides = i === decider;
       r.outranked = r.stance === 'against' && decider >= 0 && i > decider;
+      // A gate that did not decide was needed, and not enough alone.
+      if (r.gate && !r.decides) r.weak = true;
       return Object.freeze(r);
     });
   }
@@ -280,6 +326,17 @@
         fail(spec.id, k + ' value "' + features[k] + '" is not in the universe');
       }
     });
+    // A Why-ladder moot note names a rule the card has in play and that pulls
+    // AGAINST its answer; anything else is a note about nothing.
+    var whyMoot = spec.whyMoot || {};
+    Object.keys(whyMoot).forEach(function (k) {
+      var v = WHY[k] && features[k] !== undefined && WHY[k].values[features[k]];
+      if (!v) fail(spec.id, 'whyMoot names "' + k + '", which is not in play');
+      if (!v.lean || v.lean === spec.answer || v.gate) {
+        fail(spec.id, 'whyMoot "' + k + '" does not pull against the answer');
+      }
+      if (typeof whyMoot[k] !== 'string' || !whyMoot[k]) fail(spec.id, 'whyMoot "' + k + '" needs a chip');
+    });
     // Dimension 7 is an override, and an override that does not override is a
     // mis-keyed card, not a hard one.
     if (features.override === 'help-or-safety' && spec.answer !== 'say') {
@@ -316,6 +373,7 @@
     card.leadIn = LEAD_IN;
     card.question = question;
     card.features = Object.freeze(features);
+    if (spec.whyMoot) card.whyMoot = Object.freeze(whyMoot);
     card.vary = Object.freeze(vary);
     card.rationales = Object.freeze(rationales.slice());
     return Object.freeze(card);
