@@ -10,8 +10,16 @@
    hear" and "you are across the lunchroom" are written into the situation.
 
    Content rule and ORDER IS DATA: see cards-level-1.js. This pool runs
-   THINK, THINK, SAY, SAY in eleven blocks of four, then a THINK, SAY tail:
-   46 cards, 23 THINK and 23 SAY.
+   THINK, THINK, SAY, SAY in fourteen blocks of four, then a THINK, SAY tail:
+   58 cards, 29 THINK and 29 SAY.
+
+   CONFLICT TRIPLETS (blocks 12-14, RESEARCH.md §10.4). Each teaches the ORDER
+   of two rules on one scene: (a) a lower rule decides; (b) one higher-rule
+   fact is added and the answer flips; (c) a lower-rule fact changes and the
+   answer does NOT flip, because the higher rule still decides. (c) cannot be
+   a formal pair (pairs must flip the answer), so the roles are marked in a
+   comment above each triplet instead. Only a triplet whose (a) and (b) turn
+   on the same dimensions is registered as a pair below.
    ----------------------------------------------------------------------- */
 (function (global) {
   'use strict';
@@ -367,6 +375,105 @@
         vary: { setting: 'home', person: 'family', topic: 'body', form: 'statement' },
         reason: 'Say it! You promised to keep it secret - but she could get hurt, and when someone might not be safe, telling a grown-up comes before any promise.' },
 
+      // ── block 12 ──
+      // Triplet: Kind outranks Where & when. In file order (b), (c), (a):
+      //   L2-57 (b) his private grade is added and the answer flips to THINK;
+      //   L2-58 (c) a grown-up asks you herself, and it still stays THINK;
+      //   L2-56 (a) your turn to share decides it, so SAY.
+      // Not a formal pair: (b) adds a dimension (a) does not carry.
+      { id: 'L2-57', level: 2, cat: 'private', answer: 'think',
+        situation: 'At family dinner, Grandma asks everyone to share one thing from their week. It is your turn. Earlier, your big brother told you privately that he got a bad grade on his spelling test, and asked you not to tell anyone.',
+        utterance: 'My brother got a bad grade.', sayVerb: 'tell', object: 'this news',
+        features: { timing: 'right-moment', privacy: 'private' },
+        vary: { setting: 'home', person: 'sibling', topic: 'work', form: 'statement' },
+        reason: 'Think it. It is your turn to share - but his grade is private, and it is his news to tell, not yours.' },
+      { id: 'L2-58', level: 2, cat: 'private', answer: 'think',
+        situation: 'At family dinner, Grandma turns to you and asks, "How is your brother doing at school?" Earlier, your big brother told you privately that he got a bad grade on his spelling test, and asked you not to tell anyone.',
+        utterance: 'My brother got a bad grade.', sayVerb: 'tell', object: 'this news',
+        features: { timing: 'right-moment', privacy: 'private', relationship: 'grown-up' },
+        vary: { setting: 'home', person: 'sibling', topic: 'work', form: 'statement' },
+        reason: 'Think it. His grade is private, and it is his news to tell - even though Grandma is a grown-up you love and she asked you herself. You can say, "You could ask him!"' },
+      { id: 'L2-56', level: 2, cat: 'other', answer: 'say',
+        situation: 'At family dinner, Grandma asks everyone to share one thing from their week. It is your turn. You and your big brother built a blanket fort on Saturday.',
+        utterance: 'My brother and I built a blanket fort.', sayVerb: 'tell', object: 'this news',
+        features: { timing: 'right-moment' },
+        vary: { setting: 'home', person: 'sibling', topic: 'belongings', form: 'statement' },
+        reason: 'Say it. Grandma asked everyone to share and it is your turn, so this is the right moment.' },
+      // Triplet: Kind outranks Where & when, on the bus. In file order (a), (b), (c):
+      //   L2-53 (a) they invited questions, so the right moment decides SAY;
+      //   L2-54 (b) the thought is about how they talk, which hurts and cannot
+      //             change, so it flips to THINK;
+      //   L2-55 (c) nobody else would hear either, and it still stays THINK.
+      // Not a formal pair: (b) adds dimensions (a) does not carry.
+      { id: 'L2-53', level: 2, cat: 'other', answer: 'say',
+        situation: 'A new kid on your bus just moved here from another country. They turn to you and say you can ask them anything about where they used to live. You want to know how to say hello in their language.',
+        utterance: 'How do you say hello in your language?', sayVerb: 'ask', object: 'this question',
+        features: { timing: 'right-moment' },
+        vary: { setting: 'bus', person: 'peer', topic: 'work', form: 'question' },
+        reason: 'Say it. They just invited you to ask, so this is the right moment - and it is a friendly thing to want to know.' },
+
+      // ── block 13 ──
+      { id: 'L2-54', level: 2, cat: 'other', answer: 'think',
+        situation: 'A new kid on your bus just moved here from another country. They turn to you and say you can ask them anything about where they used to live. You notice that their words sound different from the way you talk.',
+        utterance: 'You sound different when you talk.', sayVerb: 'say', object: 'these words',
+        features: { timing: 'right-moment', selfEsteem: 'hurts', changeability: 'not-fixable' },
+        vary: { setting: 'bus', person: 'peer', topic: 'body', form: 'statement' },
+        reason: 'Think it. They did invite questions - but pointing out how someone talks would hurt, and it is not something they can change. Kind comes before a good moment.' },
+      { id: 'L2-55', level: 2, cat: 'other', answer: 'think',
+        situation: 'A new kid on your bus just moved here from another country. They sit right beside you, where nobody else can hear, and say you can ask them anything about where they used to live. You notice that their words sound different from the way you talk.',
+        utterance: 'You sound different when you talk.', sayVerb: 'say', object: 'these words',
+        features: { timing: 'right-moment', audience: 'just-them', selfEsteem: 'hurts', changeability: 'not-fixable' },
+        vary: { setting: 'bus', person: 'peer', topic: 'body', form: 'statement' },
+        reason: 'Think it. Pointing out how someone talks would hurt, and it is not something they can change - even though they invited questions and nobody else would hear.' },
+      // Triplet: Safety outranks Where & when, in the store. In file order (b), (c), (a):
+      //   L2-51 (b) falling cans are added and the answer flips to SAY;
+      //   L2-52 (c) he is also in the middle of talking, and it still stays SAY;
+      //   L2-50 (a) shouting across the store decides it, so THINK.
+      // (a)/(b) are the override pair L2-51/L2-50.
+      { id: 'L2-51', level: 2, cat: 'other', answer: 'say',
+        situation: 'You are at the grocery store with your grandpa. He is at the far end of the aisle, with lots of shoppers in between. A tall stack of cans right beside him has started to tip toward him.',
+        utterance: 'Grandpa, watch out!', sayVerb: 'say', object: 'these words',
+        features: { override: 'help-or-safety', audience: 'others-hear' },
+        vary: { setting: 'shop', person: 'family', topic: 'belongings', form: 'exclamation' },
+        reason: 'Say it! You would have to shout across the store - but the cans could fall on him, and safety always comes before who can hear.' },
+      { id: 'L2-52', level: 2, cat: 'other', answer: 'say',
+        situation: 'You are at the grocery store with your grandpa. He is at the far end of the aisle, with lots of shoppers in between, and he is in the middle of talking to a store worker. A tall stack of cans right beside him has started to tip toward him.',
+        utterance: 'Grandpa, watch out!', sayVerb: 'say', object: 'these words',
+        features: { override: 'help-or-safety', audience: 'others-hear', timing: 'wrong-moment' },
+        vary: { setting: 'shop', person: 'family', topic: 'belongings', form: 'exclamation' },
+        reason: 'Say it! The cans could fall on him, and safety always comes first - even though everyone would hear you shout and he is in the middle of talking.' },
+
+      // ── block 14 ──
+      { id: 'L2-50', level: 2, cat: 'other', answer: 'think',
+        situation: 'You are at the grocery store with your grandpa. He is at the far end of the aisle, with lots of shoppers in between. You just found the cereal he likes.',
+        utterance: 'Grandpa, I found your cereal!', sayVerb: 'say', object: 'these words',
+        features: { override: 'none', audience: 'others-hear' },
+        vary: { setting: 'shop', person: 'family', topic: 'belongings', form: 'exclamation' },
+        reason: 'Think it for now. Nobody is in danger, and you would have to shout it across the whole store for everyone to hear - walk over and tell him.' },
+      // Triplet: Safety outranks Where & when, at home. In file order (a), (b), (c):
+      //   L2-47 (a) Dad asked you to wait, so the wrong moment decides THINK;
+      //   L2-48 (b) the baby on the counter is added and the answer flips to SAY;
+      //   L2-49 (c) his whole team would hear too, and it still stays SAY.
+      // (a)/(b) are the override pair L2-48/L2-47.
+      { id: 'L2-47', level: 2, cat: 'other', answer: 'think',
+        situation: 'Your dad is on an important work call at the kitchen table, and he holds up one finger to ask you to wait. You want to show him the paper plane you just made.',
+        utterance: 'Dad, can I show you my plane?', sayVerb: 'ask', object: 'this question',
+        features: { override: 'none', timing: 'wrong-moment' },
+        vary: { setting: 'home', person: 'family', topic: 'belongings', form: 'question' },
+        reason: 'Think it for now. Nobody is hurt or unsafe, and Dad asked you to wait - the plane can wait until his call is over.' },
+      { id: 'L2-48', level: 2, cat: 'other', answer: 'say',
+        situation: 'Your dad is on an important work call at the kitchen table, and he holds up one finger to ask you to wait. Your baby sister has climbed up onto the kitchen counter and is standing near the edge.',
+        utterance: 'Dad, the baby is on the counter!', sayVerb: 'say', object: 'these words',
+        features: { override: 'help-or-safety', timing: 'wrong-moment' },
+        vary: { setting: 'home', person: 'family', topic: 'body', form: 'exclamation' },
+        reason: 'Say it! Dad asked you to wait - but the baby could fall, and safety always comes before a good moment.' },
+      { id: 'L2-49', level: 2, cat: 'other', answer: 'say',
+        situation: 'Your dad is on a video call with his whole work team, and they can all hear what happens in your kitchen. He holds up one finger to ask you to wait. Your baby sister has climbed up onto the kitchen counter and is standing near the edge.',
+        utterance: 'Dad, the baby is on the counter!', sayVerb: 'say', object: 'these words',
+        features: { override: 'help-or-safety', timing: 'wrong-moment', audience: 'others-hear' },
+        vary: { setting: 'home', person: 'family', topic: 'body', form: 'exclamation' },
+        reason: 'Say it! The baby could fall, and safety always comes first - even though Dad asked you to wait and his whole team would hear you.' },
+
       // ── tail ──
       // A second truthRank defeater, at home: the same picture and both remarks
       // true, so truth is held constant and only whether it hurts or lifts decides.
@@ -410,6 +517,10 @@
       { dim: 'selfEsteem',    a: 'L2-36', b: 'L2-27' },
       { dim: 'changeability', a: 'L2-37', b: 'L2-22' },
       { dim: 'truthRank',     a: 'L2-40', b: 'L2-41', kind: 'defeater' },
+      // The (a)/(b) halves of the two safety triplets (blocks 12-14). Their (c)
+      // cards hold the answer, so they sit in no pair.
+      { dim: 'override',      a: 'L2-51', b: 'L2-50' },
+      { dim: 'override',      a: 'L2-48', b: 'L2-47' },
     ],
   };
 })(typeof window !== 'undefined' ? window : globalThis);
