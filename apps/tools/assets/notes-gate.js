@@ -1394,7 +1394,11 @@
       return { family_id: r.family_id, variant_index: r.variant_index, count: r.count };
     });
     if (!Object.keys(levels).length && !diction.length) return null;
-    return { tool: v.tool, levels: levels, diction: diction };
+    var out = { tool: v.tool, levels: levels, diction: diction };
+    // A share, or nothing: the Worker refuses a malformed one and defaults an
+    // absent one to full weight, so only a genuine share is worth sending.
+    if (typeof v.engagement === "number" && isFinite(v.engagement) && v.engagement >= 0 && v.engagement <= 1) out.engagement = v.engagement;
+    return out;
   }
 
   function auditVoice(entry) {

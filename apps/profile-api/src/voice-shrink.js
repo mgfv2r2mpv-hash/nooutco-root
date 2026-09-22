@@ -89,40 +89,71 @@ export const GREAT_DAY_SDS = 1;
 
 /**
  * Fold one note's measurement into a feature's accumulators.
- * @param {{n:number,sum:number,sum_sq:number}|null} row
+ *
+ * Two triples ride together. The raw one counts every note by one, so a report
+ * can still say "twelve notes". The weighted one counts a note by its
+ * engagement, the share of it that was the technician's own; house-prior.js
+ * says per feature which triple the estimate reads (`evidence`). A weight that
+ * is not a share is treated as one rather than trusted, because it arrives
+ * here only after acceptVoice has already refused anything malformed.
+ *
+ * @param {{n:number,sum:number,sum_sq:number,w_n?:number,w_sum?:number,w_sum_sq?:number}|null} row
  * @param {number} value
+ * @param {number} [weight]  engagement, 0 to 1; missing means 1
  */
-export function accumulateLevel(row, value) {
+export function accumulateLevel(row, value, weight) {
   if (!Number.isFinite(value)) return normaliseRow(row);
   const base = normaliseRow(row);
+  const w = isShare(weight) ? weight : 1;
   return {
     n: base.n + 1,
     sum: base.sum + value,
     sum_sq: base.sum_sq + value * value,
+    w_n: base.w_n + w,
+    w_sum: base.w_sum + w * value,
+    w_sum_sq: base.w_sum_sq + w * value * value,
   };
 }
 
-/** Mean and sample sd from the running sums. */
-export function summariseLevel(row) {
+const isShare = (v) => Number.isFinite(v) && v >= 0 && v <= 1;
+
+/**
+ * Mean and sample sd from the running sums.
+ *
+ * @param {object|null} row
+ * @param {"engaged"|"all"} [evidence]  which triple to read; "all" when absent.
+ *   An engaged feature whose weighted triple is still all zero (a row written
+ *   before the weight columns existed) reads the raw one, so nobody's estimate
+ *   jumps on the deploy that adds them.
+ */
+export function summariseLevel(row, evidence) {
   const base = normaliseRow(row);
-  if (!base.n) return { n: 0, mean: null, sd: null };
-  const mean = base.sum / base.n;
+  const weighted = evidence === "engaged" && base.w_n > 0;
+  const n = weighted ? base.w_n : base.n;
+  const sum = weighted ? base.w_sum : base.sum;
+  const sumSq = weighted ? base.w_sum_sq : base.sum_sq;
+  if (!n) return { n: 0, mean: null, sd: null };
+  const mean = sum / n;
   // Guarded: floating point on running sums can drive a variance that should be
   // zero very slightly negative.
-  const variance = Math.max(0, base.sum_sq / base.n - mean * mean);
+  const variance = Math.max(0, sumSq / n - mean * mean);
   return {
-    n: base.n,
+    n,
     mean,
-    sd: base.n > 1 ? Math.sqrt((variance * base.n) / (base.n - 1)) : 0,
+    sd: n > 1 ? Math.sqrt((variance * n) / (n - 1)) : 0,
   };
 }
 
 function normaliseRow(row) {
   const n = row && Number.isFinite(row.n) ? Math.max(0, Math.trunc(row.n)) : 0;
+  const num = (k) => (row && Number.isFinite(row[k]) ? row[k] : 0);
   return {
     n,
-    sum: row && Number.isFinite(row.sum) ? row.sum : 0,
-    sum_sq: row && Number.isFinite(row.sum_sq) ? row.sum_sq : 0,
+    sum: num("sum"),
+    sum_sq: num("sum_sq"),
+    w_n: Math.max(0, num("w_n")),
+    w_sum: num("w_sum"),
+    w_sum_sq: num("w_sum_sq"),
   };
 }
 
@@ -142,7 +173,7 @@ function normaliseRow(row) {
  */
 export function authorTarget(feature, row) {
   const prior = housePrior(feature);
-  const seen = summariseLevel(row);
+  const seen = summariseLevel(row, prior.evidence);
 
   /* n = 0 leaves authorMean standing in as the house mean.
    *
@@ -186,6 +217,7 @@ export function authorTarget(feature, row) {
     houseMean: prior.mean,
     authorMean: seen.n > 0 ? seen.mean : null,
     direction: prior.direction,
+    evidence: prior.evidence,
     offset,
     greatDay: seen.n > 0 ? greatDay : null,
     shrunk,

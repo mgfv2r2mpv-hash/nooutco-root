@@ -82,11 +82,18 @@
     var harvest = a.harvest || {};
     var pairs = (Array.isArray(a.pairs) ? a.pairs : [])
       .concat(Array.isArray(harvest.specimens) ? harvest.specimens : []);
-    var own = pairs.some(function (p) { return !!p && p.own === true; });
+    var ownCount = pairs.filter(function (p) { return !!p && p.own === true; }).length;
+    var own = ownCount > 0;
     var read = own ? levels(passageOf(a.ids, a.shipped)) : null;
     var diction = Array.isArray(harvest.diction) ? harvest.diction : [];
     if (!read && !diction.length) return null;
-    return { tool: String(a.tool || ""), levels: read || {}, diction: diction };
+    /* Engagement: the share of this note's specimen pairs that are the
+       technician's own prose. The store weights the two shape features by it
+       (house-prior.js, `evidence`), so a note they barely touched teaches the
+       tool less about how they write than one they worked. */
+    var out = { tool: String(a.tool || ""), levels: read || {}, diction: diction };
+    if (read) out.engagement = ownCount / pairs.length;
+    return out;
   }
 
   window.NoteVoice = {

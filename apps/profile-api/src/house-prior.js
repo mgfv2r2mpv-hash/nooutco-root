@@ -65,6 +65,21 @@ export const HOUSE_PROVENANCE = Object.freeze(["maintainer_bar", "bcba_authored"
 export const HOUSE_DIRECTION = Object.freeze(["higher", "none"]);
 
 /**
+ * What counts as evidence of this author, a house judgement like direction.
+ *
+ *   "engaged"  the running sums are weighted by how much of the note was the
+ *              technician's own: an edited note holds their sentences, a copied
+ *              one holds the model's, so the weight selects the notes that are
+ *              evidence of them at all.
+ *   "all"      every note counts the same.
+ *
+ * Kaleb's ruling of 2026-09-22: a great day for a feature with no better end is
+ * their OWN value on the notes they were actually present for. It lives here,
+ * where an observation cannot reach it, for the same reason direction does.
+ */
+export const HOUSE_EVIDENCE = Object.freeze(["engaged", "all"]);
+
+/**
  * Allowlist of keys a corpus entry may carry. Anything else is refused.
  *
  * An allowlist rather than a denylist of author-bearing names, because a
@@ -73,7 +88,7 @@ export const HOUSE_DIRECTION = Object.freeze(["higher", "none"]);
  */
 const ENTRY_KEYS = Object.freeze([
   "feature", "label", "mean", "within_var", "between_var", "floor", "ceiling",
-  "provenance", "basis", "direction",
+  "provenance", "basis", "direction", "evidence",
 ]);
 
 /* The corpus.
@@ -115,6 +130,8 @@ const CORPUS = [
     ceiling: 0.600,
     // Personal. More variability is not better; it is just theirs.
     direction: "none",
+    // Their value on the notes they were present for, not the 7pm copy-outs.
+    evidence: "engaged",
     provenance: "bcba_authored",
     basis: "108 documents behind shape.js, 101 coursework and 7 clinical plans",
   },
@@ -135,6 +152,7 @@ const CORPUS = [
     ceiling: 0.584,         // shape.js STEP_CEILING
     // Stable across registers, so the weakest candidate for a direction.
     direction: "none",
+    evidence: "engaged",
     provenance: "bcba_authored",
     basis: "108 documents behind shape.js, 101 coursework and 7 clinical plans",
   },
@@ -161,6 +179,9 @@ const CORPUS = [
     ceiling: 1.30,
     // The one feature with a better end: name the actor and the condition.
     direction: "higher",
+    /* Unweighted on purpose: the great-day term reads this feature's own spread,
+       and a weight would change the spread it reads. One lever per feature. */
+    evidence: "all",
     provenance: "maintainer_bar",
     basis: "maintainer voice rule 1, name the actor and the condition",
   },
@@ -184,6 +205,12 @@ const CORPUS = [
     ceiling: 0.045,
     // An optimum, not a direction. Too little is a fault and so is too much.
     direction: "none",
+    /* NEVER weighted (Pollux, 2026-09-22). Answering the gap questions resolves
+       the unknowns, so an engaged note carries fewer genuine uncertainties, and
+       weighting toward those notes drags this estimate down for a reason that
+       has nothing to do with how the author hedges. The drift lands inside the
+       band, where the clamp cannot catch it. */
+    evidence: "all",
     provenance: "maintainer_bar",
     basis: "maintainer voice rule 5, mark uncertainty as uncertainty",
   },
@@ -232,6 +259,9 @@ export function buildHousePrior(entries) {
     if (!HOUSE_DIRECTION.includes(entry.direction)) {
       refuse("direction is not one the house accepts: " + String(entry.direction));
     }
+    if (!HOUSE_EVIDENCE.includes(entry.evidence)) {
+      refuse("evidence is not one the house accepts: " + String(entry.evidence));
+    }
     if (typeof entry.feature !== "string" || !entry.feature) {
       refuse("feature must be a non empty string");
     }
@@ -258,6 +288,7 @@ export function buildHousePrior(entries) {
       provenance: entry.provenance,
       basis: entry.basis,
       direction: entry.direction,
+      evidence: entry.evidence,
       // k = withinVariance / betweenVariance, the shrinkage constant. Computed
       // once here so no caller can supply a different one.
       k: entry.within_var / entry.between_var,
