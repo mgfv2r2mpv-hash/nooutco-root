@@ -287,10 +287,15 @@ test.describe('below the bar the tool will not draft yet', () => {
     // button is the one that carries them.
     await expect(page.locator('.revision-skip')).toHaveText(/Use these and generate/);
 
-    /* Drop it and the gate closes again, because now nothing would reach the
-       note. One click since 2026-09-21: a lone suggestion carries its checkmark
-       already on, and pressing it turns it off. */
-    await page.locator('[data-suggestion-tick="0:0"]').click();
+    /* Decline it and the gate closes again, because now nothing would reach
+       the note. His way, 2026-09-22: key your own words (which deselects the
+       lone suggestion, ipso facto), then clear them, and the question has no
+       answer at all. */
+    const own = page.locator('[data-suggestion-own="0:own"]');
+    await own.fill('my own answer');
+    await own.press('Enter');
+    await own.fill('');
+    await own.press('Enter');
     await expect(page.locator('.revision-skip')).toHaveCount(0);
     await expect(page.locator('[data-skip-held]')).toContainText('Keep one of the suggestions');
   });
