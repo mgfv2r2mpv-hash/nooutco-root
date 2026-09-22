@@ -259,12 +259,20 @@ test("the budget caps the moves and spends them on what is furthest out", () => 
     hedging: byName.hedging.band[1] + 1 * byName.hedging.halfWidth,
   };
 
+  /* Furthest out first, by band widths: step_rel 4, actor_naming 3,
+     within_cv 2, hedging 1. The claim under test is the ranking and the cap,
+     not the size of the budget, so the expectation is SLICED by the constant
+     rather than written out. Spelling the answer as a literal made this test
+     fail the day Kaleb ruled the budget down, which told him nothing about the
+     ranking and cost a suite run to read. */
+  const ranked = ["step_rel", "actor_naming", "within_cv", "hedging"];
+
   const plan = planStyleMoves({ targets, measured });
   assert.equal(plan.budget, MOVES_PER_NOTE);
-  assert.equal(plan.spent, 3);
+  assert.equal(plan.spent, MOVES_PER_NOTE);
   assert.equal(plan.inBandMoves, 0);
-  assert.deepEqual(plan.moves.map((m) => m.feature), ["step_rel", "actor_naming", "within_cv"]);
-  assert.deepEqual(plan.withheld, ["hedging"]);
+  assert.deepEqual(plan.moves.map((m) => m.feature), ranked.slice(0, MOVES_PER_NOTE));
+  assert.deepEqual(plan.withheld, ranked.slice(MOVES_PER_NOTE));
 });
 
 test("ranking is by band widths out and not by the raw distance", () => {
