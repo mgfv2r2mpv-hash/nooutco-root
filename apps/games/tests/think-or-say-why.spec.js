@@ -526,5 +526,5 @@ test('the Level 3 rationale folds to one Scored line once a score is picked', as
 
 test('index.html carries no em or en dash', async ({ request }) => {
   const html = await (await request.get(URL)).text();
-  expect(html).not.toMatch(/—|–|&mdash;|&ndash;/);
+  expect(html).not.toMatch(/\u2014|\u2013|&mdash;|&ndash;/);
 });
