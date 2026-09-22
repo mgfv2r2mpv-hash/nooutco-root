@@ -74,6 +74,11 @@ test.describe('the Level 1 rule strip is compact and speaks the ladder', () => {
     expect(s.scrollW, 'no horizontal page scroll').toBeLessThanOrEqual(390);
   });
 
+  // Chromium and WebKit resolve a ::before `content: attr(data-icon)` to the
+  // icon itself; Firefox reports the specified value, attr(data-icon), even
+  // though it draws the icon. Either form means the pill draws its data-icon.
+  const drawsIcon = (drawn, icon) => drawn.includes(icon) || /attr\(data-icon\)/.test(drawn);
+
   test('every pill carries the icon of the Why-ladder dimension it tests', async ({ page }) => {
     await startLevel1(page);
     const want = await expected(page);
@@ -82,11 +87,11 @@ test.describe('the Level 1 rule strip is compact and speaks the ladder', () => {
       expect(s[answer].length, `${answer} row renders every branch`).toBe(want[answer].length);
       s[answer].forEach((p, i) => {
         expect(p.icon, `"${p.text}" has its ladder icon`).toBe(want[answer][i].icon);
-        expect(p.drawn, `"${p.text}" draws its icon`).toContain(want[answer][i].icon);
+        expect(drawsIcon(p.drawn, want[answer][i].icon), `"${p.text}" draws its icon`).toBe(true);
       });
     }
     expect(s.alwaysIcon, 'the always banner carries the override icon').toBe(want.alwaysIcon);
-    expect(s.alwaysDrawn).toContain(want.alwaysIcon);
+    expect(drawsIcon(s.alwaysDrawn, want.alwaysIcon)).toBe(true);
   });
 
   test('the words on screen are exactly the level data, unchanged', async ({ page }) => {
