@@ -6,7 +6,7 @@
  * pins that). On a 390px phone it used to stack one question per line and ran
  * to about 573px, pushing the card most of a screen down. These specs pin the
  * compact form without letting it change a word:
- *   * at 390x844 the strip is at most 320px tall and causes no sideways scroll;
+ *   * at 390x844 the strip is at most 330px tall (whole pills, never split mid-question, cost ~20px over the 307px split-pill layout) and causes no sideways scroll;
  *   * every question pill, and the always banner, carries the Why-ladder icon
  *     of the dimension it tests, derived from the branch's own `when.is`;
  *   * the words on screen are exactly the level data's words, in order.
@@ -67,10 +67,10 @@ const shown = page => page.evaluate(() => {
 test.describe('the Level 1 rule strip is compact and speaks the ladder', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test('on a 390px phone the strip fits in 320px with no sideways scroll', async ({ page }) => {
+  test('on a 390px phone the strip fits in 330px with no sideways scroll', async ({ page }) => {
     await startLevel1(page);
     const s = await shown(page);
-    expect(s.height, 'the strip no longer stacks one question per line').toBeLessThanOrEqual(320);
+    expect(s.height, 'the strip no longer stacks one question per line').toBeLessThanOrEqual(330);
     expect(s.scrollW, 'no horizontal page scroll').toBeLessThanOrEqual(390);
   });
 

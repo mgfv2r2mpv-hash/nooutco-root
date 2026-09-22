@@ -191,19 +191,16 @@
   .rule-tip { font-size: 0.75rem; }
   .rule-always { padding-bottom: 4px; }
   .rule-always-text { line-height: 1.25; }
-  /* Pills flow like text here: a long question may break across a line
-     rather than claim a line of its own, which is what keeps nine questions
-     to a handful of lines on a phone. Each fragment keeps its own box. */
-  .rule-row { font-size: 0.8rem; line-height: 1.75; }
-  .rule-row > .tag { vertical-align: baseline; line-height: 1.2; margin: 0 3px 0 0; }
+  /* Pills wrap as whole pills here, never split mid-question: a question
+     broken across two lines read as two questions. Small type and tight
+     padding are what keep nine questions to a handful of lines on a phone. */
+  .rule-row { font-size: 0.76rem; line-height: 1; }
+  .rule-row > .tag { vertical-align: middle; line-height: 1.2; margin: 0 3px 2px 0; }
   .rule-list li {
-    display: inline;
     font-size: inherit;
-    line-height: inherit;
+    line-height: 1.2;
     padding: 1px 5px;
-    margin: 0 1px 0 0;
-    -webkit-box-decoration-break: clone;
-    box-decoration-break: clone;
+    margin: 0 2px 2px 0;
   }
   .rule-always-text { font-size: 0.8rem; }
   .rule-row > .tag, .rule-always > .tag { font-size: 0.75rem; padding: 1px 6px; }
