@@ -897,6 +897,73 @@
   font-weight: 800;
   box-shadow: 0 0 0 2px #fff;
 }
+/* First time a rule decides a card for this learner: one soft glow and a
+   small "new" tag. Calm on purpose - no confetti, no bounce. */
+.rule-badge-new {
+  border-color: #e0b44c;
+  box-shadow: 0 2px 0 #f0dca6, 0 0 0 3px rgba(224,180,76,0.22);
+  animation: rule-badge-glow 1.6s ease-out 1;
+}
+.rule-badge-new-label {
+  position: absolute;
+  top: -8px;
+  left: -6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #fff8e6;
+  border: 1px solid #e0b44c;
+  color: #8a5a00;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+}
+@keyframes rule-badge-glow {
+  0%   { box-shadow: 0 2px 0 #f0dca6, 0 0 0 0 rgba(224,180,76,0.55); }
+  60%  { box-shadow: 0 2px 0 #f0dca6, 0 0 14px 6px rgba(224,180,76,0.35); }
+  100% { box-shadow: 0 2px 0 #f0dca6, 0 0 0 3px rgba(224,180,76,0.22); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rule-badge-new { animation: none; }
+}
+
+/* All-time shelf: the learner slot's collected rules, one compact line. */
+.done-shelf {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 10px;
+  margin: -6px 0 18px;
+  font-size: 0.82rem;
+  color: #5a6b8a;
+}
+.done-shelf-title {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.shelf-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 8px;
+}
+.shelf-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 8px 1px 6px;
+  border-radius: 999px;
+  background: #f7f9fc;
+  border: 1px solid #dbe2f0;
+}
+.shelf-count { font-weight: 800; color: #1a2438; }
+
 @media (max-width: 560px) {
   #done-card { padding: 22px 16px; }
 }

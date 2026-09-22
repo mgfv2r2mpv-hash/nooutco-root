@@ -176,6 +176,7 @@ const state = {
   // session back exactly as it was rather than dropping the technician on the
   // intro mid-deck. Null whenever the Guide is closed.
   guideReturn: null,
+  shelfBanked: false,      // this session's rules already added to the learner's shelf
   trialErrors: 0,
   trialPrompted: false,
   // Latency, snapshotted the instant the learner answers. At Level 3 the trial
@@ -605,11 +606,36 @@ function beginSession(mode) {
   state.learnMode = (mode === 'learn');
   el.gameIntro.hidden = true;
   removeDoneCard();
+  state.shelfBanked = false;
+  collapseSettingsOnPhone();
   if (state.learnMode) {
     showLearnScreen();
   } else {
     enterTrials();
   }
+}
+
+/* On a phone the expanded settings bar is most of the first screen, so a
+   session that starts with it open puts Learn or the first card ~500px down.
+   Phones only: a technician on a tablet or laptop keeps the bar in view, and
+   the bar is one tap away on a phone through the same minimize control. */
+const PHONE_QUERY = '(max-width: 680px)';
+const isPhone = () => !!(window.matchMedia && window.matchMedia(PHONE_QUERY).matches);
+
+/** Collapse the settings bar through header-chrome's own minimize control. */
+function collapseSettingsOnPhone() {
+  if (!isPhone() || document.body.classList.contains('settings-collapsed')) return;
+  const btn = $('btn-minimize');
+  if (btn) btn.click();
+}
+
+/** Bring a section's top edge just under the sticky site nav (phones only). */
+function scrollSectionIntoView(section) {
+  if (!isPhone() || !section || section.hidden) return;
+  const nav = document.querySelector('noaba-bar');
+  const navBottom = nav ? Math.max(0, nav.getBoundingClientRect().bottom) : 0;
+  const top = section.getBoundingClientRect().top + window.scrollY - navBottom - 8;
+  window.scrollTo(0, Math.max(0, top));
 }
 
 // Learn mode: teaching screen first, then the practice trials.
@@ -629,6 +655,7 @@ function showLearnScreen() {
   renderLearnLadder();
   renderLearnPair();
   el.learnScreen.hidden = false;
+  scrollSectionIntoView(el.learnScreen);
 }
 
 /**
@@ -760,6 +787,7 @@ function enterTrials() {
   el.btnPrompt.hidden = false;
   resetTimer();
   renderTrial();
+  scrollSectionIntoView(el.gameArea);
 }
 
 // ── Render a trial ─────────────────────────────────────────────────────
@@ -1467,7 +1495,9 @@ function finishSession() {
 
   const total = state.results.length;
   const firstTry = state.results.filter(r => r.errors === 0 && !r.prompted).length;
-  const badges = ruleBadges();
+  const counts = ruleCounts();
+  const firstTimeDims = bankShelf(counts);
+  const badges = ruleBadges(counts, firstTimeDims) + shelfLine(loadShelf());
 
   // Render the sheet as the session ends rather than only when Print is pressed,
   // so what the technician hands the BCBA is already built and already current.
@@ -1493,7 +1523,7 @@ function finishSession() {
  * cards answered right on the first try. Probe trials are left out: a probe
  * withholds the ladder, so it taught no rule to collect.
  */
-function ruleBadges() {
+function ruleCounts() {
   const byId = new Map();
   CARDS.ALL.forEach(c => byId.set(c.id, c));
   state.deck.forEach(c => { if (c && c.id) byId.set(c.id, c); });
@@ -1506,6 +1536,12 @@ function ruleBadges() {
     if (!row) return;
     counts.set(row.dim, (counts.get(row.dim) || 0) + 1);
   });
+  return counts;
+}
+
+/** This session's badges; a rule deciding a card for this learner for the first time is marked new. */
+function ruleBadges(counts, firstTimeDims) {
+  const fresh = firstTimeDims || new Set();
   if (!counts.size) return '';
   const tierName = {};
   MODEL.WHY_TIERS.forEach(t => { tierName[t.tier] = t.label; });
@@ -1513,7 +1549,9 @@ function ruleBadges() {
     .sort((a, b) => (b[1] - a[1]) || (MODEL.WHY[a[0]].tier - MODEL.WHY[b[0]].tier))
     .map(([dim, n]) => {
       const def = MODEL.WHY[dim];
-      return `<li class="rule-badge" data-dim="${dim}" data-count="${n}">` +
+      const isNew = fresh.has(dim);
+      return `<li class="rule-badge${isNew ? ' rule-badge-new' : ''}" data-dim="${dim}" data-count="${n}"${isNew ? ' data-new="1"' : ''}>` +
+        (isNew ? '<span class="rule-badge-new-label">new</span>' : '') +
         `<span class="rule-badge-icon" aria-hidden="true">${def.icon}</span>` +
         `<span class="rule-badge-name">${escapeHtml(RULE_NAMES[dim] || tierName[def.tier])}</span>` +
         `<span class="rule-badge-tier">${escapeHtml(tierName[def.tier])}</span>` +
@@ -1523,6 +1561,69 @@ function ruleBadges() {
   return '<div id="done-rules" class="done-rules">' +
     '<h3 class="done-rules-title">Rules that decided your cards</h3>' +
     `<ul class="rule-badges">${items}</ul></div>`;
+}
+
+/* ── Badge shelf ─────────────────────────────────────────────────────────
+   Every rule that has decided a first-try card for this learner slot, counted
+   across sessions, so the done card can say what the learner has collected.
+   Keyed by the opaque slot (A/B/C), never a name. Device-local and optional:
+   every storage touch is guarded, and the done card renders without it. Clear
+   data does NOT empty it, mirroring the slot's saved settings set, which Clear
+   data also leaves alone: the button clears the session record in front of the
+   technician, not the learner's history. */
+const SHELF_KEY_PREFIX = 'nooutco.shelf.think-or-say.';
+const shelfKey = () => SHELF_KEY_PREFIX + state.learner;
+
+function loadShelf() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(shelfKey()) || '{}');
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+    const out = {};
+    Object.keys(raw).forEach(dim => {
+      const n = Number(raw[dim]);
+      if (MODEL.WHY[dim] && Number.isFinite(n) && n > 0) out[dim] = Math.floor(n);
+    });
+    return out;
+  } catch (e) {
+    return {};
+  }
+}
+
+/** Add this session's counts to the shelf once; return the rules it holds for the first time. */
+function bankShelf(counts) {
+  const firstTime = new Set();
+  if (state.shelfBanked || !counts.size) return firstTime;
+  state.shelfBanked = true;
+  const before = loadShelf();
+  const after = Object.assign({}, before);
+  counts.forEach((n, dim) => {
+    if (!before[dim]) firstTime.add(dim);
+    after[dim] = (before[dim] || 0) + n;
+  });
+  try {
+    localStorage.setItem(shelfKey(), JSON.stringify(after));
+  } catch (e) {
+    // No storage (private window, blocked site data): the session's badges
+    // still show; only the all-time line and the new marks go without.
+    return new Set();
+  }
+  return firstTime;
+}
+
+function shelfLine(shelf) {
+  const dims = Object.keys(shelf);
+  if (!dims.length) return '';
+  const items = dims
+    .sort((a, b) => (shelf[b] - shelf[a]) || (MODEL.WHY[a].tier - MODEL.WHY[b].tier))
+    .map(dim => {
+      const name = RULE_NAMES[dim] || dim;
+      return `<li class="shelf-item" data-dim="${dim}" data-count="${shelf[dim]}" title="${escapeHtml(name)}">` +
+        `<span aria-hidden="true">${MODEL.WHY[dim].icon}</span>` +
+        `<span class="shelf-count" aria-label="${escapeHtml(name)}: ${shelf[dim]}">${shelf[dim]}</span></li>`;
+    }).join('');
+  return `<div id="done-shelf" class="done-shelf" data-learner="${state.learner}">` +
+    '<span class="done-shelf-title">All-time</span>' +
+    `<ul class="shelf-items">${items}</ul></div>`;
 }
 
 /** A badge's short name: the rule a deciding row stands for, in two or three words. */
