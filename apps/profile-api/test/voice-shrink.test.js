@@ -3,10 +3,11 @@ import assert from "node:assert/strict";
 
 import {
   housePrior, buildHousePrior, HOUSE_FEATURES, HOUSE_PRIOR, HOUSE_PROVENANCE,
+  HOUSE_DIRECTION,
 } from "../src/house-prior.js";
 import {
   accumulateLevel, summariseLevel, authorTarget, authorTargets, planStyleMoves,
-  countInBandMoves, OUT_OF_BAND, MOVES_PER_NOTE, BAND_SDS,
+  countInBandMoves, OUT_OF_BAND, MOVES_PER_NOTE, BAND_SDS, GREAT_DAY_SDS,
 } from "../src/voice-shrink.js";
 
 /* What is being guarded, and it is three separate things.
@@ -67,10 +68,22 @@ test("shrinkage is pinned against arithmetic done by hand", () => {
 
   /* actor_naming. house 0.85, k 1, this author n = 2 at mean 1.05.
    *   w = 2 / (2 + 1) = 0.6666666666666666
-   *   0.85 + (2/3) * 0.20 = 0.85 + 0.13333333333333333 = 0.9833333333333333   */
+   * This is the ONE feature with a better end, so since 2026-09-21 its author
+   * term is their great day and not their mean. The three features around it
+   * in this test still pin the plain arithmetic, which is the no-offset
+   * property checked by literal rather than by assertion.
+   *   pop var  = 2.25 / 2 - 1.05^2 = 1.125 - 1.1025 = 0.0225
+   *   sample sd = sqrt(0.0225 * 2 / 1) = sqrt(0.045) = 0.21213203435596426
+   *   offset   = 1 * w * sd = (2/3) * 0.21213203435596426 = 0.1414213562373095
+   *   greatDay = 1.05 + 0.1414213562373095 = 1.1914213562373095
+   *   0.85 + (2/3) * (1.1914213562373095 - 0.85) = 1.0776142374915396
+   * Before the term existed this read 0.9833333333333333; the difference is
+   * (2/3)^2 * sd, the offset bought with evidence twice.                    */
   const actor = authorTarget("actor_naming", { n: 2, sum: 2.1, sum_sq: 2.25 });
   near(actor.w, 0.6666666666666666);
-  near(actor.shrunk, 0.9833333333333333);
+  near(actor.offset, 0.1414213562373095);
+  near(actor.shrunk, 1.0776142374915396);
+  assert.notEqual(actor.shrunk, 0.9833333333333333);
 
   /* hedging. house 0.012, k 0.25, this author n = 1 at mean 0.030.
    *   w = 1 / 1.25 = 0.8
@@ -504,6 +517,7 @@ test("a corpus entry sourced from a technician is refused, by provenance", () =>
   const legal = {
     feature: "made_up", label: "x", mean: 0.5, within_var: 0.01, between_var: 0.01,
     floor: 0, ceiling: 1, provenance: "bcba_authored", basis: "test",
+    direction: "none",
   };
   // The control: this entry builds, so every refusal below is about the one
   // thing it changed and not about the entry being malformed.
@@ -522,6 +536,7 @@ test("a corpus entry carrying an author is refused, whatever it calls the field"
   const legal = {
     feature: "made_up", label: "x", mean: 0.5, within_var: 0.01, between_var: 0.01,
     floor: 0, ceiling: 1, provenance: "bcba_authored", basis: "test",
+    direction: "none",
   };
   /* The allowlist is what makes this work on a field nobody has thought of yet.
      A denylist would have to already know the name. */
@@ -553,6 +568,7 @@ test("a malformed house entry is refused rather than defaulted", () => {
   const legal = {
     feature: "made_up", label: "x", mean: 0.5, within_var: 0.01, between_var: 0.01,
     floor: 0, ceiling: 1, provenance: "bcba_authored", basis: "test",
+    direction: "none",
   };
   assert.throws(() => buildHousePrior([{ ...legal, between_var: 0 }]), /between_var must be above zero/);
   assert.throws(() => buildHousePrior([{ ...legal, within_var: -1 }]), /within_var must be above zero/);
@@ -596,4 +612,111 @@ test("every house feature declares a house provenance and a basis a reader can c
     assert.ok(p.basis && p.basis.length > 10, feature);
   }
   assert.equal(BAND_SDS, 1);
+});
+
+
+/* ---- them on a great work day ----------------------------------------------
+ *
+ * Kaleb's ask, 2026-09-21. A great day is their own upper end, and ONLY for a
+ * feature the house says has a better end. Every figure below was worked by
+ * hand from the actor_naming entry (mean 0.85, k = 1, envelope [0.40, 1.30]).
+ *
+ * Rows are built so summariseLevel returns a chosen mean and SAMPLE sd exactly:
+ * for n = 4, sum = 4m and sum_sq = 4 * (s^2 * 3/4) + 4 * m^2.
+ */
+
+const rowFor = (m, s) => ({ n: 4, sum: 4 * m, sum_sq: 4 * (s * s * 3 / 4) + 4 * m * m });
+
+test("a first note buys no great-day offset at all, because one note has no spread", () => {
+  const t = authorTarget("actor_naming", { n: 1, sum: 0.70, sum_sq: 0.49 });
+  assert.equal(t.direction, "higher");
+  assert.equal(t.offset, 0);
+  // w = 1 / (1 + 1) = 0.5; shrunk = 0.85 + 0.5 * (0.70 - 0.85) = 0.775, unchanged
+  // from the arithmetic before the great-day term existed.
+  near(t.value, 0.775);
+});
+
+test("TWO AUTHORS WITH DIFFERENT MEANS GET DIFFERENT TARGETS at the same n, and the offset is off their OWN spread", () => {
+  // The adversary this exists to catch: an offset pointed at the house mean
+  // would pull the same way shrinkage does and converge everyone on the house.
+  const a = authorTarget("actor_naming", rowFor(0.70, 0.10));
+  const b = authorTarget("actor_naming", rowFor(0.95, 0.10));
+  // w = 4 / (4 + 1) = 0.8; offset = 1 * 0.8 * 0.10 = 0.08 for both
+  near(a.offset, 0.08);
+  near(b.offset, 0.08);
+  near(a.greatDay, 0.78);
+  near(b.greatDay, 1.03);
+  // a: 0.85 + 0.8 * (0.78 - 0.85) = 0.794     b: 0.85 + 0.8 * (1.03 - 0.85) = 0.994
+  near(a.value, 0.794);
+  near(b.value, 0.994);
+  assert.notEqual(a.value, b.value);
+  // And neither collapsed onto the house.
+  assert.notEqual(a.value, 0.85);
+  assert.notEqual(b.value, 0.85);
+});
+
+test("the offset is bought with evidence: same spread, fewer notes, smaller offset", () => {
+  const four = authorTarget("actor_naming", rowFor(0.70, 0.10));
+  // n = 2 with the same sample sd 0.10: sum_sq = 2 * (0.01 * 1/2) + 2 * 0.49 = 0.99
+  const two = authorTarget("actor_naming", { n: 2, sum: 1.40, sum_sq: 0.99 });
+  // w(2) = 2 / 3; offset = 0.10 * 2/3 = 0.0666...
+  near(two.offset, 0.10 * 2 / 3);
+  assert.ok(two.offset < four.offset, "fewer notes must buy a smaller offset");
+});
+
+test("A PERSONAL FEATURE GETS NO OFFSET, so its target is the arithmetic from before, to the digit", () => {
+  for (const feature of ["hedging", "within_cv", "step_rel"]) {
+    const prior = housePrior(feature);
+    assert.equal(prior.direction, "none", feature);
+    const row = rowFor(prior.mean + 0.5 * Math.sqrt(prior.within_var), Math.sqrt(prior.within_var));
+    const t = authorTarget(feature, row);
+    assert.equal(t.offset, 0, feature + " must carry no great-day offset");
+    // Recomputed the OLD way, independently, with no offset in it.
+    const w = 4 / (4 + prior.k);
+    const old = prior.mean + w * (t.authorMean - prior.mean);
+    near(t.shrunk, old);
+  }
+});
+
+test("the clamp is still last: a great day past the ceiling is clamped, and the other order gives a different number", () => {
+  const t = authorTarget("actor_naming", rowFor(1.25, 0.30));
+  // offset = 0.8 * 0.30 = 0.24; greatDay = 1.49; shrunk = 0.85 + 0.8 * 0.64 = 1.362
+  near(t.greatDay, 1.49);
+  near(t.shrunk, 1.362);
+  assert.equal(t.value, 1.30);
+  assert.equal(t.clamped, true);
+  // Clamping the author term FIRST and shrinking second would give
+  // 0.85 + 0.8 * (1.30 - 0.85) = 1.21, which is not what came back.
+  assert.notEqual(t.value, 1.21);
+});
+
+test("the great-day width is one band, so a great day sits at the top of the range already called theirs", () => {
+  assert.equal(GREAT_DAY_SDS, BAND_SDS);
+});
+
+test("direction is a closed enum, and a third value is refused rather than admitted with a sign flip", () => {
+  assert.deepEqual([...HOUSE_DIRECTION], ["higher", "none"]);
+  const base = { ...HOUSE_PRIOR.actor_naming };
+  delete base.k;
+  for (const bad of ["lower", "up", 1, true, null, undefined]) {
+    assert.throws(() => buildHousePrior([{ ...base, direction: bad }]),
+      /direction is not one the house accepts/, "direction " + String(bad));
+  }
+  // And it cannot be left off: the allowlist requires every key.
+  const missing = { ...base };
+  delete missing.direction;
+  assert.throws(() => buildHousePrior([missing]), /missing direction/);
+});
+
+test("every house feature declares a direction, and exactly one of them has a better end", () => {
+  const higher = HOUSE_FEATURES.filter((f) => housePrior(f).direction === "higher");
+  assert.deepEqual(higher, ["actor_naming"]);
+  for (const f of HOUSE_FEATURES) assert.ok(HOUSE_DIRECTION.includes(housePrior(f).direction), f);
+});
+
+test("a cold author reports no great day, and a warm one reports the term the target was built from", () => {
+  assert.equal(authorTarget("actor_naming", null).greatDay, null);
+  assert.equal(authorTarget("actor_naming", null).offset, 0);
+  const t = authorTarget("actor_naming", rowFor(0.70, 0.10));
+  near(t.greatDay, t.authorMean + t.offset);
 });
