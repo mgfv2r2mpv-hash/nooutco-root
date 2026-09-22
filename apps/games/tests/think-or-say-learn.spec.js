@@ -144,3 +144,150 @@ test('the done card shows the rules that decided first-try cards, as badges', as
     els.map(e => Number(e.getAttribute('data-count')))));
   expect(counts).toEqual([...counts].sort((x, y) => y - x));
 });
+
+// ── Phone entry, done card clearance, and the all-time badge shelf ──────
+
+/** The smallest Level 1 category, so a played session stays short. */
+async function smallestCategory(page) {
+  await page.goto(URL);
+  await booted(page);
+  return page.evaluate(() => {
+    const counts = {};
+    window.__thinkOrSay.level(1).cards.forEach(c => { counts[c.cat] = (counts[c.cat] || 0) + 1; });
+    return Object.entries(counts).sort((x, y) => x[1] - y[1])[0][0];
+  });
+}
+
+/** Answer every card right on the first try, ending on the done card. */
+async function playAllRight(page) {
+  const deck = (await session(page)).deck;
+  for (let i = 0; i < deck.length; i++) {
+    await page.locator('#reveal-panel').click();
+    await page.locator(`#choices .choice[data-answer="${deck[i].answer}"]`).click();
+    await page.locator('#btn-next').click();
+  }
+  await expect(page.locator('#done-card')).toBeVisible();
+  return deck;
+}
+
+const shelfOf = page => page.locator('#done-shelf .shelf-item').evaluateAll(els =>
+  Object.fromEntries(els.map(e => [e.getAttribute('data-dim'), Number(e.getAttribute('data-count'))])));
+
+test('on a 390px phone, Learn collapses the settings bar and puts the title on screen', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await seed(page, plain(1));
+  await page.goto(URL);
+  await booted(page);
+  await expect(page.locator('#settings-bar')).toBeVisible();
+  await page.locator('#btn-learn').click();
+
+  await expect(page.locator('body')).toHaveClass(/settings-collapsed/);
+  await expect(page.locator('#btn-minimize')).toHaveAttribute('aria-expanded', 'false');
+  const title = await page.locator('#learn-title').boundingBox();
+  const navBottom = await page.evaluate(() => {
+    const nav = document.querySelector('noaba-bar');
+    return nav ? nav.getBoundingClientRect().bottom : 0;
+  });
+  expect(title, 'the Learn title is laid out').toBeTruthy();
+  expect(title.y).toBeGreaterThanOrEqual(navBottom);
+  expect(title.y + title.height).toBeLessThanOrEqual(844);
+  // Near the top, not 500px down under an open settings bar.
+  expect(title.y).toBeLessThan(navBottom + 100);
+
+  // Starting the practice lands on the trial area, not on the page top.
+  await page.locator('#btn-learn-start').click();
+  const area = await page.locator('#game-area').boundingBox();
+  expect(area.y).toBeGreaterThanOrEqual(navBottom - 1);
+  expect(area.y).toBeLessThan(navBottom + 40);
+  await expect(page.locator('#progress-label')).toBeInViewport();
+});
+
+test('on a desktop, starting a session leaves the settings bar open', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await seed(page, plain(1));
+  await page.goto(URL);
+  await booted(page);
+  await page.locator('#btn-play').click();
+  await expect(page.locator('body')).not.toHaveClass(/settings-collapsed/);
+  await expect(page.locator('#settings-bar')).toBeVisible();
+});
+
+test('at 390x844 the done card button scrolls clear of the fixed print bar', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const cat = await smallestCategory(page);
+  await seed(page, plain(1, { category: cat }));
+  await page.goto(URL);
+  await booted(page);
+  await page.locator('#btn-play').click();
+  await playAllRight(page);
+
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  const btn = await page.locator('#btn-again').boundingBox();
+  const bar = await page.locator('#bottom-bar').boundingBox();
+  expect(btn && bar, 'both laid out').toBeTruthy();
+  const overlaps = btn.x < bar.x + bar.width && bar.x < btn.x + btn.width &&
+                   btn.y < bar.y + bar.height && bar.y < btn.y + btn.height;
+  expect(overlaps, `Play again ${JSON.stringify(btn)} vs bar ${JSON.stringify(bar)}`).toBe(false);
+});
+
+test('the all-time shelf grows across sessions for one learner and is separate per slot', async ({ page }) => {
+  const cat = await smallestCategory(page);
+  await seed(page, plain(1, { category: cat }));
+  await page.goto(URL);
+  await booted(page);
+  await page.evaluate(() => {
+    Object.keys(localStorage).filter(k => k.startsWith('nooutco.shelf.')).forEach(k => localStorage.removeItem(k));
+  });
+
+  // Session 1, learner A: every deciding rule is new, and the shelf equals the badges.
+  await page.locator('#btn-play').click();
+  await playAllRight(page);
+  const badges = page.locator('#done-card .rule-badge');
+  const first = await badges.evaluateAll(els => Object.fromEntries(
+    els.map(e => [e.getAttribute('data-dim'), Number(e.getAttribute('data-count'))])));
+  expect(Object.keys(first).length).toBeGreaterThan(0);
+  await expect(page.locator('#done-card .rule-badge-new')).toHaveCount(Object.keys(first).length);
+  await expect(page.locator('#done-card .rule-badge-new-label').first()).toHaveText('new');
+  expect(await shelfOf(page)).toEqual(first);
+
+  // Session 2, same learner after a reload: counts add up, nothing is new again.
+  await page.goto(URL);
+  await booted(page);
+  await page.locator('#btn-play').click();
+  await playAllRight(page);
+  await expect(page.locator('#done-card .rule-badge-new')).toHaveCount(0);
+  const doubled = Object.fromEntries(Object.entries(first).map(([d, n]) => [d, n * 2]));
+  expect(await shelfOf(page)).toEqual(doubled);
+
+  // Learner B starts an empty shelf of its own; A's is untouched.
+  await page.locator('#sel-learner').selectOption('B');
+  await page.locator('#btn-again').click();
+  await playAllRight(page);
+  expect(await shelfOf(page)).toEqual(first);
+  await expect(page.locator('#done-shelf')).toHaveAttribute('data-learner', 'B');
+  await expect(page.locator('#done-card .rule-badge-new')).toHaveCount(Object.keys(first).length);
+  const stored = await page.evaluate(() => ({
+    a: JSON.parse(localStorage.getItem('nooutco.shelf.think-or-say.A') || '{}'),
+    b: JSON.parse(localStorage.getItem('nooutco.shelf.think-or-say.B') || '{}'),
+  }));
+  expect(stored.a).toEqual(doubled);
+  expect(stored.b).toEqual(first);
+});
+
+test('the done card still renders when storage throws', async ({ page }) => {
+  const cat = await smallestCategory(page);
+  await seed(page, plain(1, { category: cat }));
+  await page.goto(URL);
+  await booted(page);
+  await page.evaluate(() => {
+    const orig = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (k, v) {
+      if (String(k).startsWith('nooutco.shelf.')) throw new Error('blocked');
+      return orig.call(this, k, v);
+    };
+  });
+  await page.locator('#btn-play').click();
+  await playAllRight(page);
+  await expect(page.locator('#done-card .rule-badge').first()).toBeVisible();
+  await expect(page.locator('#btn-again')).toBeVisible();
+});
