@@ -578,10 +578,26 @@ moment the learner has just answered one half of it.
 ### 10.7 Balance and breadth
 
 Level 2 ran 18 THINK to 10 SAY (64% THINK), enough that a learner guessing THINK scored
-well above chance. This sprint added cards to bring every level within one card of even,
-weighted toward SAY cards that a higher rule unlocks (safety, a problem they can fix right
-now, heard by only them). It also added a second scene per dimension to the probe
-generator, so a generalization probe varies the situation and not only the names in it.
+well above chance. The sprint took the authored pools from 81 cards to 153, each level
+within one card of even: Level 1 35 to 53 (27/26), Level 2 28 to 58 (29/29), Level 3 18
+to 42 (21/21). The new SAY cards lean on the ones a higher rule unlocks (safety, a problem
+they can fix right now, heard by only them). The probe generator gained a second scene per
+dimension (86 to 180 generated items), so a generalization probe varies the situation and
+not only the names in it.
+
+### 10.8 Conflict triplets teach the order
+
+A matched pair shows that one feature can flip the answer. It cannot show that a feature
+LOWER in the order can change without flipping it, because definePairs requires the answer
+to flip. The sprint added conflict triplets at Levels 2 and 3 for that: (a) a card decided
+by a lower rule, (b) the same scene with one higher-rule fact added, which flips it, and (c)
+the same scene with a lower-rule fact changed as well, which does not flip it, because the
+higher rule still decides (e.g. a friend's brakes do not work, and it is still SAY in front
+of the whole class). (a) and (b) are registered as a pair where the model allows, and each
+triplet is marked in a comment above its cards. The (c) reasons name the rule that did not
+matter ("even though everyone can hear..."). Like the ladder itself (§10.4), the triplet is
+an inference from conditional discrimination and minimum-difference teaching, not a tested
+procedure.
 
 ## 11. References
 
