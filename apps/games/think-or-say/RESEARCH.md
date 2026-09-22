@@ -505,7 +505,83 @@ checkbox is superseded by the level selector and is retired - a stored
 
 ---
 
-## 10. References
+## 10. Teaching the why: the 2026-09-22 sprint
+
+This round asked for more cards, a closer THINK/SAY balance, and a screen that shows
+the learner WHY a thought is kept in or said out loud, without burying them in text.
+What the literature says about each part, and what the build did with it:
+
+### 10.1 The reason goes in the consequence: instructive feedback
+
+Instructive feedback puts extra information in the consequence of a trial and asks
+for no response to it. A 24-study review found it speeds acquisition at little cost
+in instruction time (Werts, Wolery, Holcombe & Gast 1995). With autistic learners it
+has taught multi-word explanations as the secondary target (Tullis et al. 2016,
+*Analysis of Verbal Behavior* 33:64-79), with maintenance and some generalization in a
+replication (Gibbs et al. 2023, *AVB* 40:248-270), and a 2026 comparison found targets
+placed in the consequence generally more efficient and more preferred than ones placed
+before the trial (Cifuentes et al. 2026, *AVB* 42:1-25). Gains vary by learner, and some
+need direct teaching first. **Build:** after a correct answer, the Why ladder shows the
+card's reason and the rules in play. It asks for no response, and it follows the same
+support switch and probe suppression as the reason line it replaces. At Level 3 it waits
+until the technician has scored the spoken reason, because before that it is the answer
+sheet.
+
+### 10.2 A short named rule with a rationale beats a story
+
+The teaching interaction procedure (label the skill, give a meaningful rationale,
+describe, model, role-play, feedback) mastered 18 of 18 skills against 4 of 18 for Social
+Stories head to head (Leaf et al. 2012, *JABA* 45:281-298; replicated Kassardjian et al.
+2014, *JADD* 44:2329). Social Stories on their own show low to variable effects (Kokina &
+Kern 2010, *JADD* 40:812; Reynhout & Carter 2006, *JADD* 36:445). **Build:** every
+dimension carries a fixed short question and one chip of text per value, never a
+paragraph. The rule is a label plus a reason, shown on the card it decides.
+
+### 10.3 The nearest study to this game's target
+
+Bergstrom, Najdowski, Alvarado & Tarbox (2016, *JABA* 49:405-410) taught kind responses
+to an undesired gift and to an unwanted change in someone's appearance using rules,
+multiple exemplars, role-play and feedback, and the learners generalized to untrained
+people and items. That is truth ranked below kindness, the `truthRank` defeater, taught
+directly. Persicke et al. (2022, *BAP* 16:826) found new scenarios generalized but real
+play did not until training moved into it, which is why the staff guide points
+technicians at real-life practice rather than claiming the game finishes the job.
+
+### 10.4 The hierarchy is a design inference, and is labelled as one
+
+We found no study that teaches an explicit ranking of social rules (safety, then
+kindness, then where and when, then who, then whether it is true). Bergstrom 2016 is the
+closest (kindness over literal truth). The Hidden Curriculum (Myles, Trautman & Schelvan
+2004) is practitioner guidance without efficacy data, and we found no peer-reviewed
+efficacy study for SOCCSS. The ladder rests on stated rules, conditional discrimination
+and visual supports, each with evidence of its own, but nothing has tested the ladder as
+a whole. Read the ladder as the model the cards were written to, not as a finding.
+
+### 10.5 Visual form
+
+Thought-bubble training helped autistic children pass false-belief and transfer tasks
+(Wellman et al. 2002, *Autism* 6:343-363), and autistic children read thought bubbles as
+private, possibly false, mental states (Kerr & Durkin 2004, *JADD* 34:637). The Power
+Card Strategy (a short rule card with an icon) now has a meta-analysis meeting WWC
+standards across 7 studies (Gulboy & Bayrakdar 2026, *Rev J Autism Dev Disord*). Comic
+Strip Conversations rest on weak designs and were not used as a model.
+
+### 10.6 The contrast made visible
+
+The matched minimum-difference pairs of §3.3 and §5.3 were in the data but never on
+screen. The Why ladder's "Flip it" row now shows the partner card and the one feature
+that changed, which is the contrast Horner, Albin & Ralph (1986) describe, shown at the
+moment the learner has just answered one half of it.
+
+### 10.7 Balance and breadth
+
+Level 2 ran 18 THINK to 10 SAY (64% THINK), enough that a learner guessing THINK scored
+well above chance. This sprint added cards to bring every level within one card of even,
+weighted toward SAY cards that a higher rule unlocks (safety, a problem they can fix right
+now, heard by only them). It also added a second scene per dimension to the probe
+generator, so a generalization probe varies the situation and not only the names in it.
+
+## 11. References
 
 * Belisle, J., Dixon, M. R., Stanley, C. R., Munoz, B., & Daar, J. H. (2016).
   Teaching foundational perspective-taking skills to children with autism using the
