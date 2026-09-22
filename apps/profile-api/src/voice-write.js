@@ -38,8 +38,16 @@ export const VOICE_TOOLS = Object.freeze(["bt", "sup", "parent", "assess", "sap"
    of them under 2. A value past this is a broken client or a forged payload,
    and folded into a running sum it would move one author's mean further than a
    year of their real notes. Refused, not clamped: clamping would still enter an
-   observation nobody made. */
-export const LEVEL_MAX = 10;
+   observation nobody made.
+
+   Kaleb ruled this from 10 to 4 on 21 September. Ten refused only obvious
+   garbage, so a broken client writing a 9 was accepted and quietly dragged an
+   author's running mean. Four is twice the highest reading any real note has
+   produced, which leaves a genuine outlier room and still refuses a client that
+   has stopped making sense. The error this now prefers is refusing one real
+   outlying note, and the cost of that error is that its author teaches the tool
+   nothing from that note. */
+export const LEVEL_MAX = 4;
 
 /* One request's worth. The browser flushes up to this many notes at once, and
    a burst past it is refused rather than written, the same way the batch caps

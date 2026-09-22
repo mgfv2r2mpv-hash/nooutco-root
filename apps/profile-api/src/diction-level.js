@@ -53,8 +53,16 @@ export const FAMILY_IDS = Object.freeze(Object.keys(FAMILY_VARIANTS));
 
 /* A note that mentions one family two hundred times is a note with a stuck key
    in it, not an author with a preference. The cap bounds one note's vote so a
-   single note cannot outweigh a year of them. */
-export const MAX_COUNT_PER_NOTE = 50;
+   single note cannot outweigh a year of them.
+
+   Kaleb ruled this from 50 to 10 on 21 September. The old number was written as
+   "50 is a guess" and it was guessed too high to do its own job: a BT session
+   note runs a few hundred words, so one family reaching fifty inside it is the
+   stuck key rather than the preference, and a cap that only fires on the stuck
+   key is not bounding a vote at all. Ten sits well above anything a real note
+   produces and well below anything a jam produces, which is where a bound
+   belongs. */
+export const MAX_COUNT_PER_NOTE = 10;
 
 const isWhole = (v) => typeof v === "number" && Number.isFinite(v) && Math.floor(v) === v;
 

@@ -41,11 +41,13 @@ import { housePrior, HOUSE_FEATURES } from "./house-prior.js";
 
 /**
  * How many moves one note may spend. Small on purpose: this is a style budget,
- * not a rewrite. Four features carry a house prior today, so three is "most but
- * never all of them", which keeps a note from being turned inside out over
- * measures that are each worth a nudge.
+ * not a rewrite. Four features carry a house prior today, and Kaleb ruled this
+ * to 2 on 18 September: half the measures, so a note gets touched where it is
+ * furthest off and left alone everywhere else. His standing requirement is that
+ * the tool sound like the author without overtrying, and three of four measures
+ * moved in one note is most of that note's style rather than a nudge.
  */
-export const MOVES_PER_NOTE = 3;
+export const MOVES_PER_NOTE = 2;
 
 /**
  * Half the width of an author's band, in units of that author's own note to
