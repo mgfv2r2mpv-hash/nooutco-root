@@ -27,3 +27,43 @@ database_id = "e4eb3582-a8a1-4f8c-a072-0ba5580191d6"
 # twice a year.
 [triggers]
 crons = ["0 0 * * 6", "0 1 * * 6"]
+
+# ─────────────────────────────── the preview instance, ruled by Kaleb 21 Sept
+#
+# "Give preview its own bindings and its own profile store."
+#
+# Until now both tools Pages projects bound PROFILE to THIS Worker on
+# production and to nothing at all on preview, so a branch preview painted the
+# interface and could not write a profile, while `dev` wrote into the same
+# store the live staff notes write into. A review surface for the voice work
+# needs to be able to write and must not write there.
+#
+# Deploy:  npx wrangler deploy --config apps/profile-api/wrangler.toml --env preview
+#
+# THE CRONS ARE EMPTIED ON PURPOSE, and that is the one line here with teeth.
+# Wrangler INHERITS `triggers` into a named environment, so leaving this out
+# would have given the preview Worker the same Friday schedule and mailed a
+# supervisor digest built out of review data. Emptying it is the first of two
+# independent stops: the second is that RESEND_API_KEY is never set here, and
+# weekly.js returns "RESEND_API_KEY not set" rather than sending. Either alone
+# would do. Both is deliberate, because this one cannot be tested by running it.
+#
+# Bindings do NOT inherit, which is why DB is restated below. `workers_dev`
+# does inherit, and it is restated anyway: the service binding is this Worker's
+# only ingress, on preview exactly as on production, and a line stating that is
+# cheaper than a reader going to look.
+[env.preview]
+name = "bt-profile-api-preview"
+workers_dev = false
+
+[[env.preview.d1_databases]]
+binding = "DB"
+database_name = "bt-profiles-preview"
+# Created 2026-09-22 in ENAM, the same region as the production store, and
+# built from schema.sql alone. The one file in migrations/ adds two columns
+# that schema.sql now declares in the CREATE TABLE itself, so a store made this
+# way is already at that shape and the migration has nothing left to do.
+database_id = "8d24ea55-0901-4f75-a753-568234dccf74"
+
+[env.preview.triggers]
+crons = []
