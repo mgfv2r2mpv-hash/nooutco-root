@@ -329,3 +329,49 @@ test('a probe keeps the thought bubble unsettled', async ({ page }) => {
   await expect(page.locator('#btn-next')).toBeVisible();
   await expect(page.locator('#scenario-thought')).not.toHaveClass(/is-said|is-kept/);
 });
+
+test('on a phone the ladder scrolls into view and Next clears the print bar', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await seed(page, plain(2));
+  await page.goto(URL);
+  await booted(page);
+  const i = await firstWhere(page, 2, '(c, rows, pairs) => pairs.some(p => p.a === c.id || p.b === c.id)');
+  await page.locator('#btn-play').click();
+  await advanceTo(page, i);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await chooseTile(page, i);
+
+  // The ladder's top lands on screen without the learner scrolling.
+  await expect.poll(async () => {
+    const b = await page.locator('#why-panel').boundingBox();
+    return b && b.y >= 0 && b.y < 844;
+  }, { timeout: 3000 }).toBe(true);
+
+  const overlaps = async () => {
+    const n = await page.locator('#btn-next').boundingBox();
+    const bar = await page.locator('#bottom-bar').boundingBox();
+    return n.x < bar.x + bar.width && bar.x < n.x + n.width &&
+           n.y < bar.y + bar.height && bar.y < n.y + n.height;
+  };
+  // Where the scroll left it, and at the very bottom of the page.
+  await page.waitForTimeout(600);
+  expect(await overlaps(), 'Next under the print bar after the auto-scroll').toBe(false);
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await page.waitForTimeout(100);
+  expect(await overlaps(), 'Next under the print bar at the bottom of the page').toBe(false);
+});
+
+test('the decides-it row pulses once, and not under reduced motion', async ({ page }) => {
+  await seed(page, plain(1));
+  await page.goto(URL);
+  await booted(page);
+  await page.locator('#btn-play').click();
+  await chooseTile(page, 0);
+  const names = () => page.locator('#why-rows .is-decider').evaluate(e => getComputedStyle(e).animationName);
+  expect(await names()).toContain('why-pulse');
+  expect(await page.locator('#why-rows .is-decider')
+    .evaluate(e => getComputedStyle(e).animationIterationCount)).not.toContain('infinite');
+
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  expect(await names()).toBe('none');
+});

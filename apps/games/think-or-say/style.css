@@ -997,6 +997,13 @@
   .choice { width: 130px; }
 }
 
+/* The print / clear bar is fixed bottom-right (game-chrome.css: 20px up, 54px
+   tall). On a phone the centred Next button runs under it, so the trial area
+   ends with room for the bar and Next can always scroll clear of it. */
+@media (max-width: 680px) {
+  #game-area { padding-bottom: 96px; }
+}
+
 /* The level's own one-line description, sitting beside its selector. Reading it
    in the bar is how a technician confirms that the pool the plan named is the
    pool in force before the session starts. */
@@ -1151,7 +1158,7 @@
 .why-rows { list-style: none; margin: 0; padding: 4px 0; }
 .why-row {
   display: grid;
-  grid-template-columns: 22px minmax(0, 1fr) auto auto 92px;
+  grid-template-columns: 22px minmax(0, 1fr) auto auto minmax(92px, auto);
   align-items: center;
   column-gap: 8px;
   padding: 5px 12px;
@@ -1203,6 +1210,21 @@
   background: var(--say);
 }
 .why-think .why-row.is-decider .why-mark { background: #b07c10; }
+/* The rule that decides it glows once as it lands, so the eye goes there. */
+.why-row.is-decider {
+  animation: why-in 0.28s ease both, why-pulse 0.9s ease 1 both;
+  animation-delay: calc(var(--i, 0) * 80ms), calc(var(--i, 0) * 80ms + 280ms);
+  --pulse: rgba(47,143,87,0.45);
+}
+.why-think .why-row.is-decider { --pulse: rgba(217,156,31,0.5); }
+@keyframes why-pulse {
+  0%   { box-shadow: inset 0 0 0 0 transparent; }
+  35%  { box-shadow: inset 0 0 0 2px var(--pulse), 0 0 0 3px var(--pulse); }
+  100% { box-shadow: inset 0 0 0 0 transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .why-row.is-decider { animation: none; }
+}
 /* A rule pulling the other way: shown, but struck - it lost. */
 .why-row.why-against .why-q,
 .why-row.why-against .why-chip,
