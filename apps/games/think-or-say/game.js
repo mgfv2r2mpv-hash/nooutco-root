@@ -892,6 +892,26 @@ const trialOnScreen = () => !el.gameArea.hidden && !el.scenarioSection.hidden;
  * Read through supportOn(), not off the configuration, because it is a SUPPORT:
  * a probe trial withholds it exactly as it withholds the reason reveal.
  */
+/**
+ * The Why-ladder icon for the dimension a rule question tests, so a pill in the
+ * strip carries the same picture as the ladder row it will later light up.
+ *
+ * Derived from the question's own `when.is` predicate (its first key is the
+ * dimension it asks about) and looked up in the model's WHY table, never
+ * hard-coded, so a rewritten branch picks up its new icon for free. It rides in
+ * a data attribute drawn by CSS `::before`, which keeps the pill's text content
+ * exactly the rule text the data declares. Any lookup that fails leaves the pill
+ * without an icon rather than throwing mid-render.
+ */
+function setRuleIcon(node, branch) {
+  const is = branch && branch.when && branch.when.is;
+  const dim = is && typeof is === 'object' ? Object.keys(is)[0] : null;
+  const why = dim && MODEL && MODEL.WHY ? MODEL.WHY[dim] : null;
+  if (!why || !why.icon) return;
+  node.dataset.icon = why.icon;
+  node.dataset.dim = dim;
+}
+
 function renderRulePanel() {
   const rule = CARDS.level(state.cfg.level).rule;
   const show = !!rule && supportOn('showRule') && trialOnScreen();
@@ -919,6 +939,7 @@ function renderRulePanel() {
     for (const branch of rule.branches.filter(b => b.answer === answer)) {
       const item = document.createElement('li');
       item.textContent = branch.test;
+      setRuleIcon(item, branch);
       list.appendChild(item);
     }
     row.append(tag, list);
@@ -938,6 +959,7 @@ function renderRulePanel() {
     const text = document.createElement('p');
     text.className = 'rule-always-text';
     text.textContent = rule.always.test + ' ' + rule.always.note;
+    setRuleIcon(text, rule.always);
     banner.append(tag, text);
     rows.unshift(banner);
   }

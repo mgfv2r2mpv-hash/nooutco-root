@@ -95,63 +95,119 @@
    length so a technician does not have to leave the trial to check it. */
 .rule-panel {
   width: min(680px, 100%);
-  padding: 10px 14px 8px;
+  padding: 8px 12px 7px;
   background: #f7f9fc;
   border: 1px solid var(--accent-soft);
   border-radius: 12px;
-}
-.rule-head {
-  display: flex;
+  /* The head's two spans join this grid (the head itself is display:contents)
+     so the tip can sit on the title's row instead of costing a line below. */
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas: "title lead tip" "body body body";
   align-items: baseline;
-  flex-wrap: wrap;
-  gap: 4px 10px;
-  margin-bottom: 8px;
+  column-gap: 10px;
 }
+.rule-head { display: contents; }
 .rule-title {
-  font-size: 0.74rem;
+  grid-area: title;
+  font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: #4a5568;
 }
-.rule-lead { font-size: 0.9rem; font-weight: 600; color: #1a2438; }
-.rule-body { display: flex; flex-direction: column; gap: 6px; }
-.rule-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
-/* The standing override reads above the two columns and is weighted to look
-   like the rule that outranks them, not a third column. */
-.rule-always {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 0 0 8px;
-  margin: 0 0 4px;
-  border-bottom: 1px dashed var(--line, #d9d4c7);
-}
-.rule-always-text {
-  margin: 0;
-  font-size: 0.88rem;
-  font-weight: 700;
-  color: var(--ink, #20242c);
+.rule-lead { grid-area: lead; margin-bottom: 6px; font-size: 0.88rem; font-weight: 600; color: #1a2438; }
+.rule-body { grid-area: body; display: flex; flex-direction: column; gap: 5px; }
+/* Each answer is one flowing row: its tag first, then its questions as pills
+   that wrap inline behind it, so the eight questions take a few lines rather
+   than one line each. The list stays a real <ul>; it just flows inline. */
+.rule-row { line-height: 1; }
+.rule-row > .tag {
+  display: inline-block;
+  vertical-align: middle;
+  margin: 0 5px 4px 0;
+  padding: 3px 7px;
+  font-size: 0.75rem;
 }
 .rule-list {
+  display: inline;
   list-style: none;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
   margin: 0;
   padding: 0;
 }
 .rule-list li {
-  font-size: 0.88rem;
-  line-height: 1.3;
+  display: inline-block;
+  vertical-align: middle;
+  max-width: 100%;
+  margin: 0 4px 4px 0;
+  font-size: 0.86rem;
+  line-height: 1.25;
   color: #2d3748;
   background: #fff;
   border: 1px solid var(--accent-soft);
   border-radius: 8px;
-  padding: 4px 9px;
+  padding: 3px 8px;
 }
-.rule-tip { margin: 8px 0 0; font-size: 0.8rem; color: #5a6b8a; }
+/* The Why-ladder icon of the dimension the question tests, drawn from the
+   pill's data-icon so the pill's text stays exactly the rule text. */
+.rule-list li[data-icon]::before,
+.rule-always-text[data-icon]::before {
+  content: attr(data-icon);
+  margin-right: 4px;
+}
+/* The standing override reads above the two answer rows and is weighted to
+   look like the rule that outranks them: one line of tag and text, set off by
+   a rule underneath. */
+.rule-always {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 0 0 5px;
+  margin: 0 0 2px;
+  border-bottom: 1px dashed var(--line, #d9d4c7);
+}
+.rule-always > .tag { padding: 3px 7px; font-size: 0.75rem; }
+.rule-always-text {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.3;
+  font-weight: 700;
+  color: var(--ink, #20242c);
+}
+.rule-tip { grid-area: tip; justify-self: end; text-align: right; margin: 0; font-size: 0.78rem; color: #4f5f7d; }
+.rule-tip[hidden] { display: none; }
+
+/* Phones: smaller type, tighter pills, and the tip moved up beside the title
+   so it costs no line of its own. The head's two spans join the panel grid so
+   title and tip share the top row and the lead sits under them. */
+@media (max-width: 680px) {
+  .rule-panel {
+    grid-template-columns: auto 1fr;
+    grid-template-areas: "title tip" "lead lead" "body body";
+    padding: 7px 10px 6px;
+  }
+  .rule-lead { margin: 2px 0 4px; font-size: 0.82rem; }
+  .rule-body { gap: 3px; }
+  .rule-tip { font-size: 0.75rem; }
+  .rule-always { padding-bottom: 4px; }
+  .rule-always-text { line-height: 1.25; }
+  /* Pills flow like text here: a long question may break across a line
+     rather than claim a line of its own, which is what keeps nine questions
+     to a handful of lines on a phone. Each fragment keeps its own box. */
+  .rule-row { font-size: 0.8rem; line-height: 1.75; }
+  .rule-row > .tag { vertical-align: baseline; line-height: 1.2; margin: 0 3px 0 0; }
+  .rule-list li {
+    display: inline;
+    font-size: inherit;
+    line-height: inherit;
+    padding: 1px 5px;
+    margin: 0 1px 0 0;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+  }
+  .rule-always-text { font-size: 0.8rem; }
+  .rule-row > .tag, .rule-always > .tag { font-size: 0.75rem; padding: 1px 6px; }
+}
 
 /* ── Pre-start blurb ───────────────────────────────────────────────── */
 .game-intro {
