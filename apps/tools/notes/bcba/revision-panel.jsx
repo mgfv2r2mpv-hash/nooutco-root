@@ -408,7 +408,14 @@ function SuggestionRow({ id, text, original, accepted, alternatives, own, onTogg
       )}
 
       <span className="cx-ctl tg-suggestion-ctl">
-        {accepted || own ? (
+        {own && !accepted && !!(text || "").trim() && !dirty ? (
+          /* Their own words are there but a preloaded row was checked after. The
+             text is kept; this makes it the choice again, ipso facto. */
+          <button type="button" className="tg-check" data-suggestion-tick={id}
+            title="Use my own words instead" aria-label="Choose my own words" onClick={onToggle}>
+            &#10003;
+          </button>
+        ) : accepted || own ? (
           <React.Fragment>
             <button
               type="button"
@@ -436,29 +443,8 @@ function SuggestionRow({ id, text, original, accepted, alternatives, own, onTogg
                 &#8617;
               </button>
             )}
-            {/* DECLINING, which his three-row ruling had no room for and which
-                two specs pin: dropping the one that stands leaves the question
-                with NO answer, the gate closes again because nothing would
-                reach the note, and that is a state technicians are allowed to
-                be in. It is the safe one, because the drafter then works from
-                the standing defaults rather than from a reading nobody chose.
-
-                He said the checkmark "toggles it as the choice", so this is
-                that same checkmark already on, rather than a fourth glyph to
-                learn. On the chosen row it means drop; on any other row it
-                means take. */}
-            {!own && (
-              <button
-                type="button"
-                className="tg-check is-on"
-                data-suggestion-tick={id}
-                title="Drop this one, and answer in your own words instead"
-                aria-label="Drop this suggestion"
-                onClick={onToggle}
-              >
-                &#10003;
-              </button>
-            )}
+            {/* No drop control here. His ruling, 2026-09-22: checking another
+                row, or keying your own words, is ipso facto the decline. */}
           </React.Fragment>
         ) : (
           <button
@@ -1031,9 +1017,9 @@ function RevisionPanel({
                       id={i + ":own"}
                       own
                       text={((suggestState || {})[i + ":own"] || {}).text || ""}
-                      accepted={false}
-                      alternatives={false}
-                      onToggle={() => {}}
+                      accepted={suggestionAccepted ? suggestionAccepted(i, "own") : false}
+                      alternatives={q.suggestions.length > 0}
+                      onToggle={() => onToggleSuggestion(i + ":own")}
                       onEdit={(text) => onEditSuggestion(i + ":own", text)}
                     />
                   </div>

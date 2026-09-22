@@ -3125,6 +3125,11 @@ function App() {
      and leaves a pair arriving with one picked instead of both. */
   const suggestionAccepted = (qi, si) => {
     const st = (S.suggestState || {})[suggestKey(qi, si)];
+    /* HIS RULING, 2026-09-22: the own-words field is option N + 1 and selection
+       is exclusive and ipso facto. The own slot is accepted when it holds text
+       and has not been deselected by a row being checked. It has no default of
+       its own: with nothing typed there is nothing to accept. */
+    if (si === "own") return !!(st && typeof st.text === "string" && st.text.trim()) && !(st && st.reverted);
     if (st && typeof st.reverted === "boolean") return !st.reverted;
     return si === 0;
   };
@@ -3143,6 +3148,7 @@ function App() {
      model reads it in the same turn and can tell for itself whether it is a
      rewording of the question's answer or something for the expert. */
   const ownAnswer = (qi) => {
+    if (!suggestionAccepted(qi, "own")) return "";
     const st = (S.suggestState || {})[qi + ":own"];
     return st && typeof st.text === "string" ? st.text : "";
   };
@@ -3166,13 +3172,18 @@ function App() {
     const setReverted = (k, reverted) => {
       next[k] = { ...(next[k] || {}), reverted: reverted };
     };
-    const picking = !suggestionAccepted(qi, si);
+    const slot = parts[1] === "own" ? "own" : si;
+    const picking = !suggestionAccepted(qi, slot);
     setReverted(key, !picking);
     if (picking) {
+      /* Ipso facto: checking one deselects the rest, and the own field is one of
+         the rest. Its text is kept, only its standing goes, so a technician who
+         changes their mind has not lost what they typed. */
       const n = suggestionCount(qi);
       for (let j = 0; j < n; j++) {
-        if (j !== si) setReverted(suggestKey(qi, j), true);
+        if (j !== slot) setReverted(suggestKey(qi, j), true);
       }
+      if (slot !== "own") setReverted(qi + ":own", true);
     }
     patchS({ suggestState: next });
   };
@@ -3210,7 +3221,23 @@ function App() {
   // are - what it should say, and whether it should be there at all.
   const editSuggestion = (key, text) => {
     const prev = (S.suggestState || {})[key] || {};
-    patchS({ suggestState: { ...(S.suggestState || {}), [key]: { ...prev, text: text } } });
+    const next = { ...(S.suggestState || {}), [key]: { ...prev, text: text } };
+    /* Keying your own words is how you decline what was offered. His ruling:
+       one option given, a second lets them key their own, and that is ipso
+       facto the choice. So saving text into the own slot picks it and
+       deselects every preloaded row; saving it empty un-picks it, which is
+       how the question goes back to having no answer at all. */
+    const parts = String(key).split(":");
+    if (parts[1] === "own") {
+      const qi = Number(parts[0]);
+      const has = typeof text === "string" && text.trim().length > 0;
+      next[key] = { ...next[key], reverted: !has };
+      if (has) {
+        const n = suggestionCount(qi);
+        for (let j = 0; j < n; j++) next[suggestKey(qi, j)] = { ...(next[suggestKey(qi, j)] || {}), reverted: true };
+      }
+    }
+    patchS({ suggestState: next });
   };
 
   /* Skip is also the ACCEPT path for the suggestions, and that is deliberate.
@@ -3763,7 +3790,15 @@ function App() {
     const text = [answeredInPlace(), S.panelDraft.trim()].filter(Boolean).join("\n\n");
     if (!text || loading) return;
     patchS({ panelDraft: "", answerDrafts: {} });
-    pushThread("user", "answer", text);
+    /* THE THREAD SHOWS WHAT WENT, AND THE PICKS WENT. His report, 2026-09-22:
+       "when I use the text field at the bottom of NoMe near the send, and then
+       send, it doesn't send the multiple choice options above; just my typed
+       text." Measured: the picks DID reach the model (they are folded into
+       `said` below), but the bubble here showed only the typed line, so the one
+       thing he could see said otherwise. What he can see is what he believes
+       was sent, so the bubble now carries the picks above his own words. */
+    const picks = (S.questions && S.questions.length) ? acceptedSuggestions() : [];
+    pushThread("user", "answer", [...picks, text].filter((x) => x && x.trim()).join("\n"));
 
     /* Feedback about the tool rather than about the note. Sending it to the note
        model would produce a revision nobody asked for, so it offers to file it.

@@ -108,6 +108,17 @@ const press = async (page, id) => {
   await page.locator(`[data-suggestion-tick="${id}"]`).click();
 };
 
+/* DECLINING, his way, 2026-09-22: the own-words field is option N + 1, keying it
+   is ipso facto the choice and deselects what was offered, and clearing it again
+   leaves the question with no answer. There is no drop control on a chosen row. */
+const declineByOwnWords = async (page, qi) => {
+  const own = page.locator(`[data-suggestion-own="${qi}:own"]`);
+  await own.fill('my own answer');
+  await own.press('Enter');
+  await own.fill('');
+  await own.press('Enter');
+};
+
 /* ── The prompt, which is the only place the safety rule can live ────────── */
 
 test.describe('the prompt that produces them', () => {
@@ -309,6 +320,92 @@ test.describe('the button flow', () => {
   });
 });
 
+/* ── THE BOTTOM SEND MUST CARRY THE PICKS ─────────────────────────────────
+   His report, 2026-09-22: "when I use the text field at the bottom of NoMe near
+   the send, and then send, it doesn't send the multiple choice options above;
+   just my typed text in the bottom field." Every existing test reaches the model
+   through the SKIP button, which is documented as the accept path. Nothing pinned
+   the other door. These two do: one asks the wire, one asks the screen. */
+test.describe('the bottom Send carries the picked option', () => {
+  test('a picked row AND the typed text both reach the model, and the unpicked row does not', async ({ page }) => {
+    const seen = await ask(page, TWO);
+    await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
+
+    // Pick the second row. Ipso facto the first is deselected.
+    await page.locator('[data-suggestion-tick="0:1"]').click();
+    await expect(page.locator('[data-suggestion="0:1"]')).toHaveAttribute('data-suggestion-accepted', '1');
+
+    const box = page.locator('.revision-input');
+    await box.fill('He also asked for the tablet twice.');
+    await box.press('Enter');
+    await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 30000 });
+
+    expect(seen.noteAsk, 'the typed text').toContain('He also asked for the tablet twice.');
+    expect(seen.noteAsk, 'THE PICKED ROW').toContain('The first-then board worked better once we were down there.');
+    expect(seen.noteAsk, 'the deselected row').not.toContain('Moving to the floor settled him faster than the break did.');
+  });
+
+  test('and the thread shows the pick went, not only the typed line', async ({ page }) => {
+    await ask(page, TWO);
+    await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
+    await page.locator('[data-suggestion-tick="0:1"]').click();
+    const box = page.locator('.revision-input');
+    await box.fill('He also asked for the tablet twice.');
+    await box.press('Enter');
+    await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 30000 });
+    // What he can see is what he believes was sent.
+    await expect(page.locator('.revision-panel, .revision-dock').first())
+      .toContainText('The first-then board worked better once we were down there.');
+  });
+});
+
+/* ── THE OWN-WORDS FIELD IS OPTION N + 1, and choosing is ipso facto ────── */
+test.describe('the own field is an option like the others', () => {
+  test('KEYING YOUR OWN WORDS DESELECTS THE PRELOADED ROWS, and only your words reach the model', async ({ page }) => {
+    const seen = await ask(page, TWO);
+    await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
+    await expect(page.locator('[data-suggestion="0:0"]')).toHaveAttribute('data-suggestion-accepted', '1');
+
+    const own = page.locator('[data-suggestion-own="0:own"]');
+    await own.fill('It was in the plan, added last month.');
+    await own.press('Enter');
+    await expect(page.locator('[data-suggestion="0:0"]')).toHaveAttribute('data-suggestion-accepted', '0');
+    await expect(page.locator('[data-suggestion-pencil="0:own"]')).toBeVisible();
+
+    const skip = page.locator('.revision-skip');
+    await expect(skip).toBeEnabled({ timeout: 40000 });
+    await skip.click();
+    await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 20000 });
+    expect(seen.noteAsk).toContain('It was in the plan, added last month.');
+    expect(seen.noteAsk).not.toContain('Moving to the floor settled him faster than the break did.');
+  });
+
+  test('checking a preloaded row deselects the own field WITHOUT losing its text, and a checkmark brings it back', async ({ page }) => {
+    await ask(page, TWO);
+    await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
+    const own = page.locator('[data-suggestion-own="0:own"]');
+    await own.fill('My own answer.');
+    await own.press('Enter');
+
+    await press(page, '0:1');
+    await expect(page.locator('[data-suggestion="0:1"]')).toHaveAttribute('data-suggestion-accepted', '1');
+    // Kept, not chosen: the text stays and the row offers a checkmark.
+    await expect(own).toHaveValue('My own answer.');
+    await expect(page.locator('[data-suggestion-tick="0:own"]')).toBeVisible();
+
+    await press(page, '0:own');
+    await expect(page.locator('[data-suggestion="0:1"]')).toHaveAttribute('data-suggestion-accepted', '0');
+    await expect(page.locator('[data-suggestion-pencil="0:own"]')).toBeVisible();
+  });
+
+  test('the chosen row has no drop control of its own; declining is done by choosing', async ({ page }) => {
+    await ask(page, TWO);
+    await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
+    await expect(page.locator('[data-suggestion-tick="0:0"]')).toHaveCount(0);
+    await expect(page.locator('[data-suggestion-tick="0:1"]')).toHaveCount(1);
+  });
+});
+
 /* ── The surface, and what reaches the note ──────────────────────────────── */
 
 test.describe('what the technician does with them', () => {
@@ -323,10 +420,10 @@ test.describe('what the technician does with them', () => {
     await expect(page.locator('[data-suggestion-accepted="1"]')).toHaveCount(1);
     await expect(page.locator('[data-suggestion="0:0"]')).toHaveAttribute('data-suggestion-accepted', '1');
     await expect(page.locator('[data-suggestion="0:1"]')).toHaveAttribute('data-suggestion-accepted', '0');
-    /* The one standing carries the PENCIL, because the only thing left to do to
-       it is change the words. The other carries the checkmark, because the only
-       thing left to do to it is make it the one. His ruling, 2026-09-21. */
+    /* The one standing carries the PENCIL and nothing to drop it with; the
+       other carries the checkmark. His rulings, 2026-09-21 and 2026-09-22. */
     await expect(page.locator('[data-suggestion-pencil="0:0"]')).toBeVisible();
+    await expect(page.locator('[data-suggestion-tick="0:0"]')).toHaveCount(0);
     await expect(page.locator('[data-suggestion-tick="0:1"]')).toBeVisible();
     await expect(page.locator('[data-suggestion-pencil="0:1"]')).toHaveCount(0);
 
@@ -369,7 +466,7 @@ test.describe('what the technician does with them', () => {
   test('dropping the one that stands puts the note back behind the gate', async ({ page }) => {
     await ask(page, TWO);
     await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
-    await press(page, '0:0');
+    await declineByOwnWords(page, 0);
     await expect(page.locator('[data-suggestion-accepted="1"]')).toHaveCount(0);
     /* The button was the accept path, so leaving nothing standing leaves it
        nothing to carry. This note reads 70, and a technician carrying nothing
@@ -385,7 +482,7 @@ test.describe('what the technician does with them', () => {
     // button carries, and with nothing left to carry it is a plain skip again.
     await ask(page, { ...TWO, readiness: 90 });
     await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
-    await press(page, '0:0');
+    await declineByOwnWords(page, 0);
     await expect(page.locator('.revision-skip')).toHaveText(/Nothing to add/);
   });
 
@@ -458,11 +555,12 @@ test.describe('a lone suggestion is untouched by the exclusive rule', () => {
     expect(seen.noteAsk).toContain('Moving to the floor settled him faster than the break did.');
   });
 
-  test('and dropping it still puts it back', async ({ page }) => {
+  test('and declining it still lets its checkmark put it back', async ({ page }) => {
     await ask(page, ONE);
     await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
-    await press(page, '0:0');
+    await declineByOwnWords(page, 0);
     await expect(page.locator('[data-suggestion="0:0"]')).toHaveAttribute('data-suggestion-accepted', '0');
+    // Once declined, the lone row shows the checkmark like any unchosen row.
     await press(page, '0:0');
     await expect(page.locator('[data-suggestion="0:0"]')).toHaveAttribute('data-suggestion-accepted', '1');
   });

@@ -109,10 +109,10 @@ test.describe('what the tool added', () => {
      ticks and all. If this fails, the flag has stopped being a flag. */
   test('without the flag the pencil-and-checkmark row is still what renders', async ({ page }) => {
     await ask(page, ONE, { aid: false });
-    // The chosen row carries the pencil; a lone one also keeps its checkmark on,
-    // so it can still be dropped. His 2026-09-21 ruling.
+    // The chosen row carries the pencil and no drop control: declining is done
+    // by keying your own words. His rulings, 2026-09-21 and 2026-09-22.
     await expect(page.locator('[data-suggestion-pencil="0:0"]')).toBeVisible({ timeout: 20000 });
-    await expect(page.locator('[data-suggestion-tick="0:0"]')).toBeVisible();
+    await expect(page.locator('[data-suggestion-tick="0:0"]')).toHaveCount(0);
     await expect(page.locator('[data-disposition="0:0"]')).toHaveCount(0);
   });
 
