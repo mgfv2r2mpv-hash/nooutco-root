@@ -266,9 +266,10 @@ test.describe('re-presentation with a fresh surface', () => {
   });
 
   test('a missed card returns in the deck with different prose and the same answer', async ({ page }) => {
-    // Level 1's "looks" category is three cards, and its first card's criterial
-    // configuration is one the generator carries - so this walks a whole deck
-    // plus the re-presentation in four trials.
+    // Level 1's "looks" category is a short deck, and its first card's
+    // criterial configuration is one the generator carries - so this walks the
+    // whole deck plus the re-presentation. The deck size is read from the pool
+    // rather than pinned, so adding a card to the category does not break it.
     await seed(page, {
       level: 1, category: 'looks', order: 'sequential',
       represent: true, errorless: false, noErrorAnim: true,
@@ -280,7 +281,7 @@ test.describe('re-presentation with a fresh surface', () => {
     const deck = await page.evaluate(() => window.__thinkOrSay.level(1).cards
       .filter(c => c.cat === 'looks')
       .map(c => ({ id: c.id, answer: c.answer, situation: c.situation })));
-    expect(deck.length, 'the "looks" deck').toBe(3);
+    expect(deck.length, 'the "looks" deck').toBeGreaterThanOrEqual(3);
 
     await page.locator('#btn-play').click();
 
@@ -299,10 +300,9 @@ test.describe('re-presentation with a fresh surface', () => {
     // Trial 1 is missed, so it is re-queued at the end of the deck.
     expect(await situationOf()).toBe(deck[0].situation);
     await answerTrial(deck[0].answer, true);
-    await answerTrial(deck[1].answer, false);
-    await answerTrial(deck[2].answer, false);
+    for (const card of deck.slice(1)) await answerTrial(card.answer, false);
 
-    // Trial 4 is the re-presentation: the same criterial item, fresh prose.
+    // The trial after the deck is the re-presentation: the same criterial item, fresh prose.
     await expect(page.locator('#scenario-situation')).toBeVisible();
     const returned = await situationOf();
     expect(returned, 'the repeat is not the memorised surface').not.toBe(deck[0].situation);

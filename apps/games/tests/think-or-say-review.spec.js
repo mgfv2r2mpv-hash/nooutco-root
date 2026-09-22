@@ -537,7 +537,7 @@ test.describe("the maintainer's rulings on the card decks", () => {
  * rules to light)".
  *
  * Level 1 is early acquisition, so the rule it teaches is a VISIBLE support
- * rather than something to be induced from 35 cards of feedback (RESEARCH.md
+ * rather than something to be induced from 53 cards of feedback (RESEARCH.md
  * §1). Four properties make that true rather than merely present:
  *
  *   1. the rule is declared ONCE, in the level pool's data, and never on a card

@@ -314,10 +314,14 @@ test('Levels 1 and 2 leave the reason columns blank rather than filling them in'
     await seed(page, { level: 1, category: 'work', order: 'sequential', showReason: false });
     await page.goto(URL);
     await booted(page);
+    // The deck size is read from the pool rather than pinned, so adding a card
+    // to Level 1's "work" category does not break a test about blank columns.
+    const n = await page.evaluate(() =>
+      window.__thinkOrSay.level(1).cards.filter(c => c.cat === 'work').length);
     await page.locator('#btn-play').click();
-    await expect(page.locator('#progress-label')).toHaveText('Card 1 of 3');
+    await expect(page.locator('#progress-label')).toHaveText(`Card 1 of ${n}`);
 
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < n; i++) {
       await chooseTile(page, i);
       await page.locator('#btn-next').click();
     }
@@ -328,7 +332,7 @@ test('Levels 1 and 2 leave the reason columns blank rather than filling them in'
     expect(rows.every(r => r.rationaleNote === '')).toBe(true);
     const cells = await page.locator('#results-body tr')
       .evaluateAll(trs => trs.map(tr => tr.querySelectorAll('td')[11].textContent));
-    expect(cells).toEqual(['-', '-', '-']);
+    expect(cells).toEqual(Array(n).fill('-'));
     // No tally is printed for a session that was never asked for a reason.
     const summary = await page.locator('#print-summary').textContent();
     expect(summary).not.toContain('Reasons:');
