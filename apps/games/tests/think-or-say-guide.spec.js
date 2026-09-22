@@ -190,6 +190,11 @@ test('the core table maps every protocol component the plan can specify', async 
     'fixed position array',
     'counterbalanced positions',
     'rationale targets at level 3',
+    'instructive feedback',
+    'no feedback beyond reinforcement',
+    'feedback on the reason at level 3',
+    'minimally different example',
+    'natural environment practice',
   ];
   for (const need of required) {
     expect(firstCells.some(c => c.includes(need)),
@@ -220,6 +225,23 @@ test('every switch in the settings panel has a line in the guide', async ({ page
   for (const label of labels) {
     expect(text.includes(label.toLowerCase()), `guide never mentions "${label}"`).toBe(true);
   }
+});
+
+test('the Why ladder section gives its order as the model the cards were written to, not a finding', async ({ page }) => {
+  await page.goto(URL);
+  await booted(page);
+  await openGuide(page);
+
+  const text = squash(await page.locator('#guide-ladder').textContent());
+  // The rule order is a design inference (RESEARCH.md §10.4). The guide must say
+  // so, or a technician reads the ladder as an evidence-based ranking.
+  expect(text).toContain('the model the cards were written to');
+  expect(text).toContain('not as a research finding');
+  expect(text).toContain('withheld on probe trials');
+  expect(text).toContain('Flip it');
+  // Plain hyphens only, anywhere in the guide.
+  const all = await page.locator('#guide-body').textContent();
+  expect(all).not.toMatch(/[\u2013\u2014]/);
 });
 
 // ── Level 3, and what this is not ───────────────────────────────────────────

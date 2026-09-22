@@ -128,7 +128,7 @@
              'An incorrect tap produces no wiggle and no red flash. The error is still counted in the Errors column.'],
             ['A generalization phase',
              '⚙ Settings → Probes - Level N → Run probes (on), then set Probes per session, Placement and the tags the plan names',
-             'Generated, untrained items are added to the deck for that level. On a probe trial the automatic prompt, errorless, the reason reveal, re-presentation and the stated rule are all withheld, and a banner on screen says so.'],
+             'Generated, untrained items are added to the deck for that level. On a probe trial the automatic prompt, errorless, the reason reveal and Why ladder, re-presentation and the stated rule are all withheld, and a banner on screen says so.'],
             ['No generalization phase',
              '⚙ Settings → Probes - Level N → Run probes (off). This is how it starts, at every level',
              'The deck is the teaching pool only, and every trial is recorded as a trained trial.'],
@@ -149,8 +149,50 @@
              'After the learner taps a tile the card asks “Tell me why.” You score what they said as Correct, Partly correct or Not yet, and may add a short note. The trial is not recorded until it is scored.'],
             ['Example rationales withheld',
              '⚙ Settings → Show Reason After (off)',
-             'The “Show example reasons” button is not offered at Level 3, and the reason line is not shown at Levels 1 and 2. The “Tell me why.” ask and the scoring still happen.'],
+             'The “Show example reasons” button is not offered at Level 3, and the Why ladder is not shown in ▶ Play. The “Tell me why.” ask and the scoring still happen.'],
+            ['Instructive feedback, or feedback that states the rule or reason after a correct response',
+             '⚙ Settings → Show Reason After (on). This is how it starts',
+             'After a correct answer the Why ladder appears under the card: the verdict, the card’s reason, and the rules in play on that card. The learner is not asked to respond to it. It is withheld on probe trials. In 📖 Learn it appears whatever this switch says.'],
+            ['No feedback beyond reinforcement',
+             '⚙ Settings → Show Reason After (off)',
+             'No Why ladder after a correct answer in ▶ Play. The token and the move to the next card are unchanged. 📖 Learn still shows the ladder, so if the plan rules that out, ask your BCBA whether Learn is part of the programme.'],
+            ['Feedback on the reason at Level 3',
+             'Level → 3 - Explain, with ⚙ Settings → Show Reason After (on)',
+             'The Why ladder waits until you have scored the spoken reason, or pressed “Show example reasons”. Before that it would give the reason away.'],
+            ['A contrast with a minimally different example in the feedback',
+             'Nothing extra to set. It is part of the Why ladder, under Show Reason After',
+             'When the card has a matched partner card, the ladder carries a “Flip it” row: the partner’s situation and its opposite answer, with the one feature that changed highlighted. A card with no partner shows no Flip it row. There is no separate switch; if the plan wants the ladder without the contrast, ask your BCBA.'],
+            ['Beyond the screen: in-vivo or natural environment practice',
+             'Nothing in the app. The game does not do this',
+             'The cards are practice with described situations. Persicke et al. (2022) found that skills learned with scenarios did not reach real play until training moved into it. Ask your BCBA which real moments to practise in.'],
           ] },
+      ],
+    },
+
+    {
+      id: 'ladder',
+      heading: 'The Why ladder, after a correct answer',
+      blocks: [
+        { t: 'p', text:
+          'The Why ladder replaces the one-line reason. It is instructive feedback: extra ' +
+          'information in the consequence of the trial, with no response asked of the learner. It ' +
+          'follows Show Reason After, is always on in 📖 Learn, and is withheld on probe trials.' },
+        { t: 'ol', items: [
+          { term: 'The verdict', text: 'THINK IT or SAY IT, the answer the learner just gave.' },
+          { term: 'The reason', text: 'the card’s own reason, the same text the reason line carried.' },
+          { term: 'The rules in play', text:
+            'only the rules this card involves, in a fixed order: Safety, then Kind (feelings, ' +
+            'private, can they fix it now), then Where and when (who hears, timing), then Who (the ' +
+            'relationship), then True. A rule pointing the same way as the answer is lit, and the ' +
+            'top lit rule is marked “decides it”. A rule pointing the other way is marked ' +
+            '“outranked” - it is true, but it would hurt, for example.' },
+          { term: 'Flip it', text:
+            'on a card with a matched partner, the partner’s situation and its opposite answer, ' +
+            'with the one feature that changed highlighted.' },
+        ] },
+        { t: 'note', text:
+          'The order of the rules is the model the cards were written to. No study has tested it ' +
+          'as a ranking, so read it as how this game is built, not as a research finding.' },
       ],
     },
 
@@ -267,7 +309,7 @@
         { t: 'h', text: 'During a probe trial' },
         { t: 'ul', items: [
           'A banner reads “Probe - supports off”, followed by the tags the item carries.',
-          'The automatic prompt, errorless, the reason reveal and re-presentation are all withheld.',
+          'The automatic prompt, errorless, the reason reveal, the Why ladder and re-presentation are all withheld.',
           'At Level 1, the stated rule comes off the screen too. A probe run with the rule still up would measure reading it, not holding it.',
           'The Prompt button stays live. Prompting a probe is a clinical call you are entitled to make.',
         ] },
@@ -395,7 +437,7 @@
             ['Auto-Prompt', 'Delivers the prompt without you pressing anything.'],
             ['Prompt Delay', 'Holds the automatic prompt back for the number of seconds beside it.'],
             ['Prompt style', 'Draws the prompt as a sparkle or as an outline.'],
-            ['Show Reason After', 'Shows the card’s reason line after the answer at Levels 1 and 2, and offers the example reasons at Level 3.'],
+            ['Show Reason After', 'Shows the Why ladder after a correct answer (at Level 3, once the reason is scored), and offers the example reasons at Level 3.'],
             ['Show the Rule', 'Keeps the level’s stated rule on screen through the trial. Level 1 states its rule; Levels 2 and 3 state none, so the switch does nothing there. Turn it off to fade the support once the rule is held.'],
             ['Counterbalance Tile Positions', 'Swaps which side each tile sits on between cards. The labels do not move.'],
             ['Run probes', 'Adds generated, untrained probe items to this level’s deck.'],
