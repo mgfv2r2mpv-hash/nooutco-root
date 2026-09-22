@@ -900,7 +900,11 @@ test('think-or-say: the folded configuration reaches the deck, not just the pane
   // other than the technician's folded selection.
   await expect(page.locator('#scenario-situation'))
     .toHaveText('Your friend shows you a drawing they made. You really like how it looks.');
-  await expect(page.locator('#progress-label')).toHaveText('Card 1 of 14');
+  // The size is read from the pool rather than pinned, because the Level 1
+  // pool grows as cards are authored.
+  const kindCount = await page.evaluate(() =>
+    window.__thinkOrSay.level(1).cards.filter(c => c.cat === 'kind').length);
+  await expect(page.locator('#progress-label')).toHaveText('Card 1 of ' + kindCount);
   expect(errors, 'the session started without a page error').toEqual([]);
 });
 
@@ -937,10 +941,14 @@ test('think-or-say: a control changed without a change event never reaches the d
 
   await silentlySelect(page, '#sel-level', '3');
 
-  // Level 1 holds 35 cards and Level 3 holds 18. A deck of 18 means buildDeck()
-  // read the select rather than the configuration in force.
+  // A deck the size of the Level 3 pool means buildDeck() read the select
+  // rather than the configuration in force. Both sizes are read from the pools,
+  // which must differ for the test to mean anything.
+  const sizes = await page.evaluate(() =>
+    [1, 3].map(lv => window.__thinkOrSay.level(lv).cards.length));
+  expect(sizes[0]).not.toBe(sizes[1]);
   await page.locator('#btn-play').click();
-  await expect(page.locator('#progress-label')).toHaveText('Card 1 of 35');
+  await expect(page.locator('#progress-label')).toHaveText('Card 1 of ' + sizes[0]);
 });
 
 test('think-or-say: an unrelated edit does not adopt a control nobody changed', async ({ page }) => {
