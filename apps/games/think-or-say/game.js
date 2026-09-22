@@ -1137,26 +1137,69 @@ function flipFor(sc) {
   return { dim: pair.flips, partner, chip: val ? val.chip : '' };
 }
 
-const FLIP_MAX_CHARS = 90;
+/**
+ * A word as the diff compares it: lower case, punctuation off. A token that is
+ * only punctuation (a spaced hyphen) normalises to '' and is never marked.
+ */
+const diffKey = w => w.toLowerCase().replace(/[^a-z0-9']/g, '');
 
-function truncate(text, max) {
-  if (text.length <= max) return text;
-  const cut = text.slice(0, max - 1);
-  const sp = cut.lastIndexOf(' ');
-  return (sp > max * 0.6 ? cut.slice(0, sp) : cut).replace(/[\s,.;:-]+$/, '') + '\u2026';
+/**
+ * Which words of `to` are NOT in `from`, in order - an LCS over words.
+ *
+ * A minimum-difference contrast only teaches if the learner can SEE the one
+ * thing that changed (Horner, Albin & Ralph 1986), so the partner's text is
+ * shown whole and the words outside the longest common subsequence are
+ * marked. Cards are a sentence or three, so the O(n*m) table is trivial.
+ * Returns the tokens of `to` split on whitespace, each with `changed`.
+ */
+function wordDiff(from, to) {
+  const a = String(from || '').split(/\s+/).filter(Boolean);
+  const b = String(to || '').split(/\s+/).filter(Boolean);
+  const ka = a.map(diffKey);
+  const kb = b.map(diffKey);
+  const n = a.length, m = b.length;
+  const L = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
+  for (let i = n - 1; i >= 0; i--) {
+    for (let j = m - 1; j >= 0; j--) {
+      L[i][j] = ka[i] === kb[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+    }
+  }
+  const out = b.map(w => ({ word: w, changed: true }));
+  let i = 0, j = 0;
+  while (i < n && j < m) {
+    if (ka[i] === kb[j]) { out[j].changed = false; i++; j++; }
+    else if (L[i + 1][j] >= L[i][j + 1]) i++;
+    else j++;
+  }
+  return out.map((t, k) => (kb[k] === '' ? { ...t, changed: false } : t));
+}
+
+/** The partner's text as nodes, the words that changed wrapped in <mark>. */
+function diffNodes(from, to) {
+  const nodes = [];
+  wordDiff(from, to).forEach((t, k) => {
+    if (k) nodes.push(document.createTextNode(' '));
+    if (!t.changed) { nodes.push(document.createTextNode(t.word)); return; }
+    const m = document.createElement('mark');
+    m.className = 'why-diff';
+    m.textContent = t.word;
+    nodes.push(m);
+  });
+  return nodes;
 }
 
 function renderFlip(flip, index) {
   if (!flip) { el.whyFlip.hidden = true; el.whyFlip.replaceChildren(); return; }
+  const sc = state.current;
   const lab = document.createElement('span');
   lab.className = 'why-flip-label';
-  lab.textContent = 'Flip it:';
+  lab.textContent = 'Flip it: what changed?';
   const chip = document.createElement('span');
   chip.className = 'why-chip why-chip-flip';
   chip.textContent = flip.chip;
   const text = document.createElement('span');
   text.className = 'why-flip-text';
-  text.textContent = truncate(flip.partner.situation, FLIP_MAX_CHARS);
+  text.append(...diffNodes(sc.situation, flip.partner.situation));
   const tag = document.createElement('span');
   tag.className = 'tag tag-' + flip.partner.answer;
   tag.textContent = ANSWER_LABELS[flip.partner.answer];
@@ -1164,7 +1207,14 @@ function renderFlip(flip, index) {
   arrow.className = 'why-flip-arrow';
   arrow.setAttribute('aria-hidden', 'true');
   arrow.textContent = '\u2192';
-  el.whyFlip.replaceChildren(lab, chip, arrow, tag, text);
+  const parts = [lab, chip, arrow, tag, text];
+  if (flip.partner.utterance && flip.partner.utterance !== sc.utterance) {
+    const said = document.createElement('span');
+    said.className = 'why-flip-said';
+    said.append('\u201c', ...diffNodes(sc.utterance, flip.partner.utterance), '\u201d');
+    parts.push(said);
+  }
+  el.whyFlip.replaceChildren(...parts);
   el.whyFlip.style.setProperty('--i', String(index));
   el.whyFlip.hidden = false;
 }

@@ -150,11 +150,74 @@ test('a paired card shows its minimum-difference partner as Flip it', async ({ p
   await expect(flip).toBeVisible();
   await expect(flip).toContainText('Flip it:');
   await expect(flip.locator('.tag')).toHaveText(partner.answer === 'think' ? 'THINK IT' : 'SAY IT');
-  const shown = await flip.locator('.why-flip-text').textContent();
-  expect(shown.length).toBeLessThanOrEqual(91);
-  expect(partner.situation.startsWith(shown.replace(/…$/, ''))).toBe(true);
+  // The partner's situation is shown whole, never cut short.
+  const words = s => s.split(/\s+/).filter(Boolean).join(' ');
+  await expect(flip.locator('.why-flip-text')).toHaveText(words(partner.situation));
   // The flipped rule is the one highlighted in the ladder.
   await expect(page.locator(`#why-rows li[data-dim="${flips}"]`)).toHaveClass(/is-flip-dim/);
+});
+
+/**
+ * Independent of game.js on purpose: the spec's own LCS over words, so a diff
+ * that marks too much (a shared word) or too little (nothing) fails here.
+ */
+function lcsLength(a, b) {
+  const L = Array.from({ length: a.length + 1 }, () => new Array(b.length + 1).fill(0));
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      L[i][j] = a[i - 1] === b[j - 1] ? L[i - 1][j - 1] + 1 : Math.max(L[i - 1][j], L[i][j - 1]);
+    }
+  }
+  return L[a.length][b.length];
+}
+const keys = s => s.split(/\s+/).map(w => w.toLowerCase().replace(/[^a-z0-9']/g, '')).filter(Boolean);
+function isSubsequence(sub, of) {
+  let j = 0;
+  for (const w of of) if (j < sub.length && sub[j] === w) j++;
+  return j === sub.length;
+}
+
+test('Flip it marks the words that changed, and only those', async ({ page }) => {
+  await seed(page, plain(2));
+  await page.goto(URL);
+  await booted(page);
+  const i = await firstWhere(page, 2, '(c, rows, pairs) => pairs.some(p => p.a === c.id || p.b === c.id)');
+  expect(i).toBeGreaterThanOrEqual(0);
+  const { card, partner } = await page.evaluate(n => {
+    const L = window.__thinkOrSay.level(2);
+    const c = L.cards[n];
+    const p = L.pairs.find(x => x.a === c.id || x.b === c.id);
+    return { card: c, partner: L.cards.find(x => x.id === (p.a === c.id ? p.b : p.a)) };
+  }, i);
+
+  await page.locator('#btn-play').click();
+  await advanceTo(page, i);
+  await chooseTile(page, i);
+
+  const flip = page.locator('#why-flip');
+  await expect(flip).toContainText('what changed');
+  const text = flip.locator('.why-flip-text');
+  const marked = await text.locator('mark.why-diff').allTextContents();
+  expect(marked.length, 'a paired card highlights at least one word').toBeGreaterThan(0);
+
+  // What is left unmarked is exactly a longest common run of words, so no
+  // shared word is highlighted and every changed word is.
+  const unmarked = await text.evaluate(n => [...n.childNodes]
+    .filter(c => c.nodeType === Node.TEXT_NODE).map(c => c.textContent).join(' '));
+  const keep = keys(unmarked);
+  expect(isSubsequence(keep, keys(card.situation))).toBe(true);
+  expect(keep.length).toBe(lcsLength(keys(card.situation), keys(partner.situation)));
+  expect(keep.length + keys(marked.join(' ')).length).toBe(keys(partner.situation).length);
+
+  // The partner's thought appears too when it differs, in the same marking.
+  const said = flip.locator('.why-flip-said');
+  if (partner.utterance !== card.utterance) {
+    await expect(said).toBeVisible();
+    const sm = await said.locator('mark.why-diff').count();
+    expect(sm).toBeGreaterThan(0);
+  } else {
+    await expect(said).toHaveCount(0);
+  }
 });
 
 test('a probe trial shows no ladder', async ({ page }) => {
