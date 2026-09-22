@@ -22,7 +22,8 @@
    generalised: a card teaches what its reason says.
 
    Content rule and ORDER IS DATA: see cards-level-1.js. This pool runs
-   THINK, THINK, SAY, SAY in blocks of four, then a THINK tail.
+   THINK, THINK, SAY, SAY in blocks of four, eight blocks with no tail - 32
+   cards, 16 THINK and 16 SAY.
    ----------------------------------------------------------------------- */
 (function (global) {
   'use strict';
@@ -276,8 +277,8 @@
           'Getting a grown-up is the fastest way to help them.',
         ] },
 
-      // ── tail ──
-      // The two tail cards hold no pair either. Both gain truthRank and
+      // ── block 5 ──
+      // L3-16 and L3-18 hold no pair either. Both gain truthRank and
       // changeability, and both were already teaching them in prose: the present
       // really is one you already own, the chart really does say what it says,
       // and neither is a thing the other person can put right now.
@@ -306,6 +307,208 @@
           'The week is over, so there is nothing you can do about your number now.',
           'You already know your own number, so saying it just makes you feel worse.',
         ] },
+      // The second round, L3-19..L3-32, is where the pool starts teaching the
+      // HIERARCHY between the dimensions rather than one dimension at a time.
+      // Seven of the fourteen put two considerations in conflict and let the
+      // ordering decide: private against safety (L3-20), kind against private
+      // with everyone listening (L3-21), wrong moment against fixable right now
+      // (L3-23), true against kind (L3-25, L3-27), right moment against kind
+      // (L3-31), and embarrassing against safety (L3-29). Twelve of them come
+      // as six more minimum-difference pairs,
+      // so each conflict has a partner where one feature moves and the answer
+      // moves with it. They also go where the first eighteen never went: the
+      // shop, the family table, siblings, and a stranger who can be helped.
+      //
+      // L3-20 pairs with L3-19 (override). Both are private - the cousin told
+      // you on your own - and the whole table hears both. Only the danger
+      // moves, and it outranks the secret.
+      { id: 'L3-20', level: 3, cat: 'other', answer: 'say',
+        situation: 'Your family is eating dinner together. Your cousin whispers to you that they ate a cookie with nuts in it, and now their lips feel funny. They are allergic to nuts, and they ask you not to tell anyone.',
+        utterance: 'Their lips feel funny, and they ate nuts.', sayVerb: 'tell', object: 'this news',
+        features: { override: 'help-or-safety', privacy: 'private', audience: 'others-hear' },
+        vary: { setting: 'home', person: 'family', topic: 'body', form: 'statement' },
+        reason: 'Say it - to a grown-up, right now. Your cousin told you in private and the whole table will hear, but they could be getting sick, and safety always comes first.',
+        rationales: [
+          'You could get really sick, so keeping you safe matters more than keeping your secret.',
+          'Everybody at the table will hear me, and that is okay when you might need help.',
+          'If I kept quiet and you got sicker, I would feel awful - I want you to be safe.',
+        ] },
+      // L3-23 pairs with L3-24 (changeability). Timing is held at the wrong
+      // moment on both - he is busy - and both are said quietly to him alone.
+      // A card left in the machine can be fixed in the next ten seconds; a
+      // stain cannot be fixed in the shop. That is the conflict the owner
+      // asked for: the wrong moment loses to "they can fix it right now".
+      { id: 'L3-23', level: 3, cat: 'other', answer: 'say',
+        situation: 'You are at the shop with your dad, standing right next to him. He is busy talking to the cashier and packing the bags. You can see his bank card is still sticking out of the card machine.',
+        utterance: 'Dad, your card is still in the machine.', sayVerb: 'tell', object: 'this news',
+        features: { timing: 'wrong-moment', changeability: 'fixable-now', audience: 'just-them' },
+        vary: { setting: 'shop', person: 'family', topic: 'belongings', form: 'statement' },
+        reason: 'Say it - quietly. He is busy, so it is not the best moment, but he can fix it right now, and in a minute it will be too late. If you say it quietly, only he hears.',
+        rationales: [
+          'You can take your card right now, so telling you helps even though you are busy.',
+          'If I waited until later, your card would be left behind.',
+          'I can say it quietly so only you hear me.',
+        ] },
+
+      // ── block 6 ──
+      { id: 'L3-19', level: 3, cat: 'private', answer: 'think',
+        situation: 'Your family is eating dinner together. Earlier, your cousin told you on your own that they still sleep with a night light because the dark scares them.',
+        utterance: 'You still sleep with a night light!', sayVerb: 'say', object: 'these words',
+        features: { override: 'none', privacy: 'private', audience: 'others-hear' },
+        vary: { setting: 'home', person: 'family', topic: 'belongings', form: 'exclamation' },
+        reason: 'Think it. Nobody needs help and nothing is unsafe, your cousin told you this in private, and the whole table would hear - so it would only embarrass them.',
+        rationales: [
+          'You told me that on your own, so it is yours to tell, not mine.',
+          'If I said it at the table, everybody would hear and you would feel embarrassed.',
+          'Nobody is hurt or in danger, so there is no reason to share your private thing.',
+        ] },
+      // L3-21 pairs with L3-22 (audience). The compliment is kind on both and
+      // the reading helper is private on both; only who can hear moves. It is
+      // the "kind but private" conflict: kind does not outrank private when
+      // everybody is listening, and it does not need to when nobody is.
+      { id: 'L3-21', level: 3, cat: 'private', answer: 'think',
+        situation: 'The whole class is sitting together on the carpet. Your close friend told you on your own that they go to a reading helper after school, and you can hear for yourself that their reading is getting better.',
+        utterance: 'You are getting really good at reading with your helper.', sayVerb: 'say', object: 'these words',
+        features: { selfEsteem: 'lifts', privacy: 'private', audience: 'others-hear' },
+        vary: { setting: 'school', person: 'peer', topic: 'work', form: 'statement' },
+        reason: 'Think it for now. It is kind and it would make them feel proud - but the reading helper is private, and the whole class would hear. Kind does not outrank private, so save it for when you are on your own.',
+        rationales: [
+          'It would make you feel proud, but you told me about your helper in private.',
+          'Everybody on the carpet would hear, and you might not want them to know.',
+          'I can tell you later, when it is just the two of us.',
+        ] },
+      { id: 'L3-22', level: 3, cat: 'kind', answer: 'say',
+        situation: 'You and your close friend sit together at the back of the bus, and nobody else is near. They told you on your own that they go to a reading helper after school, and you can hear for yourself that their reading is getting better.',
+        utterance: 'You are getting really good at reading with your helper.', sayVerb: 'say', object: 'these words',
+        features: { selfEsteem: 'lifts', privacy: 'private', audience: 'just-them' },
+        vary: { setting: 'bus', person: 'peer', topic: 'work', form: 'statement' },
+        reason: 'Say it. The reading helper is private, but they told you themselves and nobody else can hear - so something kind, said to just them, makes them feel proud.',
+        rationales: [
+          'Nobody else can hear me, so your private thing stays private.',
+          'If I say it, you would feel proud of how hard you have worked.',
+          'You told me about your helper, so it is okay to talk about it with just you.',
+        ] },
+      // L3-26 pairs with L3-25 as a second truthRank defeater. Truth is held at
+      // `true` - the learner smells the perfume and sees the glove - and both
+      // are strangers, so "never talk to a stranger" cannot be the rule either.
+      // What moves is whether they can fix it right now.
+      { id: 'L3-26', level: 3, cat: 'kind', answer: 'say',
+        situation: 'A person you have never met gets up to leave the bus. You can see their glove has fallen on the floor by their seat.',
+        utterance: 'You dropped your glove!', sayVerb: 'say', object: 'these words',
+        features: { truthRank: 'true', relationship: 'stranger', changeability: 'fixable-now' },
+        vary: { setting: 'bus', person: 'stranger', topic: 'belongings', form: 'exclamation' },
+        reason: 'Say it! You can see it for yourself, so it is true, and even though they are a stranger, they can pick it up right now - so telling them helps.',
+        rationales: [
+          'You can pick up your glove right now, so telling you helps you.',
+          'I do not know you, but helping you get your glove back is still kind.',
+          'If I stayed quiet, you would lose your glove.',
+        ] },
+
+      // ── block 7 ──
+      { id: 'L3-24', level: 3, cat: 'looks', answer: 'think',
+        situation: 'You are at the shop with your dad, standing right next to him. He is busy talking to the cashier and packing the bags. You can see a small stain on his shirt from lunch.',
+        utterance: 'Did you spill something on your shirt?', sayVerb: 'ask', object: 'this question',
+        features: { timing: 'wrong-moment', changeability: 'not-fixable', audience: 'just-them' },
+        vary: { setting: 'shop', person: 'family', topic: 'looks', form: 'question' },
+        reason: 'Think it. You could ask quietly so only he hears, but he is busy, and he cannot change his shirt in the shop - so asking now would not help, and it can wait.',
+        rationales: [
+          'You cannot change your shirt in the shop, so asking would not help you.',
+          'You are busy with the cashier, and this can wait until later.',
+          'Even if I ask quietly, it would just make you worry about your shirt.',
+        ] },
+      { id: 'L3-25', level: 3, cat: 'smells', answer: 'think',
+        situation: 'A person you have never met sits down next to you on the bus. You can smell that they are wearing a lot of strong perfume.',
+        utterance: 'Your perfume is really strong.', sayVerb: 'say', object: 'these words',
+        features: { truthRank: 'true', relationship: 'stranger', changeability: 'not-fixable' },
+        vary: { setting: 'bus', person: 'stranger', topic: 'smell', form: 'statement' },
+        reason: 'Think it. You can smell it for yourself, so it is true - but true is not as important as kind. They are a stranger, and they cannot wash it off on the bus, so saying it would only hurt their feelings.',
+        rationales: [
+          'It is true, but you cannot change it on the bus, so telling you would only make you feel bad.',
+          'I do not know you, so it is not my place to talk about how you smell.',
+          'I can keep it in my head, or move seats if I need to.',
+        ] },
+      // L3-28 pairs with L3-27 (selfEsteem). The same brother, the same
+      // drawing, the same quiet room, and both things really are on the page.
+      // Only whether saying it hurts or lifts moves.
+      { id: 'L3-28', level: 3, cat: 'kind', answer: 'say',
+        situation: 'You and your little brother are on your own in the living room. He shows you a drawing he made of you, and you can see he put in your favorite hat.',
+        utterance: 'You drew my favorite hat!', sayVerb: 'say', object: 'these words',
+        features: { selfEsteem: 'lifts', truthRank: 'true', audience: 'just-them' },
+        vary: { setting: 'home', person: 'sibling', topic: 'looks', form: 'exclamation' },
+        reason: 'Say it! You can see it for yourself, so it is true - and here true and kind point the same way. Even with just the two of you, telling him makes him proud of his drawing.',
+        rationales: [
+          'If I say it, you would feel proud that you remembered my hat.',
+          'It is true and it is kind, so saying it helps you.',
+          'You made it for me, so I want you to know what I like about it.',
+        ] },
+      // L3-29 holds no pair. It is the owner's "embarrassing but a safety
+      // issue": a fuss in front of her friends is exactly what she asked you
+      // not to make, and the override beats it. Timing is right-moment because
+      // before she jumps is the only moment that helps.
+      { id: 'L3-29', level: 3, cat: 'other', answer: 'say',
+        situation: 'Your big sister is on the swing in your back garden, with her friends all around. She has told you she does not like a fuss in front of them. You can see broken glass on the ground right where she is about to jump off.',
+        utterance: 'Wait, there is broken glass!', sayVerb: 'say', object: 'these words',
+        features: { override: 'help-or-safety', audience: 'others-hear', timing: 'right-moment' },
+        vary: { setting: 'home', person: 'sibling', topic: 'body', form: 'exclamation' },
+        reason: 'Say it - loudly, right now. Her friends will all hear, and she does not like a fuss, but she could get hurt, and safety always comes first. Before she jumps is the only moment that helps.',
+        rationales: [
+          'You could get cut, so keeping you safe matters more than you feeling embarrassed.',
+          'Everybody will hear me, and that is okay when you could get hurt.',
+          'If I waited, you would already have jumped.',
+        ] },
+
+      // ── block 8 ──
+      { id: 'L3-27', level: 3, cat: 'looks', answer: 'think',
+        situation: 'You and your little brother are on your own in the living room. He shows you a drawing he made of you, and you can see he drew your nose much too big.',
+        utterance: 'You made my nose too big!', sayVerb: 'say', object: 'these words',
+        features: { selfEsteem: 'hurts', truthRank: 'true', audience: 'just-them' },
+        vary: { setting: 'home', person: 'sibling', topic: 'looks', form: 'exclamation' },
+        reason: 'Think it. You can see it for yourself, so it is true - but true is not as important as kind. Nobody else is around, and it would still make him feel bad about a drawing he made for you.',
+        rationales: [
+          'You made this for me, so if I said that, you would feel bad about your drawing.',
+          'It is true, but kind matters more than true here.',
+          'I can tell you what I like about it instead.',
+        ] },
+      // L3-31 pairs with L3-32 (selfEsteem), and it is the conflict a learner
+      // meets most often: the coach ASKED, so the moment is right and the
+      // thing is true - and it still hurts. Timing and truth are held on both;
+      // only hurt against lift moves.
+      { id: 'L3-31', level: 3, cat: 'work', answer: 'think',
+        situation: 'After soccer practice, your coach asks the team to talk about how today went. You watched your teammate miss three shots at the goal.',
+        utterance: 'You missed three shots at the goal.', sayVerb: 'say', object: 'these words',
+        features: { selfEsteem: 'hurts', timing: 'right-moment', truthRank: 'true' },
+        vary: { setting: 'playground', person: 'peer', topic: 'work', form: 'statement' },
+        reason: 'Think it. The coach asked, so it is the right moment to talk, and it is true - but true is not as important as kind. Saying it would make your teammate feel bad about how they played.',
+        rationales: [
+          'The coach asked us to talk, but that does not mean I should say something that hurts you.',
+          'It is true, but if I said it, you would feel bad about how you played.',
+          'I can tell you something that went well for you instead.',
+        ] },
+      // L3-30 holds no pair. A smell is the kind of thing a learner is taught
+      // to keep quiet about, and here it is a SAY: nobody else hears, she can
+      // clean the shoe, and now - before the party - is the right moment.
+      { id: 'L3-30', level: 3, cat: 'smells', answer: 'say',
+        situation: 'Your big sister is putting on her shoes to go to a party. You are on your own with her by the front door, and you can smell that one of her shoes has stepped in something from the garden.',
+        utterance: 'Your shoe smells like you stepped in something.', sayVerb: 'say', object: 'these words',
+        features: { changeability: 'fixable-now', audience: 'just-them', timing: 'right-moment' },
+        vary: { setting: 'home', person: 'sibling', topic: 'smell', form: 'statement' },
+        reason: 'Say it - quietly, now. Nobody else can hear, she can clean her shoe before she goes, and now is the right moment - at the party it would be too late.',
+        rationales: [
+          'You can clean your shoe right now, so telling you helps you.',
+          'It is just us by the door, so nobody else hears.',
+          'If I waited until the party, everybody there would smell it.',
+        ] },
+      { id: 'L3-32', level: 3, cat: 'kind', answer: 'say',
+        situation: 'After soccer practice, your coach asks the team to talk about how today went. You watched your teammate stop three shots at the goal.',
+        utterance: 'You stopped three shots at the goal!', sayVerb: 'say', object: 'these words',
+        features: { selfEsteem: 'lifts', timing: 'right-moment', truthRank: 'true' },
+        vary: { setting: 'playground', person: 'peer', topic: 'work', form: 'exclamation' },
+        reason: 'Say it! The coach asked, so it is the right moment, it is true, and here true and kind point the same way - saying it makes your teammate proud of how they played.',
+        rationales: [
+          'The coach asked us, so now is the right time to tell you.',
+          'If I say it, you would feel proud of how you played.',
+          'It is true and it is kind, so it is worth saying out loud.',
+        ] },
     ],
     pairs: [
       { dim: 'selfEsteem',    a: 'L3-01', b: 'L3-02' },
@@ -316,6 +519,14 @@
       { dim: 'timing',        a: 'L3-10', b: 'L3-11' },
       { dim: 'override',      a: 'L3-12', b: 'L3-13' },
       { dim: 'truthRank',  a: 'L3-14', b: 'L3-15', kind: 'defeater' },
+      // The second round's pairs. Each dimension's FIRST pair above is the one
+      // the review spec pins; these add a second contrast on five of them.
+      { dim: 'override',      a: 'L3-19', b: 'L3-20' },
+      { dim: 'audience',      a: 'L3-21', b: 'L3-22' },
+      { dim: 'changeability', a: 'L3-23', b: 'L3-24' },
+      { dim: 'truthRank',     a: 'L3-25', b: 'L3-26', kind: 'defeater' },
+      { dim: 'selfEsteem',    a: 'L3-27', b: 'L3-28' },
+      { dim: 'selfEsteem',    a: 'L3-31', b: 'L3-32' },
     ],
   };
 })(typeof window !== 'undefined' ? window : globalThis);

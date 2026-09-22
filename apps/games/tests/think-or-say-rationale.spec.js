@@ -115,8 +115,9 @@ test('the score is exactly three points, rendered from one declaration', async (
 
 test('each of the three scores reaches the trial record and the printed report', async ({ page }) => {
   // A three-card category, played out, so the sheet the technician hands over is
-  // the one the report assertions read - buildPrint runs at session end.
-  await seed(page, explaining({ category: 'private' }));
+  // the one the report assertions read - buildPrint runs at session end. At
+  // Level 3 that is `smells` (L3-13, L3-25, L3-30); `private` grew past three.
+  await seed(page, explaining({ category: 'smells' }));
   await page.goto(URL);
   await booted(page);
   await page.locator('#btn-play').click();
@@ -140,12 +141,13 @@ test('the optional note is recorded, and stays optional', async ({ page }) => {
   await page.goto(URL);
   await booted(page);
   await page.locator('#btn-play').click();
-  await expect(page.locator('#progress-label')).toHaveText('Card 1 of 2');
+  await expect(page.locator('#progress-label')).toHaveText('Card 1 of 3');
 
   await answerTrial(page, 0, { score: 'partial', note: 'Said it would be mean, not why' });
   // The field carries a blank note into the next card rather than the last one's.
   await expect(page.locator('#rationale-note')).toHaveValue('');
   await answerTrial(page, 1, { score: 'correct' });      // no note at all
+  await answerTrial(page, 2, { score: 'correct' });      // plays the category out
 
   const rows = (await session(page)).results;
   expect(rows[0].rationaleNote).toBe('Said it would be mean, not why');
@@ -158,7 +160,7 @@ test('the optional note is recorded, and stays optional', async ({ page }) => {
 });
 
 test('the report tallies the reason scores', async ({ page }) => {
-  await seed(page, explaining({ category: 'private' }));
+  await seed(page, explaining({ category: 'smells' }));
   await page.goto(URL);
   await booted(page);
   await page.locator('#btn-play').click();
