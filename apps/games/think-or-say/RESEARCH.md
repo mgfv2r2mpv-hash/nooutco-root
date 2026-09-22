@@ -351,10 +351,12 @@ every card that answers THINK because the person cannot change the thing *also*
 answers THINK because saying it would hurt - which is exactly why cross-labels were
 missing in the first place. The consequence for pairs is that a `changeability` flip
 holding `selfEsteem` constant needs a SAY half where the words sting and get said
-anyway. Level 2 has one: telling a friend quietly about their teeth, which they can
-put right in a second and nobody else hears. That card (L2-05) therefore anchors
-three of the pool's eight pairs - changeability, audience and privacy - and the four
-cards around it are the pool's richest, at four criterial labels each.
+anyway. Level 2 has two: telling a friend quietly about their teeth, which they can
+put right in a second and nobody else hears, and telling Grandma about a leaf in her
+hair (L2-37 against L2-22). The teeth card (L2-05) anchors three of the pool's eight
+required pairs - changeability, audience and privacy - and the four cards around it
+are the pool's richest, at four criterial labels each. Level 2 also carries further
+pairs beyond the required eight, repeating dimensions across new settings and people.
 
 Level 3 repeats that shape and adds one finding of its own. Its cluster is L3-05,
 which anchors *two* pairs at once (changeability against L3-06, audience against
