@@ -68,14 +68,197 @@
     register: TIER.POLISH,
   };
 
-  /* An opaque token is [[T3]], [T3], [[t3]] and the whitespace variants a model
-     returns. Same family the round-trip harness asserts against, and it is
-     written out here rather than imported because notes-scrub owns the
-     substitution and this owns the reading of a failure. One regex built per
-     call: a global regex carries lastIndex between calls and the second read of
-     the same note would come back clean. */
+  /* THIS CHECK HAS TO BE WIDER THAN THE RESTORER, NEVER THE SAME WIDTH.
+     Its whole job is to catch what the restorer missed, so any shape they both
+     fail to match is a token that reaches the EHR with nothing on screen saying
+     so. Until 2026-09-18 the two patterns were the same width, which made this
+     structurally incapable of catching the class of fault it exists for.
+
+     Measured that day rather than reasoned: six reshapings of [[T3]] rode past
+     BOTH, including a bare T3 with the brackets gone, a parenthesised (T3), a
+     markdown-escaped \\[T3\\] and a merged [[T3, T4]]. notes-gate.js now restores
+     every delimited one of those. It deliberately does NOT restore a bare T3,
+     because substituting a word for two characters sitting loose in prose is
+     how you corrupt a sentence the clinician wrote, so the bare form is this
+     function's to catch and the technician's to fix.
+
+     A NUMBER THIS NOTE NEVER ISSUED IS NOT A FINDING. The caller cross-checks
+     every hit against the map, so a clinician writing about T3 as a spinal
+     level or a trial number keeps it and hears nothing. The number is the
+     identity; the brackets are decoration the model is free to mangle.
+
+     One regex built per call: a global regex carries lastIndex between calls and
+     the second read of the same note would come back clean. */
+  var SQUARE_OPEN = "\\\\?\\[";
+  var SQUARE_CLOSE = "\\\\?\\]";
+  /* Parentheses and the fullwidth and CJK brackets a model reaches for when it
+     decides our square brackets were markup. */
+  var LOOSE_OPEN = "[\\(\\uFF08\\uFF3B\\u3010\\u301A\\uFF62]";
+  var LOOSE_CLOSE = "[\\)\\uFF09\\uFF3D\\u3011\\u301B\\uFF63]";
+  /* One T-number. A model writes T-3 and T_3 as readily as T3. */
+  var ONE_T = "[Tt]\\s*[-_]?\\s*\\d+";
+  var MORE_T = "(?:\\s*[,;/]\\s*" + ONE_T + ")*";
+
+  /* THE SQUARE-BRACKET ARM NEEDS NO MAP, AND MUST NOT HAVE ONE.
+     [[T1]] is the shape we mint. No clinician types it, so its presence in a
+     finished note is evidence on its own, and the case that matters most is the
+     one where the map is GONE: a lost ledger is exactly when a token cannot be
+     restored and exactly when nothing else would say so. Requiring a map here
+     would make the check quietest at the moment it is needed loudest. */
   function tokenFamily() {
-    return /\[\[?\s*[Tt]\s*\d+\s*\]?\]/g;
+    return new RegExp(SQUARE_OPEN + "{1,2}\\s*" + ONE_T + MORE_T + "\\s*" + SQUARE_CLOSE + "{1,2}", "g");
+  }
+
+  /* THE WIDE ARM DOES NEED THE MAP.
+     A bare T3, a parenthesised (T3) and ｢T3｣ all occur in ordinary writing, so
+     these are read as tokens only when THIS note issued that number. The number
+     is the identity; the brackets are decoration the model is free to mangle.
+     Without this, a clinician writing about a T3 spinal level or trial T3 would
+     be told their note is wrong. */
+  function looseTokenFamily() {
+    return new RegExp(
+      LOOSE_OPEN + "\\s*" + ONE_T + MORE_T + "\\s*" + LOOSE_CLOSE + "|\\b[Tt]\\d+\\b",
+      "g",
+    );
+  }
+
+  /* Every number inside one hit, so a merged [[T3, T4]] is read as two. */
+  function numbersIn(hit) {
+    var found = [];
+    var scan = /[Tt]\s*[-_]?\s*(\d+)/g;
+    var m;
+    while ((m = scan.exec(hit)) !== null) found.push(String(parseInt(m[1], 10)));
+    return found;
+  }
+
+  /* The numbers this note actually issued, off the opaque entries in the map. */
+  function issuedIn(map) {
+    var issued = {};
+    (map || []).forEach(function (e) {
+      var m = /^\[\[T(\d+)\]\]$/.exec(String((e && e.token) || ""));
+      if (m) issued[String(parseInt(m[1], 10))] = true;
+    });
+    return issued;
+  }
+
+  /* THE IDENTIFIER FAMILY, and it needs arms of its own because the page mints
+     it in a different shape. An opaque token is minted DOUBLED, [[T3]]. An
+     identifier is minted SINGLE, [DATE_1], and its TYPE carries half the
+     identity alongside the number, so none of the T-number arms above match a
+     single character of it.
+
+     Until 2026-09-22 this file had only those arms. A stranded [DATE_9] raised
+     no tier one at all, so a note could be filed with a token sitting where a
+     date belongs. That is the worst version of the fault this producer exists
+     for, because an identifier is the one class of word that can never be
+     screened off or exempted: the restorer is the only thing that puts it back,
+     and this is the only thing that says when the restorer did not. */
+
+  /* One TYPE_N, with the separator a model may write as _, - or a space. Two
+     letters at the least, which is what keeps this from ever colliding with the
+     T-number arms: T is one letter. */
+  var ONE_ID = "[A-Za-z]{2,12}\\s*[_\\s-]?\\s*\\d+";
+  var MORE_ID = "(?:\\s*[,;/]\\s*" + ONE_ID + ")*";
+
+  /* THE SQUARE-BRACKET ARM NEEDS NO MAP, on the same reasoning as the one
+     above, AND IT HOLDS THE UNDERSCORE FIXED. [DATE_1] is the shape we mint,
+     and a word joined to a number by an underscore inside square brackets is
+     not something a clinician types, so its presence is evidence on its own and
+     is still evidence when the map is gone. Letting the separator go loose here
+     would read a written "[see Note 3]" as a stranded token, so the loose
+     separators live in the map-gated arm, where a wrong guess costs nothing. */
+  function identifierFamily() {
+    var strict = "[A-Za-z]{2,12}_\\d+";
+    return new RegExp(
+      SQUARE_OPEN + "{1,2}\\s*" + strict +
+        "(?:\\s*[,;/]\\s*" + strict + ")*" +
+        "\\s*" + SQUARE_CLOSE + "{1,2}",
+      "g",
+    );
+  }
+
+  /* THE WIDE ARM DOES NEED THE MAP. A bare DATE_1, a parenthesised (Phase 3), a
+     fullwidth (Item 4) and a written "[see Note 3]" are all ordinary writing,
+     so these count only when THIS note issued that type and that number.
+
+     SQUARE BRACKETS APPEAR IN BOTH ARMS, AND THAT IS THE POINT. The arm above
+     takes them with the underscore fixed and needs no map. This one takes them
+     with the separator loose, so a model that wrote [DATE 1] or [DATE-1] is
+     caught here, and the map is what keeps "[see Note 3]" silent. The overlap
+     costs nothing: both arms feed one set keyed by identity, so a shape that
+     matches twice is still one word to put back. */
+  function looseIdentifierFamily() {
+    var open = "(?:" + SQUARE_OPEN + "{1,2}|" + LOOSE_OPEN + ")";
+    var close = "(?:" + SQUARE_CLOSE + "{1,2}|" + LOOSE_CLOSE + ")";
+    return new RegExp(
+      open + "\\s*" + ONE_ID + MORE_ID + "\\s*" + close +
+        "|\\b[A-Za-z]{2,12}_\\d+\\b",
+      "g",
+    );
+  }
+
+  /* Every type and number inside one hit, so a merged [DATE_1, TEL_2] reads as
+     two. The key is TYPE plus number because the type is half the identity: one
+     note can hold DATE_1 and TEL_1 at once, and those are two different words
+     the technician has to put back. */
+  function keysIn(hit) {
+    var found = [];
+    var scan = /([A-Za-z]{2,12})\s*[_\s-]?\s*(\d+)/g;
+    var m;
+    while ((m = scan.exec(hit)) !== null) {
+      found.push(m[1].toUpperCase() + "_" + String(parseInt(m[2], 10)));
+    }
+    return found;
+  }
+
+  /* The identifiers this note actually issued, off the identifier entries in
+     the map. The number is read through parseInt so a padded DATE_01 in the
+     reply still answers to the DATE_1 the page minted. */
+  function issuedIdsIn(map) {
+    var issued = {};
+    (map || []).forEach(function (e) {
+      var m = /^\[([A-Za-z]{2,12})_(\d+)\]$/.exec(String((e && e.token) || ""));
+      if (m) issued[m[1].toUpperCase() + "_" + String(parseInt(m[2], 10))] = true;
+    });
+    return issued;
+  }
+
+  /* How many words this note replaced and did not get back.
+     COUNTED ON THE IDENTITY, not on the hit: one stranded word is one finding
+     however many times the model repeated it and however it bracketed it. The
+     technician has one word to put back, so telling them three is telling them
+     to look for two things that are not there.
+
+     BOTH FAMILIES COUNT INTO ONE SET. The technician is not fixing an opaque
+     token and separately an identifier token, they are fixing words, and the
+     budget this producer spends is measured in rows a person reads. The two key
+     spaces cannot collide: an opaque key is a number, an identifier key is a
+     TYPE and a number. */
+  function strandedCount(text, map) {
+    if (!text) return 0;
+    var t = String(text);
+    var issued = issuedIn(map);
+    var issuedIds = issuedIdsIn(map);
+    var seen = {};
+
+    (t.match(tokenFamily()) || []).forEach(function (hit) {
+      numbersIn(hit).forEach(function (n) { seen[n] = true; });
+    });
+    (t.match(looseTokenFamily()) || []).forEach(function (hit) {
+      numbersIn(hit).forEach(function (n) {
+        if (Object.prototype.hasOwnProperty.call(issued, n)) seen[n] = true;
+      });
+    });
+    (t.match(identifierFamily()) || []).forEach(function (hit) {
+      keysIn(hit).forEach(function (k) { seen[k] = true; });
+    });
+    (t.match(looseIdentifierFamily()) || []).forEach(function (hit) {
+      keysIn(hit).forEach(function (k) {
+        if (Object.prototype.hasOwnProperty.call(issuedIds, k)) seen[k] = true;
+      });
+    });
+
+    return Object.keys(seen).length;
   }
 
   function str(x) {
@@ -127,7 +310,7 @@
         if (typeof output[k] === "string") text += " " + output[k];
       });
     }
-    var stranded = text ? (text.match(tokenFamily()) || []).length : 0;
+    var stranded = strandedCount(text, map);
     if (stranded) {
       out.push(item("scrub", TIER.WRONG, {
         code: "token_in_note",

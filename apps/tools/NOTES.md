@@ -515,15 +515,80 @@ is a statement that the note has a fault, and nobody untouching it has answered
 that, so `none` leaves a tier 1 open and the tier 3 stays withheld. Only
 approve, reject, revert or edit resolves one.
 
-### The cap is five, and the maintainer should rule on it
+### The cap is five, ruled by Kaleb on 21 September
 
-Five rows for the whole note, across all eight producers. The number is borrowed
-rather than picked: the pre-draft check already argued it for its own findings,
-"two findings is a technician who has something to fix; five is a wall, and a
-wall gets skipped whole". That argument was made about one producer, and five
-across all of them is the same ceiling put where it belongs. `build()` takes a
-cap, so nothing in the code treats five as a law, and the tests assert the cap is
-enforced rather than that it equals five.
+Five rows for the whole note, across all eight producers. The number was
+borrowed rather than picked: the pre-draft check already argued it for its own
+findings, "two findings is a technician who has something to fix; five is a
+wall, and a wall gets skipped whole". That argument was made about one producer,
+and five across all of them is the same ceiling put where it belongs. `build()`
+takes a cap, so nothing in the code treats five as a law, and the tests assert
+the cap is enforced rather than that it equals five.
+
+**Kaleb ruled the number on 21 September and left it at five.** It was carried
+to him as an open question with the alternative on the table, and he answered
+"keep 5", so the heading no longer asks. `DEFAULT_CAP` is unchanged in
+`notes/bcba/alert-budget.js`; what changed is that the five is now a decision
+rather than a borrowing waiting on one.
+
+### The identifier family, ruled by Kaleb on 22 September
+
+**A check whose job is to catch a restorer's failures has to be strictly wider
+than the restorer, never the same width.** That rule was written here on 18
+September and applied to the opaque token family. It was left unapplied to the
+identifier family, which is the branch where it mattered more.
+
+The two families are minted in different shapes, and the difference is the whole
+fault:
+
+| family | minted | identity | example |
+|---|---|---|---|
+| opaque | DOUBLED, `[[T3]]` | the number | a name, a place, a device |
+| identifier | SINGLE, `[DATE_1]` | the TYPE and the number | a date, a phone, an MRN |
+
+Measured on `origin/main` rather than reasoned about: **6 of 11 identifier
+reshapings rode past the restorer**, and one of the six was worse than a miss.
+A model that doubles the brackets writes `[[DATE_1]]`, which HOLDS the minted
+`[DATE_1]` as a substring, so the literal substitution rewrote the inside and
+left the outside, handing the clinician `[3/14/2025]` with stray brackets welded
+to their own date. A miss is visible. That reads as prose.
+
+**Both halves were widened in one change, which is what Kaleb ruled.**
+
+- `restoreLooseIdentifier` in `notes-gate.js` now reads the identity and treats
+  the delimiters as decoration, the same way the opaque pass does: one or two
+  brackets, escaped or not, square, round, fullwidth or CJK, `_`, `-` or a space
+  for the separator, a padded number, and a merged `[DATE_1, TEL_2]` run. A run
+  is ALL OR NOTHING: one number in it this note never issued and the whole run
+  is left alone for the check below to catch.
+- **The identifier pass now runs BEFORE the literal one, and only this one
+  does.** That is what fixes the welded bracket. The opaque family has no such
+  hazard, because it is minted doubled, so matching it literally is right and
+  its loose pass keeps its old place after the literal one.
+- `strandedCount` in `notes/bcba/alert-budget.js` grew an identifier arm. It had
+  read T-numbers only, on main and in the branch both, so a stranded `[DATE_9]`
+  raised no tier one at all and the note could be filed with a token sitting
+  where a date belongs. That is the worst version of this producer's own fault,
+  because an identifier is the one class of word that can never be screened off
+  or exempted: the restorer is the only thing that puts it back, and this is the
+  only thing that says when the restorer did not.
+
+**Two arms again, and the split is the same one.** The square-bracket arm holds
+the underscore fixed and needs NO map, because `[DATE_1]` is the shape the page
+mints and a lost ledger is exactly when a token cannot be restored and exactly
+when nothing else would say so. The wide arm takes the loose separators, the
+other brackets and a bare `DATE_1`, and it IS map-gated, because `[see Note 3]`,
+`(Item 5)` and `Phase 2` are ordinary clinical writing. Square brackets appear
+in both arms on purpose: with the underscore intact they are evidence on their
+own, with a loose separator they need the ledger to tell a token from a
+sentence.
+
+**Proved by driving both real files over 29 shapes**, not by reading the
+regexes: every shape either comes back with the clinician's word in it or comes
+back with a tier one on it, and none falls through both. The count is on the
+IDENTITY and both families feed one set, so a word the model repeated four times
+is one row and the type carries half the key, since a note holding `DATE_1` and
+`PHONE_1` at once holds two different words.
 
 ### The four dispositions
 
@@ -917,9 +982,10 @@ above. The em dash sweep covers `apps/tools` only and does not reach
 - **The write path.** LANDED, see "The write path" below. `voice_level` and
   `diction_level` are written through `/api/audit` and `/events`, the route the
   Pages worker already forwards. There is no new route on the profile Worker.
-- **A number the maintainer should rule on.** `MOVES_PER_NOTE` is 3 of 4
-  features, chosen as "most but never all of them". Nobody has said what the
-  right budget is.
+- **A number the maintainer has now ruled on.** `MOVES_PER_NOTE` is **2 of 4**
+  features. The worker chose 3 as "most but never all of them" and flagged that
+  nobody had ruled. Kaleb ruled it to 2 on 18 September, against his standing
+  requirement that the tool sound like the author without overtrying.
 
 ## Slice 5a - the house synonym families, and the only thing a word leaves behind
 
@@ -1068,8 +1134,13 @@ before that exists would be counting words for nobody.
 close together when the write path lands, through the Pages worker the way
 `/events` already does. The browser never calls the profile Worker directly.
 
-A number the maintainer should rule on: `MAX_COUNT_PER_NOTE` is 50. It exists so
-one note with a stuck key cannot outweigh a year of notes, and 50 is a guess.
+**A number the maintainer has now ruled on.** `MAX_COUNT_PER_NOTE` is **10**. It
+exists so one note with a stuck key cannot outweigh a year of notes. The worker
+set it to 50 and wrote "50 is a guess". Kaleb ruled it to 10 on 21 September,
+because a BT session note runs a few hundred words: one family reaching fifty
+inside it IS the stuck key, so a cap that only fires there is not bounding a
+vote. Ten sits above anything a real note produces and below anything a jam
+produces.
 
 ### Suite state after slice 5a
 
@@ -1459,7 +1530,7 @@ entry.
 |---|---|---|---|---|
 | the page buffer, `notes-gate.js` `audit.voice` | a slug | identifier shape, first 8 | finite numbers | identifier family, integer variant, integer count above 0, rows rebuilt, 85 at most |
 | the Pages worker, `sanitizeVoiceNote` in `_worker.js` | `NOTES_TOOLS` | `VOICE_FEATURES` | finite, rounded to 6 places | `VOICE_FAMILIES`, integer variant 0 to 63, integer count above 0, rows rebuilt, 85 at most; 20 notes a request |
-| the store, `acceptVoice` | `VOICE_TOOLS` | walked from `HOUSE_FEATURES` | finite, 0 to `LEVEL_MAX` (10), refused not clamped | `accept()` from slice 5a, 50 a note; 20 notes a request |
+| the store, `acceptVoice` | `VOICE_TOOLS` | walked from `HOUSE_FEATURES` | finite, 0 to `LEVEL_MAX` (4), refused not clamped | `accept()` from slice 5a, 10 a note; 20 notes a request |
 
 `VOICE_FEATURES` and `VOICE_FAMILIES` in the Pages worker are copies of
 `HOUSE_FEATURES` and `FAMILY_IDS`, because the two Workers deploy separately and
@@ -1509,15 +1580,20 @@ count.
 3. **The page buffer drains voice only when the response says `profile: "ok"`**,
    on the terms corrections already drain on. A store that is not bound yet has
    not learned the note, so the reading waits in a bounded ring (500 entries).
-4. **`LEVEL_MAX` is 10.** Every one of the four is a rate or a ratio that real
-   notes put under 2, and a value past 10 is a broken client or a forged payload.
-   It is a plausibility bound, not a measured one, and the maintainer may want to
-   rule on it.
+4. **`LEVEL_MAX` is 4, ruled by Kaleb on 21 September.** Every one of the four is
+   a rate or a ratio that real notes put under 2, and a value past the bound is a
+   broken client or a forged payload. It was 10, which refused only obvious
+   garbage and let a broken client write a 9 that quietly dragged an author's
+   running mean. Four is twice the highest reading a real note has produced. It
+   is still a plausibility bound rather than a measured one, and the error it now
+   prefers is refusing one real outlying note, whose author then teaches the tool
+   nothing from it.
 
 ### A defect found in slice 5a's code: `applyNote` cut a running total back to the cap
 
 `applyNote` re-read the rows already stored through `accept()`, and `accept()`
-caps ONE NOTE's count at `MAX_COUNT_PER_NOTE` (50). A stored row is a running
+caps ONE NOTE's count at `MAX_COUNT_PER_NOTE` (50 when this was found, 10 since
+Kaleb's ruling of 21 September). A stored row is a running
 total over many notes. Measured before the fix: a stored count of 120 plus a note
 of 3 came back as 53, so an author's history would have been cut down on every
 write. It never reached live data, because nothing wrote `diction_level` before
@@ -1678,7 +1754,8 @@ for anything that is not a number. The `typeof` was removed, and
 - **Nothing sends diction on this branch yet.** The `harvest` argument is the
   host's to add. Until then the diction half is landed by the ledger test that
   calls `NoteVoice.entry` with a harvest directly.
-- **`LEVEL_MAX` (10) and the 6 place rounding are judgment, not measurement.**
+- **`LEVEL_MAX` (4 since Kaleb's ruling of 21 September, 10 before it) and the 6
+  place rounding are judgment, not measurement.**
 
 ### Suite state after the write path
 

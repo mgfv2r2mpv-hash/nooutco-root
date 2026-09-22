@@ -145,9 +145,18 @@ test.describe('a detected identifier comes back', () => {
     expect(restored).toContain('Maple Street');
   });
 
-  // The one thing an echo mock can never catch: a real model reshapes the token
-  // it was given. [[T3]] came back as [T3] and rode into a note once already.
-  const RESHAPED = ['[date_1]', '[DATE 1]', '[ DATE_1 ]', '[[DATE_1]]', '[Date-1]'];
+  /* The one thing an echo mock can never catch: a real model reshapes the token
+     it was given. [[T3]] came back as [T3] and rode into a note once already.
+
+     THE LAST FOUR WERE ADDED 2026-09-22, measured rather than imagined: six of
+     these eleven shapes rode past the restorer on the build that shipped. The
+     identity is the TYPE and the number; the brackets are decoration the model
+     is free to mangle, so the restorer reads the identity and the delimiters
+     are whatever came back. */
+  const RESHAPED = [
+    '[date_1]', '[DATE 1]', '[ DATE_1 ]', '[[DATE_1]]', '[Date-1]',
+    '\\[DATE_1\\]', '(DATE_1)', '[DATE_01]', '｢DATE_1｣',
+  ];
   for (const shape of RESHAPED) {
     test(`restores when the model hands it back as ${shape}`, async ({ page }) => {
       // The note issues DATE_1 for the written date, and the model returns the
@@ -159,8 +168,30 @@ test.describe('a detected identifier comes back', () => {
       );
       expect(restored, `${shape} was left in the note`).toContain('September 3, 2026');
       expect(restored).not.toContain(shape);
+      /* AND NOTHING IS WELDED TO THE DATE. A doubled [[DATE_1]] HOLDS the
+         minted [DATE_1] as a substring, so a literal substitution running first
+         rewrote the inside and left the outside, handing the clinician
+         [September 3, 2026]. That is worse than a miss, because a miss is
+         visible and this reads as prose. The sentence carries no bracket of its
+         own, so any bracket here is one the restorer left behind. */
+      expect(restored, `a delimiter was welded to the date: ${restored}`)
+        .not.toMatch(/[[\]()\uFF08\uFF09\uFF3B\uFF3D\u3010\u3011\u301A\u301B\uFF62\uFF63]/);
     });
   }
+
+  /* THE NUMBER IS COUNTED PER TYPE, so a note with one date and one phone in it
+     mints [DATE_1] and [PHONE_1] and the two share a number. That is why the
+     identity is the type AND the number, everywhere that reads these. */
+  test('a merged list of two identifiers comes back as two words', async ({ page }) => {
+    const { restored } = await roundTrip(
+      page,
+      'Reassessment due September 3, 2026, call mom at (555) 213-4477.',
+      'Noted [DATE_1, PHONE_1] on the plan.',
+    );
+    expect(restored, `the merged run was left whole: ${restored}`).toContain('September 3, 2026');
+    expect(restored).toContain('555');
+    expect(restored).not.toMatch(/\[?DATE[_\s-]?\d/i);
+  });
 
   test('a number this note never issued is the clinician\'s own writing and stays', async ({ page }) => {
     const text = 'Session on 09/03/2026 went well.';

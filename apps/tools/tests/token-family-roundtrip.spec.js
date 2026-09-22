@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { isTriageCall } from './helpers/llm-call.js';
 import {
-  reshape, reshapeOne, issuedNumbers, tokenFamily, captureClipboard, copiedFrom,
+  reshapeReply, reshapeOne, SHAPE_COUNT, issuedNumbers, tokenFamily, captureClipboard, copiedFrom,
 } from './helpers/token-reshape.js';
 
 /* EVERY PATH A TOKEN CAN REACH A CLINICIAN, DRIVEN BY A MOCK THAT RESHAPES IT.
@@ -77,7 +77,7 @@ const modelSays = (obj) => ({
   status: 200,
   contentType: 'application/json',
   body: JSON.stringify({
-    content: [{ type: 'text', text: reshape(typeof obj === 'string' ? obj : JSON.stringify(obj)) }],
+    content: [{ type: 'text', text: reshapeReply(obj) }],
     usage: { output_tokens: 100 },
     stop_reason: 'end_turn',
   }),
@@ -198,15 +198,22 @@ const ledger = (page) =>
    the reshaper ever emitted the canonical shape, every test below would be an
    echo mock again and would pass on the build that shipped the fault. */
 test.describe('the mock reshapes, so absence means something', () => {
-  test('no shape it emits is the shape the page minted', async () => {
-    const numbers = ['1', '2', '3', '4', '5', '10', '14'];
-    const out = reshape(numbers.map((n) => `[[T${n}]]`).join(' | '));
-    expect(out, 'the reshaper handed a canonical token back').not.toMatch(/\[\[T\d+\]\]/);
-    /* Every one still reads as a token, or the assertions below would be passing
-       because the string stopped looking like a token at all rather than because
-       the page restored it. Split on the separator, not on a space: one of the
-       five shapes pads inside the brackets. */
-    for (const piece of out.split(' | ')) {
+  test('no shape it emits is the token the page minted', async () => {
+    /* ONE NUMBER PER SHAPE, BY CONSTRUCTION. This was seven numbers chosen by
+       hand, which covered the five shapes that existed the day it was written
+       and quietly stopped covering the list the day two more were added. */
+    for (let i = 1; i <= SHAPE_COUNT; i++) {
+      const n = String(i);
+      const piece = reshapeOne(n);
+      /* THE CLAIM IS IDENTITY, NOT BRACKETS. One reshaping pads the number, so
+         [[T9]] comes back as [[T09]]: canonically SHAPED, and still not the
+         token the page minted, because the literal substitution looks for
+         [[T9]] and will not find it. Asserting against the bracket pattern read
+         that legitimate mangling as a broken control and would have cost the
+         next person the shape rather than the assertion. */
+      expect(piece, `the reshaper handed [[T${n}]] straight back`).not.toBe(`[[T${n}]]`);
+      /* Still reads as a token, or every absence asserted below would be
+         passing because the string stopped looking like one. */
       expect(piece, `${piece} left the family`).toMatch(tokenFamily());
     }
   });
@@ -219,6 +226,23 @@ test.describe('the mock reshapes, so absence means something', () => {
     for (const word of ['Mand', 'Tact', 'Echoic', 'Paw Patrol', ...WITHHELD]) {
       expect(wire, `"${word}" crossed the wire in the clear`).not.toContain(word);
     }
+  });
+
+  /* THE FILE'S HEADER CLAIMS ONE DRAFTED NOTE CARRIES SEVERAL MANGLINGS AT ONCE,
+     AND UNTIL NOW NOTHING CHECKED IT. Every test below reads as a sweep across
+     the shapes, but the sweep is only as wide as the numbers this intake happens
+     to mint: an intake trimmed to two tokens would run every path against two
+     reshapings and still report the same green. That is the vacuous-control
+     failure this whole file was written about, one level up. */
+  test('and the reply mangled them more than one way', async ({ page }) => {
+    const { sent } = await drive(page);
+    const nums = issuedNumbers(JSON.stringify(sent));
+    expect(nums.length, 'no token was issued, so every path below drove an echo mock').toBeGreaterThan(0);
+    const shapes = new Set(nums.map((n) => Number(n) % SHAPE_COUNT));
+    expect(
+      shapes.size,
+      `this note issued ${nums.length} tokens and they landed on ${shapes.size} reshaping(s), so the sweep swept one shape`,
+    ).toBeGreaterThan(3);
   });
 });
 
