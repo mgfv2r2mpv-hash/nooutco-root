@@ -769,6 +769,28 @@
   box-shadow: 0 0 0 4px rgba(47,143,87,0.4), 0 4px 14px rgba(0,0,0,0.12);
 }
 
+/* Answered: the chosen tile folds to one compact row and the other tile goes
+   (the verdict tag says the answer again), so the thought bubble and the Why
+   ladder are not pushed apart. The chosen tile keeps its element and classes. */
+#choices.is-answered { gap: 0; }
+#choices.is-answered .choice:not(.correct) { display: none; }
+#choices.is-answered .choice.correct {
+  width: auto;
+  min-height: 56px;
+  flex-direction: row;
+  gap: 12px;
+  padding: 6px 22px 6px 14px;
+  border-radius: 14px;
+  animation: none;
+}
+#choices.is-answered .bubble { width: 42px; height: 34px; margin-bottom: 0; }
+#choices.is-answered .bubble .face { font-size: 1.2rem; }
+#choices.is-answered .bubble-thought::before { left: 6px; bottom: -5px; width: 8px; height: 8px; box-shadow: inset 0 0 0 2px #fff; }
+#choices.is-answered .bubble-thought::after  { left: 1px; bottom: -10px; width: 5px; height: 5px; box-shadow: inset 0 0 0 2px #fff; }
+#choices.is-answered .bubble-speech { border-radius: 10px; }
+#choices.is-answered .bubble-speech::after { bottom: -6px; left: 10px; border-width: 5px; }
+#choices.is-answered .choice-label { font-size: 1.15rem; }
+
 /* ── Next button (injected by JS) ──────────────────────────────────── */
 #btn-next {
   display: block;
@@ -875,6 +897,35 @@
   font-size: 0.95rem;
 }
 #rationale-note:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* Scored: the panel folds to one line, the score kept as picked. */
+#rationale-panel.is-scored { padding: 8px 12px; }
+#rationale-panel.is-scored > :not(#rationale-scored) { display: none !important; }
+#rationale-scored {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-weight: 800;
+  color: #2d3748;
+}
+#rationale-panel:not(.is-scored) #rationale-scored { display: none; }
+.rationale-scored-text {
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+}
+.rationale-scored-change {
+  background: none;
+  border: none;
+  padding: 4px 6px;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
 
 /* ── Completion card ───────────────────────────────────────────────── */
 #done-card {
@@ -1111,6 +1162,10 @@
   .bubble { width: 96px; height: 78px; }
   .bubble .face { font-size: 2.4rem; }
   .choice-label { font-size: 1.2rem; }
+  /* The cloud's trailing dots sat on the T of THINK: smaller, tucked up. */
+  .bubble-thought { margin-bottom: 6px; }
+  .bubble-thought::before { left: 22px; bottom: -8px; width: 15px; height: 15px; }
+  .bubble-thought::after  { left: 12px; bottom: -16px; width: 9px; height: 9px; }
 }
 
 @media (max-width: 360px) {
@@ -1309,13 +1364,14 @@
 }
 .why-lean-think { background: var(--think-soft); color: #6b4e0a; border: 1px solid #e7c463; }
 .why-lean-say   { background: var(--say-soft);   color: #1f5c39; border: 1px solid #8fd1a8; }
-.why-lean-none  { background: #f7f9fc; color: #718096; border: 1px solid #e2e8f0; font-weight: 700; letter-spacing: 0; }
+.why-lean-none  { background: #f7f9fc; color: #4a5568; border: 1px solid #e2e8f0; font-weight: 700; letter-spacing: 0; }
+.why-lean-ok    { background: #f0f4fa; color: #2c4a7a; border: 1px solid #c9d3ea; }
 .why-mark {
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  color: #718096;
+  color: #4a5568;
   white-space: nowrap;
 }
 /* The top-most rule pointing the right way. */
@@ -1345,10 +1401,12 @@
 @media (prefers-reduced-motion: reduce) {
   .why-row.is-decider { animation: none; }
 }
-/* A rule pulling the other way: shown, but struck - it lost. */
+/* A rule pulling the other way: shown, but set back - it lost. Grey text and
+   a rule at the left, never opacity, so it still reads at 4.5:1. */
+.why-row.why-against { box-shadow: inset 3px 0 0 #cbd5e0; }
 .why-row.why-against .why-q,
-.why-row.why-against .why-chip,
-.why-row.why-against .why-lean { opacity: 0.55; }
+.why-row.why-against .why-chip { color: #5a6474; }
+.why-row.why-against .why-chip { font-weight: 600; }
 /* The pull is struck, not the fact: everyone WOULD hear - it just lost. */
 .why-row.is-outranked .why-lean { text-decoration: line-through; text-decoration-thickness: 2px; }
 .why-row.why-neutral .why-q { color: #718096; }
@@ -1368,8 +1426,18 @@
   animation-delay: calc(var(--i, 0) * 80ms);
 }
 .why-flip-label { font-weight: 800; color: var(--accent); }
+.why-flip-outcome { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
 .why-flip-arrow { color: #a0aec0; font-weight: 700; }
-.why-flip-text { flex: 1 1 100%; min-width: 0; color: #718096; }
+.why-flip-text {
+  flex: 1 1 100%;
+  min-width: 0;
+  color: #4a5568;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+}
 .why-flip-said { flex: 1 1 100%; min-width: 0; color: #4a5568; font-weight: 700; }
 /* The words that differ from this card: the one thing the learner must see. */
 .why-diff {
@@ -1429,7 +1497,7 @@
   .why-q { grid-area: q; }
   .why-chip { grid-area: chip; justify-self: start; padding: 1px 7px; }
   .why-lean { grid-area: lean; justify-self: end; }
-  .why-mark { grid-area: mark; justify-self: end; font-size: 0.64rem; }
+  .why-mark { grid-area: mark; justify-self: end; font-size: 0.72rem; }
   .why-row.is-decider .why-mark { justify-self: end; }
   .why-flip { padding: 6px 10px; font-size: 0.78rem; }
   #scenario-thought.thought-bubble { padding: 10px 18px 12px; border-radius: 34px / 28px; }
