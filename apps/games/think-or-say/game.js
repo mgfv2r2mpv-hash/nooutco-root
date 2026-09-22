@@ -931,7 +931,33 @@ function renderThought(sc) {
   const quote = document.createElement('span');
   quote.className = 'quote';
   quote.textContent = '“' + sc.utterance + '”';
-  el.thought.replaceChildren(lead, quote);
+  // The line sits in a thought bubble, the same shape as the THINK tile's
+  // icon: a thought is private until it is said (Wellman et al. 2002; Kerr &
+  // Durkin 2004). The tail and caption wait for settleThought().
+  const tail = document.createElement('span');
+  tail.className = 'thought-tail';
+  tail.setAttribute('aria-hidden', 'true');
+  const caption = document.createElement('span');
+  caption.className = 'thought-caption';
+  caption.hidden = true;
+  el.thought.className = 'thought-bubble';
+  el.thought.replaceChildren(lead, quote, tail, caption);
+}
+
+/**
+ * After a correct answer the bubble shows what happened to the thought: a SAY
+ * turns it into a speech bubble ("said out loud"), a THINK keeps it a thought
+ * bubble with a lock ("kept inside"). It rides with the Why ladder, so a probe
+ * withholds it like every other support; renderThought() resets it.
+ */
+function settleThought(answer) {
+  const said = answer === 'say';
+  el.thought.classList.remove('is-said', 'is-kept');
+  el.thought.classList.add(said ? 'is-said' : 'is-kept');
+  const caption = el.thought.querySelector('.thought-caption');
+  if (!caption) return;
+  caption.textContent = said ? 'said out loud' : '🔒 kept inside';
+  caption.hidden = false;
 }
 
 /**
@@ -1063,6 +1089,7 @@ function showReason() {
   renderTiers(rows);
   el.whyPanel.className = 'why-panel why-' + sc.answer;
   el.whyPanel.hidden = false;
+  settleThought(sc.answer);
 }
 
 function hideWhy() {

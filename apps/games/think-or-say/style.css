@@ -473,6 +473,87 @@
   padding: 4px 12px;
 }
 
+/* The thought line as a thought bubble: a cloud with two trailing circles,
+   the THINK tile's icon shape. After a correct answer it settles: SAY morphs
+   it into a speech bubble (tail, green), THINK keeps the cloud and locks it. */
+#scenario-thought.thought-bubble {
+  position: relative;
+  align-self: center;
+  max-width: 100%;
+  margin: 2px 0 24px;
+  padding: 12px 26px 14px;
+  background: #fff;
+  color: #1a202c;
+  border: 3px solid #c9d3ea;
+  border-radius: 44px / 36px;
+  box-shadow: 0 3px 10px rgba(26,32,44,0.18);
+  transition: border-radius 250ms ease, border-color 250ms ease, background-color 250ms ease;
+}
+#scenario-thought.thought-bubble .lead-in { color: #4a5568; opacity: 1; font-size: 0.82rem; }
+#scenario-thought.thought-bubble .quote {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: #1a202c;
+}
+#scenario-thought.thought-bubble::before,
+#scenario-thought.thought-bubble::after {
+  content: '';
+  position: absolute;
+  background: #fff;
+  border: 3px solid #c9d3ea;
+  border-radius: 50%;
+  transition: opacity 250ms ease, transform 250ms ease, border-color 250ms ease;
+}
+#scenario-thought.thought-bubble::before { left: 18%; bottom: -15px; width: 18px; height: 18px; }
+#scenario-thought.thought-bubble::after  { left: calc(18% - 13px); bottom: -27px; width: 10px; height: 10px; }
+/* The speech tail: a square turned 45deg, bordered on two sides, sitting over
+   the bubble's own bottom border so the two read as one outline. */
+#scenario-thought .thought-tail {
+  position: absolute;
+  left: 18%;
+  bottom: -11px;
+  width: 18px;
+  height: 18px;
+  background: #fff;
+  border-right: 3px solid var(--say);
+  border-bottom: 3px solid var(--say);
+  transform: rotate(45deg) scale(0);
+  opacity: 0;
+  transition: opacity 250ms ease, transform 250ms ease;
+}
+#scenario-thought .thought-caption {
+  align-self: center;
+  margin-top: 2px;
+  padding: 1px 9px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  animation: why-in 250ms ease both;
+}
+#scenario-thought.is-said {
+  border-color: var(--say);
+  border-radius: 16px;
+}
+#scenario-thought.is-said::before,
+#scenario-thought.is-said::after { opacity: 0; transform: scale(0); }
+#scenario-thought.is-said .thought-tail { opacity: 1; transform: rotate(45deg) scale(1); }
+#scenario-thought.is-said .thought-caption { background: var(--say-soft); color: #1f5c39; }
+#scenario-thought.is-kept,
+#scenario-thought.is-kept::before,
+#scenario-thought.is-kept::after { border-color: #d69e2e; }
+#scenario-thought.is-kept .thought-caption { background: var(--think-soft); color: #6b4e0a; }
+
+@media (prefers-reduced-motion: reduce) {
+  #scenario-thought.thought-bubble,
+  #scenario-thought.thought-bubble::before,
+  #scenario-thought.thought-bubble::after,
+  #scenario-thought .thought-tail { transition: none; }
+  #scenario-thought .thought-caption { animation: none; }
+}
+
 /* The balanced question. Both halves are the same length and the same weight - neither action may be the visually easier one to pick. */
 #scenario-question {
   font-size: 1.06rem;
@@ -1209,5 +1290,6 @@
   .why-mark { grid-area: mark; justify-self: end; font-size: 0.64rem; }
   .why-row.is-decider .why-mark { justify-self: end; }
   .why-flip { padding: 6px 10px; font-size: 0.78rem; }
+  #scenario-thought.thought-bubble { padding: 10px 18px 12px; border-radius: 34px / 28px; }
   .why-tiers { padding: 5px 10px 7px; font-size: 0.66rem; }
 }
