@@ -336,7 +336,7 @@
       // L3-23 pairs with L3-24 (changeability). Timing is held at the wrong
       // moment on both - he is busy - and both are said quietly to him alone.
       // A card left in the machine can be fixed in the next ten seconds; a
-      // stain cannot be fixed in the shop. That is the conflict the owner
+      // paint stain that never washed out cannot. That is the conflict the owner
       // asked for: the wrong moment loses to "they can fix it right now".
       { id: 'L3-23', level: 3, cat: 'other', answer: 'say',
         situation: 'You are at the shop with your dad, standing right next to him. He is busy talking to the cashier and packing the bags. You can see his bank card is still sticking out of the card machine.',
@@ -352,10 +352,10 @@
 
       // ── block 6 ──
       { id: 'L3-19', level: 3, cat: 'private', answer: 'think',
-        situation: 'Your family is eating dinner together. Earlier, your cousin told you on your own that they still sleep with a night light because the dark scares them.',
-        utterance: 'You still sleep with a night light!', sayVerb: 'say', object: 'these words',
+        situation: 'Your family is eating dinner together. Earlier, your cousin told you on your own that they cried at the end of a sad movie last night.',
+        utterance: 'You cried at the sad movie!', sayVerb: 'say', object: 'these words',
         features: { override: 'none', privacy: 'private', audience: 'others-hear' },
-        vary: { setting: 'home', person: 'family', topic: 'belongings', form: 'exclamation' },
+        vary: { setting: 'home', person: 'family', topic: 'body', form: 'exclamation' },
         reason: 'Think it. Nobody needs help and nothing is unsafe, your cousin told you this in private, and the whole table would hear - so it would only embarrass them.',
         rationales: [
           'You told me that on your own, so it is yours to tell, not mine.',
@@ -367,7 +367,7 @@
       // the "kind but private" conflict: kind does not outrank private when
       // everybody is listening, and it does not need to when nobody is.
       { id: 'L3-21', level: 3, cat: 'private', answer: 'think',
-        situation: 'The whole class is sitting together on the carpet. Your close friend told you on your own that they go to a reading helper after school, and you can hear for yourself that their reading is getting better.',
+        situation: 'The whole class is sitting together on the carpet. Your close friend told you on your own that they go to a reading helper after school. They just read a page of their book to the class, and you can hear for yourself that their reading is getting better.',
         utterance: 'You are getting really good at reading with your helper.', sayVerb: 'say', object: 'these words',
         features: { selfEsteem: 'lifts', privacy: 'private', audience: 'others-hear' },
         vary: { setting: 'school', person: 'peer', topic: 'work', form: 'statement' },
@@ -378,7 +378,7 @@
           'I can tell you later, when it is just the two of us.',
         ] },
       { id: 'L3-22', level: 3, cat: 'kind', answer: 'say',
-        situation: 'You and your close friend sit together at the back of the bus, and nobody else is near. They told you on your own that they go to a reading helper after school, and you can hear for yourself that their reading is getting better.',
+        situation: 'You and your close friend sit together at the back of the bus, and nobody else is near. They told you on your own that they go to a reading helper after school. They just read you a page of their book, and you can hear for yourself that their reading is getting better.',
         utterance: 'You are getting really good at reading with your helper.', sayVerb: 'say', object: 'these words',
         features: { selfEsteem: 'lifts', privacy: 'private', audience: 'just-them' },
         vary: { setting: 'bus', person: 'peer', topic: 'work', form: 'statement' },
@@ -389,30 +389,30 @@
           'You told me about your helper, so it is okay to talk about it with just you.',
         ] },
       // L3-26 pairs with L3-25 as a second truthRank defeater. Truth is held at
-      // `true` - the learner smells the perfume and sees the glove - and both
+      // `true` - the learner smells the perfume and sees the umbrella - and both
       // are strangers, so "never talk to a stranger" cannot be the rule either.
       // What moves is whether they can fix it right now.
       { id: 'L3-26', level: 3, cat: 'kind', answer: 'say',
-        situation: 'A person you have never met gets up to leave the bus. You can see their glove has fallen on the floor by their seat.',
-        utterance: 'You dropped your glove!', sayVerb: 'say', object: 'these words',
+        situation: 'A person you have never met gets up to leave the bus. You can see their umbrella is still hooked on the back of their seat.',
+        utterance: 'You forgot your umbrella!', sayVerb: 'say', object: 'these words',
         features: { truthRank: 'true', relationship: 'stranger', changeability: 'fixable-now' },
         vary: { setting: 'bus', person: 'stranger', topic: 'belongings', form: 'exclamation' },
-        reason: 'Say it! You can see it for yourself, so it is true, and even though they are a stranger, they can pick it up right now - so telling them helps.',
+        reason: 'Say it! You can see it for yourself, so it is true, and even though they are a stranger, they can grab it right now - so telling them helps.',
         rationales: [
-          'You can pick up your glove right now, so telling you helps you.',
-          'I do not know you, but helping you get your glove back is still kind.',
-          'If I stayed quiet, you would lose your glove.',
+          'You can grab your umbrella right now, so telling you helps you.',
+          'I do not know you, but helping you get your umbrella back is still kind.',
+          'If I stayed quiet, you would lose your umbrella.',
         ] },
 
       // ── block 7 ──
       { id: 'L3-24', level: 3, cat: 'looks', answer: 'think',
-        situation: 'You are at the shop with your dad, standing right next to him. He is busy talking to the cashier and packing the bags. You can see a small stain on his shirt from lunch.',
-        utterance: 'Did you spill something on your shirt?', sayVerb: 'ask', object: 'this question',
+        situation: 'You are at the shop with your dad, standing right next to him. He is busy talking to the cashier and packing the bags. You can see an old paint stain on his shirt that never washed out.',
+        utterance: 'Why is there paint on your shirt?', sayVerb: 'ask', object: 'this question',
         features: { timing: 'wrong-moment', changeability: 'not-fixable', audience: 'just-them' },
         vary: { setting: 'shop', person: 'family', topic: 'looks', form: 'question' },
-        reason: 'Think it. You could ask quietly so only he hears, but he is busy, and he cannot change his shirt in the shop - so asking now would not help, and it can wait.',
+        reason: 'Think it. You could ask quietly so only he hears, but he is busy, and that stain will never come out - so asking would not help.',
         rationales: [
-          'You cannot change your shirt in the shop, so asking would not help you.',
+          'That stain will not come out, so asking would not help you.',
           'You are busy with the cashier, and this can wait until later.',
           'Even if I ask quietly, it would just make you worry about your shirt.',
         ] },
@@ -446,11 +446,11 @@
       // not to make, and the override beats it. Timing is right-moment because
       // before she jumps is the only moment that helps.
       { id: 'L3-29', level: 3, cat: 'other', answer: 'say',
-        situation: 'Your big sister is on the swing in your back garden, with her friends all around. She has told you she does not like a fuss in front of them. You can see broken glass on the ground right where she is about to jump off.',
+        situation: 'Your big sister is on the swing in your back yard, with her friends all around. She has told you she does not like a fuss in front of them. You can see broken glass on the ground right where she is about to jump off.',
         utterance: 'Wait, there is broken glass!', sayVerb: 'say', object: 'these words',
         features: { override: 'help-or-safety', audience: 'others-hear', timing: 'right-moment' },
         vary: { setting: 'home', person: 'sibling', topic: 'body', form: 'exclamation' },
-        reason: 'Say it - loudly, right now. Her friends will all hear, and she does not like a fuss, but she could get hurt, and safety always comes first. Before she jumps is the only moment that helps.',
+        reason: 'Say it - loudly, right now. Her friends will all hear, and she does not like a fuss, but she could get hurt, and safety always comes first. Before she jumps is the only moment that helps. Then tell a grown-up about the glass so they can clean it up.',
         rationales: [
           'You could get cut, so keeping you safe matters more than you feeling embarrassed.',
           'Everybody will hear me, and that is okay when you could get hurt.',
@@ -466,7 +466,7 @@
         reason: 'Think it. You can see it for yourself, so it is true - but true is not as important as kind. Nobody else is around, and it would still make him feel bad about a drawing he made for you.',
         rationales: [
           'You made this for me, so if I said that, you would feel bad about your drawing.',
-          'It is true, but kind matters more than true here.',
+          'It is true, but being kind to you matters more to me than saying it.',
           'I can tell you what I like about it instead.',
         ] },
       // L3-31 pairs with L3-32 (selfEsteem), and it is the conflict a learner
@@ -488,7 +488,7 @@
       // to keep quiet about, and here it is a SAY: nobody else hears, she can
       // clean the shoe, and now - before the party - is the right moment.
       { id: 'L3-30', level: 3, cat: 'smells', answer: 'say',
-        situation: 'Your big sister is putting on her shoes to go to a party. You are on your own with her by the front door, and you can smell that one of her shoes has stepped in something from the garden.',
+        situation: 'Your big sister is putting on her shoes to go to a party. You are on your own with her by the front door, and you can smell that one of her shoes has stepped in something from the yard.',
         utterance: 'Your shoe smells like you stepped in something.', sayVerb: 'say', object: 'these words',
         features: { changeability: 'fixable-now', audience: 'just-them', timing: 'right-moment' },
         vary: { setting: 'home', person: 'sibling', topic: 'smell', form: 'statement' },
@@ -507,7 +507,7 @@
         rationales: [
           'The coach asked us, so now is the right time to tell you.',
           'If I say it, you would feel proud of how you played.',
-          'It is true and it is kind, so it is worth saying out loud.',
+          'It is true, and I want you to know you played well.',
         ] },
     ],
     pairs: [
