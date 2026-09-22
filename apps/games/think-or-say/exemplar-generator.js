@@ -57,6 +57,10 @@
     family:   { id: 'family',   a: 'your grown-up at home',      the: 'your grown-up at home' },
     teacher:  { id: 'teacher',  a: 'your teacher',               the: 'your teacher' },
     stranger: { id: 'stranger', a: 'somebody you have never met', the: 'the person you have never met' },
+    // A coach is a grown-up in a teaching role, so it carries the `teacher`
+    // can-have id. Only ever FIXED by a key (G-relationship-2), never sampled,
+    // so a second phrasing of one id cannot inflate a sampled space.
+    coach:    { id: 'teacher',  a: 'your coach',                 the: 'your coach' },
   };
 
   var S = {
@@ -82,7 +86,8 @@
   };
 
   /* ── The templates ───────────────────────────────────────────────────
-     One per criterial dimension, each a matched minimum-difference pair: the
+     At least one per criterial dimension (two since the second-scene round,
+     below), each a matched minimum-difference pair: the
      two variants hold every criterial feature constant but one, and the answer
      flips with it (Horner, Albin & Ralph 1986). Dimension 8 is the defeater
      shape - truthRank is held CONSTANT at 'true' on both sides and something
@@ -296,6 +301,225 @@
           reason: 'Think it. It is true, but true is not as important as kind here - it would still hurt.',
           rationales: ['It is true, and it would still make them feel bad about themselves.',
                        'Kind matters more than true here, so it stays in my head.'] },
+      ],
+    },
+
+    /* ── Second scenes, one per dimension ───────────────────────────────
+       General case programming samples the instructional universe widely, and
+       a probe set whose every item on a dimension is ONE scene with the names
+       swapped samples one point of it. Each template below is a genuinely
+       different everyday scene on the same dimension, with the same key
+       convention: a matched minimum-difference pair, only the criterial
+       feature moves, a THINK half and a SAY half with identical allow-lists so
+       the two answers are drawn equally often.
+
+       No scene here repeats a hand-authored teaching card. A generated probe
+       that reproduced a trained card's scene would be a trained item wearing
+       a generalization label. Several are the scene types Bergstrom, Najdowski
+       et al. (2016, JABA 49:405) taught directly: a gift you do not like, a
+       friend being picked on, something on a person's face. */
+
+    {
+      id: 'G-selfEsteem-2', dim: 'selfEsteem', cat: 'kind', levels: [1, 2, 3],
+      sayVerb: 'say', object: 'these words',
+      // Who baked them is scenery here: no relationship is declared, so the
+      // person slot may range over classmate, sibling and grown-up alike.
+      slots: { person: [P.peer, P.sibling, P.family], setting: [S.home, S.playground, S.bus] },
+      variants: [
+        { value: 'hurts', answer: 'think',
+          features: { selfEsteem: 'hurts' },
+          fixed: { topic: topic('work', 'some cookies they baked', 'the cookies'), form: 'statement' },
+          situation: '{A_person} baked some cookies and gives you one to try {at_setting}. You do not like the taste at all.',
+          utterance: 'These taste bad.',
+          reason: 'Think it. They made them for you, and these words would hurt their feelings.',
+          rationales: ['If I said that, they would feel bad about something they made for me.',
+                       'I can say thank you instead, and that is still true.'] },
+        { value: 'lifts', answer: 'say',
+          features: { selfEsteem: 'lifts' },
+          fixed: { topic: topic('work', 'some cookies they baked', 'the cookies'), form: 'exclamation' },
+          situation: '{A_person} baked some cookies and gives you one to try {at_setting}. You really like the taste.',
+          utterance: 'These taste great!',
+          reason: 'Say it! Telling them you like what they made makes them feel proud.',
+          rationales: ['If I said that, they would feel proud of what they baked.',
+                       'It is kind and it is true, so saying it helps them.'] },
+      ],
+    },
+
+    {
+      id: 'G-privacy-2', dim: 'privacy', cat: 'private', levels: [1, 2, 3],
+      sayVerb: 'say', object: 'these words',
+      slots: { setting: [S.school, S.playground, S.bus] },
+      variants: [
+        // The same news, word for word, on both sides; others hear on both
+        // sides. Only whether it was told in secret or told to everybody moves.
+        { value: 'private', answer: 'think',
+          features: { privacy: 'private', audience: 'others-hear' },
+          fixed: { person: P.peer, topic: topic('body', 'new glasses', 'the glasses'), form: 'exclamation' },
+          situation: 'Yesterday a classmate told you in secret that they are getting glasses next week. Now you are {at_setting} with lots of other kids around you both.',
+          utterance: 'You are getting glasses!',
+          reason: 'Think it. They told you in secret, so it is their news to share, not yours.',
+          rationales: ['They told me in secret, so they did not want everybody to know yet.',
+                       'If I said it now, all the other kids would hear something that is theirs to tell.'] },
+        { value: 'not-private', answer: 'say',
+          features: { privacy: 'not-private', audience: 'others-hear' },
+          fixed: { person: P.peer, topic: topic('body', 'new glasses', 'the glasses'), form: 'exclamation' },
+          situation: 'Yesterday a classmate told the whole class, all excited, that they are getting glasses next week. Now you are {at_setting} with lots of other kids around you both.',
+          utterance: 'You are getting glasses!',
+          reason: 'Say it! They told everybody on purpose, so it is not private at all.',
+          rationales: ['They told everybody themselves, so it is not a secret.',
+                       'They were excited about it, so saying it would make them feel good.'] },
+      ],
+    },
+
+    {
+      id: 'G-changeability-2', dim: 'changeability', cat: 'looks', levels: [1, 2, 3],
+      sayVerb: 'tell', object: 'this news',
+      slots: { person: [P.peer, P.sibling], setting: [S.school, S.home, S.shop] },
+      variants: [
+        { value: 'fixable-now', answer: 'say',
+          features: { changeability: 'fixable-now', audience: 'just-them' },
+          fixed: { topic: topic('looks', 'some jam on their chin', 'the jam'), form: 'statement' },
+          situation: 'You are right beside {a_person} {at_setting} and nobody else can hear. There is a blob of jam on {their} chin that {they} could wipe off right now.',
+          utterance: 'You have something on your chin.',
+          reason: 'Say it quietly. They can wipe it off in a second, and then it is sorted.',
+          rationales: ['If I told them quietly, they could wipe it off before anybody else saw.',
+                       'They would want to know, because they can fix it right now.'] },
+        { value: 'not-fixable', answer: 'think',
+          features: { changeability: 'not-fixable', audience: 'just-them' },
+          fixed: { topic: topic('looks', 'a birthmark', 'the birthmark'), form: 'statement' },
+          situation: 'You are right beside {a_person} {at_setting} and nobody else can hear. There is a birthmark on {their} chin. It has always been there and it does not wash off.',
+          utterance: 'You have something on your chin.',
+          reason: 'Think it. It is part of them and they cannot change it, so saying it would only make them feel bad.',
+          rationales: ['There is nothing they could do about it, so telling them would not help.',
+                       'If somebody kept pointing at a part of me I cannot change, I would feel bad.'] },
+      ],
+    },
+
+    {
+      id: 'G-audience-2', dim: 'audience', cat: 'other', levels: [1, 2, 3],
+      sayVerb: 'tell', object: 'this news',
+      slots: { person: [P.peer, P.sibling, P.family], setting: [S.school, S.bus, S.shop] },
+      variants: [
+        { value: 'just-them', answer: 'say',
+          features: { audience: 'just-them', changeability: 'fixable-now' },
+          fixed: { topic: topic('belongings', 'paper stuck to their shoe', 'the paper'), form: 'statement' },
+          situation: '{A_person} is standing right next to you {at_setting}, close enough to whisper to. There is a piece of toilet paper stuck to the bottom of {their} shoe.',
+          utterance: 'There is paper stuck to your shoe.',
+          reason: 'Say it in a whisper. Only they will hear, and they can pull it off straight away.',
+          rationales: ['If I whispered it, nobody else would know and they could fix it.',
+                       'They would want to know, and a whisper keeps it just between us.'] },
+        { value: 'others-hear', answer: 'think',
+          features: { audience: 'others-hear', changeability: 'fixable-now' },
+          fixed: { topic: topic('belongings', 'paper stuck to their shoe', 'the paper'), form: 'exclamation' },
+          situation: '{A_person} is at the far end of the {the_setting}, so you would have to shout, and everybody there would hear. There is a piece of toilet paper stuck to the bottom of {their} shoe.',
+          utterance: 'There is paper stuck to your shoe!',
+          reason: 'Think it for now. Shouting it would make everybody look at their shoe. Wait until you can whisper it.',
+          rationales: ['If I shouted it, everybody would look and they would feel embarrassed.',
+                       'I can still tell them in a moment, when I am close enough to whisper.'] },
+      ],
+    },
+
+    {
+      id: 'G-relationship-2', dim: 'relationship', cat: 'private', levels: [2, 3],
+      sayVerb: 'tell', object: 'this news',
+      slots: { setting: [S.playground, S.bus] },
+      variants: [
+        { value: 'grown-up', answer: 'say',
+          features: { relationship: 'grown-up', privacy: 'private' },
+          fixed: { person: P.coach, topic: topic('belongings', 'your pet fish', 'your fish'), form: 'statement' },
+          situation: 'You feel sad because your pet fish died last night. {A_person} is right there {at_setting} and asks why you look sad.',
+          utterance: 'My fish died last night.',
+          reason: 'Say it. A grown-up who knows you and asks how you are is somebody you can tell a sad thing to.',
+          rationales: ['If I told my coach, they would understand why I am quiet today and could help me feel better.',
+                       'They know me and they asked, so it is safe to tell them.'] },
+        { value: 'stranger', answer: 'think',
+          features: { relationship: 'stranger', privacy: 'private' },
+          fixed: { person: P.stranger, topic: topic('belongings', 'your pet fish', 'your fish'), form: 'statement' },
+          situation: 'You feel sad because your pet fish died last night. The only person near you {at_setting} is {a_person}.',
+          utterance: 'My fish died last night.',
+          reason: 'Think it for now. Save sad, private news for a grown-up who knows you.',
+          rationales: ['They do not know me, so this is not something to tell them.',
+                       'I can keep it in my head until I see somebody who looks after me.'] },
+      ],
+    },
+
+    {
+      id: 'G-timing-2', dim: 'timing', cat: 'other', levels: [1, 2, 3],
+      sayVerb: 'tell', object: 'this news',
+      slots: { person: [P.teacher, P.family], setting: [S.school, S.shop, S.bus] },
+      variants: [
+        { value: 'right-moment', answer: 'say',
+          features: { timing: 'right-moment', relationship: 'grown-up' },
+          fixed: { topic: topic('belongings', 'a puppy you saw', 'the puppy'), form: 'exclamation' },
+          situation: 'You saw a puppy on the way here and you want to tell {the_person}. {The_person} has just finished a phone call {at_setting} and looks over at you.',
+          utterance: 'I saw a puppy!',
+          reason: 'Say it! The call is over and they are looking at you, so this is the right moment.',
+          rationales: ['They finished the call and looked at me, so I would not be interrupting.',
+                       'Now is a good time, so they can listen properly.'] },
+        { value: 'wrong-moment', answer: 'think',
+          features: { timing: 'wrong-moment', relationship: 'grown-up' },
+          fixed: { topic: topic('belongings', 'a puppy you saw', 'the puppy'), form: 'exclamation' },
+          situation: 'You saw a puppy on the way here and you want to tell {the_person}. {The_person} is {at_setting} in the middle of a phone call.',
+          utterance: 'I saw a puppy!',
+          reason: 'Think it for now. It is good news at the wrong moment - wait until the call is over.',
+          rationales: ['If I told them now I would be interrupting the call, and the other person could not hear them.',
+                       'It is nice news. I just need to wait until they have finished.'] },
+      ],
+    },
+
+    {
+      id: 'G-override-2', dim: 'override', cat: 'other', levels: [1, 2, 3],
+      sayVerb: 'tell', object: 'this news',
+      // Whose hat it is may be a classmate or a sibling; a grown-up at home is
+      // left out because a group of kids taking a grown-up's hat is a
+      // different scene, not the same scene with a new person in it.
+      slots: { person: [P.peer, P.sibling], setting: [S.playground, S.school, S.bus] },
+      variants: [
+        // The same words to the same grown-up on both sides. Only whether
+        // somebody needs help moves: crying and reaching for it, or laughing
+        // and joining in the game.
+        { value: 'help-or-safety', answer: 'say',
+          features: { override: 'help-or-safety' },
+          fixed: { topic: topic('belongings', 'a hat', 'the hat'), form: 'statement' },
+          situation: 'You are {at_setting} and a grown-up is close by. Some bigger kids are throwing a hat that belongs to {a_person} back and forth. {The_person} is crying and cannot get it back.',
+          utterance: 'Those kids have got the hat.',
+          reason: 'Say it - tell the grown-up. Somebody is being picked on and needs help, and that is always a say-it.',
+          rationales: ['If I stayed quiet they would keep being picked on, and that matters more than anything else here.',
+                       'Somebody who is upset and cannot get their things back needs a grown-up to help.'] },
+        { value: 'none', answer: 'think',
+          features: { override: 'none' },
+          fixed: { topic: topic('belongings', 'a hat', 'the hat'), form: 'statement' },
+          situation: 'You are {at_setting} and a grown-up is close by. Some bigger kids are throwing a hat that belongs to {a_person} back and forth. {The_person} is laughing and running to catch it, as part of the game.',
+          utterance: 'Those kids have got the hat.',
+          reason: 'Think it. It is a game they are enjoying, so nobody needs help, and telling on it would spoil the fun.',
+          rationales: ['Nobody is upset or hurt, so there is nothing a grown-up needs to fix.',
+                       'They are having fun, and telling would only stop their game.'] },
+      ],
+    },
+
+    {
+      id: 'G-truthRank-2', dim: 'truthRank', kind: 'defeater', cat: 'kind', levels: [1, 2, 3],
+      sayVerb: 'say', object: 'these words',
+      slots: { person: [P.family, P.sibling, P.peer], setting: [S.home, S.school] },
+      variants: [
+        // Bergstrom, Najdowski et al. (2016): the gift you do not want. True on
+        // both sides; only whether the true words would sting moves.
+        { value: 'lifts', answer: 'say',
+          features: { truthRank: 'true', selfEsteem: 'lifts' },
+          fixed: { topic: topic('belongings', 'a present', 'the present'), form: 'exclamation' },
+          situation: '{A_person} gives you a birthday present, and you open it {at_setting}. Inside is a sweater with a big green frog on it. You really like it.',
+          utterance: 'I really like this sweater!',
+          reason: 'Say it! It is true and it is kind - here true and kind point the same way.',
+          rationales: ['It is true, and hearing it would make them happy they chose it.',
+                       'True and kind point the same way here, so I can say it.'] },
+        { value: 'hurts', answer: 'think',
+          features: { truthRank: 'true', selfEsteem: 'hurts' },
+          fixed: { topic: topic('belongings', 'a present', 'the present'), form: 'statement' },
+          situation: '{A_person} gives you a birthday present, and you open it {at_setting}. Inside is a sweater with a big green frog on it. You do not like it.',
+          utterance: 'I do not like this sweater.',
+          reason: 'Think it. It is true, but true is not as important as kind here - they chose it for you, and it would hurt.',
+          rationales: ['It is true, and it would still make them feel bad after they picked it for me.',
+                       'Kind matters more than true here, so I can say thank you instead.'] },
       ],
     },
   ];

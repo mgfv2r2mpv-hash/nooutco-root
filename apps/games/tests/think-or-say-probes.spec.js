@@ -370,10 +370,11 @@ test('a clean probe writes one generalization datum; a prompted one is a trained
 });
 
 test('asking for more probes than exist re-runs items, and a re-run is a trained trial', async ({ page }) => {
-  // The Level 1 privacy universe holds six generated items; the plan asks for
-  // ten probe trials. The extra four are the same items again - recorded, and
-  // recorded as trained re-exposures rather than as extra generalization data.
-  await seed(page, probing(1, { probeCount1: 10, category: 'private', showReason: false }));
+  // The Level 1 privacy universe holds six NEAR generated items (twelve in all,
+  // across two scenes, so the block is narrowed to near to stay under the
+  // ten-trial ceiling a plan can set); the plan asks for ten probe trials. The
+  // extra four are the same items again - recorded, and recorded as trained re-exposures rather than as extra generalization data.
+  await seed(page, probing(1, { probeCount1: 10, probeTags1: ['near'], category: 'private', showReason: false }));
   await page.goto(URL);
   await booted(page);
   await page.locator('#btn-play').click();
