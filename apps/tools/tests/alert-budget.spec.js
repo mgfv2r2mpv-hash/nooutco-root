@@ -340,7 +340,7 @@ test.describe('a stranded token is the note saying something wrong', () => {
      brackets, upper or lower case T, whitespace inside. A budget that only saw
      the canonical [[T1]] would report a clean note on exactly the failures
      slice 1 exists to catch. */
-  const SHAPES = ['[[T1]]', '[T2]', '[[t3]]', '[[ T4 ]]', '[ T5]'];
+  const SHAPES = ['[[T1]]', '[T2]', '[[t3]]', '[[ T4 ]]', '[ T5]', '\\[T6\\]', '[T-7]', '[[T08]]'];
 
   for (const shape of SHAPES) {
     test(`${shape} left in the note raises a tier one`, async ({ page }) => {
@@ -377,6 +377,115 @@ test.describe('a stranded token is the note saying something wrong', () => {
     expect(kept, `budget: ${JSON.stringify(out.budget.shown)}`).toBeTruthy();
     expect(kept.tier).toBe(2);
     expect(out.budget.shown.some((i) => i.code === 'token_in_note'), 'a restored note has no tier one').toBe(false);
+  });
+});
+
+// ────────────────────────────────── the identifier family, the other half of it
+
+/* AN IDENTIFIER IS MINTED IN A DIFFERENT SHAPE, so the arms that catch [[T1]]
+   catch none of it. The page mints an opaque token DOUBLED, [[T3]], and an
+   identifier SINGLE, [DATE_1], with the TYPE carrying half the identity.
+
+   Until 2026-09-22 this check read T-numbers only. A stranded [DATE_9] raised
+   nothing, which is the worst version of this fault: an identifier is the one
+   class of word that can never be screened off or exempted, so the restorer is
+   the only thing that puts it back and this is the only thing that says when
+   the restorer did not. */
+test.describe('a stranded identifier is the note saying something wrong', () => {
+  const stranded = (out) => out.shown.find((i) => i.producer === 'scrub' && i.code === 'token_in_note');
+
+  /* The map-free arm. These fire with NO ledger at all, because a lost ledger
+     is exactly when a token cannot be restored and exactly when nothing else
+     would say so. */
+  const MINTED = [
+    '[DATE_1]', '[[DATE_1]]', '[date_1]', '\\[DATE_1\\]', '[MRN_4]',
+    /* Padded, and it belongs here rather than below: the underscore is intact,
+       so this is the minted shape with a zero in it and needs no ledger. */
+    '[DATE_01]',
+  ];
+
+  for (const shape of MINTED) {
+    test(`${shape} left in the note raises a tier one with no map`, async ({ page }) => {
+      await ready(page);
+      const out = await page.evaluate(
+        (tok) => window.AlertBudget.build({
+          output: { lessonProgressNarrative: `The session began ${tok} at the table.` },
+        }, { cap: 99 }),
+        shape,
+      );
+      const hit = stranded(out);
+      expect(hit, `no tier one for ${shape}`).toBeTruthy();
+      expect(hit.tier).toBe(1);
+    });
+  }
+
+  /* The map-gated arm. A parenthesised (Phase 3), a written [see Note 3] and a
+     bare Trial 2 are ordinary writing, so these count only when THIS note
+     issued that type and that number. Each shape is asserted twice, loud with
+     the map and silent without it, because a check that fires either way is not
+     reading the map at all. */
+  const LOOSE = ['(DATE_1)', '｢DATE_1｣', '[DATE 1]', '[DATE-1]', '(DATE_01)', 'DATE_1'];
+
+  for (const shape of LOOSE) {
+    test(`${shape} raises a tier one when this note issued it, and nothing when it did not`, async ({ page }) => {
+      await ready(page);
+      const out = await page.evaluate((tok) => {
+        const text = { lessonProgressNarrative: `The session began ${tok} at the table.` };
+        return {
+          issued: window.AlertBudget.build({
+            map: [{ name: '3/14/2025', token: '[DATE_1]', restore: true }],
+            output: text,
+          }, { cap: 99 }),
+          never: window.AlertBudget.build({
+            map: [{ name: '3/14/2025', token: '[DATE_7]', restore: true }],
+            output: text,
+          }, { cap: 99 }),
+        };
+      }, shape);
+      const loud = stranded(out.issued);
+      expect(loud, `no tier one for ${shape} when it was issued`).toBeTruthy();
+      expect(loud.tier).toBe(1);
+      expect(stranded(out.never), `${shape} fired on a number this note never issued`).toBeFalsy();
+    });
+  }
+
+  test('a clinician writing brackets and numbers hears nothing', async ({ page }) => {
+    await ready(page);
+    const out = await page.evaluate(() => window.AlertBudget.build({
+      map: [{ name: '3/14/2025', token: '[DATE_1]', restore: true }],
+      output: {
+        lessonProgressNarrative: 'Data are in [see Note 3] of the plan. Phase 2 ran ten minutes.',
+        behaviorNarrative: 'Trial 4 and (Item 5) were scored against T3 of the protocol.',
+      },
+    }, { cap: 99 }));
+    expect(stranded(out), `fired on ordinary writing: ${JSON.stringify(out.shown)}`).toBeFalsy();
+  });
+
+  /* COUNTED ON THE IDENTITY, not on the hit. The technician has a number of
+     words to put back, and telling them four is telling them to look for two
+     things that are not there. */
+  test('one word repeated is one finding, and two families count into one set', async ({ page }) => {
+    await ready(page);
+    const out = await page.evaluate(() => {
+      const map = [
+        { name: '3/14/2025', token: '[DATE_1]', restore: true },
+        { name: '555-0147', token: '[TEL_2]', restore: true },
+        { name: 'aggression', token: '[[T3]]', restore: true },
+      ];
+      const count = (text) => {
+        const b = window.AlertBudget.build({ map, output: { lessonProgressNarrative: text } }, { cap: 99 });
+        const hit = b.shown.find((i) => i.code === 'token_in_note');
+        return hit ? Number(String(hit.detail).match(/^(\d+)/)[1]) : 0;
+      };
+      return {
+        repeated: count('[DATE_1] at the start and [DATE_1] again at the end.'),
+        merged: count('Both [DATE_1, TEL_2] came back wrong.'),
+        families: count('[DATE_1] and [[T3]] are both sitting in the note.'),
+      };
+    });
+    expect(out.repeated, 'one word repeated read as more than one finding').toBe(1);
+    expect(out.merged, 'a merged list read as one word').toBe(2);
+    expect(out.families, 'the two families did not count into one set').toBe(2);
   });
 });
 

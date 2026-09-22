@@ -1936,17 +1936,73 @@
    * [[Tn]], so Client--1 cannot reach this even when a caller passes a map that
    * restores names, which the bench does.
    */
-  function restoreLooseOpaque(text, map) {
+  /* THE DELIMITERS A MODEL REACHES FOR. Measured 2026-09-18 by running the
+     plausible reshapings of [[T3]] through this function and through the check
+     in alert-budget.js that exists to catch its failures. Six of them came back
+     unrestored AND unflagged: an escaped \\[T3\\], a parenthesised (T3), a bare
+     T3, a hyphenated [T-3], a merged [[T3, T4]] and unicode brackets. Each one
+     reaches the EHR as a token with nothing on screen saying so, which is the
+     shape of the fault he hit on 2026-09-08 and reported again as intermittent.
+
+     It is intermittent because it is the model's typing, not ours. Widening the
+     shape is the only honest fix: we cannot make a model stop normalising
+     brackets, and every shape we do not cover is a silent one. */
+  var OPENERS = "\\[\\(\\uFF08\\uFF3B\\u3010\\u301A\\uFF62";
+  var CLOSERS = "\\]\\)\\uFF09\\uFF3D\\u3011\\u301B\\uFF63";
+
+  /* One T-number: optional separator between the T and its digits, because a
+     model writes T-3 and T_3 as readily as T3. */
+  var ONE = "[Tt]\\s*[-_]?\\s*(\\d+)";
+
+  function looseTokenRun() {
+    /* An opening delimiter, optionally backslash-escaped the way markdown does
+       it, then one or more T-numbers separated by commas or slashes, then a
+       closing delimiter. Built per call: a /g regex at module scope carries
+       lastIndex between calls and every caller of this is in a loop. */
+    return new RegExp(
+      "\\\\?[" + OPENERS + "]{1,2}\\s*" +
+        ONE.replace("(\\d+)", "\\d+") +
+        "(?:\\s*[,;/]\\s*" + ONE.replace("(\\d+)", "\\d+") + ")*" +
+        "\\s*\\\\?[" + CLOSERS + "]{1,2}",
+      "g",
+    );
+  }
+
+  function eachNumber() { return new RegExp(ONE, "g"); }
+
+  /* Index the map by the number the token carries. The number is the identity
+     and the brackets around it are decoration, so a zero-padded T03 resolves to
+     3 as well. Nothing is substituted unless THIS note issued that number, so a
+     clinician who brackets a term of their own keeps it. */
+  function issuedNumbers(map) {
     var byNumber = {};
     (map || []).forEach(function (e) {
       var m = /^\[\[T(\d+)\]\]$/.exec(String((e && e.token) || ""));
-      if (m) byNumber[m[1]] = e.name;
+      if (m) byNumber[String(parseInt(m[1], 10))] = e.name;
     });
+    return byNumber;
+  }
+
+  function restoreLooseOpaque(text, map) {
+    var byNumber = issuedNumbers(map);
     if (!Object.keys(byNumber).length) return text;
-    /* Built here rather than hoisted: a /g regex kept at module scope carries
-       lastIndex between calls, and every caller of this is in a loop. */
-    return text.replace(/\[{1,2}\s*[Tt]\s*(\d+)\s*\]{1,2}/g, function (whole, n) {
-      return Object.prototype.hasOwnProperty.call(byNumber, n) ? byNumber[n] : whole;
+
+    return String(text).replace(looseTokenRun(), function (run) {
+      /* A RUN IS ALL OR NOTHING. [[T3, T99]] holds one number this note issued
+         and one it did not. Rewriting half of it would leave a token inside a
+         sentence that now reads as finished prose, which is the silent failure
+         this whole function exists to stop. Leave the run alone and let the
+         check in alert-budget.js put it in front of the technician. */
+      var numbers = [];
+      var m;
+      var scan = eachNumber();
+      while ((m = scan.exec(run)) !== null) numbers.push(String(parseInt(m[1], 10)));
+      if (!numbers.length) return run;
+      var allIssued = numbers.every(function (n) {
+        return Object.prototype.hasOwnProperty.call(byNumber, n);
+      });
+      if (!allIssued) return run;
+      return numbers.map(function (n) { return byNumber[n]; }).join(", ");
     });
   }
 
@@ -1965,33 +2021,95 @@
    * term of their own keeps it. A permissive pattern with a closed index is safe;
    * the index is what makes it so.
    */
-  function restoreLooseIdentifier(text, map) {
+  /* WIDENED 2026-09-22, TO THE SAME WIDTH AS ITS SIBLING AND FOR THE SAME REASON.
+     This was written to match one bracket or two, a single separator, and a
+     number spelled exactly as the page spelled it. Driven against the shapes a
+     model actually returns, six of eleven came back unrestored: the escaped
+     \[DATE_1\], the parenthesised (DATE_1), a zero-padded [DATE_01], unicode
+     brackets, a merged [DATE_1, TEL_2] run, and a doubled [[DATE_1]].
+
+     Kaleb ruled these can never be screened off or exempted, which makes a
+     stranded identifier the worse of the two families: the note reaches the EHR
+     with a token where a date belongs. I had already written down that a check
+     must be strictly wider than the restorer it watches, then applied it to the
+     opaque family and not to this one. */
+  var ONE_ID = "([A-Za-z]{2,12})\\s*[_\\s-]?\\s*(\\d+)";
+
+  function looseIdentifierRun() {
+    /* Same construction as looseTokenRun: an optionally escaped opener, one or
+       more TYPE_N pairs separated by commas or slashes, an optionally escaped
+       closer. Built per call, because a /g regex at module scope carries
+       lastIndex between calls and every caller is in a loop. */
+    var bare = ONE_ID.replace("([A-Za-z]{2,12})", "[A-Za-z]{2,12}").replace("(\\d+)", "\\d+");
+    return new RegExp(
+      "\\\\?[" + OPENERS + "]{1,2}\\s*" + bare +
+        "(?:\\s*[,;/]\\s*" + bare + ")*" +
+        "\\s*\\\\?[" + CLOSERS + "]{1,2}",
+      "g",
+    );
+  }
+
+  function eachIdentifier() { return new RegExp(ONE_ID, "g"); }
+
+  /* Index by TYPE plus the number, with the number read as a number so a padded
+     DATE_01 resolves to the DATE_1 this note issued. The index is the safety,
+     not the pattern: nothing is substituted unless this note issued that exact
+     type and number, so a clinician who writes [PLAN_2] of their own keeps it. */
+  function issuedIdentifiers(map) {
     var byKey = {};
     (map || []).forEach(function (e) {
       var m = /^\[([A-Za-z]{2,12})_(\d+)\]$/.exec(String((e && e.token) || ""));
-      if (m) byKey[m[1].toUpperCase() + "_" + m[2]] = e.name;
+      if (m) byKey[m[1].toUpperCase() + "_" + String(parseInt(m[2], 10))] = e.name;
     });
+    return byKey;
+  }
+
+  function restoreLooseIdentifier(text, map) {
+    var byKey = issuedIdentifiers(map);
     if (!Object.keys(byKey).length) return text;
-    /* Built per call, not hoisted: a /g regex at module scope carries lastIndex
-       between calls and every caller of this is in a loop. */
-    return text.replace(
-      /\[{1,2}\s*([A-Za-z]{2,12})\s*[_\s-]\s*(\d+)\s*\]{1,2}/g,
-      function (whole, type, n) {
-        var key = type.toUpperCase() + "_" + n;
-        return Object.prototype.hasOwnProperty.call(byKey, key) ? byKey[key] : whole;
+
+    return String(text).replace(looseIdentifierRun(), function (run) {
+      /* A RUN IS ALL OR NOTHING, for the reason the opaque side is. A run
+         holding one identifier this note issued and one it did not would, if
+         half rewritten, leave a token sitting inside a sentence that now reads
+         as finished prose. Leave it whole and let the check in alert-budget.js
+         put it in front of the technician. */
+      var keys = [];
+      var m;
+      var scan = eachIdentifier();
+      while ((m = scan.exec(run)) !== null) {
+        keys.push(m[1].toUpperCase() + "_" + String(parseInt(m[2], 10)));
       }
-    );
+      if (!keys.length) return run;
+      var allIssued = keys.every(function (k) {
+        return Object.prototype.hasOwnProperty.call(byKey, k);
+      });
+      if (!allIssued) return run;
+      return keys.map(function (k) { return byKey[k]; }).join(", ");
+    });
   }
 
   function restoreDeep(value, map) {
     if (typeof value === "string") {
       var s = value;
+      /* THE IDENTIFIER PASS RUNS BEFORE THE LITERAL ONE, AND ONLY THIS ONE DOES.
+         An identifier is minted with ONE bracket, [DATE_1], so a model that
+         doubles the brackets writes [[DATE_1]], which HOLDS the minted token as
+         a substring. The literal pass then rewrote the inside and left the
+         outside, handing the clinician [3/14/2025] with stray brackets welded to
+         their date. That is worse than a miss, because a miss is visible and
+         this reads as prose.
+
+         The opaque family has no such hazard: it is minted doubled, [[T3]], so
+         the literal pass matching it exactly is right, and it keeps its old
+         place after the literal pass. */
+      s = restoreLooseIdentifier(s, map);
       var ordered = map.slice().sort(function (a, b) { return b.token.length - a.token.length; });
       ordered.forEach(function (e) { s = s.split(e.token).join(e.name); });
-      /* The literal pass ran first and still wins, so a token the model echoed
-         back correctly never reaches the tolerant ones. These only ever see the
-         survivors. */
-      return restoreLooseIdentifier(restoreLooseOpaque(s, map), map);
+      /* The literal pass still wins for names and role tokens, so a token the
+         model echoed back correctly never reaches the tolerant opaque one. It
+         only ever sees the survivors. */
+      return restoreLooseOpaque(s, map);
     }
     if (Array.isArray(value)) return value.map(function (v) { return restoreDeep(v, map); });
     if (value && typeof value === "object") {
