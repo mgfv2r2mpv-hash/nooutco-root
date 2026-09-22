@@ -104,6 +104,9 @@
         situation: 'Your close friend is beside you at lunch. They hold up their arm to show you a new bandage, and they wait for you to say something.',
         utterance: 'How did you get that?', sayVerb: 'ask', object: 'this question',
         features: { relationship: 'close-friend', privacy: 'private', timing: 'right-moment' },
+        // Privacy stays coded private for the pair (L2-08); the friend chose
+        // to show it, so the ladder shows it as not applying here.
+        whyMoot: { privacy: 'Private, but they showed you' },
         vary: { setting: 'school', person: 'peer', topic: 'body', form: 'question' },
         reason: 'Say it. A bandage is a private thing, but your close friend held it up to show you and is waiting - they opened it up, so right now is the moment to ask.' },
 

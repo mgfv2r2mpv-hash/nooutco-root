@@ -189,6 +189,10 @@
         situation: 'Your tummy has hurt all morning. Your teacher is right beside you.',
         utterance: 'My tummy does not feel good.', sayVerb: 'say', object: 'these words',
         features: { relationship: 'grown-up', privacy: 'private' },
+        // The pair needs privacy held at private (L1-10). Here it is the
+        // learner's OWN body, told to a grown-up who helps, so the ladder shows
+        // it as not applying rather than as a higher rule that lost.
+        whyMoot: { privacy: 'Private, but it is yours to tell' },
         vary: { setting: 'school', person: 'teacher', topic: 'body', form: 'statement' },
         reason: 'Say it! Telling a grown-up when you feel sick is important.' },
       { id: 'L1-11', level: 1, cat: 'kind', answer: 'say',
