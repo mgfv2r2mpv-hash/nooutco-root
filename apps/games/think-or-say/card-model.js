@@ -95,6 +95,129 @@
 
   var DIMENSION_KEYS = Object.keys(DIMENSIONS);
 
+  /* ── The Why ladder: the dimensions in the learner's words ────────────
+     After a correct answer the game shows the rules that were in play on the
+     card, ordered by the hierarchy above, so the unspoken ranking becomes
+     something the learner can see: "Is it true? Yes - SAY" sitting struck
+     under "Would it hurt their feelings? Yes - THINK".
+
+     TIERS, top to bottom. Safety always wins; true is last and is WEAK -
+     true is not enough on its own, which is what the truthRank defeater
+     teaches.
+
+     Each value carries a chip (the card's answer to the question, in a few
+     words) and a LEAN: which answer that value pulls toward on its own, or
+     null when it pulls neither way. A lean is a pull, not a verdict - the
+     card's answer is authored, and the ladder only shows which pull won.
+     Checked against every authored card: relationship has to lean, because
+     its matched pairs flip the answer on it (a grown-up or a close friend
+     pulls toward SAY, a stranger toward THINK), and so does privacy, whose
+     pairs flip on it (L3-15 has nothing else to decide it). `override: none`,
+     a classmate and "not sure" only remove a reason, so they pull neither
+     way. */
+
+  var WHY_TIERS = [
+    { tier: 1, key: 'safety',     label: 'Safety' },
+    { tier: 2, key: 'kind',       label: 'Kind' },
+    { tier: 3, key: 'where-when', label: 'Where & when' },
+    { tier: 4, key: 'who',        label: 'Who' },
+    { tier: 5, key: 'true',       label: 'True' },
+  ];
+
+  var WHY = {
+    override: { tier: 1, icon: '\u{1F6A8}', question: 'Is someone hurt or not safe?',
+      values: {
+        'help-or-safety': { chip: 'Yes - help or safety', lean: 'say' },
+        none:             { chip: 'Nobody is in danger', lean: null },
+      } },
+    selfEsteem: { tier: 2, icon: '\u{1F49B}', question: 'Would it hurt their feelings?',
+      values: {
+        hurts: { chip: 'It would hurt', lean: 'think' },
+        lifts: { chip: 'It would feel good', lean: 'say' },
+      } },
+    changeability: { tier: 2, icon: '\u{1F527}', question: 'Can they fix it right now?',
+      values: {
+        'fixable-now': { chip: 'They can fix it now', lean: 'say' },
+        'not-fixable': { chip: 'They cannot change it', lean: 'think' },
+      } },
+    privacy: { tier: 2, icon: '\u{1F512}', question: 'Is it private?',
+      values: {
+        private:       { chip: 'It is private', lean: 'think' },
+        'not-private': { chip: 'Not private', lean: 'say' },
+      } },
+    audience: { tier: 3, icon: '\u{1F442}', question: 'Who would hear it?',
+      values: {
+        'just-them':   { chip: 'Only they hear', lean: 'say' },
+        'others-hear': { chip: 'Everyone hears', lean: 'think' },
+      } },
+    timing: { tier: 3, icon: '\u{23F0}', question: 'Is it the right moment?',
+      values: {
+        'right-moment': { chip: 'A good moment', lean: 'say' },
+        'wrong-moment': { chip: 'Not the moment', lean: 'think' },
+      } },
+    relationship: { tier: 4, icon: '\u{1F465}', question: 'Who are they to you?',
+      values: {
+        'close-friend': { chip: 'A close friend', lean: 'say' },
+        classmate:      { chip: 'A classmate', lean: null },
+        'grown-up':     { chip: 'A grown-up you know', lean: 'say' },
+        stranger:       { chip: 'A stranger', lean: 'think' },
+      } },
+    truthRank: { tier: 5, icon: '\u{2705}', question: 'Is it true?',
+      values: {
+        true:       { chip: 'Yes, it is true', lean: 'say', weak: true },
+        'not-sure': { chip: 'Not sure', lean: null },
+      } },
+  };
+
+  /**
+   * The rows of the Why ladder for one card: only the dimensions in play,
+   * ordered by tier (then by the order above), each marked for how it sits
+   * against the card's answer.
+   *
+   *   agree   - the value pulls toward the answer.
+   *   decides - the top-most agreeing row that is not weak. One per card.
+   *   against - the value pulls the other way. Below the deciding row it was
+   *             OUTRANKED; above it, the pull was real but did not hold on
+   *             this card ("not this time" - e.g. they could fix it, but
+   *             everyone would hear).
+   *   neutral - the value pulls neither way.
+   *
+   * Within a tier an agreeing row sorts first, so a same-tier contest reads
+   * the way the reason line states it: "it would hurt" sits under "they can
+   * fix it now" on a card where fixing it wins. Changeability sits above
+   * privacy in the kind tier so that, on a SAY card where every condition is
+   * met, the row that decides it is the reason the card is about ("they can
+   * fix it now") rather than the absence of one ("not private").
+   */
+  function whyLadder(card) {
+    var features = (card && card.features) || {};
+    var order = Object.keys(WHY);
+    var rows = Object.keys(features).filter(function (k) { return WHY[k]; }).map(function (k) {
+      var def = WHY[k];
+      var val = def.values[features[k]] || { chip: String(features[k]), lean: null };
+      var stance = val.lean === null ? 'neutral' : (val.lean === card.answer ? 'agree' : 'against');
+      return {
+        dim: k, tier: def.tier, icon: def.icon, question: def.question,
+        value: features[k], chip: val.chip, lean: val.lean, weak: !!val.weak,
+        stance: stance, decides: false, outranked: false,
+      };
+    });
+    var rankOf = { agree: 0, neutral: 1, against: 2 };
+    rows.sort(function (a, b) {
+      return (a.tier - b.tier) || (rankOf[a.stance] - rankOf[b.stance]) ||
+        (order.indexOf(a.dim) - order.indexOf(b.dim));
+    });
+    var decider = -1;
+    for (var i = 0; i < rows.length; i++) {
+      if (rows[i].stance === 'agree' && !rows[i].weak) { decider = i; break; }
+    }
+    return rows.map(function (r, i) {
+      r.decides = i === decider;
+      r.outranked = r.stance === 'against' && decider >= 0 && i > decider;
+      return Object.freeze(r);
+    });
+  }
+
   /* ── Varied ("can-have") features ────────────────────────────────────
      RESEARCH.md §5.2. Every card declares all four, and they must genuinely
      vary across a pool: a can-have value that only ever appears on one answer
@@ -247,5 +370,8 @@
     balancedQuestion: balancedQuestion,
     makeCard: makeCard,
     definePairs: definePairs,
+    WHY: WHY,
+    WHY_TIERS: WHY_TIERS,
+    whyLadder: whyLadder,
   });
 })(typeof window !== 'undefined' ? window : globalThis);

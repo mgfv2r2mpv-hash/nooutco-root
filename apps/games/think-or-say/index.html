@@ -272,7 +272,6 @@
              game.js, never hand-written, so it always names BOTH actions. -->
         <div id="scenario-question"></div>
       </div>
-      <div id="scenario-reason" hidden></div>
     </section>
 
     <section id="choice-section">
@@ -313,6 +312,23 @@
         <input id="rationale-note" type="text" maxlength="200" autocomplete="off"
                placeholder="What they said, in your words">
       </div>
+
+      <!-- ── The Why ladder ───────────────────────────────────────────
+           Shown after a correct answer, on the same gating as the reason
+           line it grew from (withheld on a probe; at Level 3 only once the
+           spoken reason is scored or the exemplars are revealed). The
+           header is the verdict tag and the card's own reason; below it,
+           only the rules in play on this card, ordered by the hierarchy,
+           with the ones that lost shown as outranked. Filled from game.js. -->
+      <section id="why-panel" class="why-panel" hidden aria-label="Why this answer">
+        <div class="why-head">
+          <span class="tag" id="why-verdict"></span>
+          <div id="scenario-reason" hidden></div>
+        </div>
+        <ol class="why-rows" id="why-rows"></ol>
+        <div class="why-flip" id="why-flip" hidden></div>
+        <ol class="why-tiers" id="why-tiers" aria-label="Which rule wins: safety, then kind, then where and when, then who, then true"></ol>
+      </section>
     </section>
 
   </main>

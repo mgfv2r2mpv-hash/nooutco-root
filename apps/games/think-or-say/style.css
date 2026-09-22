@@ -357,19 +357,16 @@
   border-top: 1px solid rgba(255,255,255,0.28);
 }
 
+/* The card's own reason line, now the header of the Why ladder. */
 #scenario-reason {
-  width: min(680px, 100%);
-  margin-top: 12px;
-  padding: 12px 18px;
-  border-radius: 12px;
-  font-size: 1rem;
-  line-height: 1.4;
-  text-align: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.95rem;
+  line-height: 1.35;
   font-weight: 600;
-  animation: reason-in 0.3s ease;
 }
-#scenario-reason.reason-think { background: var(--think-soft); color: #6b4e0a; border: 1px solid #e7c463; }
-#scenario-reason.reason-say   { background: var(--say-soft);   color: #1f5c39; border: 1px solid #8fd1a8; }
+#scenario-reason.reason-think { color: #6b4e0a; }
+#scenario-reason.reason-say   { color: #1f5c39; }
 @keyframes reason-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
 /* ── Choices ───────────────────────────────────────────────────────── */
@@ -864,4 +861,166 @@
   #guide-body { padding: 20px 16px 22px; }
   #guide-body .guide-table { font-size: 0.82rem; }
   #guide-body .guide-rowhead { width: auto; }
+}
+
+/* ── The Why ladder ───────────────────────────────────────────────────
+   After a correct answer: the verdict and the card's reason, then only the
+   rules in play, top rule first. The deciding row is marked; a row pulling the
+   other way is struck as outranked. THINK / SAY is always printed - the amber
+   and green only repeat it. */
+.why-panel {
+  width: min(680px, 100%);
+  margin: 4px 0 12px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-left: 5px solid var(--say);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  animation: reason-in 0.25s ease;
+}
+.why-panel.why-think { border-left-color: var(--think); }
+.why-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 12px;
+  background: var(--say-soft);
+}
+.why-think .why-head { background: var(--think-soft); }
+.why-head .tag { margin-top: 1px; }
+
+.why-rows { list-style: none; margin: 0; padding: 4px 0; }
+.why-row {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto auto 92px;
+  align-items: center;
+  column-gap: 8px;
+  padding: 5px 12px;
+  font-size: 0.86rem;
+  line-height: 1.25;
+  color: #2d3748;
+  animation: why-in 0.28s ease both;
+  animation-delay: calc(var(--i, 0) * 80ms);
+}
+.why-row + .why-row { border-top: 1px solid #f1f4f8; }
+.why-icon { font-size: 1rem; text-align: center; }
+.why-q { color: #4a5568; }
+.why-chip {
+  justify-self: end;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #f1f4f8;
+  white-space: nowrap;
+}
+.why-lean {
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+.why-lean-think { background: var(--think-soft); color: #6b4e0a; border: 1px solid #e7c463; }
+.why-lean-say   { background: var(--say-soft);   color: #1f5c39; border: 1px solid #8fd1a8; }
+.why-lean-none  { background: #f7f9fc; color: #718096; border: 1px solid #e2e8f0; font-weight: 700; letter-spacing: 0; }
+.why-mark {
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #718096;
+  white-space: nowrap;
+}
+/* The top-most rule pointing the right way. */
+.why-row.is-decider { background: #f7fbf8; }
+.why-think .why-row.is-decider { background: #fffaf0; }
+.why-row.is-decider .why-q { color: #1a202c; font-weight: 700; }
+.why-row.is-decider .why-mark {
+  justify-self: start;
+  padding: 2px 7px;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--say);
+}
+.why-think .why-row.is-decider .why-mark { background: #b07c10; }
+/* A rule pulling the other way: shown, but struck - it lost. */
+.why-row.why-against .why-q,
+.why-row.why-against .why-chip,
+.why-row.why-against .why-lean { opacity: 0.55; }
+/* The pull is struck, not the fact: everyone WOULD hear - it just lost. */
+.why-row.is-outranked .why-lean { text-decoration: line-through; text-decoration-thickness: 2px; }
+.why-row.why-neutral .why-q { color: #718096; }
+
+/* "What would flip it?" - the matched minimum-difference partner. */
+.why-flip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  padding: 7px 12px;
+  border-top: 1px dashed #cbd5e0;
+  font-size: 0.82rem;
+  line-height: 1.3;
+  color: #4a5568;
+  animation: why-in 0.28s ease both;
+  animation-delay: calc(var(--i, 0) * 80ms);
+}
+.why-flip-label { font-weight: 800; color: var(--accent); }
+.why-flip-arrow { color: #a0aec0; font-weight: 700; }
+.why-flip-text { flex: 1 1 100%; min-width: 0; color: #718096; }
+.why-chip-flip { background: #fff3bf; box-shadow: inset 0 0 0 1.5px #e7c463; justify-self: auto; }
+.why-row.is-flip-dim .why-chip { box-shadow: inset 0 0 0 1.5px #e7c463; }
+
+/* The hierarchy as one slim line: Safety > Kind > Where & when > Who > True. */
+.why-tiers {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 4px;
+  margin: 0;
+  padding: 6px 12px 8px;
+  border-top: 1px solid #f1f4f8;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #a0aec0;
+}
+.why-tiers { column-gap: 14px; }
+.why-tier { position: relative; padding: 1px 7px; border-radius: 999px; border: 1px solid transparent; }
+.why-tier + .why-tier::before {
+  content: '>';
+  position: absolute;
+  left: -11px;
+  color: #cbd5e0;
+  font-weight: 700;
+}
+.why-tier.is-lit { color: var(--accent-dark); background: var(--accent-soft); border-color: #c9d3ea; }
+
+@keyframes why-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .why-panel, .why-row, .why-flip { animation: none; }
+}
+
+/* A phone: the question sits over its answer, the badge and mark beside. */
+@media (max-width: 560px) {
+  .why-head { padding: 8px 10px; gap: 8px; }
+  #scenario-reason { font-size: 0.88rem; }
+  .why-row {
+    grid-template-columns: 20px minmax(0, 1fr) auto;
+    grid-template-areas: "icon q lean" "icon chip mark";
+    row-gap: 2px;
+    padding: 4px 10px;
+    font-size: 0.8rem;
+  }
+  .why-icon { grid-area: icon; font-size: 0.95rem; }
+  .why-q { grid-area: q; }
+  .why-chip { grid-area: chip; justify-self: start; padding: 1px 7px; }
+  .why-lean { grid-area: lean; justify-self: end; }
+  .why-mark { grid-area: mark; justify-self: end; font-size: 0.64rem; }
+  .why-row.is-decider .why-mark { justify-self: end; }
+  .why-flip { padding: 6px 10px; font-size: 0.78rem; }
+  .why-tiers { padding: 5px 10px 7px; font-size: 0.66rem; }
 }
