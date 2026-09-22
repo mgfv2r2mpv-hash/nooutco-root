@@ -59,6 +59,27 @@
   // now, which is the standing hazard with this file: it is a record, so it
   // goes stale in silence. Re-read the real thing before you trust any line
   // above.
+  //
+  // STATE ON 2026-09-22, read off both projects the same way:
+  //
+  //   tools-nooutco-me       production PROFILE -> bt-profile-api, PROMPTS -> nooutco-prompt-api
+  //                          preview    NOTHING. No env.preview section at all.
+  //   dev-tools-nooutco-me   production PROFILE -> bt-profile-api, PROMPTS -> nooutco-prompt-api
+  //                          preview    NOTHING. No env.preview section at all.
+  //
+  // THE env.preview BLOCK BELOW IS A PLAN, NOT A READING, and it is the only
+  // block in this file that is not describing something live. Kaleb ruled on 21
+  // September that preview gets its own bindings and its own profile store. The
+  // store and the Worker exist as of 22 September (bt-profiles-preview and
+  // bt-profile-api-preview, see apps/profile-api/wrangler.toml), and NEITHER
+  // PAGES PROJECT POINTS AT THEM YET, because that is a project setting and
+  // nothing in this repo can set one. Delete this paragraph the day the reading
+  // above says preview has four bindings, and not before.
+  //
+  // Preview deliberately reuses the PRODUCTION KV namespaces. API_PASSWORDS is
+  // what makes a real login work on a preview, which is the point of having one,
+  // and SUGGEST_DUPES is a dedupe cache. Only the PROFILE store is separate,
+  // because that is the one holding a durable per-technician record.
   "kv_namespaces": [
     { "binding": "SUGGEST_DUPES", "id": "770ceeccadb94d78b519e628509beed8" },
     { "binding": "API_PASSWORDS", "id": "cdaf40fa2b814f7d94818b27042b9cf2" }
@@ -84,7 +105,7 @@
         { "binding": "API_PASSWORDS", "id": "cdaf40fa2b814f7d94818b27042b9cf2" }
       ],
       "services": [
-        { "binding": "PROFILE", "service": "bt-profile-api" },
+        { "binding": "PROFILE", "service": "bt-profile-api-preview" },
         { "binding": "PROMPTS", "service": "nooutco-prompt-api" }
       ]
     }
