@@ -1090,6 +1090,38 @@ function showReason() {
   el.whyPanel.className = 'why-panel why-' + sc.answer;
   el.whyPanel.hidden = false;
   settleThought(sc.answer);
+  requestAnimationFrame(bringWhyIntoView);
+}
+
+/**
+ * Scroll just enough that the ladder is on screen, so on a phone the learner
+ * is not left hunting below the tiles; scrolling no further keeps as much of
+ * the settled thought bubble in view as fits. The fixed print / clear bar
+ * counts as covered space wherever it sits over the panel, and if the scroll
+ * would park Next under it, Next is brought clear too. The panel's top always
+ * wins. No smooth scroll under reduced motion.
+ */
+function bringWhyIntoView() {
+  if (el.whyPanel.hidden) return;
+  const PAD = 12;
+  const vh = window.innerHeight;
+  const panel = el.whyPanel.getBoundingClientRect();
+  const barEl = $('bottom-bar');
+  const bar = barEl ? barEl.getBoundingClientRect() : null;
+  const across = r => !!bar && bar.width > 0 && r.left < bar.right && bar.left < r.right;
+  const floor = r => (across(r) ? bar.top : vh) - PAD;
+
+  let dy = Math.max(0, panel.bottom - floor(panel));
+  const nextEl = $('btn-next');
+  if (nextEl) {
+    const next = nextEl.getBoundingClientRect();
+    const under = across(next) && next.bottom - dy > bar.top && next.top - dy < bar.bottom;
+    if (under) dy = next.bottom - floor(next);
+  }
+  if (panel.top - dy < PAD) dy = panel.top - PAD;
+  if (Math.abs(dy) < 2) return;
+  const still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  window.scrollBy({ top: dy, behavior: still ? 'auto' : 'smooth' });
 }
 
 function hideWhy() {
@@ -1201,15 +1233,22 @@ function wordDiff(from, to) {
   return out.map((t, k) => (kb[k] === '' ? { ...t, changed: false } : t));
 }
 
-/** The partner's text as nodes, the words that changed wrapped in <mark>. */
+/** The partner's text as nodes, each run of changed words wrapped in one <mark>. */
 function diffNodes(from, to) {
+  const runs = [];
+  for (const t of wordDiff(from, to)) {
+    const last = runs[runs.length - 1];
+    if (last && last.changed === t.changed) last.words.push(t.word);
+    else runs.push({ changed: t.changed, words: [t.word] });
+  }
   const nodes = [];
-  wordDiff(from, to).forEach((t, k) => {
+  runs.forEach((r, k) => {
     if (k) nodes.push(document.createTextNode(' '));
-    if (!t.changed) { nodes.push(document.createTextNode(t.word)); return; }
+    const text = r.words.join(' ');
+    if (!r.changed) { nodes.push(document.createTextNode(text)); return; }
     const m = document.createElement('mark');
     m.className = 'why-diff';
-    m.textContent = t.word;
+    m.textContent = text;
     nodes.push(m);
   });
   return nodes;
