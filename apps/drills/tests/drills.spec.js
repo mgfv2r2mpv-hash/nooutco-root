@@ -137,7 +137,9 @@ test('the board draws progress, bests and the keyboard', async ({ page }) => {
   await done(page);
   await page.locator('[data-tab="progress"]').click();
   await expect(page.locator('[data-chart-nwam] svg .chart-dot')).toHaveCount(1);
-  await expect(page.locator('[data-drill-bests] tr')).toHaveCount(5);
+  // One row per clock, answer and copy side by side, under a header.
+  await expect(page.locator('[data-drill-bests] tr:has(td)')).toHaveCount(5);
+  await expect(page.locator('[data-drill-bests] th')).toHaveText(['', 'answer', 'copy']);
   await page.locator('[data-tab="keys"]').click();
   await expect(page.locator('[data-drill-keyboard] .kbd-key')).toHaveCount(26);
 });
@@ -242,4 +244,99 @@ test('the calendar shows each day with its numbers, badge and streak banner; tro
   await expect(won).toContainText('Drill 3 days in a row.');
   await expect(won).toContainText('Unlocked');
   await expect(page.locator('[data-trophy="streak-7"]')).toContainText('3 of 7');
+});
+
+/* ---- round three --------------------------------------------------------- */
+
+test('Keep going carries the answer into a fresh clock and scores only what the new round added', async ({ page }) => {
+  await page.goto('/index.html?clock=2');
+  await wordsReady(page);
+  await page.locator('[data-drill-start]').click();
+  const box = page.locator('[data-drill-box]');
+  const question = await page.locator('[data-drill-q]').textContent();
+  await box.pressSequentially('the child ran ', { delay: 12 });
+  await done(page);
+  await page.keyboard.press('c');
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'armed');
+  await expect(page.locator('[data-drill-q]')).toHaveText(question);
+  await expect(box).toHaveValue('the child ran ');
+  await expect(page.locator('[data-drill-category]')).toContainText('keep going 1');
+  await box.pressSequentially('home', { delay: 12 });
+  await expect(box).toHaveValue('the child ran home');
+  await done(page);
+  const last = await page.evaluate(() => window.NoteDrill.data.history.slice(-2));
+  expect(last[0].itemId).toBe(last[1].itemId);
+  expect(last[1].cont).toBe(1);
+  // 4 keys placed in the second round: "home".
+  expect(last[1].words).toBe(0.8);
+});
+
+test('copy, then respond: the passage is marked word by word, the copy is never kept, and respond runs a minute on it', async ({ page }) => {
+  await page.goto('/index.html?clock=3');
+  await wordsReady(page);
+  await page.locator('[data-drill-mode="copy"]').click();
+  await expect(page.locator('[data-drill-lede]')).toContainText('Copy a passage');
+  await page.locator('[data-drill-start]').click();
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-mode', 'copy');
+  const passage = page.locator('[data-drill-passage]');
+  await expect(passage).toBeVisible();
+  const words = (await passage.textContent()).trim().split(/\s+/);
+  const box = page.locator('[data-drill-box]');
+  // First word right, second word wrong.
+  await box.pressSequentially(words[0] + ' xyzzy ', { delay: 12 });
+  await expect(passage.locator('.pw').nth(0)).toHaveClass(/is-ok/);
+  await expect(passage.locator('.pw').nth(1)).toHaveClass(/is-bad/);
+  await expect(passage.locator('.pw').nth(2)).toHaveClass(/is-cur/);
+  await expect(page.locator('[data-drill-live]')).toHaveText('');
+  await done(page);
+  await expect(page.locator('[data-drill-errors]')).toHaveText('1');
+  await expect(page.locator('[data-drill-keep]')).toBeHidden();
+  await expect(page.locator('[data-drill-continue]')).toBeHidden();
+  await expect(page.locator('[data-drill-again]')).toContainText('Respond');
+  const copyRec = await page.evaluate(() => window.NoteDrill.data.history.at(-1));
+  expect(copyRec.mode).toBe('copy');
+  expect(copyRec.outline).toBeNull();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-mode', 'respond');
+  await expect(page.locator('[data-drill-ref]')).toBeVisible();
+  await expect(box).toHaveValue('');
+  await box.pressSequentially('I agree with most of it ', { delay: 12 });
+  await done(page);
+  await expect(page.locator('[data-drill-keep]')).toBeVisible();
+  await expect(page.locator('[data-drill-continue]')).toBeVisible();
+  const rec = await page.evaluate(() => window.NoteDrill.data.history.at(-1));
+  expect(rec.mode).toBe('respond');
+  expect(rec.passage).toBe(copyRec.passage);
+  expect(rec.outline).not.toBeNull();
+});
+
+test('finishing the passage ends the copy round early and scores the time it took', async ({ page }) => {
+  await page.goto('/index.html?clock=120');
+  await page.locator('[data-drill-mode="copy"]').click();
+  await page.locator('[data-drill-start]').click();
+  const text = (await page.locator('[data-drill-passage]').textContent()).trim().replace(/\s+/g, ' ');
+  await page.locator('[data-drill-box]').fill('');
+  await page.locator('[data-drill-box]').pressSequentially(text, { delay: 0 });
+  await done(page);
+  await expect(page.locator('[data-drill-errors]')).toHaveText('0');
+  await expect(page.locator('[data-drill-basis]')).toContainText('A copy round');
+});
+
+test('the copy picker aims at his weak keys, says so, and marks those letters', async ({ page }) => {
+  await page.addInitScript(() => {
+    const keys = {};
+    for (const k of 'abcdefghijklmnopqrstuvwxyz') keys[k] = { presses: 40, misses: 0 };
+    keys.w = { presses: 40, misses: 6 }; keys.m = { presses: 40, misses: 5 }; keys.b = { presses: 40, misses: 4 };
+    const at = new Date(Date.now() - 3600000).toISOString();
+    localStorage.setItem('noaba.drills.v1', JSON.stringify([{ at, minutes: 1, nwam: 60, gwam: 62, accuracy: 0.95, words: 62, keys, mode: 'answer', outline: 'A.1', itemId: 'a-01' }]));
+  });
+  await page.goto('/index.html?clock=3');
+  await page.locator('[data-drill-mode="copy"]').click();
+  await page.locator('[data-drill-start]').click();
+  await expect(page.locator('[data-drill-category]')).toContainText('works w m b');
+  expect(await page.locator('[data-drill-passage] u.wk').count()).toBeGreaterThan(20);
+  await expect(page.locator('[data-drill-q]')).toContainText('Relative and absolute strength');
+  await page.keyboard.press('Escape');
+  await page.locator('.row [data-drill-open="keys"]').click();
+  await expect(page.locator('[data-drill-working]')).toContainText('aiming at: w m b');
 });

@@ -19,6 +19,8 @@ import { bests, streak, sitting, ladder, stars, keyTrends, keyboardRates, lineCh
 import { trophyCase, newlyUnlocked } from "./trophies.js";
 import { createCalendar, renderTrophies } from "./calendar.js";
 import { handOf, judge, createShiftTracker, createShiftFx } from "./shift.js";
+import { nextPassage, trickyProfile, describeProfile } from "./passages.js";
+import { renderPassage, markPassage } from "./copy.js";
 
 const params = new URLSearchParams(location.search);
 // ?clock=SECONDS overrides the minute picker: tests, and a quick look.
@@ -42,7 +44,9 @@ const els = {
   chartNwam: $("[data-chart-nwam]"), chartAcc: $("[data-chart-accuracy]"), bests: $("[data-drill-bests]"), trend: $("[data-drill-trend]"),
   keyboard: $("[data-drill-keyboard]"), keytrends: $("[data-drill-keytrends]"), mapGrid: $("[data-drill-map-grid]"),
   again: $("[data-drill-again]"), keep: $("[data-drill-keep]"), keepnote: $("[data-drill-keepnote]"), home: $("[data-drill-home]"),
-  opens: $$("[data-drill-open]"),
+  opens: $$("[data-drill-open]"), modes: $$("[data-drill-mode]"), lede: $("[data-drill-lede]"),
+  passage: $("[data-drill-passage]"), ref: $("[data-drill-ref]"), refText: $("[data-drill-ref-text]"),
+  cont: $("[data-drill-continue]"), working: $("[data-drill-working]"),
 };
 
 const data = { history: [], lexicon: [], settings: {} };
@@ -53,6 +57,11 @@ const state = {
   phase: "idle", minutes: 1, item: null, events: [], t0: 0, deadline: 0, timer: 0, score: null,
   flagged: [], combo: 0, bestCombo: 0, backspaceInWord: false, record: null, kept: false,
   pendingDelete: null, bsRun: 0, coached: false,
+  // The round: "answer" (a bank question), "copy" (type a passage), "respond"
+  // (answer the passage). roundMinutes is this round's clock: the picked one,
+  // or one minute for a respond. prefix is where a Keep going round's own
+  // text starts in the box; answerAt and keptUpTo tie the rounds of one answer.
+  mode: "answer", passage: null, roundMinutes: 1, prefix: 0, cont: 0, answerAt: null, keptUpTo: 0,
 };
 
 const garden = createGarden($("[data-garden]"), { column: 900 });
@@ -77,7 +86,11 @@ const wordsLoaded = fetch(new URL("./words.txt", import.meta.url))
   .catch(() => {});
 
 /* ---- helpers ------------------------------------------------------------ */
-const secondsFor = () => (CLOCK_OVERRIDE > 0 ? CLOCK_OVERRIDE : state.minutes * 60);
+const secondsFor = () => (CLOCK_OVERRIDE > 0 ? CLOCK_OVERRIDE : state.roundMinutes * 60);
+/** Copy speed and compose speed are different skills: bests and heat never mix them. */
+const kindOf = (h) => (h && h.mode === "copy" ? "copy" : "compose");
+const ofKind = (kind) => data.history.filter((h) => kindOf(h) === kind);
+const roundKind = () => (state.mode === "copy" ? "copy" : "compose");
 const minutesFor = () => secondsFor() / 60;
 function clockText(s) {
   const m = Math.floor(s / 60), r = Math.max(0, Math.floor(s - m * 60));
@@ -89,8 +102,9 @@ function keyName(k) { return k === " " ? "space" : k === "\n" ? "return" : k; }
 const median = (xs) => { if (!xs.length) return 0; const s = [...xs].sort((a, b) => a - b); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
 
 function usualAndBest() {
-  const same = data.history.filter((h) => h.minutes === state.minutes && Number.isFinite(h.nwam));
-  const pool = same.length >= 3 ? same : data.history.filter((h) => Number.isFinite(h.nwam));
+  const mine = ofKind(roundKind());
+  const same = mine.filter((h) => h.minutes === state.roundMinutes && Number.isFinite(h.nwam));
+  const pool = same.length >= 3 ? same : mine.filter((h) => Number.isFinite(h.nwam));
   const usual = pool.length ? median(pool.slice(-10).map((h) => h.nwam)) : 35;
   const best = pool.length ? Math.max(...pool.map((h) => h.nwam)) : 70;
   return { usual, best };
@@ -100,12 +114,24 @@ function usualAndBest() {
 function setMinutes(m, save = true) {
   state.minutes = m;
   for (const b of els.mins) b.classList.toggle("is-on", Number(b.dataset.drillMinutes) === m);
+  state.roundMinutes = m;
   els.clock.textContent = clockText(secondsFor());
-  const b = bests(data.history)[String(m)];
+  const copying = data.settings.mode === "copy";
+  const b = bests(ofKind(copying ? "copy" : "compose"))[String(m)];
+  const what = copying ? "copying" : "answering";
   els.pb.textContent = b != null
-    ? `Your best at ${m} minute${m === 1 ? "" : "s"}: ${b.toFixed(1)} NWAM. Beat it.`
-    : `No drill at ${m} minute${m === 1 ? "" : "s"} yet. This one sets the bar.`;
+    ? `Your best ${what} at ${m} minute${m === 1 ? "" : "s"}: ${b.toFixed(1)} NWAM. Beat it.`
+    : `No ${what} drill at ${m} minute${m === 1 ? "" : "s"} yet. This one sets the bar.`;
   if (save) { data.settings = { ...data.settings, minutes: m }; store.saveSettings(data.settings); }
+}
+function setMode(mode, save = true) {
+  const m = mode === "copy" ? "copy" : "answer";
+  for (const b of els.modes) b.classList.toggle("is-on", b.dataset.drillMode === m);
+  els.lede.textContent = m === "copy"
+    ? "Copy a passage from the field for the clock you pick, word for word, then answer it in your own words for a minute. Keep going if you have more to say."
+    : "One clinical question. One to five minutes, as fast and as clean as you can. The garden grows with every word, and warms when you fly.";
+  if (save) data.settings = { ...data.settings, mode: m };
+  setMinutes(state.minutes, save);
 }
 function renderChips() {
   const s = streak(data.history);
@@ -133,17 +159,62 @@ function home() {
 }
 
 /* ---- arm ---------------------------------------------------------------- */
+/* A new drill: a bank question, or a passage to copy. */
 function arm() {
+  if (data.settings.mode === "copy") {
+    const recent = data.history.filter((h) => h.mode === "copy").map((h) => h.passage);
+    // His ask: the passages work his tricky areas, and adapt as he improves.
+    // The profile is read fresh from the recent drills every time.
+    state.tricky = trickyProfile(data.history, keyboardRates(data.history, 20));
+    state.weak = state.tricky.keys;
+    armCopy(nextPassage(recent, state.tricky));
+    return;
+  }
   const recent = data.history.map((h) => h.itemId);
   // His ruling: the next question comes from the emptiest cell of the map.
   const cell = emptiestCell({ bank: BANK, history: data.history });
   state.item = nextItem(recent, Math.random, cell);
+  state.passage = null;
+  startRound("answer", state.minutes, null);
+}
+
+/* Copy: the passage for the picked clock, word for word. Never kept. */
+function armCopy(passage) {
+  state.passage = passage;
+  state.item = { id: passage.id, outline: passage.outline, tag: passage.kind === "take" ? "the drill's take" : "study", question: passage.title, bullets: [] };
+  startRound("copy", state.minutes, null);
+}
+
+/* Respond: a minute, in his own words, on the passage he just copied. */
+function armRespond() {
+  const p = state.passage;
+  if (!p) { arm(); return; }
+  state.item = { id: p.id, outline: p.outline, tag: "respond", question: p.respond, bullets: [] };
+  startRound("respond", 1, null);
+}
+
+/* Keep going: the same question, the same box, a fresh clock. His ruling:
+   "maybe I had more to say on it and stopped only because time was out." */
+function continueRound() {
+  if (!state.score || state.mode === "copy") return;
+  startRound(state.mode, state.mode === "respond" ? 1 : state.roundMinutes, els.box.value);
+}
+
+function startRound(mode, minutes, carry) {
+  state.mode = mode;
+  state.roundMinutes = minutes;
   state.events = []; state.score = null; state.flagged = []; state.combo = 0; state.bestCombo = 0;
   state.backspaceInWord = false; state.record = null; state.kept = false;
   state.pendingDelete = null; state.bsRun = 0; state.coached = false;
+  const continuing = typeof carry === "string";
+  if (!continuing) { state.cont = 0; state.answerAt = null; state.keptUpTo = 0; }
+  else state.cont += 1;
   shiftKeys.clear(); shiftFx.clear();
+  root.dataset.drillMode = mode;
   const ol = itemById(state.item.outline);
-  els.category.textContent = `${state.item.tag} · BACB ${state.item.outline}`;
+  els.category.textContent = mode === "copy"
+    ? `copy · ${state.item.tag} · BACB ${state.item.outline}${describeProfile(state.tricky) ? ` · works ${describeProfile(state.tricky)}` : ""}`
+    : `${state.item.tag} · BACB ${state.item.outline}${state.cont ? ` · keep going ${state.cont}` : ""}`;
   els.category.title = ol ? ol.text : "";
   els.q.textContent = state.item.question;
   els.bullets.replaceChildren(...state.item.bullets.map((b) => {
@@ -152,16 +223,32 @@ function arm() {
     n.appendChild(src);
     return n;
   }));
-  els.box.value = ""; els.box.disabled = false;
+  if (mode === "copy") {
+    els.bullets.replaceChildren(Object.assign(li(state.passage.source), { className: "passage-src" }));
+    renderPassage(els.passage, state.passage.text, state.weak || []);
+    els.passage.scrollTop = 0;
+    markPassage(els.passage, "", state.passage.text);
+  }
+  els.passage.hidden = mode !== "copy";
+  els.ref.hidden = mode !== "respond";
+  if (mode === "respond") { els.refText.textContent = state.passage.text; els.ref.open = false; }
+  els.box.value = continuing ? carry : "";
+  state.prefix = els.box.value.length;
+  els.box.disabled = false;
+  els.box.placeholder = mode === "copy"
+    ? "Type the passage above, exactly. Capitals and punctuation count. The clock starts on your first key."
+    : "Start typing. The clock starts on your first key.";
   els.live.textContent = ""; els.combo.hidden = true; els.wpm.textContent = "0";
+  els.hint.textContent = mode === "copy" ? "Copy it word for word. Finish the passage and the round ends early." : "The clock starts on your first keystroke. esc leaves without scoring.";
   els.clock.textContent = clockText(secondsFor());
   els.raceYou.style.left = "0%"; els.raceGhost.style.left = "0%"; els.raceNote.textContent = "";
   els.results.hidden = true; els.setup.hidden = true; els.question.hidden = false;
-  const ub = usualAndBest();
-  heat = createHeat(ub);
+  heat = createHeat(usualAndBest());
   garden.reset();
+  if (continuing) garden.update({ words: state.prefix / 5, heat: 0 });
   setPhase("armed");
   els.box.focus();
+  els.box.setSelectionRange(els.box.value.length, els.box.value.length);
 }
 
 /* ---- the keystroke log ---------------------------------------------------- */
@@ -203,7 +290,8 @@ function boundary(textBeforeCaret) {
   const tok = m[1];
   const w = tok.toLowerCase().replace(/\u2019/g, "'").replace(/^'+|-+$/g, "");
   const dict = knownNow();
-  const unknown = dict && !/^[A-Z]/.test(tok) && w && !isKnown(w, dict);
+  // A copy round marks its own words against the passage; the lexicon is for his words.
+  const unknown = state.mode !== "copy" && dict && !/^[A-Z]/.test(tok) && w && !isKnown(w, dict);
   if (unknown && !state.flagged.includes(w)) {
     state.flagged.push(w);
     els.live.textContent = "Unknown so far: " + state.flagged.join(", ");
@@ -242,6 +330,12 @@ function coachDelete() {
 
 /* After an Option or Command delete, log one backspace per character it took. */
 function onInput() {
+  if (state.mode === "copy" && state.passage) {
+    markPassage(els.passage, els.box.value, state.passage.text);
+    const typed = els.box.value.trim().split(/\s+/);
+    const ref = state.passage.text.split(/\s+/);
+    if (state.phase === "running" && typed.length >= ref.length && typed[typed.length - 1] === ref[ref.length - 1]) finish();
+  }
   const p = state.pendingDelete;
   if (!p) return;
   state.pendingDelete = null;
@@ -257,7 +351,7 @@ function start() {
   state.t0 = performance.now();
   state.deadline = state.t0 + secondsFor() * 1000;
   setPhase("running");
-  els.hint.textContent = "Go. Backspace and return count; paste does not.";
+  els.hint.textContent = state.mode === "copy" ? "Go. Word for word; finish the passage and the round ends early." : "Go. Backspace and return count; paste does not.";
   tick();
 }
 function tick() {
@@ -268,7 +362,7 @@ function tick() {
   const { wpm, heat: h } = heat.read(t);
   els.wpm.textContent = String(Math.round(wpm));
   const placed = state.events.reduce((n, e) => n + (e.kind === "backspace" ? -1 : 1), 0);
-  garden.update({ words: Math.max(0, placed) / 5, heat: h });
+  garden.update({ words: (state.prefix + Math.max(0, placed)) / 5, heat: h });
   // The race: you against your best pace at this clock.
   const { best } = usualAndBest();
   const total = secondsFor();
@@ -289,13 +383,18 @@ async function finish() {
   els.box.disabled = true;
   els.clock.textContent = "0:00";
   els.hint.textContent = "Time.";
+  // A copy round that reaches the end of the passage stops early: score the time it took.
+  const elapsed = Math.min(secondsFor(), (performance.now() - state.t0) / 1000);
+  const scoredMinutes = state.mode === "copy" ? Math.max(elapsed, 5) / 60 : minutesFor();
   await wordsLoaded;
   knownCache = null;
   const prior = data.history.slice();
-  state.score = scoreDrill({ events: state.events, text: els.box.value, minutes: minutesFor(), lexicon: knownNow() });
+  state.score = scoreRound(scoredMinutes);
   const s = state.score;
+  state.scoredMinutes = scoredMinutes;
   state.record = {
-    at: new Date().toISOString(), itemId: state.item.id, outline: state.item.outline, minutes: state.minutes,
+    at: new Date().toISOString(), itemId: state.item.id, outline: state.mode === "copy" ? null : state.item.outline, minutes: state.roundMinutes,
+    mode: state.mode, ...(state.passage && state.mode !== "answer" ? { passage: state.passage.id } : {}), ...(state.cont ? { cont: state.cont } : {}),
     seconds: secondsFor(), gwam: s.gwam, nwam: s.nwam, accuracy: s.accuracy, rating: s.rating.name,
     corrections: s.corrections, uncorrected: s.uncorrected, words: s.grossWords, bestCombo: state.bestCombo,
     keys: s.keys, kept: false, revisions: s.revisions,
@@ -303,16 +402,28 @@ async function finish() {
     shift: s.shift,
     think: { ms: s.think.ms, count: s.think.count, sentence: s.think.sentence, clause: s.think.clause, word: s.think.word, mid: s.think.mid, flowWpm: s.think.flowWpm },
     lexicon: data.lexicon.length,
+    // Names of what was slow and which tips fired: what the copy picker aims at next.
+    slowPairs: s.timing.slowPairs.map((p) => p.pair), tips: s.tips.map((t) => t.id),
   };
-  const st = stars(s, prior, state.minutes);
+  const st = stars(s, prior.filter((h) => kindOf(h) === roundKind()), state.roundMinutes);
   const before = trophyCase(prior);
+  if (!state.answerAt) state.answerAt = state.record.at;
   if (s.gwam > 0) {
     data.history.push(state.record);
     store.saveHistory(data.history);
   }
   state.unlocked = s.gwam > 0 ? newlyUnlocked(before, trophyCase(data.history)) : [];
-  store.log(`drill ${state.item.id} ${state.minutes}m nwam ${s.nwam} acc ${s.accuracy}`);
+  store.log(`drill ${state.mode} ${state.item.id} ${state.roundMinutes}m nwam ${s.nwam} acc ${s.accuracy}`);
   render(s, st, prior);
+}
+
+/* The round's own text: a Keep going round scores only what it added. */
+const roundText = () => els.box.value.slice(Math.min(state.prefix, els.box.value.length));
+function scoreRound(minutes) {
+  return scoreDrill({
+    events: state.events, text: roundText(), minutes, lexicon: knownNow(),
+    reference: state.mode === "copy" ? state.passage.text : undefined,
+  });
 }
 
 /* ---- results ------------------------------------------------------------- */
@@ -330,10 +441,12 @@ function render(s, st, prior) {
     star(st.best, "Personal best"), star(st.beatLast, "Beat your last"), star(st.clean, "97% clean"),
     ...(state.bestCombo >= 15 ? [star(true, `${state.bestCombo} clean in a row`)] : []),
   );
-  els.basis.textContent = s.netBasis === "corrections"
+  els.basis.textContent = s.netBasis === "reference"
+    ? `A copy round: NWAM subtracts the ${s.uncorrected} word${s.uncorrected === 1 ? "" : "s"} that did not match the passage (capitals and punctuation count), over ${Math.round(state.scoredMinutes * 60)} seconds.`
+    : s.netBasis === "corrections"
     ? `NWAM counts your ${s.corrections} corrections as the errors, because the word list has not loaded; uncorrected typos are not scored.`
     : `NWAM subtracts ${s.uncorrected} unknown word${s.uncorrected === 1 ? "" : "s"}; your ${s.corrections} correction${s.corrections === 1 ? "" : "s"} cost you time, not words. Mark a term clinical below and it comes out of the count.`;
-  const pb = bests(prior)[String(state.minutes)];
+  const pb = bests(prior.filter((h) => kindOf(h) === roundKind()))[String(state.roundMinutes)];
   els.pace.replaceChildren(lineChart([{ values: s.pace, dots: false }], { guide: pb ?? null, guideLabel: pb != null ? `best ${pb.toFixed(0)}` : "", height: 120, min: 0 }));
   els.tricky.replaceChildren(...(s.tricky.keys.length ? s.tricky.keys.map((k) => li(`${keyName(k.key)} hit by mistake ${k.count}×`)) : [li("Nothing corrected. Clean hands.")]));
   for (const c of s.tricky.confusions) els.tricky.appendChild(li(`hit ${keyName(c.hit)} for ${keyName(c.meant)}, ${c.count}×`));
@@ -357,11 +470,18 @@ function render(s, st, prior) {
   renderUnlocked(state.unlocked || []);
   renderReview(s);
   renderBoard();
+  const copying = state.mode === "copy";
+  els.keep.hidden = copying;
   els.keep.disabled = !(s.gwam > 0);
   els.keep.textContent = "Keep it"; els.keep.appendChild(Object.assign(document.createElement("kbd"), { textContent: "K" }));
-  els.keepnote.textContent = store.inApp
-    ? "Keep sends this answer to your voice corpus (drill register) and the expert queue."
-    : "This browser page keeps numbers only; the Mac app keeps text.";
+  els.keepnote.textContent = copying
+    ? "Copy rounds are never kept: the words are the passage's, not yours. Respond is next, one minute."
+    : store.inApp
+      ? `Keep sends ${state.cont ? "this answer, every round of it," : "this answer"} to your voice corpus (drill register) and the expert queue.`
+      : "This browser page keeps numbers only; the Mac app keeps text.";
+  els.cont.hidden = copying;
+  els.cont.disabled = !(s.gwam > 0) && !state.prefix;
+  els.again.replaceChildren(copying ? "Respond · 1 min" : "Again", Object.assign(document.createElement("kbd"), { textContent: "return" }));
   showTab("drill");
   els.question.hidden = true;
   els.results.hidden = false;
@@ -373,16 +493,19 @@ function render(s, st, prior) {
    real note's fifteen minutes do; flow speed is the fingers alone. */
 function thinkText(s) {
   const k = s.think;
-  if (!k.count) return `No stops over two seconds: you typed straight through at ${Math.round(s.gwam)} gross.`;
+  const tail = k.tailMs ? ` The last ${Math.round(k.tailMs / 1000)} seconds, after your last key, are left out of this.` : "";
+  if (!k.count) return `No stops over two seconds while you were typing: straight through at ${Math.round(k.flowWpm)} gross words a minute.${tail}`;
   const where = [
     k.sentence && `${k.sentence} at the end of a sentence`, k.clause && `${k.clause} after a comma`,
     k.word && `${k.word} between words`, k.mid && `${k.mid} inside a word`,
   ].filter(Boolean).join(", ");
   const planned = k.sentence + k.clause;
-  const read = planned >= k.word + k.mid
+  // One or two stops are not a pattern; the read waits for three.
+  const read = k.count < 3 ? ""
+    : planned >= k.word + k.mid
     ? "Most of your thinking landed between ideas, which is where a note wants it."
     : "More of your stops fell mid-sentence than between ideas; try settling the next point at the full stop, then typing it through.";
-  return `You stopped to think ${k.count} time${k.count === 1 ? "" : "s"}, ${Math.round(k.ms / 1000)} seconds in all: ${where}. While typing you ran ${Math.round(k.flowWpm)} gross words a minute. ${read}`;
+  return `You stopped to think ${k.count} time${k.count === 1 ? "" : "s"}, ${Math.round(k.ms / 1000)} seconds in all: ${where}. While typing you ran ${Math.round(k.flowWpm)} gross words a minute.${read ? " " + read : ""}${tail}`;
 }
 function renderUnlocked(list) {
   els.unlocked.hidden = !list.length;
@@ -420,7 +543,7 @@ function markClinical(w, row) {
   row.dataset.drillReviewed = "clinical";
   for (const b of row.querySelectorAll("button")) b.disabled = true;
   // Re-score with the word known: it comes out of the errors and NWAM moves.
-  state.score = scoreDrill({ events: state.events, text: els.box.value, minutes: minutesFor(), lexicon: knownNow() });
+  state.score = scoreRound(state.scoredMinutes || minutesFor());
   const s = state.score;
   els.nwam.textContent = s.nwam.toFixed(1);
   els.errors.textContent = String(s.corrections + (s.uncorrected || 0));
@@ -438,19 +561,26 @@ function renderBoard() {
   const h = data.history.slice(-60);
   const nw = h.map((x) => x.nwam);
   const roll = nw.map((_, i) => { const w = nw.slice(Math.max(0, i - 4), i + 1); return w.reduce((a, b) => a + b, 0) / w.length; });
-  const pb = bests(data.history)[String(state.minutes)];
+  const pb = bests(ofKind("compose"))[String(state.minutes)];
   els.chartNwam.replaceChildren(lineChart([{ values: nw, cls: "soft", dots: true }, { values: roll }], { guide: pb ?? null, guideLabel: pb != null ? `best at ${state.minutes} min` : "" }));
   els.chartAcc.replaceChildren(lineChart([{ values: h.map((x) => x.accuracy * 100), cls: "acc", dots: true }], { height: 110, min: 80, max: 100, yFormat: (v) => `${Math.round(v)}%` }));
-  const b = bests(data.history);
-  els.bests.replaceChildren(...[1, 2, 3, 4, 5].map((m) => {
+  const b = bests(ofKind("compose")), bc = bests(ofKind("copy"));
+  const head = document.createElement("tr");
+  for (const t of ["", "answer", "copy"]) { const th = document.createElement("th"); th.textContent = t; head.appendChild(th); }
+  els.bests.replaceChildren(head, ...[1, 2, 3, 4, 5].map((m) => {
     const tr = document.createElement("tr");
     const a = document.createElement("td"); a.textContent = `${m} min`;
     const c = document.createElement("td"); c.textContent = b[String(m)] != null ? b[String(m)].toFixed(1) : "-";
-    tr.append(a, c);
+    const d = document.createElement("td"); d.textContent = bc[String(m)] != null ? bc[String(m)].toFixed(1) : "-";
+    tr.append(a, c, d);
     return tr;
   }));
   els.trend.textContent = trendText(data.history);
   els.keyboard.replaceChildren(keyboard(keyboardRates(data.history, 20)));
+  const now = describeProfile(trickyProfile(data.history, keyboardRates(data.history, 20)));
+  els.working.textContent = now
+    ? `Copy rounds are aiming at: ${now}. Read from your last drills, so it moves as you improve.`
+    : "Nothing to aim at yet. A few more drills and copy rounds start picking passages for your tricky keys.";
   const kt = keyTrends(data.history);
   els.keytrends.replaceChildren(...(kt.length ? kt.map((r) => {
     const n = document.createElement("li");
@@ -524,12 +654,16 @@ function openBoard(tab) {
 }
 
 async function keep() {
-  if (!state.score || state.kept || !(state.score.gwam > 0)) return;
+  if (!state.score || state.kept || state.mode === "copy" || !(state.score.gwam > 0)) return;
   els.keep.disabled = true;
   els.keepnote.textContent = "Keeping...";
+  // The whole answer, every Keep going round of it; if an earlier round was
+  // already kept, only what came after, marked as continuing that one.
+  const from = state.keptUpTo;
   const r = await store.keep({
     at: state.record.at, itemId: state.item.id, outline: state.item.outline, question: state.item.question,
-    minutes: state.minutes, seconds: secondsFor(), text: els.box.value,
+    ...(from ? { continues: state.answerAt } : {}), ...(state.passage && state.mode === "respond" ? { passage: state.passage.id, passageSource: state.passage.source } : {}),
+    minutes: state.roundMinutes, seconds: secondsFor(), text: els.box.value.slice(from),
     nwam: state.score.nwam, gwam: state.score.gwam, accuracy: state.score.accuracy,
     // Where he stopped to think, by character offset: the expert can read
     // what came right before each stop as what he was deciding.
@@ -537,6 +671,7 @@ async function keep() {
   }).catch((e) => ({ ok: false, note: String(e) }));
   if (r && r.ok) {
     state.kept = true;
+    state.keptUpTo = els.box.value.length;
     state.record.kept = true;
     store.saveHistory(data.history);
     els.keep.textContent = "Kept";
@@ -550,7 +685,9 @@ async function keep() {
 /* ---- wire ---------------------------------------------------------------- */
 for (const b of els.mins) b.addEventListener("click", () => setMinutes(Number(b.dataset.drillMinutes)));
 els.start.addEventListener("click", arm);
-els.again.addEventListener("click", arm);
+els.again.addEventListener("click", () => (state.mode === "copy" && state.phase === "done" ? armRespond() : arm()));
+els.cont.addEventListener("click", continueRound);
+for (const b of els.modes) b.addEventListener("click", () => setMode(b.dataset.drillMode));
 els.home.addEventListener("click", home);
 els.keep.addEventListener("click", keep);
 for (const b of els.opens) b.addEventListener("click", () => openBoard(b.dataset.drillOpen));
@@ -568,8 +705,9 @@ document.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !inButton) { e.preventDefault(); arm(); }
     else if (/^[1-5]$/.test(e.key)) setMinutes(Number(e.key));
   } else if (state.phase === "done" || state.phase === "board") {
-    if (e.key === "Enter" && !(inButton && e.target !== els.again)) { e.preventDefault(); arm(); }
+    if (e.key === "Enter" && !(inButton && e.target !== els.again)) { e.preventDefault(); if (state.phase === "done" && state.mode === "copy") armRespond(); else arm(); }
     else if (e.key.toLowerCase() === "k" && state.phase === "done") { e.preventDefault(); keep(); }
+    else if (e.key.toLowerCase() === "c" && state.phase === "done") { e.preventDefault(); continueRound(); }
     else if (e.key === "Escape") { e.preventDefault(); home(); }
   }
 });
@@ -578,7 +716,8 @@ async function init() {
   const loaded = await store.load();
   Object.assign(data, loaded);
   const last = data.history.length ? data.history[data.history.length - 1].minutes : null;
-  setMinutes(Number(data.settings.minutes) || last || 1, false);
+  state.minutes = Number(data.settings.minutes) || last || 1;
+  setMode(data.settings.mode, false);
   renderChips();
   drawMap();
   els.start.focus();

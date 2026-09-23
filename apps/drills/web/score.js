@@ -18,6 +18,8 @@
  * Loaded as an ES module by the page and by node --test.
  */
 
+import { copyErrors } from "./copy.js";
+
 export const WORD_KEYSTROKES = 5;
 export const ACCURACY_GATE = 0.96;
 export const PAUSE_MS = 2000;
@@ -48,8 +50,10 @@ export const BANDS = Object.freeze([
  * @param {string} args.text       the box's final contents
  * @param {number} args.minutes    the clock the drill ran on
  * @param {Set<string>|null} [args.lexicon]  lower-case words the drill knows
+ * @param {string} [args.reference]  a copy round's passage: errors are then the
+ *   words that do not line up with it, not the words the lexicon lacks
  */
-export function scoreDrill({ events, text, minutes, lexicon } = {}) {
+export function scoreDrill({ events, text, minutes, lexicon, reference } = {}) {
   const evs = Array.isArray(events) ? events.filter(isEvent) : [];
   const mins = Number.isFinite(minutes) && minutes > 0 ? minutes : 1;
   const placed = evs.filter((e) => e.kind !== "backspace").length;
@@ -57,8 +61,9 @@ export function scoreDrill({ events, text, minutes, lexicon } = {}) {
   const gwam = grossWords / mins;
 
   const { corrections, revisions } = deleteRuns(evs);
-  const unknown = lexicon ? unknownWords(text || "", lexicon) : null;
-  const uncorrected = unknown ? unknown.length : null;
+  const copied = reference ? copyErrors(text || "", reference) : null;
+  const unknown = copied ? [] : lexicon ? unknownWords(text || "", lexicon) : null;
+  const uncorrected = copied ? copied.errors : unknown ? unknown.length : null;
   const errorsForNet = uncorrected === null ? corrections : uncorrected;
   const nwam = Math.max(0, gwam - errorsForNet / mins);
   const errorsAll = corrections + (uncorrected || 0);
@@ -83,7 +88,8 @@ export function scoreDrill({ events, text, minutes, lexicon } = {}) {
     revisions,
     uncorrected,
     unknownWords: unknown || [],
-    netBasis: uncorrected === null ? "corrections" : "uncorrected",
+    netBasis: copied ? "reference" : uncorrected === null ? "corrections" : "uncorrected",
+    copy: copied,
     nwam: round(nwam, 1),
     accuracy: round(accuracy, 3),
     rating,
@@ -203,19 +209,21 @@ export function shiftStats(events) {
 
 /**
  * Thinking, read apart from typing. A drill is composed, so some stops are
- * thought and not a fumble. Every gap over PAUSE_MS, and the idle tail after
- * the last key, is a thinking stop, filed by what came just before it:
+ * thought and not a fumble. Every gap over PAUSE_MS between keys is a
+ * thinking stop, filed by what came just before it:
  *   sentence  after . ! ? or a new line (planning the next point)
  *   clause    after , ; : or a dash
  *   word      after a space (finding the next word)
  *   mid       inside a word (hesitation)
- * flowWpm is the gross speed over the time left once the thinking is taken out.
+ * The idle stretch after the last key (`tailMs`) is not counted as a stop: it
+ * may be thinking, or he may simply be done. flowWpm is the gross speed over
+ * the time left once the stops and the tail are taken out.
  * `stops` lists where each one fell (characters into the text at that moment),
  * so a kept answer can show the expert where he stopped to think.
  */
 export function thinkProfile(events, minutes) {
   const totalMs = (Number.isFinite(minutes) && minutes > 0 ? minutes : 1) * 60000;
-  const out = { ms: 0, count: 0, sentence: 0, clause: 0, word: 0, mid: 0, flowWpm: 0, share: 0, stops: [] };
+  const out = { ms: 0, count: 0, sentence: 0, clause: 0, word: 0, mid: 0, tailMs: 0, flowWpm: 0, share: 0, stops: [] };
   const buf = [];
   let placed = 0;
   let lastT = null;
@@ -232,8 +240,8 @@ export function thinkProfile(events, minutes) {
     placed += 1;
     buf.push(e.kind === "enter" ? "\n" : String(e.key || ""));
   }
-  if (lastT !== null && totalMs - lastT > PAUSE_MS) file(totalMs - lastT);
-  const typingMs = Math.max(1000, totalMs - out.ms);
+  if (lastT !== null && totalMs - lastT > PAUSE_MS) out.tailMs = Math.round(totalMs - lastT);
+  const typingMs = Math.max(1000, totalMs - out.ms - out.tailMs);
   out.flowWpm = placed ? round(placed / WORD_KEYSTROKES / (typingMs / 60000), 1) : 0;
   out.share = round(Math.min(1, out.ms / totalMs), 2);
   out.ms = Math.round(out.ms);
