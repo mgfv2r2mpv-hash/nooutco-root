@@ -264,3 +264,88 @@ Portraits for the 200 people added to Red Carpet Convos, sourced the same way as
 | Yo-Yo Ma | `yo-yo-ma.jpg` | [Yo-Yo Ma in 2018 (cropped).jpg](https://commons.wikimedia.org/wiki/File:Yo-Yo_Ma_in_2018_(cropped).jpg) | Joi Ito | CC BY 2.0 |
 | Zaha Hadid | `zaha-hadid.jpg` | [Zaha Hadid - Presentation 'What is new?' (cropped).jpg](https://commons.wikimedia.org/wiki/File:Zaha_Hadid_-_Presentation_%27What_is_new%3F%27_(cropped).jpg) | Columbia GSAPP | CC BY 2.0 |
 | Zheng He | `zheng-he.jpg` | [2016 Malakka, Stadhuys (09).jpg](https://commons.wikimedia.org/wiki/File:2016_Malakka,_Stadhuys_(09).jpg) | Marcin Konsek | CC BY-SA 4.0 |
+
+## Added 2026-09-23, second set
+
+Portraits for the next 78 people added to Red Carpet Convos, sourced the same way.
+
+| Person | File | Source (Commons) | Author | License |
+|---|---|---|---|---|
+| Aaron Judge | `aaron-judge.jpg` | [Aaron Judge (53947419176) (cropped).jpg](https://commons.wikimedia.org/wiki/File:Aaron_Judge_(53947419176)_(cropped).jpg) | Jeffrey Hyde from Bryan, TX, United States | CC BY-SA 2.0 |
+| Ahmed Zewail | `ahmed-zewail.jpg` | [Ahmed Zewail HD2009 Othmer Gold Medal portrait.JPG](https://commons.wikimedia.org/wiki/File:Ahmed_Zewail_HD2009_Othmer_Gold_Medal_portrait.JPG) | Douglas A. Lockard | CC BY-SA 3.0 |
+| Alexander Hamilton | `alexander-hamilton.jpg` | [Alexander Hamilton (NPG).jpg](https://commons.wikimedia.org/wiki/File:Alexander_Hamilton_(NPG).jpg) | John Trumbull / Giuseppe Ceracchi | Public domain |
+| Althea Gibson | `althea-gibson.jpg` | [Althea Gibson in 1956 by Fred Palumbo (NYWTS).jpg](https://commons.wikimedia.org/wiki/File:Althea_Gibson_in_1956_by_Fred_Palumbo_(NYWTS).jpg) | Adam Cuerden | Public domain |
+| Ansel Adams | `ansel-adams.jpg` | [Ansel Adams and camera.jpg](https://commons.wikimedia.org/wiki/File:Ansel_Adams_and_camera.jpg) | J. Malcolm Greany | Public domain |
+| Awkwafina | `awkwafina.jpg` | [Awkwafina by Gage Skidmore.jpg](https://commons.wikimedia.org/wiki/File:Awkwafina_by_Gage_Skidmore.jpg) | Gage Skidmore | CC BY-SA 3.0 |
+| Babe Didrikson Zaharias | `babe-didrikson-zaharias.jpg` | [Babe Didrikson Zaharias 1938cr.jpg](https://commons.wikimedia.org/wiki/File:Babe_Didrikson_Zaharias_1938cr.jpg) | ACME | Public domain |
+| Benito Juárez | `benito-juarez.jpg` | [Photograph of Benito Juarez.jpg](https://commons.wikimedia.org/wiki/File:Photograph_of_Benito_Juarez.jpg) | Unknown photographer | Public domain |
+| Bertrand Piccard | `bertrand-piccard.jpg` | [Bertrand Piccard on the Green Carpet at the 2025 Zurich Film Festival 01.jpg](https://commons.wikimedia.org/wiki/File:Bertrand_Piccard_on_the_Green_Carpet_at_the_2025_Zurich_Film_Festival_01.jpg) | Quejaytee | CC BY 4.0 |
+| C. V. Raman | `c-v-raman.jpg` | [Sir CV Raman.JPG](https://commons.wikimedia.org/wiki/File:Sir_CV_Raman.JPG) | Nobel Foundation | Public domain |
+| Chuck Berry | `chuck-berry.jpg` | [Chuck Berry 1957.jpg](https://commons.wikimedia.org/wiki/File:Chuck_Berry_1957.jpg) | Universal Attractions (management) | Public domain |
+| Cyrus the Great | `cyrus-the-great.jpg` | [Olympic Park Cyrus-3.jpg](https://commons.wikimedia.org/wiki/File:Olympic_Park_Cyrus-3.jpg) | Siamax (original), TRAJAN 117 (crop) | CC BY-SA 3.0 |
+| DanTDM | `dantdm.jpg` | [TDM On Tour (cropped and rotated).jpg](https://commons.wikimedia.org/wiki/File:TDM_On_Tour_(cropped_and_rotated).jpg) | Julian Tysoe | CC BY 2.0 |
+| Didier Drogba | `didier-drogba.jpg` | [Didier Drogba (2019) (cropped2).jpg](https://commons.wikimedia.org/wiki/File:Didier_Drogba_(2019)_(cropped2).jpg) | Y.Leclercq© | CC BY-SA 4.0 |
+| Dorothy Hodgkin | `dorothy-hodgkin.jpg` | [Dorothy Hodgkin im Talar (cropped).jpg](https://commons.wikimedia.org/wiki/File:Dorothy_Hodgkin_im_Talar_(cropped).jpg) | University of Bristol | CC BY-SA 2.5 |
+| Edgar Degas | `edgar-degas.jpg` | [Self-portrait by Edgar Degas.jpg](https://commons.wikimedia.org/wiki/File:Self-portrait_by_Edgar_Degas.jpg) | Edgar Degas | Public domain |
+| Erling Haaland | `erling-haaland.jpg` | [Erling Haaland Morocco v Norway 7 June 2026-51.jpg](https://commons.wikimedia.org/wiki/File:Erling_Haaland_Morocco_v_Norway_7_June_2026-51.jpg) | Bryan Berlin | CC BY-SA 4.0 |
+| Faith Ringgold | `faith-ringgold.jpg` | [Faith Ringgold, April 2017-1.jpg](https://commons.wikimedia.org/wiki/File:Faith_Ringgold,_April_2017-1.jpg) | Brooklyn Museum | CC BY 3.0 |
+| Florence Griffith Joyner | `florence-griffith-joyner.jpg` | [Florence Griffith Joyner2.jpg](https://commons.wikimedia.org/wiki/File:Florence_Griffith_Joyner2.jpg) | Ronald Reagan Library (White House photograph) | Public domain |
+| George Gershwin | `george-gershwin.jpg` | [Portrait of George Gershwin LCCN2004662906.jpg](https://commons.wikimedia.org/wiki/File:Portrait_of_George_Gershwin_LCCN2004662906.jpg) | Carl Van Vechten | Public domain |
+| Gertrude Ederle | `gertrude-ederle.jpg` | [Gertrude Ederle.jpg](https://commons.wikimedia.org/wiki/File:Gertrude_Ederle.jpg) | Bain News Service, publisher | Public domain |
+| Gustav Klimt | `gustav-klimt.jpg` | [Klimt.jpg](https://commons.wikimedia.org/wiki/File:Klimt.jpg) | Josef Anton Trčka | Public domain |
+| Haile Gebrselassie | `haile-gebrselassie.jpg` | [Haile Gebrselassie Dubai 2010.jpg](https://commons.wikimedia.org/wiki/File:Haile_Gebrselassie_Dubai_2010.jpg) | Anto1210 | Public domain |
+| Hakeem Olajuwon | `hakeem-olajuwon.jpg` | [Hakeem Olajuwon 20 June 1984 San Angelo Standard-Times (cropped).jpg](https://commons.wikimedia.org/wiki/File:Hakeem_Olajuwon_20_June_1984_San_Angelo_Standard-Times_(cropped).jpg) | Uncredited | Public domain |
+| Hank Aaron | `hank-aaron.jpg` | [Hank Aaron 1974.jpg](https://commons.wikimedia.org/wiki/File:Hank_Aaron_1974.jpg) | Unknown author | Public domain |
+| Ichiro Suzuki | `ichiro-suzuki.jpg` | [Ichiro Suzuki (51007034081) (cropped).jpg](https://commons.wikimedia.org/wiki/File:Ichiro_Suzuki_(51007034081)_(cropped).jpg) | Jeffrey Hayes | CC BY 2.0 |
+| Idris Elba | `idris-elba.jpg` | [Idris Elba A House of Dynamite-21 (cropped).jpg](https://commons.wikimedia.org/wiki/File:Idris_Elba_A_House_of_Dynamite-21_(cropped).jpg) | Bryan Berlin | CC BY-SA 4.0 |
+| Jackie Joyner-Kersee | `jackie-joyner-kersee.jpg` | [Jackie Joyner Kersee 1996.jpg](https://commons.wikimedia.org/wiki/File:Jackie_Joyner_Kersee_1996.jpg) | John Mathew Smith & www.celebrity-photos.com from Laurel Maryland, USA | CC BY-SA 2.0 |
+| Jacob Lawrence | `jacob-lawrence.jpg` | [Portrait of Jacob Lawrence LCCN2004663191.jpg](https://commons.wikimedia.org/wiki/File:Portrait_of_Jacob_Lawrence_LCCN2004663191.jpg) | Carl Van Vechten | Public domain |
+| Jane Addams | `jane-addams.jpg` | [Jane Addams - Bain News Service.jpg](https://commons.wikimedia.org/wiki/File:Jane_Addams_-_Bain_News_Service.jpg) | Adam Cuerden | Public domain |
+| Jim Lovell | `jim-lovell.jpg` | [James Lovell.jpg](https://commons.wikimedia.org/wiki/File:James_Lovell.jpg) | NASA | Public domain |
+| Joan Miró | `joan-miro.jpg` | [Portrait of Joan Miro, Barcelona 1935 June 13.jpg](https://commons.wikimedia.org/wiki/File:Portrait_of_Joan_Miro,_Barcelona_1935_June_13.jpg) | Carl Van Vechten | Public domain |
+| Jorge Luis Borges | `jorge-luis-borges.jpg` | [Jorge Luis Borges 1951, by Grete Stern (full).jpg](https://commons.wikimedia.org/wiki/File:Jorge_Luis_Borges_1951,_by_Grete_Stern_(full).jpg) | Grete Stern | Public domain |
+| Kareem Abdul-Jabbar | `kareem-abdul-jabbar.jpg` | [Kareem Abdul-Jabbar May 2014.jpg](https://commons.wikimedia.org/wiki/File:Kareem_Abdul-Jabbar_May_2014.jpg) | Yahoo from Sunnyvale, California, USA | CC BY 2.0 |
+| Katalin Karikó | `katalin-kariko.jpg` | [Katalin Karikó by Christopher Michel in 2024 02.jpg](https://commons.wikimedia.org/wiki/File:Katalin_Karik%C3%B3_by_Christopher_Michel_in_2024_02.jpg) | Cmichel67 | CC BY-SA 4.0 |
+| Katy Perry | `katy-perry.jpg` | [Katy Perry 2026 Tribeca Film Festival (cropped 1).jpg](https://commons.wikimedia.org/wiki/File:Katy_Perry_2026_Tribeca_Film_Festival_(cropped_1).jpg) | Colleen Sturtevant | CC BY-SA 4.0 |
+| Ke Huy Quan | `ke-huy-quan.jpg` | [Ke Huy Quan GalaxyCon Raleigh July, 24, 2026 724.jpg](https://commons.wikimedia.org/wiki/File:Ke_Huy_Quan_GalaxyCon_Raleigh_July,_24,_2026_724.jpg) | John Manard | CC BY-SA 4.0 |
+| Kristi Yamaguchi | `kristi-yamaguchi.jpg` | [Kristi Yamaguchi.png](https://commons.wikimedia.org/wiki/File:Kristi_Yamaguchi.png) | Sebaceousother | CC BY-SA 4.0 |
+| Lang Lang | `lang-lang.jpg` | [Lang Lang - World Economic Forum Annual Meeting 2010 Davos cropped (cropped).jpg](https://commons.wikimedia.org/wiki/File:Lang_Lang_-_World_Economic_Forum_Annual_Meeting_2010_Davos_cropped_(cropped).jpg) | World Economic Forum from Cologny, Switzerland (derivative work: January) | CC BY-SA 2.0 |
+| Lata Mangeshkar | `lata-mangeshkar.jpg` | [LataMangeshkar10.jpg](https://commons.wikimedia.org/wiki/File:LataMangeshkar10.jpg) | Bollywood Hungama | CC BY 3.0 |
+| Laura Ingalls Wilder | `laura-ingalls-wilder.jpg` | [Laura Ingalls Wilder cropped sepia2.jpg](https://commons.wikimedia.org/wiki/File:Laura_Ingalls_Wilder_cropped_sepia2.jpg) | Unknown photographer | Public domain |
+| Leonard Bernstein | `leonard-bernstein.jpg` | [Leonard Bernstein by Jack Mitchell (high quality).jpg](https://commons.wikimedia.org/wiki/File:Leonard_Bernstein_by_Jack_Mitchell_(high_quality).jpg) | Jack Mitchell | CC BY-SA 4.0 |
+| Li Bai | `li-bai.jpg` | [LiBai.jpg](https://commons.wikimedia.org/wiki/File:LiBai.jpg) | Liang Kai | Public domain |
+| Little Richard | `little-richard.jpg` | [Little Richard 1984 (cropped).jpg](https://commons.wikimedia.org/wiki/File:Little_Richard_1984_(cropped).jpg) | Ian Dryden, Los Angeles Times | CC BY 4.0 |
+| Louisa May Alcott | `louisa-may-alcott.jpg` | [Louisa May Alcott, c. 1870 - Warren's Portraits, Boston.jpg](https://commons.wikimedia.org/wiki/File:Louisa_May_Alcott,_c._1870_-_Warren%27s_Portraits,_Boston.jpg) | Adam Cuerden | Public domain |
+| Luciano Pavarotti | `luciano-pavarotti.jpg` | [Luciano Pavarotti 2004.jpg](https://commons.wikimedia.org/wiki/File:Luciano_Pavarotti_2004.jpg) | Kingkongphoto & www.celebrity-photos.com from Laurel Maryland, USA | CC BY-SA 2.0 |
+| Luka Dončić | `luka-doncic.jpg` | [Luka Doncic 2021 (cropped).jpg](https://commons.wikimedia.org/wiki/File:Luka_Doncic_2021_(cropped).jpg) | Erik Drost | CC BY 2.0 |
+| Marcus Aurelius | `marcus-aurelius.jpg` | [MSR-ra-61-b-1-DM.jpg](https://commons.wikimedia.org/wiki/File:MSR-ra-61-b-1-DM.jpg) | Daniel Martin | CC BY-SA 4.0 |
+| Maria Mitchell | `maria-mitchell.jpg` | [MariaMitchell.jpg](https://commons.wikimedia.org/wiki/File:MariaMitchell.jpg) | Nantucket Historical Association | Public domain |
+| Marian Anderson | `marian-anderson.jpg` | [Marian Anderson by Carl Van Vechten (cropped).jpg](https://commons.wikimedia.org/wiki/File:Marian_Anderson_by_Carl_Van_Vechten_(cropped).jpg) | Carl Van Vechten | Public domain |
+| Mary Cassatt | `mary-cassatt.jpg` | [Mary Stevenson Cassatt - Mary Cassatt Self-Portrait - Google Art Project.jpg](https://commons.wikimedia.org/wiki/File:Mary_Stevenson_Cassatt_-_Mary_Cassatt_Self-Portrait_-_Google_Art_Project.jpg) | Mary Cassatt | Public domain |
+| Mary McLeod Bethune | `mary-mcleod-bethune.jpg` | [Mary McLeod Bethune by Carl Van Vechten.jpg](https://commons.wikimedia.org/wiki/File:Mary_McLeod_Bethune_by_Carl_Van_Vechten.jpg) | Carl Van Vechten / Adam Cuerden | Public domain |
+| Naguib Mahfouz | `naguib-mahfouz.jpg` | [Naguib Mahfouz HR.jpg](https://commons.wikimedia.org/wiki/File:Naguib_Mahfouz_HR.jpg) | Unknown author | Public domain |
+| Norman Rockwell | `norman-rockwell.jpg` | [Rockwell-Norman-LOC.jpg](https://commons.wikimedia.org/wiki/File:Rockwell-Norman-LOC.jpg) | en:Underwood & Underwood | Public domain |
+| Omar Khayyam | `omar-khayyam.jpg` | [Hakim Omar Khayam - panoramio.jpg](https://commons.wikimedia.org/wiki/File:Hakim_Omar_Khayam_-_panoramio.jpg) | Alireza Javaheri | CC BY 3.0 |
+| P. V. Sindhu | `p-v-sindhu.jpg` | [NAC Jewellers Honors Olympic Silver Medalist PV Sindhu.jpg](https://commons.wikimedia.org/wiki/File:NAC_Jewellers_Honors_Olympic_Silver_Medalist_PV_Sindhu.jpg) | https://silverscreen.in | CC BY-SA 3.0 |
+| René Magritte | `rene-magritte.jpg` | [René Magritte in 1961.jpg](https://commons.wikimedia.org/wiki/File:Ren%C3%A9_Magritte_in_1961.jpg) | Unknown author Restored by Giovanni Cardinali | CC0 |
+| Rita Levi-Montalcini | `rita-levi-montalcini.jpg` | [Rita Levi-Montalcini (1986).png](https://commons.wikimedia.org/wiki/File:Rita_Levi-Montalcini_(1986).png) | Kurt Hagblom, Firma Hagblom-Foto, restored by Adam Cuerden | Public domain |
+| Robert Downey Jr. | `robert-downey-jr.jpg` | [RobertDowneyJr-byPhilipRomano7 (cropped).jpg](https://commons.wikimedia.org/wiki/File:RobertDowneyJr-byPhilipRomano7_(cropped).jpg) | PhilipRomano | CC BY-SA 4.0 |
+| Roberto Gómez Bolaños | `roberto-gomez-bolanos.jpg` | [Roberto Gómez Bolaños 2008.jpg](https://commons.wikimedia.org/wiki/File:Roberto_G%C3%B3mez_Bola%C3%B1os_2008.jpg) | Al Vazquez | CC BY 3.0 |
+| Scott Joplin | `scott-joplin.jpg` | [Scott Joplin in 1912.jpg](https://commons.wikimedia.org/wiki/File:Scott_Joplin_in_1912.jpg) | Unknown author | Public domain |
+| Shirley Chisholm | `shirley-chisholm.jpg` | [Shirley Chisholm LCCN2002711429.jpg](https://commons.wikimedia.org/wiki/File:Shirley_Chisholm_LCCN2002711429.jpg) | Unknown photographer (Library of Congress) | Public domain |
+| Son Heung-min | `son-heung-min.jpg` | [BFA 2023 -2 Heung-Min Son (cropped).jpg](https://commons.wikimedia.org/wiki/File:BFA_2023_-2_Heung-Min_Son_(cropped).jpg) | Ujishadow | CC BY-SA 4.0 |
+| Stephanie Kwolek | `stephanie-kwolek.jpg` | [Stephanie Kwolek 1986.TIF](https://commons.wikimedia.org/wiki/File:Stephanie_Kwolek_1986.TIF) | Staff photographer | CC BY-SA 3.0 |
+| Tarsila do Amaral | `tarsila-do-amaral.jpg` | [Tarsila do Amaral, ca. 1925.jpg](https://commons.wikimedia.org/wiki/File:Tarsila_do_Amaral,_ca._1925.jpg) | Unknown author | Public domain |
+| Thurgood Marshall | `thurgood-marshall.jpg` | [Thurgood-marshall-2.jpg](https://commons.wikimedia.org/wiki/File:Thurgood-marshall-2.jpg) | Robert S. Oakes | Public domain |
+| Tim Peake | `tim-peake.jpg` | [Timothy Peake, official portrait.jpg](https://commons.wikimedia.org/wiki/File:Timothy_Peake,_official_portrait.jpg) | Robert Markowitz | Public domain |
+| Tina Turner | `tina-turner.jpg` | [Tina Turner 1985 (cropped).jpg](https://commons.wikimedia.org/wiki/File:Tina_Turner_1985_(cropped).jpg) | Iris Schneider, Los Angeles Times | CC BY 4.0 |
+| Tinker Hatfield | `tinker-hatfield.jpg` | [Tinker Hatfield.jpg](https://commons.wikimedia.org/wiki/File:Tinker_Hatfield.jpg) | Jimmka89 | CC BY-SA 4.0 |
+| Tito Puente | `tito-puente.jpg` | [Tito Puentes.jpg](https://commons.wikimedia.org/wiki/File:Tito_Puentes.jpg) | Kingkongphoto & www.celebrity-photos.com from Laurel Maryland, USA | CC BY-SA 2.0 |
+| Umm Kulthum | `umm-kulthum.jpg` | [Umm Kulthum as Fatimah.jpg](https://commons.wikimedia.org/wiki/File:Umm_Kulthum_as_Fatimah.jpg) | Production company | Public domain |
+| Vera Rubin | `vera-rubin.jpg` | [Vera Rubin measuring spectra (cropped).jpg](https://commons.wikimedia.org/wiki/File:Vera_Rubin_measuring_spectra_(cropped).jpg) | NOIRLab/NSF/AURA | CC BY 4.0 |
+| Willie Nelson | `willie-nelson.jpg` | [Willie UK2K7 2.JPG](https://commons.wikimedia.org/wiki/File:Willie_UK2K7_2.JPG) | Robbiework at English Wikipedia (Original text: Robbiework (talk)) | CC BY-SA 3.0 |
+| Wole Soyinka | `wole-soyinka.jpg` | [Wole Soyinka in 2018 (3x4 cropped).jpg](https://commons.wikimedia.org/wiki/File:Wole_Soyinka_in_2018_(3x4_cropped).jpg) | Frankie Fouganthin | CC BY-SA 4.0 |
+| Ynés Mexía | `ynes-mexia.jpg` | [Ynés Mexía 1.jpg](https://commons.wikimedia.org/wiki/File:Yn%C3%A9s_Mex%C3%ADa_1.jpg) | Unknown author | Public domain |
+| Youssou N'Dour | `youssou-ndour.jpg` | [Youssou N'Dour.jpg](https://commons.wikimedia.org/wiki/File:Youssou_N%27Dour.jpg) | Marc Ras | CC BY 3.0 |
+| Yuan Longping | `yuan-longping.jpg` | [Yuan Longping at news conference (cropped).png](https://commons.wikimedia.org/wiki/File:Yuan_Longping_at_news_conference_(cropped).png) | China News Service | CC BY 3.0 |
+| Zhang Heng | `zhang-heng.jpg` | [Hunan International Economics University22.jpg](https://commons.wikimedia.org/wiki/File:Hunan_International_Economics_University22.jpg) | Huangdan2060 | CC0 |
