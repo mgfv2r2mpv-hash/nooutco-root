@@ -377,3 +377,99 @@ test('an acronym on one held Shift is judged once: EHR with the right Shift held
   await done(page);
   await expect(page.locator('[data-drill-timing]')).toContainText('1 of 1 capitals with the opposite Shift');
 });
+
+/* ---- the oracle (canned replies on window.ClickClackMock; no Claude call) -- */
+
+const ORACLE_MOCK = () => {
+  window.__calls = [];
+  window.__proposed = [];
+  window.__sent = [];
+  window.ClickClackMock = {
+    askClaude: async (req) => {
+      window.__calls.push(req);
+      if (req.schema && req.schema.properties && req.schema.properties.records) {
+        return { ok: true, output: { records: [
+          { title: "Delay kills momentum", rule: "Present the low-p request right after the high-p run.", applies: "when a note describes high-p requests", topic: "behavioral-momentum" },
+          { title: "Quoted", rule: "the high-p run builds reinforced compliance before the hard ask every time", applies: "x", topic: "q" },
+        ] } };
+      }
+      const turn = window.__calls.filter((c) => !(c.schema.properties && c.schema.properties.records)).length;
+      return { ok: true, output: { reflection: turn > 1 ? "You named the timing; add the reinforcement rate." : "",
+        thoughts: [{ text: "Momentum is resistance to change.", source: "Nevin (1992)" }, { text: "Gaps weaken it.", source: "Mace et al. (1988)" }],
+        question: turn > 1 ? "Follow-up question number two?" : "Why does the high-p sequence work?" } };
+    },
+    expertStatus: async () => ({ connected: true, queued: 1, note: "Connected to the expert. The token has 29 days left." }),
+    expertQueue: async () => ({ items: [{ at: "2026-09-23T15:00:00Z", question: "Why?", answer: "the high-p run builds reinforced compliance before the hard ask every time", mode: "oracle" }] }),
+    expertPropose: async (record) => { window.__proposed.push(record); return { ok: true, proposalId: "pr_test" }; },
+    expertSent: async (stamps) => { window.__sent.push(...stamps); return { ok: true, queued: 0 }; },
+    micStart: async () => ({ ok: true }),
+    micStop: async () => ({ ok: true }),
+  };
+};
+
+test('the oracle asks, shows its thinking with sources, and the follow-up carries his answer', async ({ page }) => {
+  await page.addInitScript(ORACLE_MOCK);
+  await page.goto('/index.html?clock=2');
+  await page.locator('[data-drill-mode="oracle"]').click();
+  await expect(page.locator('[data-drill-oracle-topic]')).toBeVisible();
+  await page.locator('[data-drill-oracle-topic]').fill('behavioral momentum');
+  await page.locator('[data-drill-start]').click();
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-mode', 'oracle');
+  await expect(page.locator('[data-drill-q]')).toHaveText('Why does the high-p sequence work?');
+  await expect(page.locator('[data-drill-bullets] li')).toHaveCount(2);
+  await expect(page.locator('[data-drill-bullets] .src').first()).toHaveText('Nevin (1992)');
+  const first = await page.evaluate(() => window.__calls[0]);
+  expect(first.webSearch).toBe(true);
+  expect(first.prompt).toContain('Topic: behavioral momentum');
+  await page.locator('[data-drill-box]').pressSequentially('it builds reinforced compliance ', { delay: 10 });
+  await done(page);
+  await expect(page.locator('[data-drill-again]')).toContainText('Follow-up');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('[data-drill-q]')).toHaveText('Follow-up question number two?');
+  await expect(page.locator('[data-drill-bullets] li').first()).toContainText('You named the timing');
+  const second = await page.evaluate(() => window.__calls[1]);
+  expect(second.prompt).toContain('He answered: it builds reinforced compliance');
+});
+
+test('talking fills the box, marks the round spoken, and a spoken round can be kept', async ({ page }) => {
+  await page.addInitScript(ORACLE_MOCK);
+  await page.goto('/index.html?clock=2');
+  await page.locator('[data-drill-mode="oracle"]').click();
+  await page.locator('[data-drill-start]').click();
+  await expect(page.locator('[data-drill-mic]')).toBeVisible();
+  await page.locator('[data-drill-mic]').click();
+  await expect(page.locator('[data-drill-mic]')).toHaveClass(/is-on/);
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'running');
+  await page.evaluate(() => window.ClickClack.speech({ text: 'I would fade the prompts', final: false }));
+  await expect(page.locator('[data-drill-box]')).toHaveValue('I would fade the prompts');
+  await done(page);
+  await expect(page.locator('[data-drill-basis]')).toContainText('You talked');
+  await expect(page.locator('[data-drill-keep]')).toBeEnabled();
+  const rec = await page.evaluate(() => window.NoteDrill.data.history.at(-1));
+  expect(rec.spoken).toBe(true);
+  expect(rec.spokenWords).toBe(5);
+});
+
+test('send to the expert drafts, drops a draft that quotes him, proposes the rest, and marks the answer sent', async ({ page }) => {
+  await page.addInitScript(ORACLE_MOCK);
+  await page.goto('/index.html');
+  await page.locator('.row [data-drill-open="expert"]').click();
+  await expect(page.locator('[data-drill-expert-status]')).toContainText('1 kept answer waiting');
+  await page.locator('[data-drill-expert-send]').click();
+  await expect(page.locator('[data-drill-expert-log]')).toContainText('1 answer read, 1 proposal staged');
+  await expect(page.locator('[data-drill-expert-log]')).toContainText('quotes the answer');
+  const out = await page.evaluate(() => ({ proposed: window.__proposed, sent: window.__sent, draftCall: window.__calls[0] }));
+  expect(out.proposed).toHaveLength(1);
+  expect(out.proposed[0].title).toBe('Delay kills momentum');
+  expect(out.proposed[0].tier).toBe('topic');
+  expect(out.sent).toEqual(['2026-09-23T15:00:00Z']);
+  expect(out.draftCall.webSearch).toBe(false);
+});
+
+test('outside the Mac app the oracle says so plainly', async ({ page }) => {
+  await page.goto('/index.html');
+  await page.locator('[data-drill-mode="oracle"]').click();
+  await page.locator('[data-drill-start]').click();
+  await expect(page.locator('[data-drill-pb]')).toHaveText('The oracle works in the Mac app.');
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'idle');
+});

@@ -97,3 +97,61 @@ export function log(line) {
 export function ready(report) {
   if (inApp) { call("ready", { report }).catch(() => {}); }
 }
+
+/* ---- the oracle, the microphone and the expert (Mac app only) ----------
+ * In a plain browser these say so, honestly. Tests put canned replies on
+ * window.ClickClackMock; nothing in the page's own flow sets it. */
+const mock = () => (typeof window !== "undefined" && window.ClickClackMock) || null;
+const notInApp = (what) => ({ ok: false, note: `${what} works in the Mac app.` });
+
+/** One call to his Claude Code: { ok, output } or { ok: false, note }. */
+export async function askClaude({ system, prompt, schema, webSearch = false }) {
+  if (inApp) return call("askClaude", { system, prompt, schema: JSON.stringify(schema), webSearch });
+  const m = mock();
+  if (m && m.askClaude) return m.askClaude({ system, prompt, schema, webSearch });
+  return notInApp("The oracle");
+}
+
+export async function micStart() {
+  if (inApp) return call("micStart");
+  const m = mock();
+  if (m && m.micStart) return m.micStart();
+  return notInApp("Talking");
+}
+export async function micStop() {
+  if (inApp) return call("micStop");
+  const m = mock();
+  if (m && m.micStop) return m.micStop();
+  return { ok: true };
+}
+
+export async function expertStatus() {
+  if (inApp) return call("expertStatus");
+  const m = mock();
+  if (m && m.expertStatus) return m.expertStatus();
+  return { connected: false, queued: 0, note: "Sending to the expert works in the Mac app." };
+}
+export async function expertToken(token) {
+  if (inApp) return call("expertToken", { token });
+  const m = mock();
+  if (m && m.expertToken) return m.expertToken(token);
+  return { connected: false, queued: 0, note: "Sending to the expert works in the Mac app." };
+}
+export async function expertQueue() {
+  if (inApp) return call("expertQueue");
+  const m = mock();
+  if (m && m.expertQueue) return m.expertQueue();
+  return { items: [] };
+}
+export async function expertPropose(record) {
+  if (inApp) return call("expertPropose", { record });
+  const m = mock();
+  if (m && m.expertPropose) return m.expertPropose(record);
+  return notInApp("Proposing");
+}
+export async function expertSent(stamps) {
+  if (inApp) return call("expertSent", { stamps });
+  const m = mock();
+  if (m && m.expertSent) return m.expertSent(stamps);
+  return { ok: true, queued: 0 };
+}

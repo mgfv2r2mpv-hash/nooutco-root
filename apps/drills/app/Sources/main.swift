@@ -118,10 +118,10 @@ func run(_ exe: String, _ args: [String], timeout: TimeInterval = 60) -> RunResu
 /// writes the safe tier and updates the manifest; it prints counts, never text.
 /// The register is `drill`: typed at speed, for himself, on a clock, so it is
 /// its own register and never joins the note bands by accident.
-func ingest(file: URL, doc: String, dry: Bool) -> RunResult {
+func ingest(file: URL, doc: String, dry: Bool, register: String = "drill") -> RunResult {
     guard let node = findNode() else { return RunResult(status: -3, out: "node was not found") }
     guard FileManager.default.fileExists(atPath: Paths.ingest.path) else { return RunResult(status: -4, out: "ingest.mjs was not found at ~/.claude/voice/tools") }
-    var args = [Paths.ingest.path, file.path, "--register", "drill", "--tier", "safe", "--doc", doc]
+    var args = [Paths.ingest.path, file.path, "--register", register, "--tier", "safe", "--doc", doc]
     if dry { args.append("--dry") }
     return run(node, args)
 }
@@ -180,6 +180,39 @@ final class Bridge: NSObject, WKScriptMessageHandlerWithReply {
                 let out = keep(r)
                 DispatchQueue.main.async { replyHandler(out, nil) }
             }
+        case "askClaude":
+            // The oracle's question and thoughts, or a drafted proposal. Off the main thread: it takes seconds.
+            guard let system = body["system"] as? String, let prompt = body["prompt"] as? String, let schema = body["schema"] as? String else { replyHandler(nil, "missing system, prompt or schema"); return }
+            let web = (body["webSearch"] as? Bool) ?? false
+            DispatchQueue.global(qos: .userInitiated).async {
+                let out = askClaude(system: system, prompt: prompt, schema: schema, webSearch: web)
+                DispatchQueue.main.async { replyHandler(out, nil) }
+            }
+        case "micStart":
+            Listener.shared.start { replyHandler($0, nil) }
+        case "micStop":
+            Listener.shared.stop()
+            replyHandler(["ok": true], nil)
+        case "expertStatus":
+            var s = tokenStatus(); s["queued"] = unsentQueue().count
+            replyHandler(s, nil)
+        case "expertToken":
+            // Pasted once from the admin page; kept in the keychain, never in a file or the log.
+            let t = ((body["token"] as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            Keychain.write(t)
+            var s = tokenStatus(); s["queued"] = unsentQueue().count
+            replyHandler(s, nil)
+        case "expertQueue":
+            replyHandler(["items": unsentQueue()], nil)
+        case "expertPropose":
+            guard let rec = body["record"] as? [String: Any] else { replyHandler(nil, "no record"); return }
+            DispatchQueue.global(qos: .userInitiated).async {
+                let out = propose(rec)
+                DispatchQueue.main.async { replyHandler(out, nil) }
+            }
+        case "expertSent":
+            markSent((body["stamps"] as? [String]) ?? [])
+            replyHandler(["ok": true, "queued": unsentQueue().count], nil)
         case "log":
             log("page: \((body["line"] as? String) ?? "")")
             replyHandler(["ok": true], nil)
@@ -207,6 +240,9 @@ func keep(_ r: [String: Any]) -> [String: Any] {
     }
     let at = (r["at"] as? String) ?? ISO8601DateFormatter().string(from: Date())
     let outline = (r["outline"] as? String) ?? "x"
+    // Typed answers are `drill`; answers he TALKED are `spoken` (his ruling 3A),
+    // so speech never mixes with the writing bands. Nothing else is accepted.
+    let register = (r["register"] as? String) == "spoken" ? "spoken" : "drill"
     let stamp = at.replacingOccurrences(of: ":", with: "").replacingOccurrences(of: ".", with: "").prefix(17)
     let file = Paths.kept.appendingPathComponent("\(stamp)-\(outline).txt")
     do { try text.write(to: file, atomically: true, encoding: .utf8) } catch {
@@ -216,7 +252,8 @@ func keep(_ r: [String: Any]) -> [String: Any] {
     let meta: [String: Any] = [
         "at": at, "outline": outline, "itemId": r["itemId"] ?? "", "question": r["question"] ?? "",
         "minutes": r["minutes"] ?? 0, "seconds": r["seconds"] ?? 0, "nwam": r["nwam"] ?? 0, "accuracy": r["accuracy"] ?? 0,
-        "register": "drill", "audience": "self", "timed": true,
+        "register": register, "audience": "self", "timed": true, "mode": r["mode"] ?? "answer",
+        "oracle": r["oracle"] ?? [:],
         // Where he stopped to think (character offset, ms, kind) and how many
         // times he changed his mind with Option or Command+Backspace.
         "pauses": r["pauses"] ?? [], "revisions": r["revisions"] ?? 0,
@@ -235,11 +272,11 @@ func keep(_ r: [String: Any]) -> [String: Any] {
     }
 
     let doc = "Drill \(at.prefix(10)) \(outline)"
-    let res = ingest(file: file, doc: doc, dry: false)
+    let res = ingest(file: file, doc: doc, dry: false, register: register)
     log("keep \(outline) ingest status \(res.status)")
     let corpus: String
     if res.status == 0 {
-        corpus = "In your voice corpus (drill register)."
+        corpus = "In your voice corpus (\(register) register)."
     } else {
         let first = res.out.split(separator: "\n").first.map(String.init) ?? "no output"
         corpus = "Saved on this Mac; the corpus intake said: \(first.prefix(140))"
@@ -262,6 +299,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
         cfg.userContentController.addScriptMessageHandler(bridge, contentWorld: .page, name: "drill")
         cfg.preferences.isTextInteractionEnabled = true
         web = WKWebView(frame: .zero, configuration: cfg)
+        Listener.shared.web = web
         web.navigationDelegate = self
         web.setValue(false, forKey: "drawsBackground")
         if #available(macOS 13.3, *) { web.isInspectable = true }

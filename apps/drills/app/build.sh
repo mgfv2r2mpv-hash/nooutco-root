@@ -21,7 +21,7 @@ echo "compiling the shell"
 swiftc -swift-version 5 -O \
   -target "$(uname -m)-apple-macosx13.0" \
   -o "$APP/Contents/MacOS/ClickClackOracle" \
-  app/Sources/main.swift
+  app/Sources/*.swift
 
 echo "copying the page"
 cp web/*.html web/*.js web/*.css "$APP/Contents/Resources/web/"
@@ -61,6 +61,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>LSApplicationCategoryType</key><string>public.app-category.education</string>
   <key>NSHighResolutionCapable</key><true/>
   <key>NSHumanReadableCopyright</key><string>Built for one clinician's own practice.</string>
+  <key>NSMicrophoneUsageDescription</key><string>ClickClackOracle listens when you choose to talk an answer instead of typing it. The audio stays on this Mac and is never saved.</string>
+  <key>NSSpeechRecognitionUsageDescription</key><string>ClickClackOracle turns what you say into text on this Mac only, so a spoken answer can be kept like a typed one.</string>
 </dict>
 </plist>
 PLIST

@@ -21,6 +21,7 @@ import { createCalendar, renderTrophies } from "./calendar.js";
 import { handOf, judge, createShiftTracker, createShiftFx } from "./shift.js";
 import { nextPassage, trickyProfile, describeProfile } from "./passages.js";
 import { renderPassage, markPassage } from "./copy.js";
+import { ORACLE_SYSTEM, ORACLE_SCHEMA, oraclePrompt, readOracle, DRAFT_SYSTEM, DRAFT_SCHEMA, draftPrompt, toProposal } from "./oracle.js";
 
 const params = new URLSearchParams(location.search);
 // ?clock=SECONDS overrides the minute picker: tests, and a quick look.
@@ -47,6 +48,9 @@ const els = {
   opens: $$("[data-drill-open]"), modes: $$("[data-drill-mode]"), lede: $("[data-drill-lede]"),
   passage: $("[data-drill-passage]"), ref: $("[data-drill-ref]"), refText: $("[data-drill-ref-text]"),
   cont: $("[data-drill-continue]"), working: $("[data-drill-working]"),
+  oracleTopic: $("[data-drill-oracle-topic]"), oracleOnly: $$("[data-oracle-only]"), mic: $("[data-drill-mic]"),
+  send: $("[data-drill-send]"), expertStatus: $("[data-drill-expert-status]"), expertToken: $("[data-drill-expert-token]"),
+  expertConnect: $("[data-drill-expert-connect]"), expertSend: $("[data-drill-expert-send]"), expertLog: $("[data-drill-expert-log]"),
 };
 
 const data = { history: [], lexicon: [], settings: {} };
@@ -62,6 +66,9 @@ const state = {
   // or one minute for a respond. prefix is where a Keep going round's own
   // text starts in the box; answerAt and keptUpTo tie the rounds of one answer.
   mode: "answer", passage: null, roundMinutes: 1, prefix: 0, cont: 0, answerAt: null, keptUpTo: 0,
+  // The oracle: its topic, the turns so far ({ question, answer }), and this turn's reply.
+  // listening/spoken: the microphone is on / this round holds words he TALKED.
+  oracle: null, busy: false, listening: false, spoken: false, micBase: "",
 };
 
 const garden = createGarden($("[data-garden]"), { column: 900 });
@@ -125,12 +132,16 @@ function setMinutes(m, save = true) {
     : `No ${what} drill at ${m} minute${m === 1 ? "" : "s"} yet. This one sets the bar.`;
   if (save) { data.settings = { ...data.settings, minutes: m }; store.saveSettings(data.settings); }
 }
+const LEDES = {
+  answer: "One clinical question. One to five minutes, as fast and as clean as you can. The garden grows with every word, and warms when you fly.",
+  copy: "Copy a passage from the field for the clock you pick, word for word, then answer it in your own words for a minute. Keep going if you have more to say.",
+  oracle: "The oracle shares a little of its thinking and asks you one question. Answer for a minute, typing or talking. Return asks the follow-up; what you keep goes to the expert.",
+};
 function setMode(mode, save = true) {
-  const m = mode === "copy" ? "copy" : "answer";
+  const m = LEDES[mode] ? mode : "answer";
   for (const b of els.modes) b.classList.toggle("is-on", b.dataset.drillMode === m);
-  els.lede.textContent = m === "copy"
-    ? "Copy a passage from the field for the clock you pick, word for word, then answer it in your own words for a minute. Keep going if you have more to say."
-    : "One clinical question. One to five minutes, as fast and as clean as you can. The garden grows with every word, and warms when you fly.";
+  els.lede.textContent = LEDES[m];
+  for (const n of els.oracleOnly) n.hidden = m !== "oracle";
   if (save) data.settings = { ...data.settings, mode: m };
   setMinutes(state.minutes, save);
 }
@@ -162,6 +173,7 @@ function home() {
 /* ---- arm ---------------------------------------------------------------- */
 /* A new drill: a bank question, or a passage to copy. */
 function arm() {
+  if (data.settings.mode === "oracle") { armOracle(false); return; }
   if (data.settings.mode === "copy") {
     const recent = data.history.filter((h) => h.mode === "copy").map((h) => h.passage);
     // His ask: the passages work his tricky areas, and adapt as he improves.
@@ -194,6 +206,130 @@ function armRespond() {
   startRound("respond", 1, null);
 }
 
+/* ---- the oracle ------------------------------------------------------------
+   His Claude Code on this Mac asks one question and shares its thinking (his
+   ruling 1A). A follow-up carries every turn so far, his answers included, so
+   the next question builds on what he said. */
+function busy(text) {
+  state.busy = !!text;
+  root.dataset.busy = text ? "1" : "";
+  if (text) { els.pb.textContent = text; els.keepnote.textContent = text; }
+}
+async function armOracle(followUp) {
+  if (state.busy) return;
+  let topic, outline;
+  const turns = followUp && state.oracle ? state.oracle.turns.concat([{ question: state.oracle.reply.question, answer: els.box.value.trim() }]) : [];
+  if (followUp && state.oracle) ({ topic, outline } = state.oracle);
+  else {
+    const typed = els.oracleTopic ? els.oracleTopic.value.trim() : "";
+    if (typed) { topic = typed; outline = null; }
+    else {
+      // No topic typed: the thinnest part of the map, as the bank does.
+      const cell = emptiestCell({ bank: BANK, history: data.history, recent: 0 });
+      const it = cell && itemById(cell);
+      topic = it ? it.text : "a clinical question of your choosing";
+      outline = it ? it.id : null;
+    }
+  }
+  busy("The oracle is thinking. It usually takes about fifteen seconds.");
+  const r = await store.askClaude({ system: ORACLE_SYSTEM, prompt: oraclePrompt({ topic, outline, turns }), schema: ORACLE_SCHEMA, webSearch: true })
+    .catch((e) => ({ ok: false, note: String(e) }));
+  const reply = r && r.ok ? readOracle(r.output) : null;
+  busy("");
+  if (!reply) {
+    const why = (r && r.note) || "The oracle's reply could not be read.";
+    els.pb.textContent = why; els.keepnote.textContent = why;
+    return;
+  }
+  state.oracle = { topic, outline, turns, reply };
+  const bullets = reply.thoughts.map((t) => ({ text: t.text, source: t.source }));
+  if (reply.reflection) bullets.unshift({ text: reply.reflection, source: "the oracle, on your last answer" });
+  state.passage = null;
+  state.item = { id: "oracle", outline, tag: `oracle · turn ${turns.length + 1}`, question: reply.question, bullets };
+  startRound("oracle", 1, null);
+}
+
+/* ---- talking ------------------------------------------------------------
+   On-device speech (his ruling 3A). What he says lands in the box after what
+   he typed; the round is marked spoken and keeps to the `spoken` register. */
+async function toggleMic() {
+  if (state.listening) { await stopMic(); return; }
+  if (!["armed", "running"].includes(state.phase) || state.mode === "copy") return;
+  const r = await store.micStart().catch((e) => ({ ok: false, note: String(e) }));
+  if (!r || !r.ok) { els.hint.textContent = (r && r.note) || "The microphone would not start."; return; }
+  const v = els.box.value;
+  state.micBase = v && !/\s$/.test(v) ? v + " " : v;
+  state.listening = true;
+  els.mic.classList.add("is-on");
+  els.mic.textContent = "Stop talking";
+  if (state.phase === "armed") start();
+  els.hint.textContent = "Listening, on this Mac only. Talk; the words land in the box.";
+}
+async function stopMic() {
+  if (!state.listening) return;
+  state.listening = false;
+  els.mic.classList.remove("is-on");
+  els.mic.textContent = "Talk";
+  await store.micStop().catch(() => {});
+}
+window.ClickClack = {
+  speech({ text, final } = {}) {
+    if (!state.listening || typeof text !== "string") return;
+    els.box.value = state.micBase + text;
+    state.spoken = true;
+    if (final) { state.micBase = els.box.value + " "; }
+  },
+};
+
+/* ---- the expert on the website --------------------------------------------
+   His ruling 2A: kept answers become PROPOSED records he commits or rejects
+   in the admin page. oracle.js drafts and checks; the shell posts. */
+async function renderExpert() {
+  const st = await store.expertStatus().catch(() => ({ connected: false, queued: 0 }));
+  els.expertStatus.textContent = `${st.note || ""} ${st.queued ? `${st.queued} kept answer${st.queued === 1 ? "" : "s"} waiting to go.` : "Nothing waiting."}`.trim();
+  els.expertSend.disabled = !st.connected || !st.queued;
+  els.send.hidden = !st.connected;
+  return st;
+}
+async function connectExpert() {
+  const t = els.expertToken.value.trim();
+  if (!t) return;
+  await store.expertToken(t);
+  els.expertToken.value = "";
+  await renderExpert();
+}
+async function sendToExpert() {
+  if (state.busy) return;
+  const st = await renderExpert();
+  if (!st.connected) { els.expertLog.textContent = st.note || "Not connected."; return; }
+  const { items = [] } = await store.expertQueue();
+  let read = 0, staged = 0;
+  const dropped = [], sent = [];
+  for (const entry of items) {
+    busy(`Drafting from answer ${read + 1} of ${items.length}...`);
+    const r = await store.askClaude({ system: DRAFT_SYSTEM, prompt: draftPrompt(entry), schema: DRAFT_SCHEMA, webSearch: false })
+      .catch((e) => ({ ok: false, note: String(e) }));
+    if (!r || !r.ok) { dropped.push(r && r.note ? r.note : "no draft"); break; }
+    read += 1;
+    let allOk = true;
+    for (const d of (r.output && r.output.records) || []) {
+      const p = toProposal(d, entry);
+      if (p.error) { dropped.push(p.error); continue; }
+      const res = await store.expertPropose(p.record).catch((e) => ({ ok: false, note: String(e) }));
+      if (res && res.ok) staged += 1;
+      else { allOk = false; dropped.push((res && res.note) || "refused"); if (res && (res.status === 401 || res.status === 403)) break; }
+    }
+    if (allOk) sent.push(entry.at);
+  }
+  if (sent.length) await store.expertSent(sent);
+  busy("");
+  els.expertLog.textContent = `${read} answer${read === 1 ? "" : "s"} read, ${staged} proposal${staged === 1 ? "" : "s"} staged.`
+    + (staged ? " Commit or reject them in the admin page, Knowledge tab." : "")
+    + (dropped.length ? ` Held back: ${[...new Set(dropped)].join("; ")}.` : "");
+  els.keepnote.textContent = els.expertLog.textContent;
+  await renderExpert();
+}
+
 /* Keep going: the same question, the same box, a fresh clock. His ruling:
    "maybe I had more to say on it and stopped only because time was out." */
 function continueRound() {
@@ -208,6 +344,9 @@ function startRound(mode, minutes, carry) {
   state.backspaceInWord = false; state.record = null; state.kept = false;
   state.pendingDelete = null; state.bsRun = 0; state.coached = false;
   const continuing = typeof carry === "string";
+  if (!continuing) state.spoken = false;
+  state.listening = false; els.mic.classList.remove("is-on"); els.mic.textContent = "Talk";
+  els.mic.hidden = mode === "copy";
   if (!continuing) { state.cont = 0; state.answerAt = null; state.keptUpTo = 0; }
   else state.cont += 1;
   shiftKeys.clear(); shiftFx.clear();
@@ -381,6 +520,7 @@ function tick() {
 }
 
 async function finish() {
+  if (state.listening) await stopMic();
   clearTimeout(state.timer);
   setPhase("done");
   els.box.disabled = true;
@@ -411,11 +551,15 @@ async function finish() {
   const st = stars(s, prior.filter((h) => kindOf(h) === roundKind()), state.roundMinutes);
   const before = trophyCase(prior);
   if (!state.answerAt) state.answerAt = state.record.at;
-  if (s.gwam > 0) {
+  // A talked round has no keystrokes but it is still a round, and it can be kept.
+  const spokenWords = state.spoken ? roundText().trim().split(/\s+/).filter(Boolean).length : 0;
+  if (state.spoken) Object.assign(state.record, { spoken: true, spokenWords });
+  const counts = s.gwam > 0 || spokenWords > 0;
+  if (counts) {
     data.history.push(state.record);
     store.saveHistory(data.history);
   }
-  state.unlocked = s.gwam > 0 ? newlyUnlocked(before, trophyCase(data.history)) : [];
+  state.unlocked = counts ? newlyUnlocked(before, trophyCase(data.history)) : [];
   store.log(`drill ${state.mode} ${state.item.id} ${state.roundMinutes}m nwam ${s.nwam} acc ${s.accuracy}`);
   render(s, st, prior);
 }
@@ -474,17 +618,19 @@ function render(s, st, prior) {
   renderReview(s);
   renderBoard();
   const copying = state.mode === "copy";
+  const hasWords = s.gwam > 0 || (state.spoken && roundText().trim().length > 0);
+  if (state.spoken) els.basis.textContent = `You talked ${state.record && state.record.spokenWords ? state.record.spokenWords + " words of " : ""}this one. Talking has no typing score; what you typed around it is scored as usual.`;
   els.keep.hidden = copying;
-  els.keep.disabled = !(s.gwam > 0);
+  els.keep.disabled = !hasWords;
   els.keep.textContent = "Keep it"; els.keep.appendChild(Object.assign(document.createElement("kbd"), { textContent: "K" }));
   els.keepnote.textContent = copying
     ? "Copy rounds are never kept: the words are the passage's, not yours. Respond is next, one minute."
     : store.inApp
-      ? `Keep sends ${state.cont ? "this answer, every round of it," : "this answer"} to your voice corpus (drill register) and the expert queue.`
+      ? `Keep sends ${state.cont ? "this answer, every round of it," : "this answer"} to your voice corpus (${state.spoken ? "spoken" : "drill"} register) and the expert queue.`
       : "This browser page keeps numbers only; the Mac app keeps text.";
   els.cont.hidden = copying;
-  els.cont.disabled = !(s.gwam > 0) && !state.prefix;
-  els.again.replaceChildren(copying ? "Respond · 1 min" : "Again", Object.assign(document.createElement("kbd"), { textContent: "return" }));
+  els.cont.disabled = !hasWords && !state.prefix;
+  els.again.replaceChildren(copying ? "Respond · 1 min" : state.mode === "oracle" ? "Follow-up" : "Again", Object.assign(document.createElement("kbd"), { textContent: "return" }));
   showTab("drill");
   els.question.hidden = true;
   els.results.hidden = false;
@@ -659,6 +805,7 @@ function expertCounts() { const e = window.DrillExpert; return e && typeof e ===
 function showTab(name) {
   for (const t of els.tabs) t.classList.toggle("is-on", t.dataset.tab === name);
   for (const p of els.panes) p.hidden = p.dataset.pane !== name;
+  if (name === "expert") renderExpert();
 }
 function openBoard(tab) {
   renderBoard();
@@ -669,7 +816,8 @@ function openBoard(tab) {
 }
 
 async function keep() {
-  if (!state.score || state.kept || state.mode === "copy" || !(state.score.gwam > 0)) return;
+  const hasWords = state.score && (state.score.gwam > 0 || (state.spoken && roundText().trim()));
+  if (!state.score || state.kept || state.mode === "copy" || !hasWords) return;
   els.keep.disabled = true;
   els.keepnote.textContent = "Keeping...";
   // The whole answer, every Keep going round of it; if an earlier round was
@@ -683,6 +831,8 @@ async function keep() {
     // Where he stopped to think, by character offset: the expert can read
     // what came right before each stop as what he was deciding.
     pauses: state.score.think.stops, revisions: state.score.revisions,
+    mode: state.mode, register: state.spoken ? "spoken" : "drill",
+    ...(state.mode === "oracle" && state.oracle ? { oracle: { topic: state.oracle.topic, question: state.oracle.reply.question, thoughts: state.oracle.reply.thoughts } } : {}),
   }).catch((e) => ({ ok: false, note: String(e) }));
   if (r && r.ok) {
     state.kept = true;
@@ -691,6 +841,7 @@ async function keep() {
     store.saveHistory(data.history);
     els.keep.textContent = "Kept";
     els.keepnote.textContent = [r.corpus, r.expert].filter(Boolean).join(" ") || "Kept.";
+    renderExpert();
   } else {
     els.keep.disabled = false;
     els.keepnote.textContent = (r && r.note) || "Could not keep it.";
@@ -700,7 +851,16 @@ async function keep() {
 /* ---- wire ---------------------------------------------------------------- */
 for (const b of els.mins) b.addEventListener("click", () => setMinutes(Number(b.dataset.drillMinutes)));
 els.start.addEventListener("click", arm);
-els.again.addEventListener("click", () => (state.mode === "copy" && state.phase === "done" ? armRespond() : arm()));
+function again() {
+  if (state.phase === "done" && state.mode === "copy") armRespond();
+  else if (state.phase === "done" && state.mode === "oracle") armOracle(true);
+  else arm();
+}
+els.again.addEventListener("click", again);
+els.mic.addEventListener("click", toggleMic);
+els.send.addEventListener("click", sendToExpert);
+els.expertSend.addEventListener("click", sendToExpert);
+els.expertConnect.addEventListener("click", connectExpert);
 els.cont.addEventListener("click", continueRound);
 for (const b of els.modes) b.addEventListener("click", () => setMode(b.dataset.drillMode));
 els.home.addEventListener("click", home);
@@ -716,11 +876,12 @@ els.box.addEventListener("paste", onPaste);
 document.addEventListener("keydown", (e) => {
   if (e.target === els.box || e.metaKey || e.ctrlKey || e.altKey) return;
   const inButton = e.target && e.target.tagName === "BUTTON";
+  if (e.target === els.oracleTopic) { if (e.key === "Enter") { e.preventDefault(); arm(); } return; }
   if (state.phase === "idle") {
     if (e.key === "Enter" && !inButton) { e.preventDefault(); arm(); }
     else if (/^[1-5]$/.test(e.key)) setMinutes(Number(e.key));
   } else if (state.phase === "done" || state.phase === "board") {
-    if (e.key === "Enter" && !(inButton && e.target !== els.again)) { e.preventDefault(); if (state.phase === "done" && state.mode === "copy") armRespond(); else arm(); }
+    if (e.key === "Enter" && !(inButton && e.target !== els.again)) { e.preventDefault(); again(); }
     else if (e.key.toLowerCase() === "k" && state.phase === "done") { e.preventDefault(); keep(); }
     else if (e.key.toLowerCase() === "c" && state.phase === "done") { e.preventDefault(); continueRound(); }
     else if (e.key === "Escape") { e.preventDefault(); home(); }
@@ -733,6 +894,7 @@ async function init() {
   const last = data.history.length ? data.history[data.history.length - 1].minutes : null;
   state.minutes = Number(data.settings.minutes) || last || 1;
   setMode(data.settings.mode, false);
+  renderExpert();
   renderChips();
   drawMap();
   els.start.focus();
@@ -742,4 +904,4 @@ async function init() {
 init();
 
 // For tests and a look under the hood; never for the page's own flow.
-window.NoteDrill = { state, data, BANK, scoreDrill, finish, known: () => knownNow(), garden, drawMap, renderBoard, openBoard };
+window.NoteDrill = { state, data, BANK, scoreDrill, finish, known: () => knownNow(), garden, drawMap, renderBoard, openBoard, sendToExpert };
