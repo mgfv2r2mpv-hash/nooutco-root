@@ -307,3 +307,5 @@ svg.fx-glyph { width: 26px; height: 26px; animation: fx-cheer 1.1s ease-out both
 .refpass p { line-height: 1.55; margin: 8px 0 0; max-height: 160px; overflow-y: auto; }
 .bests th { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; text-align: left; padding: 0 16px 4px 0; }
 .pw u.wk { text-decoration: underline dotted color-mix(in srgb, var(--accent) 70%, transparent); text-underline-offset: 4px; text-decoration-thickness: 1.5px; }
+.review-list li[data-drill-reviewed="word"] { border-color: var(--accent); }
+.review-list li[data-drill-reviewed="word"] b { color: var(--accent); }

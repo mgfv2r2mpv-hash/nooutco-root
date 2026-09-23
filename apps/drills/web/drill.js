@@ -76,6 +76,7 @@ function known() {
   const all = new Set(WORDS);
   for (const w of bankSet) all.add(w);
   for (const w of data.lexicon) all.add(w);
+  for (const w of plainWords()) all.add(w);
   return all;
 }
 let knownCache = null;
@@ -528,19 +529,31 @@ function renderReview(s) {
     const row = document.createElement("li");
     const word = document.createElement("b"); word.textContent = w;
     const clinical = document.createElement("button"); clinical.type = "button"; clinical.textContent = "clinical"; clinical.dataset.drillClinical = w;
+    const plain = document.createElement("button"); plain.type = "button"; plain.textContent = "a word"; plain.dataset.drillWord = w;
+    plain.title = "A real word, just not a clinical one (jackpot): never flagged again, and not counted as a clinical term";
     const typo = document.createElement("button"); typo.type = "button"; typo.textContent = "typo"; typo.dataset.drillTypo = w;
-    clinical.addEventListener("click", () => markClinical(w, row));
-    typo.addEventListener("click", () => { row.dataset.drillReviewed = "typo"; clinical.disabled = typo.disabled = true; });
-    row.append(word, clinical, typo);
+    clinical.addEventListener("click", () => markKnown(w, row, "clinical"));
+    plain.addEventListener("click", () => markKnown(w, row, "word"));
+    typo.addEventListener("click", () => { row.dataset.drillReviewed = "typo"; for (const b of row.querySelectorAll("button")) b.disabled = true; });
+    row.append(word, clinical, plain, typo);
     return row;
   }));
   els.review.hidden = false;
 }
-function markClinical(w, row) {
-  data.lexicon = [...new Set(data.lexicon.concat([w]))];
-  store.saveLexicon(data.lexicon);
+/* His three answers for an unknown word: clinical (into the lexicon, and the
+   lexicon trophies), a word (real English, not clinical: "jackpot"; kept in
+   settings.words so it is known but never counted as clinical), or typo. */
+function plainWords() { return Array.isArray(data.settings.words) ? data.settings.words : []; }
+function markKnown(w, row, as) {
+  if (as === "clinical") {
+    data.lexicon = [...new Set(data.lexicon.concat([w]))];
+    store.saveLexicon(data.lexicon);
+  } else {
+    data.settings = { ...data.settings, words: [...new Set(plainWords().concat([w]))] };
+    store.saveSettings(data.settings);
+  }
   knownCache = null;
-  row.dataset.drillReviewed = "clinical";
+  row.dataset.drillReviewed = as;
   for (const b of row.querySelectorAll("button")) b.disabled = true;
   // Re-score with the word known: it comes out of the errors and NWAM moves.
   state.score = scoreRound(state.scoredMinutes || minutesFor());
