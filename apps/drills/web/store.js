@@ -3,7 +3,7 @@
  * In the Mac app the page talks to the Swift shell through one message handler,
  * `drill`, which answers with a promise (WKScriptMessageHandlerWithReply). The
  * shell keeps history, lexicon and settings as JSON files under
- * ~/Library/Application Support/Clinical Typing Drills, and Keep writes the
+ * ~/Library/Application Support/ClickClackOracle, and Keep writes the
  * answer's text into the voice corpus (drill register) and the expert queue.
  *
  * In a plain browser (the tests, a quick look) there is no shell: history,

@@ -1,4 +1,6 @@
-# Clinical Typing Drills
+# ClickClackOracle
+
+(Clinical Typing Drills until 2026-09-23; the app moves the old data folder on first launch.)
 
 A Mac app for one clinician: a clinical question, one to five minutes on the
 clock, a typing score (GWAM, errors, NWAM, accuracy, tricky keys, form tips), a
@@ -26,4 +28,4 @@ respond round answers it in his own words. Copy rounds are never kept.
 - `tests/` node tests for the arithmetic, Playwright for the page (WebKit and
   Chromium).
 
-Data: `~/Library/Application Support/Clinical Typing Drills`.
+Data: `~/Library/Application Support/ClickClackOracle`.

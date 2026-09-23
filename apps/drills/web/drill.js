@@ -1,4 +1,4 @@
-/* Clinical Typing Drills: the page.
+/* ClickClackOracle (was Clinical Typing Drills): the page.
  *
  * idle -> armed (question up, waiting for the first key) -> running (clock)
  * -> done (score). The clock starts on the first keystroke, never on a button:

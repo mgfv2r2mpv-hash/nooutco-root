@@ -1,5 +1,5 @@
 // @ts-check
-/* Clinical Typing Drills, through the page, in WebKit (the engine the Mac app
+/* ClickClackOracle, through the page, in WebKit (the engine the Mac app
  * runs) and Chromium.
  *
  * The arithmetic is pinned by hand in the node tests (drill-score, drill-map,

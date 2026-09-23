@@ -1,4 +1,4 @@
-// Clinical Typing Drills - the macOS shell.
+// ClickClackOracle (was Clinical Typing Drills) - the macOS shell.
 //
 // A Swift window over a WKWebView, the same shape as Sass C. Assistant. The page
 // is the drill in apps/drills/web, copied into the bundle verbatim, so the code
@@ -26,7 +26,9 @@ import UniformTypeIdentifiers
 
 let SCHEME = "drill"
 let ORIGIN = "drill://app"
-let APP_NAME = "Clinical Typing Drills"
+let APP_NAME = "ClickClackOracle"
+/// The name before 2026-09-23. Its data folder is moved to the new name once.
+let OLD_NAME = "Clinical Typing Drills"
 
 // ------------------------------------------------------------------ files
 
@@ -34,6 +36,12 @@ enum Paths {
     static let support: URL = {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         let dir = base.appendingPathComponent(APP_NAME, isDirectory: true)
+        let old = base.appendingPathComponent(OLD_NAME, isDirectory: true)
+        // The rename: bring the drill history, lexicon and kept answers along,
+        // once. A move, never a copy, so there is one history and not two.
+        if !FileManager.default.fileExists(atPath: dir.path), FileManager.default.fileExists(atPath: old.path) {
+            try? FileManager.default.moveItem(at: old, to: dir)
+        }
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir
     }()
