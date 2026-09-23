@@ -340,3 +340,21 @@ test('the copy picker aims at his weak keys, says so, and marks those letters', 
   await page.locator('.row [data-drill-open="keys"]').click();
   await expect(page.locator('[data-drill-working]')).toContainText('aiming at: w m b');
 });
+
+test('"a word" makes an unknown word known without counting it as clinical', async ({ page }) => {
+  await page.goto('/index.html?clock=3');
+  await wordsReady(page);
+  await page.locator('[data-drill-start]').click();
+  await page.locator('[data-drill-box]').pressSequentially('a zorbly win ', { delay: 12 });
+  await done(page);
+  await expect(page.locator('[data-drill-errors]')).toHaveText('1');
+  await page.locator('[data-drill-word="zorbly"]').click();
+  await expect(page.locator('[data-drill-errors]')).toHaveText('0');
+  const saved = await page.evaluate(() => ({ words: window.NoteDrill.data.settings.words, lexicon: window.NoteDrill.data.lexicon }));
+  expect(saved.words).toEqual(['zorbly']);
+  expect(saved.lexicon).toEqual([]);
+  // Known next time: not flagged at the space.
+  await page.keyboard.press('Enter');
+  await page.locator('[data-drill-box]').pressSequentially('zorbly ', { delay: 12 });
+  await expect(page.locator('[data-drill-live]')).toHaveText('');
+});
