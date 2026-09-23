@@ -311,6 +311,8 @@ function shiftCheck(e, ev) {
   const side = shiftKeys.side(e);
   const hand = handOf(e.code);
   if (!side || !hand) return;
+  // Only the first capital of a Shift press is judged: "EHR" on one held Shift is right.
+  if (!shiftKeys.firstInHold()) return;
   ev.shift = side; ev.hand = hand;
   const j = judge(side, hand);
   if (j === "same") shiftFx.same(hand, e.key);

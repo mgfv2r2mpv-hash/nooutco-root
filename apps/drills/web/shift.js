@@ -38,13 +38,29 @@ export function judge(shift, hand) {
   return shift === hand ? "same" : "ok";
 }
 
-/** Which Shift keys are down. Feed it every keydown and keyup of the box. */
+/**
+ * Which Shift keys are down, and which PRESS this is. Feed it every keydown
+ * and keyup of the box. Each new Shift press gets a new hold number; a key
+ * repeat does not. His bug report of 2026-09-23: "EHR" typed holding one Shift
+ * flagged the H. Only the FIRST capital of a hold is judged (see firstInHold):
+ * holding one Shift through an acronym is correct form, and changing sides
+ * mid-acronym is the habit NOT to build.
+ */
 export function createShiftTracker() {
   const down = new Set();
+  let hold = 0;
+  let judged = -1;
   return {
     key(e) {
       if (e.code !== "ShiftLeft" && e.code !== "ShiftRight") return false;
-      if (e.type === "keydown") down.add(e.code); else down.delete(e.code);
+      if (e.type === "keydown") { if (!e.repeat && !down.has(e.code)) hold += 1; down.add(e.code); }
+      else down.delete(e.code);
+      return true;
+    },
+    /** True once per Shift press: for the first capital typed while it is held. */
+    firstInHold() {
+      if (judged === hold) return false;
+      judged = hold;
       return true;
     },
     /** "L", "R", "B" (both), or null. Trusts the event's own shiftKey over a stale set. */
@@ -53,7 +69,7 @@ export function createShiftTracker() {
       const l = down.has("ShiftLeft"), r = down.has("ShiftRight");
       return l && r ? "B" : l ? "L" : r ? "R" : null;
     },
-    clear() { down.clear(); },
+    clear() { down.clear(); judged = hold; },
   };
 }
 
