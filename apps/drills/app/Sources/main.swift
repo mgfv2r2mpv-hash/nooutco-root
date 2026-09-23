@@ -209,6 +209,9 @@ func keep(_ r: [String: Any]) -> [String: Any] {
         "at": at, "outline": outline, "itemId": r["itemId"] ?? "", "question": r["question"] ?? "",
         "minutes": r["minutes"] ?? 0, "seconds": r["seconds"] ?? 0, "nwam": r["nwam"] ?? 0, "accuracy": r["accuracy"] ?? 0,
         "register": "drill", "audience": "self", "timed": true,
+        // Where he stopped to think (character offset, ms, kind) and how many
+        // times he changed his mind with Option or Command+Backspace.
+        "pauses": r["pauses"] ?? [], "revisions": r["revisions"] ?? 0,
     ]
     try? writeJSON(file.deletingPathExtension().appendingPathExtension("json"), meta)
 

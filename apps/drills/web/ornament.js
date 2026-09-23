@@ -271,14 +271,24 @@ export function createHeat({ usual = 35, best = 70 } = {}) {
   const lo = Math.max(10, usual * 0.7);
   const hi = Math.max(lo + 10, best * 1.02);
   const WINDOW_MS = 6000;
+  // A stop right after a full stop or a new line is planning the next point.
+  // The garden holds its warmth through it, up to THINK_GRACE_MS, so thinking
+  // at a sentence end costs nothing on screen. A stop mid-sentence cools.
+  const THINK_GRACE_MS = 8000;
   let stamps = [];
   let smooth = 0;
   let lastT = 0;
+  let lastPress = -Infinity;
+  let lastCh = "";
   return {
-    press(t) { stamps.push(t); },
-    /** @returns {{ wpm: number, heat: number }} at time t (ms) */
+    press(t, ch = "") { stamps.push(t); lastPress = t; lastCh = ch; },
+    /** @returns {{ wpm: number, heat: number, holding?: boolean }} at time t (ms) */
     read(t) {
       stamps = stamps.filter((s) => t - s <= WINDOW_MS);
+      if (/[.!?\n]/.test(lastCh) && t - lastPress > 600 && t - lastPress < THINK_GRACE_MS) {
+        lastT = t;
+        return { wpm: (stamps.length / 5) / (WINDOW_MS / 60000), heat: smooth, holding: true };
+      }
       const span = Math.min(WINDOW_MS, Math.max(1500, t - (stamps[0] ?? t)));
       const wpm = (stamps.length / 5) / (span / 60000);
       const target = clamp01((wpm - lo) / (hi - lo));
@@ -288,6 +298,6 @@ export function createHeat({ usual = 35, best = 70 } = {}) {
       smooth += (target - smooth) * k;
       return { wpm, heat: smooth };
     },
-    reset() { stamps = []; smooth = 0; lastT = 0; },
+    reset() { stamps = []; smooth = 0; lastT = 0; lastPress = -Infinity; lastCh = ""; },
   };
 }
