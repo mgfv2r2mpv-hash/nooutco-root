@@ -197,6 +197,10 @@ test('a same-side Shift paints the correct side and flashes the key on its own s
 });
 
 test('Option+Backspace is logged as a revision, not an error', async ({ page }) => {
+  // The browser does the word delete, and only a Mac maps it to Option+Backspace
+  // (Linux uses Control). The app runs only on the Mac; the counting itself is
+  // pinned in drill-round2.test.mjs, which runs everywhere.
+  test.skip(process.platform !== 'darwin', 'Option+Backspace deletes a word only on macOS');
   await page.goto('/index.html?clock=4');
   await wordsReady(page);
   await page.locator('[data-drill-start]').click();
