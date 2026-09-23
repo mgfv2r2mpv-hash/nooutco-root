@@ -57,3 +57,210 @@ require attribution; this file is that attribution. Public-domain and CC0 entrie
 | Tu Youyou | `tu-youyou.jpg` | [D810_4987_Tu_Youyou,_medicine_(22945001843)_(cropped).jpg](https://commons.wikimedia.org/wiki/File:D810_4987_Tu_Youyou,_medicine_(22945001843)_(cropped).jpg) | Bengt Nyman from Vaxholm, Sweden | CC BY 2.0 |
 | Tutankhamun | `tutankhamun.jpg` | [CairoEgMuseumTaaMaskMostlyPhotographed.jpg](https://commons.wikimedia.org/wiki/File:CairoEgMuseumTaaMaskMostlyPhotographed.jpg) | Roland Unger | Public domain |
 | Wayne Gretzky | `wayne-gretzky.jpg` | [Andrew_Scheer_with_Wayne_Gretzky_(48055697168)_(cropped).jpg](https://commons.wikimedia.org/wiki/File:Andrew_Scheer_with_Wayne_Gretzky_(48055697168)_(cropped).jpg) | Andre Forget - Andrew Scheer | CC0 |
+
+## Added 2026-09-23
+
+Portraits for the 200 people added to Red Carpet Convos, sourced the same way as above.
+
+| Person | File | Source (Commons) | Author | License |
+|---|---|---|---|---|
+| A. P. J. Abdul Kalam | `a-p-j-abdul-kalam.jpg` | [A. P. J. Abdul Kalam in 2008.jpg](https://commons.wikimedia.org/wiki/File:A._P._J._Abdul_Kalam_in_2008.jpg) | Lijesh K | CC BY-SA 3.0 |
+| A. R. Rahman | `a-r-rahman.jpg` | [AR Rahman at Premier Futsal Press Meet (cropped).jpg](https://commons.wikimedia.org/wiki/File:AR_Rahman_at_Premier_Futsal_Press_Meet_(cropped).jpg) | Sriram Narasimhan | CC BY-SA 4.0 |
+| A'ja Wilson | `aja-wilson.jpg` | [A'ja Wilson (53756794398) (cropped).jpg](https://commons.wikimedia.org/wiki/File:A%27ja_Wilson_(53756794398)_(cropped).jpg) | John Mac | CC BY-SA 2.0 |
+| ABBA | `abba.jpg` | [ABBA - TopPop 1974 5.png](https://commons.wikimedia.org/wiki/File:ABBA_-_TopPop_1974_5.png) | AVRO | CC BY-SA 3.0 nl |
+| Abdul Sattar Edhi | `abdul-sattar-edhi.jpg` | [Abdul Sattar Edhi.jpg](https://commons.wikimedia.org/wiki/File:Abdul_Sattar_Edhi.jpg) | Hussain | CC BY-SA 3.0 |
+| Abebe Bikila | `abebe-bikila.jpg` | [Abebe Bikila 1968 (b retouched).jpg](https://commons.wikimedia.org/wiki/File:Abebe_Bikila_1968_(b_retouched).jpg) | Anefo Derivative work MagentaGreen | CC BY-SA 3.0 nl |
+| Alex Morgan | `alex-morgan.jpg` | [Alex Morgan May19.jpg](https://commons.wikimedia.org/wiki/File:Alex_Morgan_May19.jpg) | Jamie Smed | CC BY 2.0 |
+| Alexander Graham Bell | `alexander-graham-bell.jpg` | [Alexander Graham Bell 1895 NPG 77 363.jpg](https://commons.wikimedia.org/wiki/File:Alexander_Graham_Bell_1895_NPG_77_363.jpg) | Unknown author | CC0 |
+| Alicia Keys | `alicia-keys.jpg` | [Alicia Keys (2025).jpg](https://commons.wikimedia.org/wiki/File:Alicia_Keys_(2025).jpg) | PhilipRomanoPhoto | CC BY 4.0 |
+| Allyson Felix | `allyson-felix.jpg` | [AllysonFelixRio2016.jpg](https://commons.wikimedia.org/wiki/File:AllysonFelixRio2016.jpg) | Fernando Frazão/Agência Brasil | CC BY 3.0 br |
+| Alvin Ailey | `alvin-ailey.jpg` | [Alvin Ailey Ellington career.jpg](https://commons.wikimedia.org/wiki/File:Alvin_Ailey_Ellington_career.jpg) | Carl Van Vechten | Public domain |
+| Amanda Gorman | `amanda-gorman.jpg` | [Amanda Gorman 2021 (3x4 crop).jpg](https://commons.wikimedia.org/wiki/File:Amanda_Gorman_2021_(3x4_crop).jpg) | Chairman of the Joint Chiefs of Staff from Washington D.C, United States | CC BY 2.0 |
+| Andrea Bocelli | `andrea-bocelli.jpg` | [2025 Andrea Bocelli in the White House Oval Office on October 17 (cropped).jpg](https://commons.wikimedia.org/wiki/File:2025_Andrea_Bocelli_in_the_White_House_Oval_Office_on_October_17_(cropped).jpg) | The White House | Public domain |
+| Angélique Kidjo | `angelique-kidjo.jpg` | [Angélique Kidjo Gershwin 2023.jpg](https://commons.wikimedia.org/wiki/File:Ang%C3%A9lique_Kidjo_Gershwin_2023.jpg) | Library of Congress Life | CC0 |
+| Anna Pavlova | `anna-pavlova.jpg` | [Anna Pavlova as the Dying Swan.jpg](https://commons.wikimedia.org/wiki/File:Anna_Pavlova_as_the_Dying_Swan.jpg) | Unknown author | Public domain |
+| Anousheh Ansari | `anousheh-ansari.jpg` | [AnoushehAnsari.jpg](https://commons.wikimedia.org/wiki/File:AnoushehAnsari.jpg) | NASA | Public domain |
+| Antoni Gaudí | `antoni-gaudi.jpg` | [Antoni Gaudi 1878.jpg](https://commons.wikimedia.org/wiki/File:Antoni_Gaudi_1878.jpg) | Pau Audouard Deglaire | Public domain |
+| Ariana Grande | `ariana-grande.jpg` | [Ariana Grande promoting Wicked (2024).jpg](https://commons.wikimedia.org/wiki/File:Ariana_Grande_promoting_Wicked_(2024).jpg) | Barbie Simons | CC BY 3.0 |
+| Aryabhata | `aryabhata.jpg` | [Aryabhatta of Bihar.jpg](https://commons.wikimedia.org/wiki/File:Aryabhatta_of_Bihar.jpg) | Cpjha13 | CC BY-SA 4.0 |
+| Auliʻi Cravalho | `aulii-cravalho.jpg` | [Auli'i Cravalho KCA 2025.png](https://commons.wikimedia.org/wiki/File:Auli%27i_Cravalho_KCA_2025.png) | NickRewind | CC BY 3.0 |
+| Beatrix Potter | `beatrix-potter.jpg` | [Beatrix Potter by King cropped.jpg](https://commons.wikimedia.org/wiki/File:Beatrix_Potter_by_King_cropped.jpg) | Charles G.Y. King (1854-1937) | Public domain |
+| Benjamin Banneker | `benjamin-banneker.jpg` | [Benjamin Banneker woodcut, age 64.jpg](https://commons.wikimedia.org/wiki/File:Benjamin_Banneker_woodcut,_age_64.jpg) | Unknown author | Public domain |
+| Bessie Coleman | `bessie-coleman.jpg` | [Bessie Coleman in 1923.jpg](https://commons.wikimedia.org/wiki/File:Bessie_Coleman_in_1923.jpg) | Unknown | Public domain |
+| Bethany Hamilton | `bethany-hamilton.jpg` | [Bethany Hamilton 2025 (cropped).jpg](https://commons.wikimedia.org/wiki/File:Bethany_Hamilton_2025_(cropped).jpg) | Gage Skidmore | CC BY-SA 4.0 |
+| Beverly Cleary | `beverly-cleary.jpg` | [Beverly Cleary ca. 1955.jpg](https://commons.wikimedia.org/wiki/File:Beverly_Cleary_ca._1955.jpg) | Unknown author | Public domain |
+| Bill Nye | `bill-nye.jpg` | [Bill Nye 2017.jpg](https://commons.wikimedia.org/wiki/File:Bill_Nye_2017.jpg) | Montclair Film Festival | CC BY 2.0 |
+| Blackpink | `blackpink.jpg` | [20240809 Blackpink Pink Carpet 09.png](https://commons.wikimedia.org/wiki/File:20240809_Blackpink_Pink_Carpet_09.png) | K-POPIT 케이팝잇 | CC BY 3.0 |
+| Blaise Pascal | `blaise-pascal.jpg` | [Blaise Pascal Versailles.JPG](https://commons.wikimedia.org/wiki/File:Blaise_Pascal_Versailles.JPG) | unknown; a copy of the painting of François II Quesnel, which was made for Gérard Edelinck en 1691[réf. nécessaire]. | Public domain |
+| Bob Ross | `bob-ross.jpg` | [Bob Ross publicity photo (c. 1982) (cropped).jpg](https://commons.wikimedia.org/wiki/File:Bob_Ross_publicity_photo_(c._1982)_(cropped).jpg) | Unknown author | Public domain |
+| Bruno Mars | `bruno-mars.jpg` | [BrunoMars24KMagicWorldTourLive (cropped).jpg](https://commons.wikimedia.org/wiki/File:BrunoMars24KMagicWorldTourLive_(cropped).jpg) | slgckgc | CC BY 4.0 |
+| Burna Boy | `burna-boy.jpg` | [Untold 2024 -Burna Boy (53926047977) (cropped).jpg](https://commons.wikimedia.org/wiki/File:Untold_2024_-Burna_Boy_(53926047977)_(cropped).jpg) | Nuță Lucian from Cluj-Napoca, Romania | CC BY-SA 2.0 |
+| C. S. Lewis | `c-s-lewis.jpg` | [CS Lewis photo on dust jacket.jpg](https://commons.wikimedia.org/wiki/File:CS_Lewis_photo_on_dust_jacket.jpg) | John S. Murray | Public domain |
+| Cai Lun | `cai-lun.jpg` | [Cai-lun.jpg](https://commons.wikimedia.org/wiki/File:Cai-lun.jpg) | Unknown author | Public domain |
+| Carlos Alcaraz | `carlos-alcaraz.jpg` | [25th Laureus World Sports Awards - Red Carpet - Carlos Alcaraz - 240422 192324 (cropped).jpg](https://commons.wikimedia.org/wiki/File:25th_Laureus_World_Sports_Awards_-_Red_Carpet_-_Carlos_Alcaraz_-_240422_192324_(cropped).jpg) | Barcex | CC BY-SA 4.0 |
+| Carlos Santana | `carlos-santana.jpg` | [Santana Acer Arena (5558151833) (cropped).jpg](https://commons.wikimedia.org/wiki/File:Santana_Acer_Arena_(5558151833)_(cropped).jpg) | Eva Rinaldi | CC BY-SA 2.0 |
+| Celia Cruz | `celia-cruz.jpg` | [Celia Cruz 1957 color.jpg](https://commons.wikimedia.org/wiki/File:Celia_Cruz_1957_color.jpg) | Ibrahim Arce (Narcy Studios photographer), most likely | Public domain |
+| Celine Dion | `celine-dion.jpg` | [Céline Dion 2012.jpg](https://commons.wikimedia.org/wiki/File:C%C3%A9line_Dion_2012.jpg) | Georges Biard | CC BY-SA 3.0 |
+| Charles Schulz | `charles-schulz.jpg` | [Charles Schulz NYWTS.jpg](https://commons.wikimedia.org/wiki/File:Charles_Schulz_NYWTS.jpg) | Roger Higgins, World Telegram staff photographer | Public domain |
+| Chinua Achebe | `chinua-achebe.jpg` | [Chinua Achebe, 1966.jpg](https://commons.wikimedia.org/wiki/File:Chinua_Achebe,_1966.jpg) | Carlo Bavagnoli | Public domain |
+| Chloe Kim | `chloe-kim.jpg` | [Chloe Kim PCSFN Headshot 2023.jpg](https://commons.wikimedia.org/wiki/File:Chloe_Kim_PCSFN_Headshot_2023.jpg) | President's Council on Sports, Fitness, and Nutrition | Public domain |
+| Chris Hadfield | `chris-hadfield.jpg` | [Chris Hadfield 2011.jpg](https://commons.wikimedia.org/wiki/File:Chris_Hadfield_2011.jpg) | Robert Markowitz | Public domain |
+| Christina Koch | `christina-koch.jpg` | [Jsc2023e0016435 alt.jpg](https://commons.wikimedia.org/wiki/File:Jsc2023e0016435_alt.jpg) | Josh Valcarcel | Public domain |
+| Clara Barton | `clara-barton.jpg` | [(Union nurse Clara Barton) (LOC).jpg](https://commons.wikimedia.org/wiki/File:(Union_nurse_Clara_Barton)_(LOC).jpg) | The Library of Congress | Public domain |
+| Claudette Colvin | `claudette-colvin.jpg` | [Claudette Colvin.jpg](https://commons.wikimedia.org/wiki/File:Claudette_Colvin.jpg) | The Visibility Project, Claudette Colvin | Public domain |
+| Coco Gauff | `coco-gauff.jpg` | [Coco Gauff Miami Open.jpg](https://commons.wikimedia.org/wiki/File:Coco_Gauff_Miami_Open.jpg) | Rick Munroe | CC BY-SA 4.0 |
+| Daniel Radcliffe | `daniel-radcliffe.jpg` | [DanielRadcliffe-byPhilipRomano.jpg](https://commons.wikimedia.org/wiki/File:DanielRadcliffe-byPhilipRomano.jpg) | PhilipRomano | CC BY-SA 4.0 |
+| Dav Pilkey | `dav-pilkey.jpg` | [Dav Pilkey 2019.jpg](https://commons.wikimedia.org/wiki/File:Dav_Pilkey_2019.jpg) | Library of Congress Life | CC0 |
+| David Attenborough | `david-attenborough.jpg` | [David Attenborough 2019.jpg](https://commons.wikimedia.org/wiki/File:David_Attenborough_2019.jpg) | Nick.Thirteen | CC BY-SA 4.0 |
+| Debbie Allen | `debbie-allen.jpg` | [DebbieAllen-byPhilipRomano.jpg](https://commons.wikimedia.org/wiki/File:DebbieAllen-byPhilipRomano.jpg) | PhilipRomanoPhoto | CC BY 4.0 |
+| Denzel Washington | `denzel-washington.jpg` | [Denzel Washington at the 2025 Cannes Film Festival.jpg](https://commons.wikimedia.org/wiki/File:Denzel_Washington_at_the_2025_Cannes_Film_Festival.jpg) | Gabriel Hutchinson | CC BY-SA 4.0 |
+| Dorothy Vaughan | `dorothy-vaughan.jpg` | [Dorothy Vaughan 2.jpg](https://commons.wikimedia.org/wiki/File:Dorothy_Vaughan_2.jpg) | NASA on The Commons | Public domain |
+| Dua Lipa | `dua-lipa.jpg` | [Dua Lipa-69798 (cropped).jpg](https://commons.wikimedia.org/wiki/File:Dua_Lipa-69798_(cropped).jpg) | Harald Krichel | CC BY-SA 4.0 |
+| E. B. White | `e-b-white.jpg` | [EB White and his dog Minnie.png](https://commons.wikimedia.org/wiki/File:EB_White_and_his_dog_Minnie.png) | Unknown author | CC BY-SA 3.0 |
+| Ed Sheeran | `ed-sheeran.jpg` | [Ed Sheeran-6886 (cropped 2).jpg](https://commons.wikimedia.org/wiki/File:Ed_Sheeran-6886_(cropped_2).jpg) | Harald Krichel | CC BY-SA 3.0 |
+| Eliud Kipchoge | `eliud-kipchoge.jpg` | [Eliud Kipchoge in Berlin - 2015 (cropped).jpg](https://commons.wikimedia.org/wiki/File:Eliud_Kipchoge_in_Berlin_-_2015_(cropped).jpg) | Denis Barthel | CC BY-SA 4.0 |
+| Elizabeth Blackwell | `elizabeth-blackwell.jpg` | [Elizabeth Blackwell.jpg](https://commons.wikimedia.org/wiki/File:Elizabeth_Blackwell.jpg) | Unknown photographer | Public domain |
+| Ellen Johnson Sirleaf | `ellen-johnson-sirleaf.jpg` | [Ellen Johnson-Sirleaf (2022) (cropped).jpg](https://commons.wikimedia.org/wiki/File:Ellen_Johnson-Sirleaf_(2022)_(cropped).jpg) | PMO Barbados | Public domain |
+| Ellen Ochoa | `ellen-ochoa.jpg` | [Ellen Ochoa.jpg](https://commons.wikimedia.org/wiki/File:Ellen_Ochoa.jpg) | NASA | Public domain |
+| Eric Carle | `eric-carle.jpg` | [Eric Carle kinderboekenschrijver, 1988 - 28 (cropped).jpg](https://commons.wikimedia.org/wiki/File:Eric_Carle_kinderboekenschrijver,_1988_-_28_(cropped).jpg) | Fotopersbureau De Boer | CC0 |
+| Fairuz | `fairuz.jpg` | [Fairuz 1971.jpg](https://commons.wikimedia.org/wiki/File:Fairuz_1971.jpg) | photographer unknown, published by AP | Public domain |
+| Fei-Fei Li | `fei-fei-li.jpg` | [Fei-Fei Li at AI for Good 2017.jpg](https://commons.wikimedia.org/wiki/File:Fei-Fei_Li_at_AI_for_Good_2017.jpg) | ITU Pictures | CC BY 2.0 |
+| Fernando Botero | `fernando-botero.jpg` | [Fernando Botero (2018).jpg](https://commons.wikimedia.org/wiki/File:Fernando_Botero_(2018).jpg) | Culturespaces | CC BY 3.0 |
+| Fibonacci | `fibonacci.jpg` | [Leonardo Fibonacci.JPG](https://commons.wikimedia.org/wiki/File:Leonardo_Fibonacci.JPG) | Taty2007 | CC BY-SA 4.0 |
+| Frank Lloyd Wright | `frank-lloyd-wright.jpg` | [Frank Lloyd Wright portrait.jpg](https://commons.wikimedia.org/wiki/File:Frank_Lloyd_Wright_portrait.jpg) | New York World-Telegram and the Sun staff photographer: Al Ravenna | Public domain |
+| Franklin Chang-Díaz | `franklin-chang-diaz.jpg` | [Changdiaz.jpg](https://commons.wikimedia.org/wiki/File:Changdiaz.jpg) | NASA | Public domain |
+| Fred Astaire | `fred-astaire.jpg` | [Astaire, Fred - Never Get Rich.jpg](https://commons.wikimedia.org/wiki/File:Astaire,_Fred_-_Never_Get_Rich.jpg) | Studio publicity still | Public domain |
+| Fred Rogers | `fred-rogers.jpg` | [Fred-Rogers 1988 (full) (cropped).jpg](https://commons.wikimedia.org/wiki/File:Fred-Rogers_1988_(full)_(cropped).jpg) | Family Communications, Inc. | Public domain |
+| Gabriela Mistral | `gabriela-mistral.jpg` | [Gabriela Mistral 1945.jpg](https://commons.wikimedia.org/wiki/File:Gabriela_Mistral_1945.jpg) | Anna Riwkin-Brick | Public domain |
+| Garrett Morgan | `garrett-morgan.jpg` | [Morgan5.jpg](https://commons.wikimedia.org/wiki/File:Morgan5.jpg) | Unknown author | Public domain |
+| Gene Kelly | `gene-kelly.jpg` | [Committee for Free Spain. Portrait of M. Woolf and Jack (possibly Captain Jack White) Taken for the Committee. (Includes photo of film star Gene Kelly). Sep 1946 Slide 2 Trim Edit.png](https://commons.wikimedia.org/wiki/File:Committee_for_Free_Spain._Portrait_of_M._Woolf_and_Jack_(possibly_Captain_Jack_White)_Taken_for_the_Committee._(Includes_photo_of_film_star_Gene_Kelly)._Sep_1946_Slide_2_Trim_Edit.png) | Metro-Goldwyn-Mayer | Public domain |
+| Giannis Antetokounmpo | `giannis-antetokounmpo.jpg` | [Giannis Antetokounmpo (51915153421) (cropped).jpg](https://commons.wikimedia.org/wiki/File:Giannis_Antetokounmpo_(51915153421)_(cropped).jpg) | Erik Drost | CC BY 2.0 |
+| Gloria Estefan | `gloria-estefan.jpg` | [Gloria Estefan in 2017.jpg](https://commons.wikimedia.org/wiki/File:Gloria_Estefan_in_2017.jpg) | U.S. State Department | Public domain |
+| Gregory Hines | `gregory-hines.jpg` | [Gregory Hines 1993.jpg](https://commons.wikimedia.org/wiki/File:Gregory_Hines_1993.jpg) | Kingkongphoto & www.celebrity-photos.com from Laurel Maryland, USA | CC BY-SA 2.0 |
+| Guion Bluford | `guion-bluford.jpg` | [Guion Bluford.jpg](https://commons.wikimedia.org/wiki/File:Guion_Bluford.jpg) | NASA; retouched by Cofeeandcrumbs | Public domain |
+| Haben Girma | `haben-girma.jpg` | [Haben girma.jpg](https://commons.wikimedia.org/wiki/File:Haben_girma.jpg) | Lexane Sirac | CC BY 4.0 |
+| Hayao Miyazaki | `hayao-miyazaki.jpg` | [HayaoMiyazakiCCJuly09.jpg](https://commons.wikimedia.org/wiki/File:HayaoMiyazakiCCJuly09.jpg) | Natasha Baucas at https://www.flickr.com/photos/sdnatasha/ | CC BY 2.0 |
+| Helen Keller | `helen-keller.jpg` | [Helen Keller (circa 1904).jpg](https://commons.wikimedia.org/wiki/File:Helen_Keller_(circa_1904).jpg) | Unknown author | Public domain |
+| I. M. Pei | `i-m-pei.jpg` | [Itzhak Perlman with I.M. Pei, architect, looking at model of NYC Convention Center (03124v) (cropped).jpg](https://commons.wikimedia.org/wiki/File:Itzhak_Perlman_with_I.M._Pei,_architect,_looking_at_model_of_NYC_Convention_Center_(03124v)_(cropped).jpg) | Bernard Gotfryd | Public domain |
+| Ibn al-Haytham | `ibn-al-haytham.jpg` | [Ibn al-Haytham crop.jpg](https://commons.wikimedia.org/wiki/File:Ibn_al-Haytham_crop.jpg) | Adolph Boÿ, engraved by Jeremias Falck. Used as the frontispiece to Johannes Hevelius, Selenographia, 1647 | Public domain |
+| Idina Menzel | `idina-menzel.jpg` | [IdinaMenzel-byPhilipRomano.jpg](https://commons.wikimedia.org/wiki/File:IdinaMenzel-byPhilipRomano.jpg) | PhilipRomanoPhoto | CC BY-SA 4.0 |
+| Imhotep | `imhotep.jpg` | [Imhotep, donated by Padisu MET DP164134.jpg](https://commons.wikimedia.org/wiki/File:Imhotep,_donated_by_Padisu_MET_DP164134.jpg) | Metropolitan Museum of Art | CC0 |
+| Isabel Allende | `isabel-allende.jpg` | [Isabel Allende Frankfurter Buchmesse 2015 (cropped).JPG](https://commons.wikimedia.org/wiki/File:Isabel_Allende_Frankfurter_Buchmesse_2015_(cropped).JPG) | Lesekreis | CC BY-SA 4.0 |
+| Itzhak Perlman | `itzhak-perlman.jpg` | [Itzhak Perlman violinist 1984.jpg](https://commons.wikimedia.org/wiki/File:Itzhak_Perlman_violinist_1984.jpg) | Kenneth C. Zirkel | CC BY-SA 4.0 |
+| Jack Black | `jack-black.jpg` | [TenaciousDO2160623 (38 of 62) Jack Black.jpg](https://commons.wikimedia.org/wiki/File:TenaciousDO2160623_(38_of_62)_Jack_Black.jpg) | Raph_PH | CC BY 2.0 |
+| Jason Momoa | `jason-momoa.jpg` | [Jason Momoa (43055621224) (cropped).jpg](https://commons.wikimedia.org/wiki/File:Jason_Momoa_(43055621224)_(cropped).jpg) | Gage Skidmore from Peoria, AZ, United States of America | CC BY-SA 2.0 |
+| Jason Reynolds | `jason-reynolds.jpg` | [Jason Reynolds (49395922668).jpg](https://commons.wikimedia.org/wiki/File:Jason_Reynolds_(49395922668).jpg) | Shawn Miller/Library of Congress | CC0 |
+| Jeff Kinney | `jeff-kinney.jpg` | [Jeff Kinney Book Signing, November 2011 (1) (cropped).jpg](https://commons.wikimedia.org/wiki/File:Jeff_Kinney_Book_Signing,_November_2011_(1)_(cropped).jpg) | Politics and Prose Bookstore | CC BY 2.0 |
+| Jennifer Doudna | `jennifer-doudna.jpg` | [Jennifer Doudna by Christopher Michel in 2023 01.jpg](https://commons.wikimedia.org/wiki/File:Jennifer_Doudna_by_Christopher_Michel_in_2023_01.jpg) | Christopher Michel | CC BY-SA 4.0 |
+| Jennifer Lopez | `jennifer-lopez.jpg` | [Jennifer Lopez at the 2025 Sundance Film Festival (cropped 3).jpg](https://commons.wikimedia.org/wiki/File:Jennifer_Lopez_at_the_2025_Sundance_Film_Festival_(cropped_3).jpg) | Everwest | CC BY 4.0 |
+| Jim Henson | `jim-henson.jpg` | [Jim Henson, creator, The Muppets.jpg](https://commons.wikimedia.org/wiki/File:Jim_Henson,_creator,_The_Muppets.jpg) | Gotfryd, Bernard, photographer | Public domain |
+| Jim Thorpe | `jim-thorpe.jpg` | [Jim Thorpe 1913b-cr.jpg](https://commons.wikimedia.org/wiki/File:Jim_Thorpe_1913b-cr.jpg) | Underwood & Underwood | Public domain |
+| Jimmy Carter | `jimmy-carter.jpg` | [Jimmy Carter Official Portrait2 (3x4 cropped).jpg](https://commons.wikimedia.org/wiki/File:Jimmy_Carter_Official_Portrait2_(3x4_cropped).jpg) | Department of Defense. Department of the Navy. Naval Photographic Center | Public domain |
+| Johannes Gutenberg | `johannes-gutenberg.jpg` | [Mainz Gutenbergdenkmal 2016 (cropped).jpg](https://commons.wikimedia.org/wiki/File:Mainz_Gutenbergdenkmal_2016_(cropped).jpg) | Kenneth C. Zirkel | CC BY-SA 4.0 |
+| John Glenn | `john-glenn.jpg` | [John Glenn Low Res.jpg](https://commons.wikimedia.org/wiki/File:John_Glenn_Low_Res.jpg) | U.S. Senate Historical Office | Public domain |
+| John Williams | `john-williams.jpg` | [John Williams 2024.jpg](https://commons.wikimedia.org/wiki/File:John_Williams_2024.jpg) | Lindseysharpe | CC BY-SA 4.0 |
+| José Andrés | `jose-andres.jpg` | [Jose Andres Puerta 2012 Shankbone.JPG](https://commons.wikimedia.org/wiki/File:Jose_Andres_Puerta_2012_Shankbone.JPG) | David Shankbone | CC BY 3.0 |
+| Judy Blume | `judy-blume.jpg` | [JudyBlume2009(cropped).jpg](https://commons.wikimedia.org/wiki/File:JudyBlume2009(cropped).jpg) | JudyBlume2009.jpg: Carl Lender[1] of Flickr.com derivative work: Solid State Survivor (talk) | CC BY 2.0 |
+| Julia Child | `julia-child.jpg` | [Julia Child portrait by ©Lynn Gilbert, 1978.jpg](https://commons.wikimedia.org/wiki/File:Julia_Child_portrait_by_%C2%A9Lynn_Gilbert,_1978.jpg) | Lynn Gilbert | CC BY-SA 4.0 |
+| Junko Tabei | `junko-tabei.jpg` | [Junko Tabei 85 (3to4).jpg](https://commons.wikimedia.org/wiki/File:Junko_Tabei_85_(3to4).jpg) | Jaan Künnap | CC BY-SA 4.0 |
+| Kalpana Chawla | `kalpana-chawla.jpg` | [Kalpana Chawla, NASA photo portrait in orange suit.jpg](https://commons.wikimedia.org/wiki/File:Kalpana_Chawla,_NASA_photo_portrait_in_orange_suit.jpg) | NASA | Public domain |
+| Karol G | `karol-g.jpg` | [2023-11-16 Gala de los Latin Grammy, 15.jpg](https://commons.wikimedia.org/wiki/File:2023-11-16_Gala_de_los_Latin_Grammy,_15.jpg) | Junta de Andalucía | CC BY-SA 2.0 |
+| Kate DiCamillo | `kate-dicamillo.jpg` | [2018-us-nationalbookfestival-kate-dicamillo.jpg](https://commons.wikimedia.org/wiki/File:2018-us-nationalbookfestival-kate-dicamillo.jpg) | Fuzheado | CC BY-SA 4.0 |
+| Katherine Dunham | `katherine-dunham.jpg` | [Katherine Dunham.jpg](https://commons.wikimedia.org/wiki/File:Katherine_Dunham.jpg) | Phyllis Twachtman, World Telegram staff photographer | Public domain |
+| Katie Ledecky | `katie-ledecky.jpg` | [Katie Ledecky at the 2023 Golden Goggle Awards (cropped).jpg](https://commons.wikimedia.org/wiki/File:Katie_Ledecky_at_the_2023_Golden_Goggle_Awards_(cropped).jpg) | Mledecky | CC0 |
+| Keith Haring | `keith-haring.jpg` | [Haringpalladium (cropped).jpg](https://commons.wikimedia.org/wiki/File:Haringpalladium_(cropped).jpg) | Bernard Gotfryd | Public domain |
+| Kelly Clarkson | `kelly-clarkson.jpg` | [Kelly Clarkson 2018 DoD Warrior Games Opening Ceremony 14 - Cropped 01.jpg](https://commons.wikimedia.org/wiki/File:Kelly_Clarkson_2018_DoD_Warrior_Games_Opening_Ceremony_14_-_Cropped_01.jpg) | Stephen Schester/Carlin Leslie (U.S. Department of Defense) | Public domain |
+| Kim Yuna | `kim-yuna.jpg` | [YuNaKimInVancouver.jpg](https://commons.wikimedia.org/wiki/File:YuNaKimInVancouver.jpg) | Sfcphoto.KeunHwa | CC BY 3.0 |
+| Kofi Annan | `kofi-annan.jpg` | [Kofi Annan 2012 (cropped).jpg](https://commons.wikimedia.org/wiki/File:Kofi_Annan_2012_(cropped).jpg) | US Mission in Geneva | Public domain |
+| Kristen Bell | `kristen-bell.jpg` | [Kristen Bell at Televerse 2025.jpg](https://commons.wikimedia.org/wiki/File:Kristen_Bell_at_Televerse_2025.jpg) | Kevin Paul | CC BY 4.0 |
+| Kylian Mbappé | `kylian-mbappe.jpg` | [Kylian Mbappe France v Senegal 16 June 2026-391 (cropped).jpg](https://commons.wikimedia.org/wiki/File:Kylian_Mbappe_France_v_Senegal_16_June_2026-391_(cropped).jpg) | Bryan Berlin | CC BY-SA 4.0 |
+| Laozi | `laozi.jpg` | [歷代聖賢半身像 冊 老子 (Laozi).png](https://commons.wikimedia.org/wiki/File:%E6%AD%B7%E4%BB%A3%E8%81%96%E8%B3%A2%E5%8D%8A%E8%BA%AB%E5%83%8F_%E5%86%8A_%E8%80%81%E5%AD%90_(Laozi).png) | National Palace Museum, Taipei | CC BY 4.0 |
+| Lea Salonga | `lea-salonga.jpg` | [LeaSalonga-byPhilipRomano (cropped).jpg](https://commons.wikimedia.org/wiki/File:LeaSalonga-byPhilipRomano_(cropped).jpg) | PhilipRomanoPhoto | CC BY 4.0 |
+| Leif Erikson | `leif-erikson.jpg` | [Leif Erikson Statue, Duluth (15290644106).jpg](https://commons.wikimedia.org/wiki/File:Leif_Erikson_Statue,_Duluth_(15290644106).jpg) | Sculptor Daniels, John K. 1875-1978 Photo: Sharon Mollerus | CC BY 2.0 |
+| LeVar Burton | `levar-burton.jpg` | [LeVar Burton Photo Op GalaxyCon Raleigh 2023.jpg](https://commons.wikimedia.org/wiki/File:LeVar_Burton_Photo_Op_GalaxyCon_Raleigh_2023.jpg) | Super Festivals from Ft. Lauderdale, USA | CC BY 2.0 |
+| Lewis Hamilton | `lewis-hamilton.jpg` | [Lewis Hamilton 2022 São Paulo Grand Prix (52498120773) (cropped).jpg](https://commons.wikimedia.org/wiki/File:Lewis_Hamilton_2022_S%C3%A3o_Paulo_Grand_Prix_(52498120773)_(cropped).jpg) | Governo do Estado de São Paulo | CC BY 2.0 |
+| Liliʻuokalani | `liliuokalani.jpg` | [Liliʻuokalani.jpg](https://commons.wikimedia.org/wiki/File:Lili%CA%BBuokalani.jpg) | James J. Williams / Adam Cuerden | Public domain |
+| Lonnie Johnson | `lonnie-johnson.jpg` | [Lonnie Johnson, Office of Naval Research (crop).jpg](https://commons.wikimedia.org/wiki/File:Lonnie_Johnson,_Office_of_Naval_Research_(crop).jpg) | Office of Naval Research | Public domain |
+| Louis Braille | `louis-braille.jpg` | [Engraving of Louis Braille by Henri Thiriat (cropped).jpg](https://commons.wikimedia.org/wiki/File:Engraving_of_Louis_Braille_by_Henri_Thiriat_(cropped).jpg) | Henri Thiriat | Public domain |
+| Madam C. J. Walker | `madam-c-j-walker.jpg` | [Madam C. J. Walker by Addison N. Scurlock.jpg](https://commons.wikimedia.org/wiki/File:Madam_C._J._Walker_by_Addison_N._Scurlock.jpg) | Addison Norton Scurlock / Adam Cuerden | Public domain |
+| Maria Tallchief | `maria-tallchief.jpg` | [Maria Tallchief 1961.png](https://commons.wikimedia.org/wiki/File:Maria_Tallchief_1961.png) | Unknown author | Public domain |
+| Mariah Carey | `mariah-carey.jpg` | [Mariah Carey Library of Congress 2023 1 Cropped 3.png](https://commons.wikimedia.org/wiki/File:Mariah_Carey_Library_of_Congress_2023_1_Cropped_3.png) | Shawn Miller | Public domain |
+| Mario Molina | `mario-molina.jpg` | [Mario Molina 1c389 8387.jpg](https://commons.wikimedia.org/wiki/File:Mario_Molina_1c389_8387.jpg) | Janwikifoto | CC BY-SA 3.0 |
+| Mark Rober | `mark-rober.jpg` | [Mark Rober- Close.png](https://commons.wikimedia.org/wiki/File:Mark_Rober-_Close.png) | Newhcrossaint | CC BY-SA 4.0 |
+| Marlee Matlin | `marlee-matlin.jpg` | [Marlee Matlin at the 2025 Sundance Film Festival (cropped).jpg](https://commons.wikimedia.org/wiki/File:Marlee_Matlin_at_the_2025_Sundance_Film_Festival_(cropped).jpg) | Adam Chitayat | CC BY-SA 4.0 |
+| Marta Vieira da Silva | `marta-vieira-da-silva.jpg` | [NC Courage vs Orlando Pride (Jun 2024) 073 (cropped).jpg](https://commons.wikimedia.org/wiki/File:NC_Courage_vs_Orlando_Pride_(Jun_2024)_073_(cropped).jpg) | Hameltion | CC BY-SA 4.0 |
+| Martha Graham | `martha-graham.jpg` | [Martha Graham 1948.jpg](https://commons.wikimedia.org/wiki/File:Martha_Graham_1948.jpg) | Yousuf Karsh / Library and Archives Canada / PA-212251 | Public domain |
+| Mary Anning | `mary-anning.jpg` | [Mary Anning painting.jpg](https://commons.wikimedia.org/wiki/File:Mary_Anning_painting.jpg) | Credited to 'Mr. Grey' in Crispin Tickell's book 'Mary Anning of Lyme Regis' (1996) | Public domain |
+| Mary Jackson | `mary-jackson.jpg` | [Mary Jackson 1979 Portrait (LRC-1979-B701 P F002-07086).jpg](https://commons.wikimedia.org/wiki/File:Mary_Jackson_1979_Portrait_(LRC-1979-B701_P_F002-07086).jpg) | NASA Langley Research Center, Bob Nye | Public domain |
+| Mary Kom | `mary-kom.jpg` | [Mary Kom - British High Commission, Delhi, 27 July 2011.jpg](https://commons.wikimedia.org/wiki/File:Mary_Kom_-_British_High_Commission,_Delhi,_27_July_2011.jpg) | British High Commission, India | OGL v1.0 |
+| Matsuo Bashō | `matsuo-basho.jpg` | [Basho by Morikawa Kyoriku (1656-1715).jpg](https://commons.wikimedia.org/wiki/File:Basho_by_Morikawa_Kyoriku_(1656-1715).jpg) | Morikawa Kyoriku (1656-1715) | Public domain |
+| Matthew Henson | `matthew-henson.jpg` | [Matthew Henson 1910.jpg](https://commons.wikimedia.org/wiki/File:Matthew_Henson_1910.jpg) | Unknown author | Public domain |
+| Maya Lin | `maya-lin.jpg` | [Maya Lin at Crystal Awards Ceremony (2023) 02.png](https://commons.wikimedia.org/wiki/File:Maya_Lin_at_Crystal_Awards_Ceremony_(2023)_02.png) | World Economic Forum | CC BY 3.0 |
+| Mia Hamm | `mia-hamm.jpg` | [Mia Hamm corner (cropped).jpg](https://commons.wikimedia.org/wiki/File:Mia_Hamm_corner_(cropped).jpg) | Johnmaxmena (talk)John Mena | Public domain |
+| Michael Phelps | `michael-phelps.jpg` | [Michael Phelps Rio Olympics 2016.jpg](https://commons.wikimedia.org/wiki/File:Michael_Phelps_Rio_Olympics_2016.jpg) | Agência Brasil Fotografias | CC BY 2.0 |
+| Michelle Kwan | `michelle-kwan.jpg` | [Michelle Kwan, U.S. Ambassador.jpg](https://commons.wikimedia.org/wiki/File:Michelle_Kwan,_U.S._Ambassador.jpg) | United States Department of State | Public domain |
+| Michelle Yeoh | `michelle-yeoh.jpg` | [Michelle Yeoh-2268.jpg](https://commons.wikimedia.org/wiki/File:Michelle_Yeoh-2268.jpg) | Harald Krichel | CC BY-SA 4.0 |
+| Mikaela Shiffrin | `mikaela-shiffrin.jpg` | [Mikaela Shiffrin (Portrait).jpg](https://commons.wikimedia.org/wiki/File:Mikaela_Shiffrin_(Portrait).jpg) | Manfred Werner (Tsui) | CC BY-SA 4.0 |
+| Mikhail Baryshnikov | `mikhail-baryshnikov.jpg` | [Mikhail Baryshnikov.jpg](https://commons.wikimedia.org/wiki/File:Mikhail_Baryshnikov.jpg) | Saeima | CC BY-SA 2.0 |
+| Millie Bobby Brown | `millie-bobby-brown.jpg` | [Millie Bobby Brown 2025 (1).png](https://commons.wikimedia.org/wiki/File:Millie_Bobby_Brown_2025_(1).png) | TheWrap | CC BY 3.0 |
+| Miriam Makeba | `miriam-makeba.jpg` | [Miriam makeba 01.jpg](https://commons.wikimedia.org/wiki/File:Miriam_makeba_01.jpg) | Paul Weinberg | CC BY-SA 3.0 |
+| Mo Willems | `mo-willems.jpg` | [Mo Willems Mazza Fall Conference 2012.jpg](https://commons.wikimedia.org/wiki/File:Mo_Willems_Mazza_Fall_Conference_2012.jpg) | Alvintrusty | CC BY-SA 3.0 |
+| Mohamed Salah | `mohamed-salah.jpg` | [Mohamed Salah Argentina v Egypt 7 July 2026-163 (cropped).jpg](https://commons.wikimedia.org/wiki/File:Mohamed_Salah_Argentina_v_Egypt_7_July_2026-163_(cropped).jpg) | Bryan Berlin | CC BY-SA 4.0 |
+| MrBeast | `mrbeast.jpg` | [MrBeast in 2026 (cropped 4).png](https://commons.wikimedia.org/wiki/File:MrBeast_in_2026_(cropped_4).png) | Tyren Redd | CC BY 4.0 |
+| Nicolaus Copernicus | `nicolaus-copernicus.jpg` | [Nikolaus Kopernikus MOT.jpg](https://commons.wikimedia.org/wiki/File:Nikolaus_Kopernikus_MOT.jpg) | Unknown author | Public domain |
+| Osamu Tezuka | `osamu-tezuka.jpg` | [Osamu Tezuka 1951 Scan10008-2.JPG](https://commons.wikimedia.org/wiki/File:Osamu_Tezuka_1951_Scan10008-2.JPG) | Unknown author | Public domain |
+| Patrick Mahomes | `patrick-mahomes.jpg` | [Patrick Mahomes (51615475056).jpg](https://commons.wikimedia.org/wiki/File:Patrick_Mahomes_(51615475056).jpg) | All-Pro Reels from District of Columbia, USA | CC BY-SA 2.0 |
+| Pedro Pascal | `pedro-pascal.jpg` | [Pedro Pascal at the 2025 Cannes Film Festival 04.jpg](https://commons.wikimedia.org/wiki/File:Pedro_Pascal_at_the_2025_Cannes_Film_Festival_04.jpg) | Gabriel Hutchinson | CC BY-SA 4.0 |
+| Peggy Whitson | `peggy-whitson.jpg` | [Peggy Whitson Friday at the Smithsonian's National Air and Space Museum on March 2, 2018 (cropped).jpg](https://commons.wikimedia.org/wiki/File:Peggy_Whitson_Friday_at_the_Smithsonian%27s_National_Air_and_Space_Museum_on_March_2,_2018_(cropped).jpg) | NASA, Joel Kowsky | Public domain |
+| Pharrell Williams | `pharrell-williams.jpg` | [Pharrell Williams 2024 (54133384149).jpg](https://commons.wikimedia.org/wiki/File:Pharrell_Williams_2024_(54133384149).jpg) | Web Summit/Ramsey Cardy/Sportsfile | CC BY 2.0 |
+| Piet Mondrian | `piet-mondrian.jpg` | [Piet Mondriaan.jpg](https://commons.wikimedia.org/wiki/File:Piet_Mondriaan.jpg) | AnonymousUnknown author | Public domain |
+| Priyanka Chopra | `priyanka-chopra.jpg` | [Priyanka Chopra at Bulgary launch, 2024 (cropped).jpg](https://commons.wikimedia.org/wiki/File:Priyanka_Chopra_at_Bulgary_launch,_2024_(cropped).jpg) | Bollywood Hungama | CC BY 3.0 |
+| Pythagoras | `pythagoras.jpg` | [Pythagoras in the Roman Forum, Colosseum.jpg](https://commons.wikimedia.org/wiki/File:Pythagoras_in_the_Roman_Forum,_Colosseum.jpg) | Unknown author | Public domain |
+| Rabindranath Tagore | `rabindranath-tagore.jpg` | [1926 Rabindrath Tagore.jpg](https://commons.wikimedia.org/wiki/File:1926_Rabindrath_Tagore.jpg) | Georges Chevalier | CC BY 4.0 |
+| Rachel Carson | `rachel-carson.jpg` | [Rachel-Carson.jpg](https://commons.wikimedia.org/wiki/File:Rachel-Carson.jpg) | U.S. Fish and Wildlife Service | Public domain |
+| Rafael Nadal | `rafael-nadal.jpg` | [Rafael Nadal en 2024 (cropped).jpg](https://commons.wikimedia.org/wiki/File:Rafael_Nadal_en_2024_(cropped).jpg) | Barcex | CC BY-SA 4.0 |
+| Raina Telgemeier | `raina-telgemeier.jpg` | [Telgemeier with Inkpot Award 2022.jpg](https://commons.wikimedia.org/wiki/File:Telgemeier_with_Inkpot_Award_2022.jpg) | Seale Bellenger | CC BY-SA 4.0 |
+| Rick Riordan | `rick-riordan.jpg` | [Rick Riordan (cropped).jpg](https://commons.wikimedia.org/wiki/File:Rick_Riordan_(cropped).jpg) | Rhododendrites | CC BY-SA 4.0 |
+| Rita Moreno | `rita-moreno.jpg` | [RitaMoreno.jpg](https://commons.wikimedia.org/wiki/File:RitaMoreno.jpg) | PhilipRomanoPhoto | CC BY-SA 4.0 |
+| Robert Ballard | `robert-ballard.jpg` | [Dr. Ballard visit 2023 (52976464273) (cropped).jpg](https://commons.wikimedia.org/wiki/File:Dr._Ballard_visit_2023_(52976464273)_(cropped).jpg) | Titanic Belfast | CC BY 2.0 |
+| Roberto Clemente | `roberto-clemente.jpg` | [Roberto Clemente.jpg](https://commons.wikimedia.org/wiki/File:Roberto_Clemente.jpg) | Unknown author | Public domain |
+| Ruby Bridges | `ruby-bridges.jpg` | [Ruby Bridges (16264182739).jpg](https://commons.wikimedia.org/wiki/File:Ruby_Bridges_(16264182739).jpg) | Texas A&M University-Commerce Marketing Communications Photography | CC BY 2.0 |
+| Ruth Handler | `ruth-handler.jpg` | [Ruth Handler 1961 (cropped).jpg](https://commons.wikimedia.org/wiki/File:Ruth_Handler_1961_(cropped).jpg) | Originally published by the Los Angeles Times. Photographer unknown. Restored by Adam Cuerden | CC BY 4.0 |
+| Ryan Reynolds | `ryan-reynolds.jpg` | [Deadpool 2 Japan Premiere Red Carpet Ryan Reynolds (cropped).jpg](https://commons.wikimedia.org/wiki/File:Deadpool_2_Japan_Premiere_Red_Carpet_Ryan_Reynolds_(cropped).jpg) | Dick Thomas Johnson from Tokyo, Japan | CC BY 2.0 |
+| Sacagawea | `sacagawea.jpg` | [Detail Lewis & Clark at Three Forks.jpg](https://commons.wikimedia.org/wiki/File:Detail_Lewis_%26_Clark_at_Three_Forks.jpg) | Edgar Samuel Paxson | Public domain |
+| Sachin Tendulkar | `sachin-tendulkar.jpg` | [The cricket legend Sachin Tendulkar at the Oval Maidan in Mumbai During the Duke and Duchess of Cambridge Visit(26271019082).jpg](https://commons.wikimedia.org/wiki/File:The_cricket_legend_Sachin_Tendulkar_at_the_Oval_Maidan_in_Mumbai_During_the_Duke_and_Duchess_of_Cambridge_Visit(26271019082).jpg) | British High Commission, New Delhi | CC BY-SA 2.0 |
+| Sejong the Great | `sejong-the-great.jpg` | [세종대왕 어진.png](https://commons.wikimedia.org/wiki/File:%EC%84%B8%EC%A2%85%EB%8C%80%EC%99%95_%EC%96%B4%EC%A7%84.png) | 세종대왕사가독서기념사업회 | CC0 |
+| Selena Gomez | `selena-gomez.jpg` | [Selena Gomez at the 2024 Toronto International Film Festival 10 (cropped).jpg](https://commons.wikimedia.org/wiki/File:Selena_Gomez_at_the_2024_Toronto_International_Film_Festival_10_(cropped).jpg) | Frank Sun | CC BY-SA 4.0 |
+| Sequoyah | `sequoyah.jpg` | [Henry Inman - Sequoyah - Google Art Project.jpg](https://commons.wikimedia.org/wiki/File:Henry_Inman_-_Sequoyah_-_Google_Art_Project.jpg) | Henry Inman | Public domain |
+| Shah Rukh Khan | `shah-rukh-khan.jpg` | [Shah Rukh Khan graces the launch of the new Santro.jpg](https://commons.wikimedia.org/wiki/File:Shah_Rukh_Khan_graces_the_launch_of_the_new_Santro.jpg) | Bollywood Hungama | CC BY 3.0 |
+| Shaquille O'Neal | `shaquille-oneal.jpg` | [TechCrunch Disrupt 2023 - Day 1 (cropped).jpg](https://commons.wikimedia.org/wiki/File:TechCrunch_Disrupt_2023_-_Day_1_(cropped).jpg) | TechCrunch | CC BY 2.0 |
+| Shel Silverstein | `shel-silverstein.jpg` | [Portrait of Shel Silverstein in c. 1974.jpg](https://commons.wikimedia.org/wiki/File:Portrait_of_Shel_Silverstein_in_c._1974.jpg) | Alice Ochs (shown in "eBay (v2)") | Public domain |
+| Shigeru Miyamoto | `shigeru-miyamoto.jpg` | [Shigeru Miyamoto 20150610 (cropped 4).jpg](https://commons.wikimedia.org/wiki/File:Shigeru_Miyamoto_20150610_(cropped_4).jpg) | Minister's Secretariat Personnel Division | CC BY 4.0 |
+| Shohei Ohtani | `shohei-ohtani.jpg` | [Dodgers at Nationals (53677192000) (cropped).jpg](https://commons.wikimedia.org/wiki/File:Dodgers_at_Nationals_(53677192000)_(cropped).jpg) | All-Pro Reels from District of Columbia, USA | CC BY-SA 2.0 |
+| Sophie Germain | `sophie-germain.jpg` | [Germain - Œuvres philosophiques, 1896 (Illustration page 4).jpg](https://commons.wikimedia.org/wiki/File:Germain_-_%C5%92uvres_philosophiques,_1896_(Illustration_page_4).jpg) | Unknown artist, drawing after a bust by Zacharie Astruc, from Sophie Germain, Oeuvres philosophiques (1896), Bibliotheque nationale de France | Public domain |
+| Stan Lee | `stan-lee.jpg` | [Stan Lee by Gage Skidmore 3.jpg](https://commons.wikimedia.org/wiki/File:Stan_Lee_by_Gage_Skidmore_3.jpg) | Gage Skidmore | CC BY-SA 3.0 |
+| Steve Irwin | `steve-irwin.jpg` | [Steve Irwin December 2005 (4x5 cropped).jpg](https://commons.wikimedia.org/wiki/File:Steve_Irwin_December_2005_(4x5_cropped).jpg) | Richard Giles aka rich 115 | CC BY 2.0 |
+| Sundiata Keita | `sundiata-keita.jpg` | [Founderofthemali.jpg](https://commons.wikimedia.org/wiki/File:Founderofthemali.jpg) | Unknown author | Public domain |
+| Sunisa Lee | `sunisa-lee.jpg` | [Sunisa Lee 2024.jpg](https://commons.wikimedia.org/wiki/File:Sunisa_Lee_2024.jpg) | Ocoudis | CC BY-SA 4.0 |
+| Sunita Williams | `sunita-williams.jpg` | [Sunita Williams in 2018.jpg](https://commons.wikimedia.org/wiki/File:Sunita_Williams_in_2018.jpg) | Robert Markowitz | Public domain |
+| Sylvia Earle | `sylvia-earle.jpg` | [Sylvia Earle in 2026 02.jpg](https://commons.wikimedia.org/wiki/File:Sylvia_Earle_in_2026_02.jpg) | Cmichel67 | CC BY-SA 4.0 |
+| Takashi Murakami | `takashi-murakami.jpg` | [Takashi Murakami at Versailles Sept. 2010 (crop).jpg](https://commons.wikimedia.org/wiki/File:Takashi_Murakami_at_Versailles_Sept._2010_(crop).jpg) | Sodacan | Public domain |
+| Tatyana McFadden | `tatyana-mcfadden.jpg` | [T McFadden London Marathon 2014 - Wheelchair (65).jpg](https://commons.wikimedia.org/wiki/File:T_McFadden_London_Marathon_2014_-_Wheelchair_(65).jpg) | Katie Chan | CC BY-SA 4.0 |
+| Temple Grandin | `temple-grandin.jpg` | [Temple Grandin at TED.jpg](https://commons.wikimedia.org/wiki/File:Temple_Grandin_at_TED.jpg) | Steve Jurvetson from Menlo Park, USA | CC BY 2.0 |
+| Terence Tao | `terence-tao.jpg` | [Terence Tao at IPAM's Fireside Chat 2026 (50m16s) (cropped).jpg](https://commons.wikimedia.org/wiki/File:Terence_Tao_at_IPAM%27s_Fireside_Chat_2026_(50m16s)_(cropped).jpg) | Institute for Pure & Applied Mathematics | CC BY 4.0 |
+| Tom Hanks | `tom-hanks.jpg` | [TomHanksPrincEdw031223 (11 of 41) (cropped).jpg](https://commons.wikimedia.org/wiki/File:TomHanksPrincEdw031223_(11_of_41)_(cropped).jpg) | Raph_PH | CC BY 2.0 |
+| Tom Holland | `tom-holland.jpg` | [TomHolland-byPhilipRomano.jpg](https://commons.wikimedia.org/wiki/File:TomHolland-byPhilipRomano.jpg) | PhilipRomano | CC BY-SA 4.0 |
+| Tony Hawk | `tony-hawk.jpg` | [Tony Hawk 2026.jpg](https://commons.wikimedia.org/wiki/File:Tony_Hawk_2026.jpg) | Cmichel67 | CC BY-SA 4.0 |
+| Trevor Noah | `trevor-noah.jpg` | [Trevor Noah (53554114243) (portrait crop).jpg](https://commons.wikimedia.org/wiki/File:Trevor_Noah_(53554114243)_(portrait_crop).jpg) | Web Summit Qatar | CC BY 2.0 |
+| Vera Wang | `vera-wang.jpg` | [Vera Wang 2009 portrait Tribeca.jpg](https://commons.wikimedia.org/wiki/File:Vera_Wang_2009_portrait_Tribeca.jpg) | David Shankbone | CC BY 3.0 |
+| Victor Wembanyama | `victor-wembanyama.jpg` | [Victor Wembanyama San Antonio Spurs 2024.jpg](https://commons.wikimedia.org/wiki/File:Victor_Wembanyama_San_Antonio_Spurs_2024.jpg) | Frenchieinportland | CC BY 4.0 |
+| Virgil Abloh | `virgil-abloh.jpg` | [Virgil Abloh Paris Fashion Week Autumn Winter 2019 (cropped).jpg](https://commons.wikimedia.org/wiki/File:Virgil_Abloh_Paris_Fashion_Week_Autumn_Winter_2019_(cropped).jpg) | Myles Kalus Anak Jihem | CC BY-SA 4.0 |
+| Walt Disney | `walt-disney.jpg` | [Walt Disney 1946 (cropped2).JPG](https://commons.wikimedia.org/wiki/File:Walt_Disney_1946_(cropped2).JPG) | Boy Scouts of America | Public domain |
+| Wang Yaping | `wang-yaping.jpg` | [Wang Yaping in 2021.jpg](https://commons.wikimedia.org/wiki/File:Wang_Yaping_in_2021.jpg) | China News Service | CC BY 4.0 |
+| Wassily Kandinsky | `wassily-kandinsky.jpg` | [Kandinsky - Vassily Kandinsky by Adolf Elnain Photo credits - Georges Meguerditchian.jpg](https://commons.wikimedia.org/wiki/File:Kandinsky_-_Vassily_Kandinsky_by_Adolf_Elnain_Photo_credits_-_Georges_Meguerditchian.jpg) | Adolf Elnain | Public domain |
+| Wilma Mankiller | `wilma-mankiller.jpg` | [Wilma Headshot.png](https://commons.wikimedia.org/wiki/File:Wilma_Headshot.png) | Valerie Red-Horse (Director) | CC BY 4.0 |
+| Wilma Rudolph | `wilma-rudolph.jpg` | [Wilma Rudolph 1960.jpg](https://commons.wikimedia.org/wiki/File:Wilma_Rudolph_1960.jpg) | Lindeboom, Henk / Anefo | CC BY-SA 3.0 nl |
+| Yao Ming | `yao-ming.jpg` | [Yao Ming in 2014 (cropped).jpg](https://commons.wikimedia.org/wiki/File:Yao_Ming_in_2014_(cropped).jpg) | World Travel & Tourism Council | CC BY 2.0 |
+| Yo-Yo Ma | `yo-yo-ma.jpg` | [Yo-Yo Ma in 2018 (cropped).jpg](https://commons.wikimedia.org/wiki/File:Yo-Yo_Ma_in_2018_(cropped).jpg) | Joi Ito | CC BY 2.0 |
+| Zaha Hadid | `zaha-hadid.jpg` | [Zaha Hadid - Presentation 'What is new?' (cropped).jpg](https://commons.wikimedia.org/wiki/File:Zaha_Hadid_-_Presentation_%27What_is_new%3F%27_(cropped).jpg) | Columbia GSAPP | CC BY 2.0 |
+| Zheng He | `zheng-he.jpg` | [2016 Malakka, Stadhuys (09).jpg](https://commons.wikimedia.org/wiki/File:2016_Malakka,_Stadhuys_(09).jpg) | Marcin Konsek | CC BY-SA 4.0 |
