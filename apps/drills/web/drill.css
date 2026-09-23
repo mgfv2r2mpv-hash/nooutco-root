@@ -321,3 +321,8 @@ svg.fx-glyph { width: 26px; height: 26px; animation: fx-cheer 1.1s ease-out both
 .under { align-items: center; }
 .expert-row { margin-top: 8px; }
 .drill[data-busy="1"] .go, .drill[data-busy="1"] [data-drill-send] { opacity: .5; pointer-events: none; }
+
+/* ---- achievements: secrets (trophies branch; the ornate branch owns the rest) ---- */
+.trophy.is-secret:not(.is-won) { border-style: dashed; }
+.trophy.is-secret:not(.is-won) .trophy-body b { letter-spacing: .08em; text-transform: uppercase; font-size: 12px; }
+.trophy.is-secret:not(.is-won) .trophy-cond { font-style: italic; }

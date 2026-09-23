@@ -72,61 +72,213 @@ function tiers(group, id, measure, list, cond) {
   return list.map(([need, name]) => ({ id: `${id}-${need}`, family: id, group, name, need, measure, condition: cond(need) }));
 }
 const one = (group, id, name, condition, measure, need = 1) => ({ id, family: id, group, name, need, measure, condition });
+/** A secret: shown as "Secret" with its hint until it is earned. */
+const secret = (id, name, condition, hint, measure) => ({ ...one("Secrets", id, name, condition, measure), secret: true, hint });
+
+/* The ids are the ones the case has always used, so a trophy renamed here
+   keeps the unlock date it already had. New ones only ever add ids. */
+const CLOCK_NAMES = { 1: "Sprinter", 2: "Runner", 3: "Pacer", 4: "Distance Runner", 5: "Marathoner" };
+const BAND_NAMES = { Average: "Cruising", Intermediate: "Picking Up Speed", Fluent: "Fluent Fingers", Professional: "Pro Typist" };
+
+/** His weak keys as of 2026-09-23, the ones the copy passages aim at. */
+export const WEAK_KEYS = Object.freeze(["w", "m", "b", "u", "c"]);
+
+/* Tips a drill can coach, and the achievement for making one go quiet. */
+const RETIRABLE = [
+  ["punctuation", "Full Stop, No Stall", "the punctuation tip (commas and full stops breaking your rhythm)"],
+  ["cadence", "Steady Hands", "the rhythm tip (uneven timing inside words)"],
+  ["shift", "Capital Gains", "the Shift tip (capitals costing you time)"],
+  ["shiftSide", "Side Switcher", "the Shift side tip (capitals taken on the key's own side)"],
+  ["optionDelete", "Word Eraser", "the Option+Backspace tip (words deleted letter by letter)"],
+  ["drift", "Home Row Hero", "the home-row drift tip (neighbouring keys hit by mistake)"],
+  ["pace", "Easy Does It", "the pace tip (more corrections than your eyes can keep up with)"],
+];
 
 export const TROPHIES = Object.freeze([
   ...tiers("Streaks", "streak", (a) => a.streak, [
-    [3, "Baseline"], [7, "Stable trend"], [14, "Maintenance"], [30, "Generalized"], [60, "Durable"], [100, "Behavioral momentum"],
+    [3, "Warming Up"], [7, "On Fire"], [14, "Unstoppable"], [30, "Habit Formed"], [60, "Iron Will"], [100, "Centurion"],
   ], (n) => `Drill ${n} days in a row.`),
   ...tiers("Days", "days", (a) => a.days, [
-    [5, "Five data days"], [10, "Ten data days"], [25, "Twenty-five days"], [50, "Fifty days"], [100, "A hundred days"], [200, "Two hundred days"],
+    [5, "Regular"], [10, "Frequent Flyer"], [25, "Devoted"], [50, "Die-Hard"], [100, "Lifer"], [200, "Legend"],
   ], (n) => `Drill on ${n} different days.`),
   ...tiers("Sessions", "sessions", (a) => a.sessions, [
-    [1, "First probe"], [10, "Ten trials"], [25, "Twenty-five trials"], [50, "Fifty trials"], [100, "A hundred trials"], [250, "Two-fifty"], [500, "Five hundred"], [1000, "A thousand trials"],
+    [1, "First Keystrokes"], [10, "Getting the Hang of It"], [25, "Clockwork"], [50, "Half Century"], [100, "Centennial"], [250, "Grinder"], [500, "No Days Off"], [1000, "Thousand Club"],
   ], (n) => (n === 1 ? "Finish a drill." : `Finish ${n} drills.`)),
-  ...[1, 2, 3, 4, 5].flatMap((m) => tiers(`Clock length`, `len${m}`, (a) => a.perLen[m] || 0, [
-    [10, `${m}-minute regular`], [50, `${m}-minute veteran`], [150, `${m}-minute master`],
+  ...[1, 2, 3, 4, 5].flatMap((m) => tiers("Clock length", `len${m}`, (a) => a.perLen[m] || 0, [
+    [10, CLOCK_NAMES[m]], [50, `Seasoned ${CLOCK_NAMES[m]}`], [150, `${CLOCK_NAMES[m]} Legend`],
   ], (n) => `Finish ${n} drills on the ${m}-minute clock.`)),
-  one("Clock length", "every-clock", "Every clock", "Finish at least one drill on each clock, 1 to 5 minutes.",
+  one("Clock length", "every-clock", "Full Range", "Finish at least one drill on each clock, 1 to 5 minutes.",
     (a) => [1, 2, 3, 4, 5].filter((m) => a.perLen[m]).length, 5),
   ...tiers("Words", "words", (a) => a.words, [
-    [1000, "A thousand words"], [5000, "Five thousand words"], [10000, "Ten thousand words"], [25000, "Twenty-five thousand"], [50000, "Fifty thousand"], [100000, "A hundred thousand"],
+    [1000, "Wordsmith"], [5000, "Prolific"], [10000, "Chapter and Verse"], [25000, "Novella"], [50000, "NaNoWriMo"], [100000, "Epic"],
   ], (n) => `Type ${commas(n)} words in all (five keystrokes a word).`),
   ...tiers("Words", "kept", (a) => a.kept, [
-    [250, "In your own words"], [1000, "A thousand kept"], [5000, "Five thousand kept"], [20000, "Twenty thousand kept"],
+    [250, "In Your Own Words"], [1000, "Found My Voice"], [5000, "Signature Style"], [20000, "Voice of Experience"],
   ], (n) => `Keep ${commas(n)} words: answers you pressed Keep it on, in your voice corpus.`),
-  ...BANDS.slice(0, -1).slice().reverse().map((b) => one("Speed", `band-${b.name.toLowerCase()}`, b.name,
-    `Reach ${b.min} NWAM on any clock.`, (a) => a.bestNwam, b.min)),
-  one("Speed", "gwam-100", "Triple digits", "Reach 100 GWAM on any clock.", (a) => a.bestGwam, 100),
-  ...tiers("Speed", "pb", (a) => a.pbs, [[5, "Beat yourself"], [25, "Personal-best habit"], [75, "Always improving"]],
+  ...BANDS.slice(0, -1).slice().reverse().map((b) => one("Speed", `band-${b.name.toLowerCase()}`, BAND_NAMES[b.name] || b.name,
+    `Reach ${b.min} NWAM on any clock (${b.name}).`, (a) => a.bestNwam, b.min)),
+  one("Speed", "gwam-100", "Hundred Club", "Reach 100 GWAM on any clock.", (a) => a.bestGwam, 100),
+  ...tiers("Speed", "pb", (a) => a.pbs, [[5, "Personal Best"], [25, "Record Breaker"], [75, "Never Satisfied"]],
     (n) => `Set ${n} personal bests (beating your old best at that clock).`),
-  one("Clean", "clean-97", "Clean run", "Finish a drill of 20 words or more at 97% accuracy or better.", (a) => a.clean97),
-  one("Clean", "flawless", "Flawless", "Finish a drill of 40 words or more at 100% accuracy.", (a) => a.flawless),
-  ...tiers("Clean", "combo", (a) => a.bestCombo, [[25, "Twenty-five clean"], [50, "Fifty clean"], [100, "A hundred clean"]],
+  one("Speed", "leap", "Quantum Leap", "Beat your best at a clock by 10 NWAM or more in one drill.", (a) => a.leap),
+  one("Clean", "clean-97", "Sharpshooter", "Finish a drill of 20 words or more at 97% accuracy or better.", (a) => a.clean97),
+  one("Clean", "flawless", "Flawless Victory", "Finish a drill of 40 words or more at 100% accuracy.", (a) => a.flawless),
+  one("Clean", "flawless-long", "Perfectionist", "Finish a drill on the 2-minute clock or longer at 100% accuracy.", (a) => a.flawlessLong),
+  ...tiers("Clean", "combo", (a) => a.bestCombo, [[25, "Combo Starter"], [50, "Combo Master"], [100, "Untouchable"]],
     (n) => `Type ${n} clean words in a row: known, and no Backspace.`),
-  one("Hands", "shift-drill", "Opposite hand", "Finish a drill with 8 capitals or more, every one with the opposite Shift.", (a) => a.shiftCleanDrill),
-  ...tiers("Hands", "shift", (a) => a.shiftOk, [[100, "Cross-shift"], [1000, "Shift sense"]],
+  one("Hands", "shift-drill", "Opposite Day", "Finish a drill with 8 capitals or more, every one with the opposite Shift.", (a) => a.shiftCleanDrill),
+  ...tiers("Hands", "shift", (a) => a.shiftOk, [[100, "Crossover"], [1000, "Switch Pro"]],
     (n) => `Take ${commas(n)} capitals with the opposite-hand Shift.`),
-  ...tiers("Hands", "revise", (a) => a.wordDeletes, [[25, "Changed my mind"], [250, "Clean revisions"]],
+  ...tiers("Hands", "revise", (a) => a.wordDeletes, [[25, "Option Unlocked"], [250, "Clean Slate"]],
     (n) => `Delete ${n} words with Option+Backspace.`),
-  ...tiers("Field", "domains", (a) => a.domains, [[9, "Whole outline"]], () => "Answer at least one question in each of the nine BACB domains."),
-  ...tiers("Field", "items", (a) => a.items, [[25, "Twenty-five items"], [50, "Fifty items"], [104, "Every item"]],
+  one("Hands", "weak-clean", "Five Clean Fingers",
+    `Finish a drill pressing each of ${WEAK_KEYS.join(" ")} three times or more without missing one.`, (a) => a.weakClean),
+  ...tiers("Field", "domains", (a) => a.domains, [[9, "Grand Tour"]], () => "Answer at least one question in each of the nine BACB domains."),
+  ...tiers("Field", "items", (a) => a.items, [[25, "Explorer"], [50, "Cartographer"], [104, "Completionist"]],
     (n) => `Answer questions under ${n} different items of the BACB outline.`),
-  ...tiers("Field", "lexicon", (a) => a.lexicon, [[10, "Ten terms"], [50, "Fifty terms"]],
+  ...tiers("Field", "lexicon", (a) => a.lexicon, [[10, "Jargon"], [50, "Walking Glossary"]],
     (n) => `Mark ${n} words clinical, into your lexicon.`),
-  ...tiers("Habits", "sitting", (a) => a.bestSitting, [[3, "Back to back"], [5, "Five in a sitting"], [10, "Massed trials"]],
+  ...tiers("Habits", "sitting", (a) => a.bestSitting, [[3, "Hat Trick"], [5, "In the Zone"], [10, "Binge Session"]],
     (n) => `Finish ${n} drills in one sitting, each within 20 minutes of the last.`),
-  one("Habits", "big-day", "Big day", "Finish 10 drills in one day.", (a) => a.bestDay, 10),
-  one("Habits", "early", "Early bird", "Finish a drill before 7 in the morning.", (a) => a.early),
-  one("Habits", "late", "Night owl", "Finish a drill after 10 at night.", (a) => a.late),
-  one("Habits", "comeback", "Comeback", "Drill again after a week or more away.", (a) => a.comeback),
+  one("Habits", "big-day", "Double Digits", "Finish 10 drills in one day.", (a) => a.bestDay, 10),
+  one("Habits", "marathon-day", "Marathon Day", "Put 30 minutes or more on the clock in one day.", (a) => a.bestDayMinutes, 30),
+  one("Habits", "full-spectrum", "Full Spectrum", "Finish a drill on every clock, 1 to 5 minutes, in one day.", (a) => a.fullSpectrum),
+  one("Habits", "early", "Early Bird", "Finish a drill before 7 in the morning.", (a) => a.early),
+  one("Habits", "late", "Night Owl", "Finish a drill after 10 at night.", (a) => a.late),
+  one("Habits", "weekend", "Weekend Warrior", "Finish a drill on a Saturday or a Sunday.", (a) => a.weekend),
+  one("Habits", "comeback", "The Return", "Drill again after a week or more away.", (a) => a.comeback),
+  one("Modes", "copycat", "Copycat", "Finish a copy round.", (a) => a.copy),
+  one("Modes", "talk-back", "Talk Back", "Finish a respond round: a free write on a passage you just copied.", (a) => a.respond),
+  one("Modes", "on-a-roll", "On a Roll", "Keep going twice on one answer: three rounds in a row on the same prompt.", (a) => a.chain),
+  one("Modes", "voice", "Voice Actor", "Answer a round by talking instead of typing.", (a) => a.spoken),
+  one("Modes", "oracle", "Seeker", "Finish a round in Oracle mode.", (a) => a.oracle),
+  // Getting better: each one compares his last five drills with his first
+  // five, so it is earned by change, never by volume, and a lucky drill
+  // cannot earn it alone.
+  one("Getting better", "shift-better", "Switch Hitter",
+    "Halve your same-side Shift share: your last 5 drills against your first 5, 10 capitals or more in each, starting from 15% or more.", (a) => a.shiftBetter),
+  one("Getting better", "shift-run-5", "Clean Crossings",
+    "Five drills in a row with 3 capitals or more each, every one with the opposite Shift.", (a) => a.shiftRun, 5),
+  one("Getting better", "option-reflex", "Option Reflex",
+    "Three in four of your word changes by Option+Backspace over your last 5 drills (4 changes or more), up a quarter or more from your first 5.", (a) => a.optionReflex),
+  one("Getting better", "weak-better", "Weak Link No More",
+    `Halve your miss rate on ${WEAK_KEYS.join(" ")}: your last 5 drills against your first 5, 100 presses or more of them in each.`, (a) => a.weakBetter),
+  one("Getting better", "mid-better", "Unhesitating",
+    "Halve your mid-word thinking stops: your last 5 drills against your first 5, which had 5 or more.", (a) => a.midBetter),
+  one("Getting better", "accuracy-better", "Cleaning Up",
+    "Raise your average accuracy 3 points: your last 5 drills of 20 words or more against your first 5.", (a) => a.accBetter),
+  one("Getting better", "speed-better", "Level Up",
+    "Raise your average NWAM by 5 at one clock: your last 5 drills there against your first 5.", (a) => a.speedBetter),
+  ...RETIRABLE.map(([tip, name, what]) => one("Getting better", `retire-${tip}`, name,
+    `Retire ${what}: it came up in 3 drills or more, then stayed quiet 5 drills in a row (40 words or more each).`, (a) => a.retired[tip] || 0)),
+  secret("midnight", "Midnight Oil", "Finish a drill between midnight and 4 in the morning.", "Some ideas only come after midnight.", (a) => a.midnight),
+  secret("friday-13", "Unlucky for Some", "Finish a drill on a Friday the 13th.", "Drill on a day most people would rather skip.", (a) => a.friday13),
+  secret("new-year", "Fresh Start", "Finish a drill on New Year's Day.", "Start the year on the keys.", (a) => a.newYear),
+  secret("photo-finish", "Photo Finish", "Tie your best NWAM at a clock to the tenth, without beating it.", "So close you could touch it.", (a) => a.photo),
+  secret("deja-vu", "Deja Vu", "Two drills in a row with exactly the same NWAM.", "Do it again, exactly the same.", (a) => a.dejaVu),
 ]);
+
+/* ---- getting better: first five against last five ---------------------- */
+
+const WINDOW = 5;
+const sum = (xs, f) => xs.reduce((s, x) => s + f(x), 0);
+
+/** The first and last WINDOW drills of a list, or null until there are two whole windows. */
+function windows(q) {
+  return q.length < 2 * WINDOW ? null : { first: q.slice(0, WINDOW), last: q.slice(-WINDOW) };
+}
+
+/* Which drills each improvement reads. The replay files every drill into the
+   lists it qualifies for as it goes, so a check reads ten drills, not the
+   whole history again. */
+const QUALIFIES = {
+  shift: (h) => h.shift && num(h.shift.ok) + num(h.shift.same) > 0,
+  habits: (h) => !!h.habits,
+  weak: (h) => weakOf(h, "presses") > 0,
+  think: (h) => !!h.think,
+  acc: (h) => num(h.words) >= 20,
+  tipped: (h) => Array.isArray(h.tips) && num(h.words) >= 40,
+};
+
+function shiftBetter(q) {
+  const w = windows(q);
+  if (!w) return 0;
+  const share = (xs) => {
+    const caps = sum(xs, (h) => num(h.shift.ok) + num(h.shift.same));
+    return { caps, share: caps ? sum(xs, (h) => num(h.shift.same)) / caps : 0 };
+  };
+  const a = share(w.first), b = share(w.last);
+  return a.caps >= 10 && b.caps >= 10 && a.share >= 0.15 && b.share <= a.share / 2 ? 1 : 0;
+}
+
+function optionReflex(q) {
+  const w = windows(q);
+  if (!w) return 0;
+  const tally = (xs) => {
+    const option = sum(xs, (h) => num(h.habits.wordDeletes)), byHand = sum(xs, (h) => num(h.habits.wordByHand));
+    return { n: option + byHand, share: option + byHand ? option / (option + byHand) : 0 };
+  };
+  const a = tally(w.first), b = tally(w.last);
+  return b.n >= 4 && b.share >= 0.75 && b.share - a.share >= 0.25 ? 1 : 0;
+}
+
+const weakOf = (h, f) => sum(WEAK_KEYS, (k) => num(h.keys && h.keys[k] && h.keys[k][f]));
+function weakBetter(q) {
+  const w = windows(q);
+  if (!w) return 0;
+  const rate = (xs) => ({ presses: sum(xs, (h) => weakOf(h, "presses")), misses: sum(xs, (h) => weakOf(h, "misses")) });
+  const a = rate(w.first), b = rate(w.last);
+  if (a.presses < 100 || b.presses < 100 || !a.misses) return 0;
+  return b.misses / b.presses <= a.misses / a.presses / 2 ? 1 : 0;
+}
+
+function midBetter(q) {
+  const w = windows(q);
+  if (!w) return 0;
+  const a = sum(w.first, (h) => num(h.think.mid)), b = sum(w.last, (h) => num(h.think.mid));
+  return a >= 5 && b <= a / 2 ? 1 : 0;
+}
+
+function accBetter(q) {
+  const w = windows(q);
+  if (!w) return 0;
+  const avg = (xs) => sum(xs, (h) => num(h.accuracy)) / xs.length;
+  // A hair under 0.03, so 0.90 to 0.93 counts despite floating point.
+  return avg(w.last) - avg(w.first) >= 0.0299 ? 1 : 0;
+}
+
+/** q: the drills at one clock that were typed (GWAM over zero). */
+function speedBetter(q) {
+  const w = windows(q);
+  if (!w) return 0;
+  const avg = (xs) => sum(xs, (h) => num(h.nwam)) / xs.length;
+  return avg(w.last) - avg(w.first) >= 4.999 ? 1 : 0;
+}
+
+/**
+ * q: drills that can show a tip (tips were recorded, and 40 words gave them
+ * room to fire); fired: how many of them each tip came up in. When the last
+ * WINDOW are quiet, every firing was before them, so the count is the "before".
+ */
+function retiredTips(q, fired) {
+  const out = {};
+  if (q.length < 3 + WINDOW) return out;
+  const quiet = q.slice(-WINDOW);
+  for (const [tip] of RETIRABLE) {
+    if ((fired[tip] || 0) >= 3 && !quiet.some((h) => h.tips.includes(tip))) out[tip] = 1;
+  }
+  return out;
+}
 
 /** The running totals the trophies read, advanced one drill at a time. */
 function emptyAgg() {
   return {
-    sessions: 0, days: 0, streak: 0, perLen: {}, words: 0, kept: 0, bestNwam: 0, bestGwam: 0, pbs: 0,
-    clean97: 0, flawless: 0, bestCombo: 0, shiftOk: 0, shiftCleanDrill: 0, wordDeletes: 0,
-    domains: 0, items: 0, lexicon: 0, bestSitting: 0, bestDay: 0, early: 0, late: 0, comeback: 0,
+    sessions: 0, days: 0, streak: 0, perLen: {}, words: 0, kept: 0, bestNwam: 0, bestGwam: 0, pbs: 0, leap: 0,
+    clean97: 0, flawless: 0, flawlessLong: 0, bestCombo: 0, shiftOk: 0, shiftCleanDrill: 0, wordDeletes: 0, weakClean: 0,
+    domains: 0, items: 0, lexicon: 0, bestSitting: 0, bestDay: 0, bestDayMinutes: 0, fullSpectrum: 0,
+    early: 0, late: 0, weekend: 0, comeback: 0, copy: 0, respond: 0, chain: 0, spoken: 0, oracle: 0,
+    shiftBetter: 0, shiftRun: 0, optionReflex: 0, weakBetter: 0, midBetter: 0, accBetter: 0, speedBetter: 0, retired: {},
+    midnight: 0, friday13: 0, newYear: 0, photo: 0, dejaVu: 0,
   };
 }
 
@@ -136,11 +288,15 @@ export function trophyCase(history) {
   const a = emptyAgg();
   const got = new Map();
   const days = new Set(), domains = new Set(), items = new Set();
-  const perDay = new Map();
+  const perDay = new Map(), dayMinutes = new Map(), dayClocks = new Map();
   const bestAt = {};
-  let lastDay = null, run = 0, sit = 0, lastT = null;
+  const lists = Object.fromEntries(Object.keys(QUALIFIES).map((k) => [k, []]));
+  const byClock = {};
+  const fired = {};
+  let lastDay = null, run = 0, sit = 0, lastT = null, shiftRun = 0, lastNwam = null;
   for (const h of list) {
     const t = Date.parse(h.at), day = dayOf(h.at), when = new Date(t);
+    for (const [k, keep] of Object.entries(QUALIFIES)) if (keep(h)) lists[k].push(h);
     a.sessions += 1;
     if (lastDay && daysBetween(lastDay, day) >= 8) a.comeback = 1;
     if (day !== lastDay) { run = lastDay && daysBetween(lastDay, day) === 1 ? run + 1 : 1; lastDay = day; }
@@ -150,31 +306,68 @@ export function trophyCase(history) {
     sit = lastT !== null && t - lastT <= SITTING_GAP_MS ? sit + 1 : 1; lastT = t;
     a.bestSitting = Math.max(a.bestSitting, sit);
     const m = Number(h.minutes);
-    if (m) a.perLen[m] = (a.perLen[m] || 0) + 1;
+    if (m) {
+      a.perLen[m] = (a.perLen[m] || 0) + 1;
+      dayMinutes.set(day, (dayMinutes.get(day) || 0) + m);
+      a.bestDayMinutes = Math.max(a.bestDayMinutes, dayMinutes.get(day));
+      const clocks = dayClocks.get(day) || new Set();
+      clocks.add(m); dayClocks.set(day, clocks);
+      if ([1, 2, 3, 4, 5].every((c) => clocks.has(c))) a.fullSpectrum = 1;
+    }
     const words = num(h.words);
     a.words += words;
     if (h.kept) a.kept += words;
     const nwam = num(h.nwam);
-    if (m && bestAt[m] != null && nwam > bestAt[m]) a.pbs += 1;
+    const prior = m ? bestAt[m] : undefined;
+    if (prior != null && nwam > prior) a.pbs += 1;
+    if (prior != null && prior > 0 && nwam - prior >= 9.999) a.leap = 1;
+    if (prior != null && prior > 0 && nwam === prior) a.photo = 1;
+    if (lastNwam !== null && nwam > 0 && nwam === lastNwam) a.dejaVu = 1;
+    lastNwam = nwam;
     if (m) bestAt[m] = Math.max(bestAt[m] ?? -1, nwam);
     a.bestNwam = Math.max(a.bestNwam, nwam); a.bestGwam = Math.max(a.bestGwam, num(h.gwam));
     if (words >= 20 && num(h.accuracy) >= 0.97) a.clean97 = 1;
     if (words >= 40 && num(h.accuracy) >= 1) a.flawless = 1;
+    if (m >= 2 && words >= 40 && num(h.accuracy) >= 1) a.flawlessLong = 1;
     a.bestCombo = Math.max(a.bestCombo, num(h.bestCombo));
     const sh = h.shift || {};
     a.shiftOk += num(sh.ok);
     if (num(sh.ok) >= 8 && num(sh.same) === 0) a.shiftCleanDrill = 1;
+    // Drills with under 3 capitals neither add to the clean run nor break it.
+    if (num(sh.ok) + num(sh.same) >= 3) shiftRun = num(sh.same) === 0 ? shiftRun + 1 : 0;
+    a.shiftRun = Math.max(a.shiftRun, shiftRun);
     a.wordDeletes += num(h.habits && h.habits.wordDeletes);
+    if (h.keys && WEAK_KEYS.every((k) => h.keys[k] && num(h.keys[k].presses) >= 3 && num(h.keys[k].misses) === 0)) a.weakClean = 1;
     if (h.outline) { domains.add(String(h.outline)[0]); items.add(h.outline); }
     a.domains = domains.size; a.items = items.size;
     a.lexicon = Math.max(a.lexicon, num(h.lexicon));
+    if (h.mode === "copy") a.copy = 1;
+    if (h.mode === "respond") a.respond = 1;
+    if (h.mode === "oracle") a.oracle = 1;
+    if (h.spoken) a.spoken = 1;
+    if (num(h.cont) >= 2) a.chain = 1;
     const hour = when.getHours();
     if (hour < 7) a.early = 1;
     if (hour >= 22) a.late = 1;
+    if (hour < 4) a.midnight = 1;
+    if (when.getDay() === 0 || when.getDay() === 6) a.weekend = 1;
+    if (when.getDay() === 5 && when.getDate() === 13) a.friday13 = 1;
+    if (when.getMonth() === 0 && when.getDate() === 1) a.newYear = 1;
+    // Improvements are sticky: once earned, a later slip does not take them back.
+    if (m && num(h.gwam) > 0) (byClock[m] ||= []).push(h);
+    if (QUALIFIES.tipped(h)) for (const tip of h.tips) fired[tip] = (fired[tip] || 0) + 1;
+    a.shiftBetter ||= shiftBetter(lists.shift);
+    a.optionReflex ||= optionReflex(lists.habits);
+    a.weakBetter ||= weakBetter(lists.weak);
+    a.midBetter ||= midBetter(lists.think);
+    a.accBetter ||= accBetter(lists.acc);
+    if (m && byClock[m]) a.speedBetter ||= speedBetter(byClock[m]);
+    if (QUALIFIES.tipped(h)) for (const tip of Object.keys(retiredTips(lists.tipped, fired))) a.retired[tip] = 1;
     for (const tr of TROPHIES) if (!got.has(tr.id) && tr.measure(a) >= tr.need) got.set(tr.id, h.at);
   }
   return TROPHIES.map((tr) => ({
     id: tr.id, family: tr.family, group: tr.group, name: tr.name, condition: tr.condition, need: tr.need,
+    ...(tr.secret ? { secret: true, hint: tr.hint } : {}),
     have: Math.min(tr.need, tr.measure(a)), unlocked: got.get(tr.id) || null,
   }));
 }

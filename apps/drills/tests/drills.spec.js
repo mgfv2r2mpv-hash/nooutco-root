@@ -257,6 +257,30 @@ test('the calendar shows each day with its numbers, badge and streak banner; tro
   await expect(page.locator('[data-trophy="streak-7"]')).toContainText('3 of 7');
 });
 
+test('achievements carry their new names; a secret shows only its hint until it is found', async ({ page }) => {
+  await page.addInitScript(() => {
+    const d = new Date(); d.setDate(d.getDate() - 1); d.setHours(1, 30, 0, 0);
+    const rec = (at, nwam) => ({ at, minutes: 1, seconds: 60, nwam, gwam: nwam + 4, accuracy: 0.96, words: nwam + 4, outline: 'A.1', itemId: 'x', keys: {} });
+    // One drill at 1:30 in the morning: Midnight Oil, a secret, is found.
+    localStorage.setItem('noaba.drills.v1', JSON.stringify([rec(d.toISOString(), 50)]));
+  });
+  await page.goto('/index.html');
+  await page.locator('.row [data-drill-open="trophies"]').click();
+  await expect(page.locator('[data-trophy="sessions-1"]')).toContainText('First Keystrokes');
+  await expect(page.locator('[data-trophy="midnight"]')).toContainText('Midnight Oil');
+  // Unfound secrets are not "next": they appear only under Show every trophy, as Secret with a hint.
+  await expect(page.locator('[data-trophy="deja-vu"]')).toHaveCount(0);
+  await page.locator('[data-trophy-toggle]').click();
+  const hidden = page.locator('[data-trophy="deja-vu"]');
+  await expect(hidden).toHaveClass(/is-secret/);
+  await expect(hidden.locator('b')).toHaveText('Secret');
+  await expect(hidden).toContainText('Do it again, exactly the same.');
+  await expect(hidden).not.toContainText('Deja Vu');
+  // A yes-or-no achievement says Not yet, not "0 of 1".
+  await expect(page.locator('[data-trophy="weekend"]')).toContainText(/Not yet|Unlocked/);
+  await expect(page.locator('[data-trophy="leap"]')).toContainText('Not yet');
+});
+
 /* ---- round three --------------------------------------------------------- */
 
 test('Keep going carries the answer into a fresh clock and scores only what the new round added', async ({ page }) => {
