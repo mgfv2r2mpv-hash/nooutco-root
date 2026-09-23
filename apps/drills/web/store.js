@@ -85,6 +85,8 @@ export async function saveSettings(obj) {
  */
 export async function keep(record) {
   if (inApp) return call("keep", { record });
+  const m = typeof window !== "undefined" && window.ClickClackMock;
+  if (m && m.keep) return m.keep(record);
   return { ok: false, note: "Keeping text works in the Mac app; this browser page keeps numbers only." };
 }
 
@@ -154,4 +156,11 @@ export async function expertSent(stamps) {
   const m = mock();
   if (m && m.expertSent) return m.expertSent(stamps);
   return { ok: true, queued: 0 };
+}
+/** The expert's records in force: { ok, records } or { ok: false, note }. */
+export async function expertRecords() {
+  if (inApp) return call("expertRecords");
+  const m = mock();
+  if (m && m.expertRecords) return m.expertRecords();
+  return { ok: false, note: "Reading the expert works in the Mac app." };
 }

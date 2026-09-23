@@ -96,3 +96,29 @@ func propose(_ record: [String: Any]) -> [String: Any] {
     log("propose: \(result["ok"] as? Bool == true ? "staged" : "refused \(result["status"] ?? "")")")
     return result
 }
+
+/// The records in force, for the baton pass to weigh his answer against.
+/// GET ?op=list, the same call the admin Knowledge tab makes. These are
+/// authored knowledge, never a clinician's typed text.
+/// Returns { ok, records } or { ok: false, note }.
+func listRecords() -> [String: Any] {
+    guard let token = Keychain.read(), !token.isEmpty else { return ["ok": false, "note": "Not connected to the expert."] }
+    guard let url = URL(string: EXPERT_URL.replacingOccurrences(of: "op=propose", with: "op=list")) else {
+        return ["ok": false, "note": "The list address could not be built."]
+    }
+    var req = URLRequest(url: url, timeoutInterval: 20)
+    req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+    var result: [String: Any] = ["ok": false, "note": "No answer from the tools site."]
+    let sem = DispatchSemaphore(value: 0)
+    URLSession.shared.dataTask(with: req) { data, resp, error in
+        defer { sem.signal() }
+        if let error = error { result = ["ok": false, "note": "Could not reach the tools site: \(error.localizedDescription)"]; return }
+        let status = (resp as? HTTPURLResponse)?.statusCode ?? 0
+        let obj = data.flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:]
+        if status == 200 { result = ["ok": true, "records": obj["records"] ?? []]; return }
+        result = ["ok": false, "status": status, "note": "The site said: \((obj["error"] as? String) ?? "status \(status)")"]
+    }.resume()
+    sem.wait()
+    log("list: \(result["ok"] as? Bool == true ? "\((result["records"] as? [Any])?.count ?? 0) records" : "refused \(result["status"] ?? "")")")
+    return result
+}

@@ -210,6 +210,11 @@ final class Bridge: NSObject, WKScriptMessageHandlerWithReply {
                 let out = propose(rec)
                 DispatchQueue.main.async { replyHandler(out, nil) }
             }
+        case "expertRecords":
+            DispatchQueue.global(qos: .userInitiated).async {
+                let out = listRecords()
+                DispatchQueue.main.async { replyHandler(out, nil) }
+            }
         case "expertSent":
             markSent((body["stamps"] as? [String]) ?? [])
             replyHandler(["ok": true, "queued": unsentQueue().count], nil)
