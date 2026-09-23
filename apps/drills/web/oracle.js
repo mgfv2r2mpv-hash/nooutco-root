@@ -147,3 +147,136 @@ export function toProposal(draft, entry) {
     },
   };
 }
+
+/* ---- the baton pass ----------------------------------------------------
+ * His ask of 2026-09-23: after a respond round he hands his answer to the
+ * expert, which reads the literature and what the expert already holds, then
+ * answers him: agrees and fleshes out, or (most usefully) gently names what he
+ * has not considered and where his read sits apart from the research. Its
+ * answer becomes his next passage to copy, so he takes it in with his hands,
+ * and then he responds again in his own words.
+ *
+ * The passage is never kept (copy rounds never are), and it is written to be
+ * typed: plain ASCII, no em dashes, no curly quotes, sized to his clock. */
+
+export const BATON_SYSTEM = [
+  "You are the expert behind a set of ABA clinical tools, answering Kaleb, a BCBA, inside a typing practice app on his Mac.",
+  "He has just copied a short passage and then answered it in his own words. Read his answer against the research and against what the expert already holds (given below, when there is any).",
+  "Write him a reply he will type out word for word. Where he is right, say so briefly and add depth. Most usefully, gently name one or two things he has not considered, or where his understanding sits apart from the research or from the expert's records, and say why.",
+  "Be warm and direct, one clinician to another. Do not explain his job to him and do not praise for its own sake. Never quote him back at length.",
+  "Write the passage in plain prose paragraphs, as close as you can to the word count asked for. Use only plain keyboard characters: straight quotes, a spaced hyphen instead of any dash, no bullet points, no headings, no symbols a US keyboard lacks, no citations inside the passage.",
+  "Put the sources separately: each one an author and year for a paper or book you are confident exists, or a page you found with web search. If you are not sure a source exists, write \"general practice knowledge\". Never invent a citation.",
+  "Then write one short question for his next free write, building on the gap or the push back.",
+  "No client names, places or dates.",
+].join(" ");
+
+export const BATON_SCHEMA = {
+  type: "object",
+  properties: {
+    stance: { type: "string", description: "A few words: agrees and adds, adds a consideration, or pushes back gently." },
+    title: { type: "string", description: "A short title for the passage, under 60 characters." },
+    passage: { type: "string" },
+    sources: {
+      type: "array", minItems: 1, maxItems: 4,
+      items: { type: "object", properties: { claim: { type: "string" }, source: { type: "string" } }, required: ["claim", "source"] },
+    },
+    respond: { type: "string", description: "One question for his next free write." },
+  },
+  required: ["stance", "title", "passage", "sources", "respond"],
+};
+
+/** Text he can type: straight quotes, spaced hyphens, no symbols a US keyboard lacks. */
+export function typable(s) {
+  return String(s || "")
+    .replace(/[\u2018\u2019\u201A\u2032]/g, "'")
+    .replace(/[\u201C\u201D\u201E\u2033]/g, '"')
+    .replace(/\s*[\u2012\u2013\u2014\u2015]\s*/g, " - ")
+    .replace(/\u2026/g, "...")
+    .replace(/[\u00A0\u2007\u202F]/g, " ")
+    .normalize("NFKD").replace(/[\u0300-\u036F]/g, "")
+    .replace(/[^\x20-\x7E\n]/g, "")
+    .replace(/[ \t]+/g, " ")
+    .replace(/ *\n+ */g, "\n\n")
+    .trim();
+}
+
+const words = (s) => String(s || "").trim().split(/\s+/).filter(Boolean);
+
+/** Cut to about `limit` words, at a sentence end when one is near. */
+export function trimToWords(text, limit) {
+  const w = words(text);
+  if (w.length <= limit) return text;
+  const cut = w.slice(0, limit).join(" ");
+  const end = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("? "), cut.lastIndexOf("! "), /[.?!]$/.test(cut) ? cut.length - 1 : -1);
+  return end > cut.length * 0.6 ? cut.slice(0, end + 1) : cut + ".";
+}
+
+/**
+ * How long the expert's passage should be: his copy speed at this clock (the
+ * median GWAM of his last ten copy rounds at it, or 50 before he has any)
+ * times the clock, held between 40 and 350 words.
+ */
+export function batonWords(history, minutes) {
+  const m = Number(minutes) || 1;
+  const speeds = (history || []).filter((h) => h && h.mode === "copy" && h.minutes === m && h.gwam > 0).slice(-10).map((h) => h.gwam).sort((a, b) => a - b);
+  const wpm = speeds.length ? speeds[Math.floor(speeds.length / 2)] : 50;
+  return Math.max(40, Math.min(350, Math.round(wpm * m)));
+}
+
+const STOP = new Set("the a an and or of to in on for with is are was be it that this as at by from not but his her their they you your i".split(" "));
+const terms = (s) => new Set(String(s || "").toLowerCase().match(/[a-z][a-z-]{2,}/g)?.filter((t) => !STOP.has(t)) || []);
+
+/**
+ * The expert's records that bear on his answer, most shared terms first, at
+ * most `n`, each rule cut to 600 characters. These are authored knowledge,
+ * never a clinician's typed text, so they may ride in the prompt.
+ */
+export function relevantRecords(records, text, n = 6) {
+  const want = terms(text);
+  return (records || [])
+    .filter((r) => r && r.title && r.rule)
+    .map((r) => {
+      const have = terms([r.title, r.rule, r.applies, r.topic, ...(r.keywords || [])].join(" "));
+      let score = 0;
+      for (const t of have) if (want.has(t)) score += 1;
+      return { r, score };
+    })
+    .filter((x) => x.score >= 2)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, n)
+    .map(({ r }) => ({ title: r.title, rule: String(r.rule).slice(0, 600), ...(r.topic ? { topic: r.topic } : {}) }));
+}
+
+/** The prompt for one baton pass. */
+export function batonPrompt({ passage, question, answer, records = [], words: target = 120, weak = [], turn = 1 }) {
+  const lines = [
+    `Baton pass ${turn}.`,
+    `The passage he copied: ${passage && passage.title ? passage.title + ". " : ""}${(passage && passage.text) || "(none)"}`,
+    `The question he answered: ${question || "(none)"}`,
+    `His answer, in his own words: ${answer || "(no answer)"}`,
+  ];
+  if (records.length) {
+    lines.push("What the expert already holds on this (authored records):");
+    for (const r of records) lines.push(`- ${r.title}: ${r.rule}`);
+  } else lines.push("The expert holds no records on this yet, so weigh his answer against the research alone.");
+  lines.push(`Write the passage in about ${target} words.`);
+  if (weak.length) lines.push(`Where two words serve equally, prefer the one with these letters, which he is practising: ${weak.join(" ")}. Never let that bend the content.`);
+  return lines.join("\n");
+}
+
+/** A reply the page can use as the next passage, or null. */
+export function readBaton(out, target = 120) {
+  if (!out || typeof out !== "object") return null;
+  const text = trimToWords(typable(out.passage), Math.round(target * 1.3));
+  const respond = typable(out.respond);
+  if (words(text).length < 15 || !respond) return null;
+  const sources = (Array.isArray(out.sources) ? out.sources : [])
+    .map((s) => ({ claim: typable(s && s.claim), source: typable(s && s.source) || "general practice knowledge" }))
+    .filter((s) => s.claim)
+    .slice(0, 4);
+  return {
+    stance: typable(out.stance).slice(0, 60) || "the expert's reply",
+    title: typable(out.title).slice(0, 60) || "The expert's reply",
+    text, respond, sources,
+  };
+}

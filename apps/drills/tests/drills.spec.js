@@ -14,6 +14,17 @@ const PAGE = '/index.html?clock=3';
 const wordsReady = (page) => page.waitForFunction(() => window.NoteDrill && window.NoteDrill.known() !== null, null, { timeout: 15000 });
 const done = (page) => expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'done', { timeout: 10000 });
 
+// Copy, then respond is the app's default (his ruling of 2026-09-23). Most of
+// these tests drive a bank question, so they start in Answer mode unless a
+// test says otherwise; the default itself has its own test below.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    const k = 'noaba.drills.settings.v1';
+    if (location.search.includes('fresh')) return; // a first launch, as he gets it
+    if (!localStorage.getItem(k)) localStorage.setItem(k, JSON.stringify({ mode: 'answer', copyDefault: true }));
+  });
+});
+
 test('a question, a clock that starts on the first key, a lock at zero, a score', async ({ page }) => {
   await page.goto(PAGE);
   await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'idle');
@@ -472,4 +483,72 @@ test('outside the Mac app the oracle says so plainly', async ({ page }) => {
   await page.locator('[data-drill-start]').click();
   await expect(page.locator('[data-drill-pb]')).toHaveText('The oracle works in the Mac app.');
   await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'idle');
+});
+
+/* ---- copy then respond by default, and the baton pass ------------------ */
+
+test('a first launch opens on Copy, then respond', async ({ page }) => {
+  await page.goto('/index.html?fresh');
+  await expect(page.locator('[data-drill-mode="copy"]')).toHaveClass(/is-on/);
+  await expect(page.locator('[data-drill-lede]')).toContainText('pass the baton');
+  await page.locator('[data-drill-mode="answer"]').click();
+  await page.reload();
+  await expect(page.locator('[data-drill-mode="answer"]')).toHaveClass(/is-on/);
+});
+
+const BATON_MOCK = () => {
+  window.__calls = []; window.__kept = []; window.__proposed = []; window.__sent = [];
+  const long = 'You are right that the order matters. The research adds a second point worth weighing, which is the rate of reinforcement during the high probability run, since rate and not order is what builds persistence.';
+  window.ClickClackMock = {
+    keep: async (r) => { window.__kept.push(r); return { ok: true, corpus: 'Kept.', expert: 'Queued.' }; },
+    askClaude: async (req) => {
+      window.__calls.push(req);
+      if (req.schema.properties.records) return { ok: true, output: { records: [{ title: 'Rate builds persistence', rule: 'Reinforcement rate during the run sets persistence.', applies: 'when a note describes high-p requests', topic: 'behavioral-momentum' }] } };
+      return { ok: true, output: { stance: 'adds a consideration', title: 'Rate \u2014 not order', passage: long, sources: [{ claim: 'Rate drives persistence', source: 'Nevin (1992)' }], respond: 'How would you raise the rate in session?' } };
+    },
+    expertStatus: async () => ({ connected: true, queued: 1, note: 'Connected.' }),
+    expertRecords: async () => ({ ok: true, records: [{ title: 'Momentum before the hard ask', rule: 'High probability requests build momentum before the demand.', topic: 'behavioral-momentum' }] }),
+    expertQueue: async () => ({ items: window.__kept.map((k) => ({ at: k.at, question: k.question, answer: k.text, mode: k.mode })) }),
+    expertPropose: async (record) => { window.__proposed.push(record); return { ok: true, proposalId: 'pr_b' }; },
+    expertSent: async (stamps) => { window.__sent.push(...stamps); return { ok: true, queued: 0 }; },
+  };
+};
+
+test('baton pass: keeps the answer, ingests it in the background, and the expert\'s reply is the next passage to copy, then respond', async ({ page }) => {
+  await page.addInitScript(BATON_MOCK);
+  await page.addInitScript(() => localStorage.setItem('noaba.drills.settings.v1', JSON.stringify({ mode: 'copy', copyDefault: true })));
+  await page.goto('/index.html?clock=1');
+  await wordsReady(page);
+  await page.locator('[data-drill-start]').click();
+  const box = page.locator('[data-drill-box]');
+  await box.pressSequentially('The ', { delay: 10 });
+  await done(page);
+  await expect(page.locator('[data-drill-baton]')).toBeHidden();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-mode', 'respond');
+  await box.pressSequentially('the high probability run builds momentum before the demand ', { delay: 10 });
+  await done(page);
+  await expect(page.locator('[data-drill-baton]')).toBeVisible();
+  await page.keyboard.press('b');
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-mode', 'copy', { timeout: 10000 });
+  await expect(page.locator('[data-drill-passage]')).toContainText('rate and not order');
+  await expect(page.locator('[data-drill-category]')).toContainText('baton pass 1');
+  await expect(page.locator('[data-drill-bullets]')).toContainText('The expert, adds a consideration, with 1 of its records');
+  const out = await page.evaluate(() => ({ kept: window.__kept, calls: window.__calls, sent: window.__sent, proposed: window.__proposed }));
+  expect(out.kept).toHaveLength(1);
+  expect(out.kept[0].mode).toBe('respond');
+  const batonCall = out.calls.find((c) => c.schema.properties.passage);
+  expect(batonCall.webSearch).toBe(true);
+  expect(batonCall.prompt).toContain('builds momentum before the demand');
+  expect(batonCall.prompt).toContain('Momentum before the hard ask');
+  await expect.poll(() => page.evaluate(() => window.__sent.length)).toBe(1);
+  // Copy the expert's reply, then respond to its question, with its sources beside it.
+  const text = (await page.locator('[data-drill-passage]').textContent()).trim();
+  await box.pressSequentially(text.split(/\s+/).slice(0, 3).join(' ') + ' ', { delay: 8 });
+  await done(page);
+  await expect(page.locator('[data-drill-keep]')).toBeHidden();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('[data-drill-q]')).toHaveText('How would you raise the rate in session?');
+  await expect(page.locator('[data-drill-bullets]')).toContainText('Nevin (1992)');
+  await expect(page.locator('[data-drill-category]')).toContainText('respond · baton pass 1');
 });

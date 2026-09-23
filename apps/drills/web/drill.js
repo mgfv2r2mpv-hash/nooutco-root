@@ -21,7 +21,8 @@ import { createCalendar, renderTrophies } from "./calendar.js";
 import { handOf, judge, createShiftTracker, createShiftFx } from "./shift.js";
 import { nextPassage, trickyProfile, describeProfile } from "./passages.js";
 import { renderPassage, markPassage } from "./copy.js";
-import { ORACLE_SYSTEM, ORACLE_SCHEMA, oraclePrompt, readOracle, DRAFT_SYSTEM, DRAFT_SCHEMA, draftPrompt, toProposal } from "./oracle.js";
+import { ORACLE_SYSTEM, ORACLE_SCHEMA, oraclePrompt, readOracle, DRAFT_SYSTEM, DRAFT_SCHEMA, draftPrompt, toProposal,
+  BATON_SYSTEM, BATON_SCHEMA, batonPrompt, readBaton, batonWords, relevantRecords } from "./oracle.js";
 
 const params = new URLSearchParams(location.search);
 // ?clock=SECONDS overrides the minute picker: tests, and a quick look.
@@ -48,7 +49,7 @@ const els = {
   opens: $$("[data-drill-open]"), modes: $$("[data-drill-mode]"), lede: $("[data-drill-lede]"),
   passage: $("[data-drill-passage]"), ref: $("[data-drill-ref]"), refText: $("[data-drill-ref-text]"),
   cont: $("[data-drill-continue]"), working: $("[data-drill-working]"),
-  oracleTopic: $("[data-drill-oracle-topic]"), oracleOnly: $$("[data-oracle-only]"), mic: $("[data-drill-mic]"),
+  oracleTopic: $("[data-drill-oracle-topic]"), oracleOnly: $$("[data-oracle-only]"), mic: $("[data-drill-mic]"), baton: $("[data-drill-baton]"),
   send: $("[data-drill-send]"), expertStatus: $("[data-drill-expert-status]"), expertToken: $("[data-drill-expert-token]"),
   expertConnect: $("[data-drill-expert-connect]"), expertSend: $("[data-drill-expert-send]"), expertLog: $("[data-drill-expert-log]"),
 };
@@ -69,7 +70,12 @@ const state = {
   // The oracle: its topic, the turns so far ({ question, answer }), and this turn's reply.
   // listening/spoken: the microphone is on / this round holds words he TALKED.
   oracle: null, busy: false, listening: false, spoken: false, micBase: "",
+  // The baton pass: how many times this chain has gone to the expert and back.
+  baton: 0,
 };
+// Kept answers being drafted right now, by their `at` stamp, so a baton
+// pass in the background and the Send button never propose the same one twice.
+const inFlight = new Set();
 
 const garden = createGarden($("[data-garden]"), { column: 900 });
 let heat = createHeat();
@@ -134,11 +140,11 @@ function setMinutes(m, save = true) {
 }
 const LEDES = {
   answer: "One clinical question. One to five minutes, as fast and as clean as you can. The garden grows with every word, and warms when you fly.",
-  copy: "Copy a passage from the field for the clock you pick, word for word, then answer it in your own words for a minute. Keep going if you have more to say.",
+  copy: "Copy a passage from the field for the clock you pick, word for word, then answer it in your own words for a minute. Keep going if you have more to say, or pass the baton: the expert answers you with the next passage.",
   oracle: "The oracle shares a little of its thinking and asks you one question. Answer for a minute, typing or talking. Return asks the follow-up; what you keep goes to the expert.",
 };
 function setMode(mode, save = true) {
-  const m = LEDES[mode] ? mode : "answer";
+  const m = LEDES[mode] ? mode : "copy";
   for (const b of els.modes) b.classList.toggle("is-on", b.dataset.drillMode === m);
   els.lede.textContent = LEDES[m];
   for (const n of els.oracleOnly) n.hidden = m !== "oracle";
@@ -173,6 +179,7 @@ function home() {
 /* ---- arm ---------------------------------------------------------------- */
 /* A new drill: a bank question, or a passage to copy. */
 function arm() {
+  state.baton = 0;
   if (data.settings.mode === "oracle") { armOracle(false); return; }
   if (data.settings.mode === "copy") {
     const recent = data.history.filter((h) => h.mode === "copy").map((h) => h.passage);
@@ -194,7 +201,7 @@ function arm() {
 /* Copy: the passage for the picked clock, word for word. Never kept. */
 function armCopy(passage) {
   state.passage = passage;
-  state.item = { id: passage.id, outline: passage.outline, tag: passage.kind === "take" ? "the drill's take" : "study", question: passage.title, bullets: [] };
+  state.item = { id: passage.id, outline: passage.outline, tag: passage.kind === "baton" ? `baton pass ${state.baton}` : passage.kind === "take" ? "the drill's take" : "study", question: passage.title, bullets: [] };
   startRound("copy", state.minutes, null);
 }
 
@@ -202,7 +209,9 @@ function armCopy(passage) {
 function armRespond() {
   const p = state.passage;
   if (!p) { arm(); return; }
-  state.item = { id: p.id, outline: p.outline, tag: "respond", question: p.respond, bullets: [] };
+  // A baton passage carries the expert's sources; they sit beside the question.
+  const bullets = (p.sources || []).map((x) => ({ text: x.claim, source: x.source }));
+  state.item = { id: p.id, outline: p.outline, tag: p.kind === "baton" ? `respond · baton pass ${state.baton}` : "respond", question: p.respond, bullets };
   startRound("respond", 1, null);
 }
 
@@ -298,36 +307,100 @@ async function connectExpert() {
   els.expertToken.value = "";
   await renderExpert();
 }
+/* Draft records from kept answers and propose them. `progress` is told which
+   answer is being read; the baton pass runs this in the background with none. */
+async function draftAndPropose(items, progress = () => {}) {
+  let read = 0, staged = 0;
+  const dropped = [], sent = [];
+  const todo = items.filter((e) => e && e.at && !inFlight.has(e.at));
+  todo.forEach((e) => inFlight.add(e.at));
+  try {
+    for (const entry of todo) {
+      progress(read, todo.length);
+      const r = await store.askClaude({ system: DRAFT_SYSTEM, prompt: draftPrompt(entry), schema: DRAFT_SCHEMA, webSearch: false })
+        .catch((e) => ({ ok: false, note: String(e) }));
+      if (!r || !r.ok) { dropped.push(r && r.note ? r.note : "no draft"); break; }
+      read += 1;
+      let allOk = true;
+      for (const d of (r.output && r.output.records) || []) {
+        const p = toProposal(d, entry);
+        if (p.error) { dropped.push(p.error); continue; }
+        const res = await store.expertPropose(p.record).catch((e) => ({ ok: false, note: String(e) }));
+        if (res && res.ok) staged += 1;
+        else { allOk = false; dropped.push((res && res.note) || "refused"); if (res && (res.status === 401 || res.status === 403)) break; }
+      }
+      if (allOk) sent.push(entry.at);
+    }
+    if (sent.length) await store.expertSent(sent);
+  } finally {
+    todo.forEach((e) => inFlight.delete(e.at));
+  }
+  return { read, staged, dropped, sent };
+}
+function expertReport({ read, staged, dropped }) {
+  return `${read} answer${read === 1 ? "" : "s"} read, ${staged} proposal${staged === 1 ? "" : "s"} staged.`
+    + (staged ? " Commit or reject them in the admin page, Knowledge tab." : "")
+    + (dropped.length ? ` Held back: ${[...new Set(dropped)].join("; ")}.` : "");
+}
 async function sendToExpert() {
   if (state.busy) return;
   const st = await renderExpert();
   if (!st.connected) { els.expertLog.textContent = st.note || "Not connected."; return; }
   const { items = [] } = await store.expertQueue();
-  let read = 0, staged = 0;
-  const dropped = [], sent = [];
-  for (const entry of items) {
-    busy(`Drafting from answer ${read + 1} of ${items.length}...`);
-    const r = await store.askClaude({ system: DRAFT_SYSTEM, prompt: draftPrompt(entry), schema: DRAFT_SCHEMA, webSearch: false })
-      .catch((e) => ({ ok: false, note: String(e) }));
-    if (!r || !r.ok) { dropped.push(r && r.note ? r.note : "no draft"); break; }
-    read += 1;
-    let allOk = true;
-    for (const d of (r.output && r.output.records) || []) {
-      const p = toProposal(d, entry);
-      if (p.error) { dropped.push(p.error); continue; }
-      const res = await store.expertPropose(p.record).catch((e) => ({ ok: false, note: String(e) }));
-      if (res && res.ok) staged += 1;
-      else { allOk = false; dropped.push((res && res.note) || "refused"); if (res && (res.status === 401 || res.status === 403)) break; }
-    }
-    if (allOk) sent.push(entry.at);
-  }
-  if (sent.length) await store.expertSent(sent);
+  const out = await draftAndPropose(items, (i, n) => busy(`Drafting from answer ${i + 1} of ${n}...`));
   busy("");
-  els.expertLog.textContent = `${read} answer${read === 1 ? "" : "s"} read, ${staged} proposal${staged === 1 ? "" : "s"} staged.`
-    + (staged ? " Commit or reject them in the admin page, Knowledge tab." : "")
-    + (dropped.length ? ` Held back: ${[...new Set(dropped)].join("; ")}.` : "");
+  els.expertLog.textContent = expertReport(out);
   els.keepnote.textContent = els.expertLog.textContent;
   await renderExpert();
+}
+
+/* ---- the baton pass -------------------------------------------------------
+   His ask: hand what he has to the expert, which ingests it in the background
+   and answers him, agreeing, fleshing out, or gently pushing back with the
+   research and what the expert holds. Its answer is his next passage to copy;
+   then he responds again in his own words. */
+async function batonPass() {
+  if (state.busy || state.phase !== "done" || state.mode !== "respond" || !state.passage) return;
+  const answer = els.box.value.trim();
+  if (!answer) return;
+  // 1. Keep it, so it is in the voice corpus and the expert queue.
+  if (!state.kept) await keep();
+  // 2. The ingestion runs on its own; the reply below does not wait for it.
+  if (state.kept) ingestInBackground(state.record.at);
+  // 3. The expert reads, and answers with the next passage.
+  busy("The expert is reading your answer and the research. This usually takes under a minute.");
+  const st = await store.expertStatus().catch(() => ({ connected: false }));
+  const listed = st.connected ? await store.expertRecords().catch(() => ({ ok: false })) : { ok: false };
+  const records = listed.ok ? relevantRecords(listed.records, `${state.passage.text} ${answer}`) : [];
+  const target = batonWords(data.history, state.minutes);
+  const turn = state.baton + 1;
+  const r = await store.askClaude({
+    system: BATON_SYSTEM, schema: BATON_SCHEMA, webSearch: true,
+    prompt: batonPrompt({ passage: state.passage, question: state.item.question, answer, records, words: target, weak: state.weak || [], turn }),
+  }).catch((e) => ({ ok: false, note: String(e) }));
+  const reply = r && r.ok ? readBaton(r.output, target) : null;
+  busy("");
+  if (!reply) {
+    els.keepnote.textContent = (r && r.note) || "The expert's reply could not be read. Your answer is kept.";
+    return;
+  }
+  state.baton = turn;
+  store.log(`baton ${turn}: ${reply.text.split(/\s+/).length} words, ${records.length} records, ${reply.sources.length} sources`);
+  armCopy({
+    id: `baton-${turn}`, kind: "baton", outline: state.passage.outline, title: reply.title, text: reply.text,
+    respond: reply.respond, sources: reply.sources,
+    source: `The expert, ${reply.stance}${records.length ? `, with ${records.length} of its records` : ""}`,
+  });
+}
+async function ingestInBackground(at) {
+  const st = await store.expertStatus().catch(() => ({ connected: false }));
+  if (!st.connected) return;
+  const { items = [] } = await store.expertQueue().catch(() => ({ items: [] }));
+  const mine = items.filter((e) => e.at === at);
+  if (!mine.length) return;
+  const out = await draftAndPropose(mine);
+  els.expertLog.textContent = `Baton pass: ${expertReport(out)}`;
+  renderExpert();
 }
 
 /* Keep going: the same question, the same box, a fresh clock. His ruling:
@@ -629,6 +702,8 @@ function render(s, st, prior) {
       ? `Keep sends ${state.cont ? "this answer, every round of it," : "this answer"} to your voice corpus (${state.spoken ? "spoken" : "drill"} register) and the expert queue.`
       : "This browser page keeps numbers only; the Mac app keeps text.";
   els.cont.hidden = copying;
+  els.baton.hidden = state.mode !== "respond";
+  els.baton.disabled = !hasWords;
   els.cont.disabled = !hasWords && !state.prefix;
   els.again.replaceChildren(copying ? "Respond · 1 min" : state.mode === "oracle" ? "Follow-up" : "Again", Object.assign(document.createElement("kbd"), { textContent: "return" }));
   showTab("drill");
@@ -862,6 +937,7 @@ els.send.addEventListener("click", sendToExpert);
 els.expertSend.addEventListener("click", sendToExpert);
 els.expertConnect.addEventListener("click", connectExpert);
 els.cont.addEventListener("click", continueRound);
+els.baton.addEventListener("click", batonPass);
 for (const b of els.modes) b.addEventListener("click", () => setMode(b.dataset.drillMode));
 els.home.addEventListener("click", home);
 els.keep.addEventListener("click", keep);
@@ -884,6 +960,7 @@ document.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !(inButton && e.target !== els.again)) { e.preventDefault(); again(); }
     else if (e.key.toLowerCase() === "k" && state.phase === "done") { e.preventDefault(); keep(); }
     else if (e.key.toLowerCase() === "c" && state.phase === "done") { e.preventDefault(); continueRound(); }
+    else if (e.key.toLowerCase() === "b" && state.phase === "done" && !els.baton.hidden) { e.preventDefault(); batonPass(); }
     else if (e.key === "Escape") { e.preventDefault(); home(); }
   }
 });
@@ -893,6 +970,9 @@ async function init() {
   Object.assign(data, loaded);
   const last = data.history.length ? data.history[data.history.length - 1].minutes : null;
   state.minutes = Number(data.settings.minutes) || last || 1;
+  // His ruling of 2026-09-23: copy, then respond is the default mode. Moved
+  // over once; after that the app opens on whatever mode he last picked.
+  if (!data.settings.copyDefault) { data.settings = { ...data.settings, mode: "copy", copyDefault: true }; store.saveSettings(data.settings); }
   setMode(data.settings.mode, false);
   renderExpert();
   renderChips();
@@ -904,4 +984,4 @@ async function init() {
 init();
 
 // For tests and a look under the hood; never for the page's own flow.
-window.NoteDrill = { state, data, BANK, scoreDrill, finish, known: () => knownNow(), garden, drawMap, renderBoard, openBoard, sendToExpert };
+window.NoteDrill = { state, data, BANK, scoreDrill, finish, known: () => knownNow(), garden, drawMap, renderBoard, openBoard, sendToExpert, batonPass };
