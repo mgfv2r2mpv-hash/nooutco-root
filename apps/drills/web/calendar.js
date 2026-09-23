@@ -96,7 +96,8 @@ export function renderTrophies(root, history) {
   const everything = trophyCase(history);
   const won = everything.filter((t) => t.unlocked).length;
   const nextOf = new Set();
-  for (const t of everything) if (!t.unlocked && ![...nextOf].some((id) => everything.find((x) => x.id === id).family === t.family)) nextOf.add(t.id);
+  // The next one in each family; a secret is never "next", it waits to be found.
+  for (const t of everything) if (!t.unlocked && !t.secret && ![...nextOf].some((id) => everything.find((x) => x.id === id).family === t.family)) nextOf.add(t.id);
   const all = showAll ? everything : everything.filter((t) => t.unlocked || nextOf.has(t.id));
   const top = h("div", "trophy-top");
   const sum = h("p", "trophy-sum", `${won} of ${everything.length} unlocked`);
@@ -116,16 +117,23 @@ export function renderTrophies(root, history) {
     mine.sort((a, b) => (!!b.unlocked - !!a.unlocked)
       || (a.unlocked && b.unlocked ? a.unlocked.localeCompare(b.unlocked) : b.have / b.need - a.have / a.need));
     for (const t of mine) {
-      const li = h("li", "trophy" + (t.unlocked ? " is-won" : ""));
+      const hidden = t.secret && !t.unlocked;
+      const li = h("li", "trophy" + (t.unlocked ? " is-won" : "") + (t.secret ? " is-secret" : ""));
       li.dataset.trophy = t.id;
       if (!t.unlocked && nextOf.has(t.id)) li.classList.add("is-next");
       li.appendChild(cup(!!t.unlocked));
       const body = h("div", "trophy-body");
-      body.appendChild(h("b", null, t.name));
-      body.appendChild(h("span", "trophy-cond", t.condition));
+      // A secret keeps its name and condition to itself until it is earned; the hint is all it gives.
+      body.appendChild(h("b", null, hidden ? "Secret" : t.name));
+      body.appendChild(h("span", "trophy-cond", hidden ? t.hint : t.condition));
       if (t.unlocked) {
         const when = new Date(t.unlocked);
         body.appendChild(h("span", "trophy-date", `Unlocked ${when.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`));
+      } else if (hidden) {
+        body.appendChild(h("span", "trophy-date", "Not found yet"));
+      } else if (t.need === 1) {
+        // A yes-or-no achievement has no halfway to show.
+        body.appendChild(h("span", "trophy-date", "Not yet"));
       } else {
         const bar = h("span", "trophy-bar");
         bar.style.setProperty("--p", String(Math.min(1, t.have / t.need)));
