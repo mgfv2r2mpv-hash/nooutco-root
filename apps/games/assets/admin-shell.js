@@ -38,7 +38,7 @@
     { key: "ffc",         glyph: "🏷️", label: "FFC Game",      href: "/AdminTools/FFCGManager/" },
     { key: "intraverbal", glyph: "💬",  label: "Intraverbal",   href: "/AdminTools/IntraverbalManager/" },
     { key: "sequences",   glyph: "🔁",  label: "Sequences",     href: "/AdminTools/SequencesManager/" },
-    { key: "famous",      glyph: "🧠",  label: "Famous Person", href: "/famous-person/" }
+    { key: "famous",      glyph: "🧠",  label: "Famous Person", href: "/AdminTools/FamousPersonManager/" }
   ];
 
   function el(tag, cls, text) {

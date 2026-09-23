@@ -50,3 +50,82 @@ test.describe('Red Carpet Convos', () => {
     await expect(card.getByText('Red Carpet Convos')).toBeVisible();
   });
 });
+
+// Roster integrity. The game only surfaces people flagged converted, so a
+// malformed entry does not crash anything: it plays a broken card mid-session.
+// These checks read people.json directly so every live person is covered.
+const FACT_FIELDS = ['text', 'topic', 'say', 'sayShort', 'ask', 'askYou', 'bridge'];
+const DASHES = /[–—]/;
+
+test.describe('Red Carpet Convos roster', () => {
+  test('every live person has four complete facts', async ({ request }) => {
+    const res = await request.get('/red-carpet-convos/people.json');
+    expect(res.ok()).toBe(true);
+    const live = (await res.json()).people.filter((p) => p.converted === true);
+    const problems = [];
+    const seen = new Set();
+    for (const p of live) {
+      if (seen.has(p.name)) problems.push(`${p.name}: listed twice`);
+      seen.add(p.name);
+      for (const k of ['name', 'years', 'tag', 'emoji', 'img']) {
+        if (typeof p[k] !== 'string' || !p[k].trim()) problems.push(`${p.name}: no ${k}`);
+      }
+      if (!Array.isArray(p.facts) || p.facts.length !== 4) {
+        problems.push(`${p.name}: ${p.facts?.length ?? 0} facts`);
+        continue;
+      }
+      p.facts.forEach((f, i) => {
+        for (const k of FACT_FIELDS) {
+          const v = f[k];
+          if (typeof v !== 'string') problems.push(`${p.name} fact ${i + 1}: no ${k}`);
+          else if (k === 'bridge' && i === 0 ? v !== '' : !v.trim()) problems.push(`${p.name} fact ${i + 1}: bad ${k}`);
+          else if (DASHES.test(v)) problems.push(`${p.name} fact ${i + 1}: dash in ${k}`);
+        }
+      });
+    }
+    expect(live.length).toBeGreaterThan(0);
+    expect(problems).toEqual([]);
+  });
+
+  test('every live person has a portrait that is an image', async ({ request, browserName }) => {
+    // One browser is enough: this reads files over HTTP and never renders.
+    test.skip(browserName !== 'chromium', 'network-only check');
+    test.setTimeout(120_000);
+    const live = (await (await request.get('/red-carpet-convos/people.json')).json()).people.filter((p) => p.converted === true);
+    const notImages = [];
+    for (let i = 0; i < live.length; i += 20) {
+      await Promise.all(live.slice(i, i + 20).map(async (p) => {
+        // A missing portrait falls through to the SPA fallback as 200 text/html,
+        // so the content type is the real signal, not the status.
+        const r = await request.get(p.img);
+        const type = r.headers()['content-type'] || '';
+        if (!r.ok() || !type.startsWith('image/')) notImages.push(`${p.name}: ${r.status()} ${type}`);
+      }));
+    }
+    expect(notImages).toEqual([]);
+  });
+});
+
+// The older Famous Person Game is retired in favour of Red Carpet Convos. Its
+// page visits are sent on, but its files stay: the ImageManager fetches the page
+// for the portrait roster, and the portraits live under its folder.
+test.describe('Retired Famous Person Game', () => {
+  test('a visit to the old game lands on Red Carpet Convos', async ({ page }) => {
+    await page.goto('/famous-person/');
+    await expect(page).toHaveURL(/\/red-carpet-convos\/$/);
+    await page.goto('/FamousPersonGame/');
+    await expect(page).toHaveURL(/\/red-carpet-convos\/$/);
+  });
+
+  test('the games hub no longer links to it', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('a.card[href="./red-carpet-convos/"]')).toBeVisible();
+    await expect(page.locator('a[href*="famous-person"]')).toHaveCount(0);
+  });
+
+  test('a fetch still reads the old roster page for the ImageManager', async ({ page }) => {
+    await page.goto('/');
+    const html = await page.evaluate(async () => (await fetch('/FamousPersonGame/index.html')).text());
+    expect(html).toContain('const PEOPLE = [');
+  });
+});
