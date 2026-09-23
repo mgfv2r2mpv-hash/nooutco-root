@@ -162,3 +162,80 @@ test('escape leaves a drill without scoring it', async ({ page }) => {
   await page.waitForTimeout(3500);
   expect(await page.evaluate(() => localStorage.getItem('noaba.drills.v1'))).toBeNull();
 });
+
+/* ---- round two ----------------------------------------------------------- */
+
+test('possessives and contractions are not flagged at the space', async ({ page }) => {
+  await page.goto('/index.html?clock=4');
+  await wordsReady(page);
+  await page.locator('[data-drill-start]').click();
+  await page.locator('[data-drill-box]').pressSequentially("the gambler's fallacy, don't chase it ", { delay: 12 });
+  await expect(page.locator('[data-drill-live]')).toHaveText('');
+});
+
+test('a same-side Shift paints the correct side and flashes the key on its own side; an opposite Shift cheers', async ({ page }) => {
+  await page.goto('/index.html?clock=4');
+  await page.locator('[data-drill-start]').click();
+  const box = page.locator('[data-drill-box]');
+  await box.focus();
+  // T is a left-hand key. Left Shift + T is same-side: the RIGHT side gets the watercolour Shift.
+  await page.keyboard.down('ShiftLeft');
+  await page.keyboard.press('KeyT');
+  await page.keyboard.up('ShiftLeft');
+  await expect(page.locator('[data-sidefx]')).toHaveAttribute('data-last-shift', 'same');
+  await expect(page.locator('[data-side="R"] svg.wc-shift')).toHaveCount(1);
+  await expect(page.locator('[data-side="R"]')).toHaveClass(/is-warn/);
+  await expect(page.locator('[data-side="L"] .fx-key')).toHaveText('T');
+  // Right Shift + T is the opposite hand: a small cheer on the right.
+  await page.keyboard.down('ShiftRight');
+  await page.keyboard.press('KeyT');
+  await page.keyboard.up('ShiftRight');
+  await expect(page.locator('[data-sidefx]')).toHaveAttribute('data-last-shift', 'ok');
+  await expect(page.locator('[data-side="R"] svg.fx-glyph')).toHaveCount(1);
+  await done(page);
+  await expect(page.locator('[data-drill-timing]')).toContainText('1 of 2 capitals with the opposite Shift');
+});
+
+test('Option+Backspace is logged as a revision, not an error', async ({ page }) => {
+  await page.goto('/index.html?clock=4');
+  await wordsReady(page);
+  await page.locator('[data-drill-start]').click();
+  const box = page.locator('[data-drill-box]');
+  await box.pressSequentially('the child ran', { delay: 12 });
+  await box.press('Alt+Backspace');
+  await expect(box).toHaveValue('the child ');
+  await box.pressSequentially('walked', { delay: 12 });
+  await done(page);
+  await expect(page.locator('[data-drill-errors]')).toHaveText('0');
+  await expect(page.locator('[data-drill-timing]')).toContainText('1 revision with Option or Command+Backspace');
+  const rec = await page.evaluate(() => window.NoteDrill.data.history.at(-1));
+  expect(rec.revisions).toBe(1);
+  expect(rec.habits.wordDeletes).toBe(1);
+});
+
+test('the calendar shows each day with its numbers, badge and streak banner; trophies show dates and conditions', async ({ page }) => {
+  await page.addInitScript(() => {
+    const now = new Date();
+    const at = (back, h) => { const d = new Date(now); d.setDate(d.getDate() - back); d.setHours(h, 0, 0, 0); return d.toISOString(); };
+    const rec = (back, h, nwam) => ({ at: at(back, h), minutes: 1, seconds: 60, nwam, gwam: nwam + 6, accuracy: 0.98, words: nwam + 6, outline: 'A.1', itemId: 'x', keys: {} });
+    localStorage.setItem('noaba.drills.v1', JSON.stringify([rec(2, 9, 40), rec(1, 9, 44), rec(1, 10, 48), rec(0, 8, 52)]));
+  });
+  await page.goto('/index.html');
+  await expect(page.locator('[data-stat-streak]')).toHaveText('3 days in a row');
+  await expect(page.locator('[data-stat-today]')).toHaveText('1 today');
+  await page.locator('.row [data-drill-open="calendar"]').click();
+  const today = await page.evaluate(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; });
+  const cell = page.locator(`[data-cal-day="${today}"]`).first();
+  await expect(cell.locator('.cal-nwam')).toHaveText('52');
+  await expect(cell.locator('.cal-gwam')).toHaveText('58 gross');
+  await expect(cell.locator('[data-cal-count]')).toHaveText('1');
+  await expect(page.locator('[data-cal-summary]')).toContainText('3 days in a row');
+  // The banner under the three days, labelled where it starts (it may wrap a week).
+  await expect(page.locator('[data-cal-banner="3"]').first()).toBeVisible();
+  await page.locator('[data-tab="trophies"]').click();
+  const won = page.locator('[data-trophy="streak-3"]');
+  await expect(won).toHaveClass(/is-won/);
+  await expect(won).toContainText('Drill 3 days in a row.');
+  await expect(won).toContainText('Unlocked');
+  await expect(page.locator('[data-trophy="streak-7"]')).toContainText('3 of 7');
+});

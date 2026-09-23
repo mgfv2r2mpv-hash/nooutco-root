@@ -15,7 +15,10 @@ import { emptiestCell, render as renderMap } from "./map.js";
 import { itemById, ITEMS } from "./outline.js";
 import * as store from "./store.js";
 import { createGarden, createHeat } from "./ornament.js";
-import { bests, streak, sitting, ladder, stars, keyTrends, keyboardRates, lineChart, sparkline, keyboard } from "./panel.js";
+import { bests, streak, sitting, ladder, stars, keyTrends, keyboardRates, lineChart, sparkline, keyboard, dayOf } from "./panel.js";
+import { trophyCase, newlyUnlocked } from "./trophies.js";
+import { createCalendar, renderTrophies } from "./calendar.js";
+import { handOf, judge, createShiftTracker, createShiftFx } from "./shift.js";
 
 const params = new URLSearchParams(location.search);
 // ?clock=SECONDS overrides the minute picker: tests, and a quick look.
@@ -26,7 +29,8 @@ const $$ = (sel) => [...document.querySelectorAll(sel)];
 const root = $("main.drill");
 const els = {
   setup: $("[data-drill-setup]"), start: $("[data-drill-start]"), mins: $$("[data-drill-minutes]"), pb: $("[data-drill-pb]"),
-  streak: $("[data-stat-streak]"), sitting: $("[data-stat-sitting]"),
+  streak: $("[data-stat-streak]"), sitting: $("[data-stat-sitting]"), today: $("[data-stat-today]"), trophyChip: $("[data-stat-trophies]"),
+  calendar: $("[data-drill-calendar]"), trophies: $("[data-drill-trophies]"), unlocked: $("[data-drill-unlocked]"), think: $("[data-drill-think]"),
   question: $("[data-drill-question]"), category: $("[data-drill-category]"), q: $("[data-drill-q]"), bullets: $("[data-drill-bullets]"),
   clock: $("[data-drill-clock]"), wpm: $("[data-drill-wpm]"), combo: $("[data-drill-combo]"), hint: $("[data-drill-hint]"), box: $("[data-drill-box]"),
   raceYou: $("[data-race-you]"), raceGhost: $("[data-race-ghost]"), raceNote: $("[data-race-note]"), live: $("[data-drill-live]"),
@@ -48,10 +52,14 @@ let bankSet = bankWords();
 const state = {
   phase: "idle", minutes: 1, item: null, events: [], t0: 0, deadline: 0, timer: 0, score: null,
   flagged: [], combo: 0, bestCombo: 0, backspaceInWord: false, record: null, kept: false,
+  pendingDelete: null, bsRun: 0, coached: false,
 };
 
 const garden = createGarden($("[data-garden]"), { column: 900 });
 let heat = createHeat();
+const shiftKeys = createShiftTracker();
+const shiftFx = createShiftFx($("[data-sidefx]"));
+const calendar = createCalendar(els.calendar);
 
 /* ---- the word list ------------------------------------------------------ */
 function known() {
@@ -104,6 +112,12 @@ function renderChips() {
   els.streak.textContent = s ? `${s} day${s === 1 ? "" : "s"} in a row` : "";
   const n = sitting(data.history);
   els.sitting.textContent = n ? `round ${n + (state.phase === "idle" ? 1 : 0)} this sitting` : "";
+  const today = dayOf(new Date().toISOString());
+  const t = data.history.filter((h) => h && h.at && dayOf(h.at) === today).length;
+  els.today.textContent = t ? `${t} today` : "";
+  const won = trophyCase(data.history).filter((x) => x.unlocked).length;
+  els.trophyChip.textContent = won ? `${won} trophies` : "";
+  els.trophyChip.hidden = !won;
 }
 function home() {
   clearTimeout(state.timer);
@@ -112,6 +126,7 @@ function home() {
   els.question.hidden = true;
   els.results.hidden = true;
   garden.reset(); garden.cool();
+  shiftFx.clear();
   setMinutes(state.minutes, false);
   renderChips();
   els.start.focus();
@@ -125,6 +140,8 @@ function arm() {
   state.item = nextItem(recent, Math.random, cell);
   state.events = []; state.score = null; state.flagged = []; state.combo = 0; state.bestCombo = 0;
   state.backspaceInWord = false; state.record = null; state.kept = false;
+  state.pendingDelete = null; state.bsRun = 0; state.coached = false;
+  shiftKeys.clear(); shiftFx.clear();
   const ol = itemById(state.item.outline);
   els.category.textContent = `${state.item.tag} · BACB ${state.item.outline}`;
   els.category.title = ol ? ol.text : "";
@@ -151,6 +168,13 @@ function arm() {
 function onKeydown(e) {
   if (e.key === "Escape") { e.preventDefault(); home(); return; }
   if (state.phase === "done") { e.preventDefault(); return; }
+  // Option+Backspace (a word) and Command+Backspace (the line): a change of
+  // mind. The box does the delete; onInput logs how much it took.
+  if (e.key === "Backspace" && (e.altKey || e.metaKey) && state.phase === "running") {
+    state.pendingDelete = { t: performance.now() - state.t0, len: els.box.value.length, via: e.metaKey ? "line" : "word" };
+    state.bsRun = 0;
+    return;
+  }
   if (e.metaKey || e.ctrlKey || e.altKey) { if (e.key.toLowerCase() === "v") e.preventDefault(); return; }
   let kind = null, key;
   if (e.key === "Backspace") kind = "backspace";
@@ -159,9 +183,11 @@ function onKeydown(e) {
   if (!kind) return; // arrows, Shift alone, Tab: not typing
   if (state.phase === "armed") start();
   const t = performance.now() - state.t0;
-  state.events.push(kind === "char" ? { t, kind, key } : { t, kind });
-  if (kind === "backspace") state.backspaceInWord = true;
-  else heat.press(t);
+  const ev = kind === "char" ? { t, kind, key } : { t, kind };
+  if (kind === "char" && e.shiftKey) shiftCheck(e, ev);
+  state.events.push(ev);
+  if (kind === "backspace") { state.backspaceInWord = true; state.bsRun += 1; }
+  else { coachDelete(); heat.press(t, kind === "enter" ? "\n" : key); }
   // Read the closing word NOW, at keydown, before the boundary key lands: a
   // deferred read races a fast typist, who is already into the next word.
   if (kind === "enter" || (kind === "char" && /[\s.,;:!?)]/.test(key))) boundary(els.box.value.slice(0, els.box.selectionStart));
@@ -172,10 +198,10 @@ function onKeydown(e) {
    unknown one is named under the box. A clean known word feeds the combo. */
 function boundary(textBeforeCaret) {
   const before = textBeforeCaret.replace(/[\s.,;:!?)]+$/, "");
-  const m = before.match(/([A-Za-z][A-Za-z'-]*)$/);
+  const m = before.match(/([A-Za-z][A-Za-z'\u2019-]*)$/);
   if (!m) return;
   const tok = m[1];
-  const w = tok.toLowerCase().replace(/^'+|'+$/g, "");
+  const w = tok.toLowerCase().replace(/\u2019/g, "'").replace(/^'+|-+$/g, "");
   const dict = knownNow();
   const unknown = dict && !/^[A-Z]/.test(tok) && w && !isKnown(w, dict);
   if (unknown && !state.flagged.includes(w)) {
@@ -191,6 +217,39 @@ function boundary(textBeforeCaret) {
   els.combo.textContent = `${state.combo} clean`;
   if (state.combo && state.combo % 10 === 0) { els.combo.classList.remove("pop"); void els.combo.offsetWidth; els.combo.classList.add("pop"); }
 }
+/* Shift side: which Shift is down, which hand owns the key. */
+function shiftCheck(e, ev) {
+  const side = shiftKeys.side(e);
+  const hand = handOf(e.code);
+  if (!side || !hand) return;
+  ev.shift = side; ev.hand = hand;
+  const j = judge(side, hand);
+  if (j === "same") shiftFx.same(hand, e.key);
+  else if (j === "ok") shiftFx.ok(side);
+}
+function onShiftKey(e) { shiftKeys.key(e); }
+
+/* A word backspaced letter by letter, back to a space: once a drill, say so. */
+function coachDelete() {
+  const run = state.bsRun;
+  state.bsRun = 0;
+  if (state.coached || run < 3) return;
+  const before = els.box.value.slice(0, els.box.selectionStart);
+  if (before && !/\s$/.test(before)) return;
+  state.coached = true;
+  els.hint.textContent = "Changing a word? Option+Backspace takes the whole word in one stroke.";
+}
+
+/* After an Option or Command delete, log one backspace per character it took. */
+function onInput() {
+  const p = state.pendingDelete;
+  if (!p) return;
+  state.pendingDelete = null;
+  const n = p.len - els.box.value.length;
+  for (let i = 0; i < n; i++) state.events.push({ t: p.t, kind: "backspace", via: p.via });
+  state.backspaceInWord = false;
+}
+
 function onPaste(e) { e.preventDefault(); els.hint.textContent = "Paste is off: this is a typing drill."; }
 
 /* ---- the clock ------------------------------------------------------------- */
@@ -239,13 +298,19 @@ async function finish() {
     at: new Date().toISOString(), itemId: state.item.id, outline: state.item.outline, minutes: state.minutes,
     seconds: secondsFor(), gwam: s.gwam, nwam: s.nwam, accuracy: s.accuracy, rating: s.rating.name,
     corrections: s.corrections, uncorrected: s.uncorrected, words: s.grossWords, bestCombo: state.bestCombo,
-    keys: s.keys, kept: false,
+    keys: s.keys, kept: false, revisions: s.revisions,
+    habits: { wordByHand: s.habits.wordByHand, wordDeletes: s.habits.wordDeletes, lineDeletes: s.habits.lineDeletes },
+    shift: s.shift,
+    think: { ms: s.think.ms, count: s.think.count, sentence: s.think.sentence, clause: s.think.clause, word: s.think.word, mid: s.think.mid, flowWpm: s.think.flowWpm },
+    lexicon: data.lexicon.length,
   };
   const st = stars(s, prior, state.minutes);
+  const before = trophyCase(prior);
   if (s.gwam > 0) {
     data.history.push(state.record);
     store.saveHistory(data.history);
   }
+  state.unlocked = s.gwam > 0 ? newlyUnlocked(before, trophyCase(data.history)) : [];
   store.log(`drill ${state.item.id} ${state.minutes}m nwam ${s.nwam} acc ${s.accuracy}`);
   render(s, st, prior);
 }
@@ -278,6 +343,8 @@ function render(s, st, prior) {
   if (s.timing.punctuationMs) tm.push(`${s.timing.punctuationMs} ms on punctuation`);
   if (s.timing.pauses) tm.push(`${s.timing.pauses} pause${s.timing.pauses === 1 ? "" : "s"} over two seconds`);
   for (const p of s.timing.slowPairs) tm.push(`${p.pair} runs slow: ${p.ms} ms`);
+  if (s.shift.ok + s.shift.same) tm.push(`${s.shift.ok} of ${s.shift.ok + s.shift.same} capitals with the opposite Shift`);
+  if (s.revisions) tm.push(`${s.revisions} revision${s.revisions === 1 ? "" : "s"} with Option or Command+Backspace`);
   els.timing.replaceChildren(...(tm.length ? tm.map(li) : [li("Not enough keys to read a rhythm.")]));
   els.tips.replaceChildren(...(s.tips.length ? s.tips.map((t) => {
     const n = document.createElement("li");
@@ -286,6 +353,8 @@ function render(s, st, prior) {
     n.append(b, w);
     return n;
   }) : [li("Nothing fired. Same form, faster, next time.")]));
+  els.think.textContent = thinkText(s);
+  renderUnlocked(state.unlocked || []);
   renderReview(s);
   renderBoard();
   els.keep.disabled = !(s.gwam > 0);
@@ -300,6 +369,33 @@ function render(s, st, prior) {
   renderChips();
   els.again.focus();
 }
+/* The thinking, read apart from the typing. NWAM keeps the thinking in, as a
+   real note's fifteen minutes do; flow speed is the fingers alone. */
+function thinkText(s) {
+  const k = s.think;
+  if (!k.count) return `No stops over two seconds: you typed straight through at ${Math.round(s.gwam)} gross.`;
+  const where = [
+    k.sentence && `${k.sentence} at the end of a sentence`, k.clause && `${k.clause} after a comma`,
+    k.word && `${k.word} between words`, k.mid && `${k.mid} inside a word`,
+  ].filter(Boolean).join(", ");
+  const planned = k.sentence + k.clause;
+  const read = planned >= k.word + k.mid
+    ? "Most of your thinking landed between ideas, which is where a note wants it."
+    : "More of your stops fell mid-sentence than between ideas; try settling the next point at the full stop, then typing it through.";
+  return `You stopped to think ${k.count} time${k.count === 1 ? "" : "s"}, ${Math.round(k.ms / 1000)} seconds in all: ${where}. While typing you ran ${Math.round(k.flowWpm)} gross words a minute. ${read}`;
+}
+function renderUnlocked(list) {
+  els.unlocked.hidden = !list.length;
+  els.unlocked.replaceChildren(...list.map((t) => {
+    const n = document.createElement("span");
+    n.className = "unlocked";
+    n.dataset.unlocked = t.id;
+    const b = document.createElement("b"); b.textContent = t.name;
+    n.append("Trophy: ", b, ` · ${t.condition}`);
+    return n;
+  }));
+}
+
 function star(on, label) { const n = document.createElement("span"); n.className = "star" + (on ? " on" : ""); n.textContent = label; return n; }
 
 function renderReview(s) {
@@ -370,6 +466,8 @@ function renderBoard() {
     return n;
   }) : [li("No key has cost you a correction yet. Keep typing and this fills in.")]));
   drawMap();
+  calendar.render(data.history);
+  renderTrophies(els.trophies, data.history);
 }
 function trendText(hist) {
   if (hist.length < 2) return "A few more drills and this reads your trend.";
@@ -433,6 +531,9 @@ async function keep() {
     at: state.record.at, itemId: state.item.id, outline: state.item.outline, question: state.item.question,
     minutes: state.minutes, seconds: secondsFor(), text: els.box.value,
     nwam: state.score.nwam, gwam: state.score.gwam, accuracy: state.score.accuracy,
+    // Where he stopped to think, by character offset: the expert can read
+    // what came right before each stop as what he was deciding.
+    pauses: state.score.think.stops, revisions: state.score.revisions,
   }).catch((e) => ({ ok: false, note: String(e) }));
   if (r && r.ok) {
     state.kept = true;
@@ -454,6 +555,10 @@ els.home.addEventListener("click", home);
 els.keep.addEventListener("click", keep);
 for (const b of els.opens) b.addEventListener("click", () => openBoard(b.dataset.drillOpen));
 for (const t of els.tabs) t.addEventListener("click", () => showTab(t.dataset.tab));
+els.box.addEventListener("keydown", onShiftKey);
+els.box.addEventListener("keyup", onShiftKey);
+els.box.addEventListener("blur", () => shiftKeys.clear());
+els.box.addEventListener("input", onInput);
 els.box.addEventListener("keydown", onKeydown);
 els.box.addEventListener("paste", onPaste);
 document.addEventListener("keydown", (e) => {
@@ -483,4 +588,4 @@ async function init() {
 init();
 
 // For tests and a look under the hood; never for the page's own flow.
-window.NoteDrill = { state, data, BANK, scoreDrill, finish, known: () => knownNow(), garden, drawMap };
+window.NoteDrill = { state, data, BANK, scoreDrill, finish, known: () => knownNow(), garden, drawMap, renderBoard, openBoard };
