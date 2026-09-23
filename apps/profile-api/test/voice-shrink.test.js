@@ -799,3 +799,48 @@ test("ENGAGEMENT MOVES within_cv AND NOT hedging: the same two notes, weighted a
   assert.equal(hFull.evidence, "all");
   assert.equal(hThin.value, hFull.value);
 });
+
+
+/* ── PASS THREE, his ruling 2026-09-22: CAP THE GREAT-DAY LIFT AT THE HOUSE SPREAD ──
+ *
+ * Shown on synthetic authors: two authors at the same mean 0.55 landed at 0.70
+ * (own sd 0.15) and 0.99 (own sd 0.45) by n = 40, because the great-day term
+ * is mean + w * own sd and the sums cannot tell scatter from range. His ruling:
+ * offset = w * min(author sd, house within sd). Scatter beyond what the house
+ * itself shows buys no extra lift.
+ */
+
+test("a scattered author's great-day lift is capped at the house within-note sd; a consistent one's is untouched", () => {
+  const houseWithin = Math.sqrt(housePrior("actor_naming").within_var); // 0.3
+  const tight = authorTarget("actor_naming", rowFor(0.55, 0.15));
+  const wide = authorTarget("actor_naming", rowFor(0.55, 0.45));
+  // Below the cap: the offset is w * own sd, as in pass one.
+  near(tight.offset, tight.w * 0.15, 1e-9);
+  // Above it: the offset is w * house within sd, not w * 0.45.
+  near(wide.offset, wide.w * houseWithin, 1e-9);
+  assert.ok(wide.offset < wide.w * 0.45, "the cap must bite");
+  assert.equal(wide.capped, true);
+  assert.equal(tight.capped, false);
+});
+
+test("at the cap the two authors from his card land at 0.700 and 0.843 by n = 40, not 0.700 and 0.986", () => {
+  const row = (m, s, n) => ({ n, sum: n * m, sum_sq: s * s * (n - 1) + n * m * m });
+  const tight = authorTarget("actor_naming", row(0.55, 0.15, 40));
+  const wide = authorTarget("actor_naming", row(0.55, 0.45, 40));
+  // By hand: w = 40/41 = 0.97561. Tight: offset 0.97561 * 0.15 = 0.146341,
+  // greatDay 0.696341, shrunk 0.85 + 0.97561 * (0.696341 - 0.85) = 0.700089.
+  near(tight.value, 0.700089, 1e-5);
+  // Wide, capped at the house within sd 0.3: offset 0.97561 * 0.3 = 0.292683,
+  // greatDay 0.842683, shrunk 0.85 + 0.97561 * (0.842683 - 0.85) = 0.842861.
+  // (The card said 0.85; that was the greatDay rounded, before shrinkage.)
+  near(wide.value, 0.842861, 1e-5);
+  assert.ok(wide.value < 0.9, "was 0.9856 before the cap");
+});
+
+test("the cap is a house number, read from the prior and never from the row", () => {
+  // A row that claims a within variance of its own changes nothing.
+  const plain = authorTarget("actor_naming", rowFor(0.55, 0.45));
+  const claiming = authorTarget("actor_naming", { ...rowFor(0.55, 0.45), within_var: 100 });
+  assert.equal(claiming.value, plain.value);
+  assert.equal(claiming.offset, plain.offset);
+});
