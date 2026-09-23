@@ -26,7 +26,11 @@
 
     <section class="setup" data-drill-setup>
       <h1>Type the field.</h1>
-      <p class="lede">One clinical question. One to five minutes, as fast and as clean as you can. The garden grows with every word, and warms when you fly.</p>
+      <div class="modes" role="group" aria-label="Kind of drill">
+        <button type="button" class="mode" data-drill-mode="answer">Answer a question</button>
+        <button type="button" class="mode" data-drill-mode="copy">Copy, then respond</button>
+      </div>
+      <p class="lede" data-drill-lede>One clinical question. One to five minutes, as fast and as clean as you can. The garden grows with every word, and warms when you fly.</p>
       <div class="picker" role="group" aria-label="Minutes">
         <button type="button" class="min" data-drill-minutes="1">1<small>min</small></button>
         <button type="button" class="min" data-drill-minutes="2">2<small>min</small></button>
@@ -59,6 +63,8 @@
       </div>
       <h2 class="q" data-drill-q></h2>
       <ul class="bullets" data-drill-bullets></ul>
+      <div class="passage" data-drill-passage hidden></div>
+      <details class="refpass" data-drill-ref hidden><summary>The passage you copied</summary><p data-drill-ref-text></p></details>
       <textarea class="box" data-drill-box rows="8"
         spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"
         placeholder="Start typing. The clock starts on your first key."></textarea>
@@ -132,6 +138,8 @@
       </div>
 
       <div class="pane" data-pane="keys" hidden>
+        <h3>Working on now</h3>
+        <p class="trend" data-drill-working></p>
         <h3>Your keyboard, last twenty drills</h3>
         <div class="kbdbox" data-drill-keyboard></div>
         <h3>Tricky keys over time</h3>
@@ -145,6 +153,7 @@
 
       <div class="actions">
         <button type="button" class="go" data-drill-again>Again <kbd>return</kbd></button>
+        <button type="button" class="soft" data-drill-continue title="Same question, same answer, a fresh clock">Keep going <kbd>C</kbd></button>
         <button type="button" class="keep" data-drill-keep>Keep it <kbd>K</kbd></button>
         <button type="button" class="soft" data-drill-home>Home</button>
         <span class="keepnote" data-drill-keepnote></span>

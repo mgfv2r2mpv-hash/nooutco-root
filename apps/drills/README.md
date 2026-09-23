@@ -13,6 +13,13 @@ so a date is the drill that first met the condition), a Shift-side trainer in
 the margins (`web/shift.js`), Option+Backspace counted as a revision rather
 than an error, and thinking stops read apart from finger rhythm.
 
+Keep going (C) gives the same question a fresh clock with the answer still in
+the box. Copy, then respond: a copy round types a passage word for word
+(`web/passages.js`: plain-language study summaries written for the drill, and
+the drill's own takes), picked for his tricky areas right now (weak keys, slow
+pairs, capitals, punctuation, read from the recent drills); then a one-minute
+respond round answers it in his own words. Copy rounds are never kept.
+
 - `web/` the page. Runs in the app's WKWebView and in any browser.
 - `app/` the Swift shell: `build.sh`, `install.sh` (to /Applications),
   `uninstall.sh` (`--data` also trashes the history), `--selftest`.
