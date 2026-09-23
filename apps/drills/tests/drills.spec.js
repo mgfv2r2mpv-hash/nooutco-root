@@ -360,3 +360,20 @@ test('"a word" makes an unknown word known without counting it as clinical', asy
   await page.locator('[data-drill-box]').pressSequentially('zorbly ', { delay: 12 });
   await expect(page.locator('[data-drill-live]')).toHaveText('');
 });
+
+test('an acronym on one held Shift is judged once: EHR with the right Shift held throughout is all correct', async ({ page }) => {
+  await page.goto('/index.html?clock=4');
+  await page.locator('[data-drill-start]').click();
+  await page.locator('[data-drill-box]').focus();
+  // E is a left-hand key, so the right Shift is correct; H and R ride the same hold.
+  await page.keyboard.down('ShiftRight');
+  await page.keyboard.press('KeyE');
+  await page.keyboard.press('KeyH');
+  await page.keyboard.press('KeyR');
+  await page.keyboard.up('ShiftRight');
+  await expect(page.locator('[data-drill-box]')).toHaveValue('EHR');
+  await expect(page.locator('[data-side="L"] .fx-key')).toHaveCount(0);
+  await page.keyboard.press('Space');
+  await done(page);
+  await expect(page.locator('[data-drill-timing]')).toContainText('1 of 1 capitals with the opposite Shift');
+});

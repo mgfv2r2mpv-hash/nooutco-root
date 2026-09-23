@@ -164,3 +164,20 @@ test("trophies unlock on the drill that first met the condition, and never twice
   assert.deepEqual(newlyUnlocked(c, trophyCase(next)).map((t) => t.id).sort(), ["band-intermediate"].sort());
   assert.equal(new Set(TROPHIES.map((t) => t.id)).size, TROPHIES.length, "ids are unique");
 });
+
+test("an acronym typed on one held Shift is judged once, on its first capital", async () => {
+  const { createShiftTracker } = await import("../web/shift.js");
+  const t = createShiftTracker();
+  const ev = (type, code, extra = {}) => ({ type, code, shiftKey: true, ...extra });
+  // EHR: right Shift down (E is a left-hand key: correct), held through H and R, with key repeats.
+  t.key(ev("keydown", "ShiftRight"));
+  assert.equal(t.side(ev("keydown", "KeyE")), "R");
+  assert.equal(t.firstInHold(), true);   // E is judged
+  t.key(ev("keydown", "ShiftRight", { repeat: true }));
+  assert.equal(t.firstInHold(), false);  // H rides the same hold
+  assert.equal(t.firstInHold(), false);  // and so does R
+  t.key(ev("keyup", "ShiftRight", { shiftKey: false }));
+  // A new press is a new hold: judged again.
+  t.key(ev("keydown", "ShiftLeft"));
+  assert.equal(t.firstInHold(), true);
+});
