@@ -29,6 +29,7 @@
       <div class="modes" role="group" aria-label="Kind of drill">
         <button type="button" class="mode" data-drill-mode="answer">Answer a question</button>
         <button type="button" class="mode" data-drill-mode="copy">Copy, then respond</button>
+        <button type="button" class="mode" data-drill-mode="oracle">Oracle</button>
       </div>
       <p class="lede" data-drill-lede>One clinical question. One to five minutes, as fast and as clean as you can. The garden grows with every word, and warms when you fly.</p>
       <div class="picker" role="group" aria-label="Minutes">
@@ -38,6 +39,10 @@
         <button type="button" class="min" data-drill-minutes="4">4<small>min</small></button>
         <button type="button" class="min" data-drill-minutes="5">5<small>min</small></button>
       </div>
+      <label class="oracle-topic" data-oracle-only hidden>
+        <span>Topic (optional)</span>
+        <input type="text" data-drill-oracle-topic placeholder="Leave blank and the oracle picks the thinnest part of your map" autocomplete="off" spellcheck="false">
+      </label>
       <p class="pb" data-drill-pb></p>
       <div class="row">
         <button type="button" class="go" data-drill-start>Start <kbd>return</kbd></button>
@@ -46,6 +51,7 @@
         <button type="button" class="soft" data-drill-open="calendar">Calendar</button>
         <button type="button" class="soft" data-drill-open="trophies">Trophies</button>
         <button type="button" class="soft" data-drill-map-toggle data-drill-open="map">Map</button>
+        <button type="button" class="soft" data-drill-open="expert">Expert</button>
       </div>
     </section>
 
@@ -69,6 +75,7 @@
         spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"
         placeholder="Start typing. The clock starts on your first key."></textarea>
       <div class="under">
+        <button type="button" class="mic" data-drill-mic title="Talk instead of type. On this Mac only; the audio is never saved.">Talk</button>
         <span class="hint" data-drill-hint>The clock starts on your first keystroke. <kbd>esc</kbd> leaves without scoring.</span>
         <span class="live" data-drill-live aria-live="polite"></span>
       </div>
@@ -98,6 +105,7 @@
         <button type="button" role="tab" data-tab="trophies">Trophies</button>
         <button type="button" role="tab" data-tab="keys">Keys</button>
         <button type="button" role="tab" data-tab="map">Map</button>
+        <button type="button" role="tab" data-tab="expert">Expert</button>
       </nav>
 
       <div class="pane" data-pane="drill">
@@ -151,10 +159,27 @@
         <div class="map-grid" data-drill-map-grid></div>
       </div>
 
+      <div class="pane" data-pane="expert" hidden>
+        <h3>The expert on the website</h3>
+        <p class="trend" data-drill-expert-status></p>
+        <p class="basis">Keep queues each answer here. Send drafts knowledge records from them, in the drafter's own words (never quoting you), and proposes them to the expert store. Nothing is in force until you commit it in the admin page, Knowledge tab.</p>
+        <div class="row expert-row">
+          <button type="button" class="go" data-drill-expert-send>Send to the expert</button>
+          <span class="keepnote" data-drill-expert-log></span>
+        </div>
+        <h3>Connect</h3>
+        <p class="basis">The app cannot log in by itself (the login is behind Turnstile). Log in to tools.nooutco.me/admin, open the browser console (Option+Command+J in Chrome), run <code>copy(localStorage.getItem("notes_auth_token"))</code>, and paste here. It is kept in this Mac's keychain and lasts 30 days.</p>
+        <div class="row expert-row">
+          <input type="password" class="token" data-drill-expert-token placeholder="Paste the admin token" autocomplete="off">
+          <button type="button" class="soft" data-drill-expert-connect>Connect</button>
+        </div>
+      </div>
+
       <div class="actions">
         <button type="button" class="go" data-drill-again>Again <kbd>return</kbd></button>
         <button type="button" class="soft" data-drill-continue title="Same question, same answer, a fresh clock">Keep going <kbd>C</kbd></button>
         <button type="button" class="keep" data-drill-keep>Keep it <kbd>K</kbd></button>
+        <button type="button" class="soft" data-drill-send hidden title="Draft proposals from your kept answers and send them to the expert store">Send to the expert</button>
         <button type="button" class="soft" data-drill-home>Home</button>
         <span class="keepnote" data-drill-keepnote></span>
       </div>
