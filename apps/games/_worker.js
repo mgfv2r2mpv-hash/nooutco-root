@@ -48,6 +48,8 @@ const LEGACY_PREFIXES = [
   ['/RedCarpetConvos',                     '/red-carpet-convos/'],
 ];
 
+const RETIRED_PAGES = new Set(['/famous-person', '/famous-person/', '/famous-person/index.html']);
+
 // ── Red Carpet Convos: person suggestions (KV-backed) ────────────────
 // Public capture endpoint. Stores ONLY the requested public-figure name,
 // deduped by normalized name with a running count - never learner/session
@@ -133,6 +135,18 @@ export default {
         const rest = url.pathname.slice(old.length).replace(/^\//, '');
         return Response.redirect(new URL(next + rest, request.url).href, 301);
       }
+    }
+
+    // The older Famous Person Game is retired in favour of Red Carpet Convos.
+    // Only a browser page visit is sent on: the ImageManager still fetches this
+    // page to read the portrait roster, and the portraits under
+    // /famous-person/_Resources/ are what Red Carpet Convos shows. A 302, so the
+    // page can come back without browsers having cached the move for good.
+    if (
+      RETIRED_PAGES.has(url.pathname) &&
+      request.headers.get("Sec-Fetch-Mode") === "navigate"
+    ) {
+      return Response.redirect(new URL("/red-carpet-convos/", request.url).href, 302);
     }
 
     // R2-backed famous-person portraits. Try R2 (via the API worker) first; fall
