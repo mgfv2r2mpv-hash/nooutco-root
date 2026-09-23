@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build Clinical Typing Drills.app into app/build.
+# Build ClickClackOracle.app into app/build.
 #
 #   ./app/build.sh           compile the shell, copy the page, build the word list and icon
 #
@@ -8,8 +8,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-APP_NAME="Clinical Typing Drills"
-BUNDLE_ID="dev.kaleb.clinical-typing-drills"
+APP_NAME="ClickClackOracle"
+BUNDLE_ID="dev.kaleb.clickclackoracle"
 VERSION="1.0.0"
 OUT="app/build"
 APP="$OUT/$APP_NAME.app"
@@ -20,7 +20,7 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/web"
 echo "compiling the shell"
 swiftc -swift-version 5 -O \
   -target "$(uname -m)-apple-macosx13.0" \
-  -o "$APP/Contents/MacOS/ClinicalTypingDrills" \
+  -o "$APP/Contents/MacOS/ClickClackOracle" \
   app/Sources/main.swift
 
 echo "copying the page"
@@ -54,7 +54,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleIdentifier</key><string>$BUNDLE_ID</string>
   <key>CFBundleVersion</key><string>$VERSION</string>
   <key>CFBundleShortVersionString</key><string>$VERSION</string>
-  <key>CFBundleExecutable</key><string>ClinicalTypingDrills</string>
+  <key>CFBundleExecutable</key><string>ClickClackOracle</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>LSMinimumSystemVersion</key><string>13.0</string>
