@@ -212,6 +212,9 @@ func keep(_ r: [String: Any]) -> [String: Any] {
         // Where he stopped to think (character offset, ms, kind) and how many
         // times he changed his mind with Option or Command+Backspace.
         "pauses": r["pauses"] ?? [], "revisions": r["revisions"] ?? 0,
+        // A respond round names the passage it answered; a Keep going round
+        // kept after an earlier Keep names the answer it continues.
+        "passage": r["passage"] ?? "", "passageSource": r["passageSource"] ?? "", "continues": r["continues"] ?? "",
     ]
     try? writeJSON(file.deletingPathExtension().appendingPathExtension("json"), meta)
 

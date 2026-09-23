@@ -80,12 +80,14 @@ test("thinking stops are filed by what came before them, and flow speed takes th
   t += 4000; put(" So"); // 4000ms after "." : a sentence stop
   t += 3000; put("me");  // 3000ms after "o": a mid-word stop
   const k = thinkProfile(ev, 1);
-  // Last key at 200+4000+200+3000+100 = 7500; the tail to 60000 is 52500, after "e": mid.
-  assert.equal(k.count, 3);
+  // Last key at 200+4000+200+3000+100 = 7500; the idle tail to 60000 is 52500,
+  // kept apart: he may just be done.
+  assert.equal(k.count, 2);
   assert.equal(k.sentence, 1);
-  assert.equal(k.mid, 2);
-  assert.equal(k.ms, 4000 + 3000 + 52500);
-  // 8 keys over 60000-59500 = 500ms, floored to 1000ms: 8/5 / (1/60) = 96.
+  assert.equal(k.mid, 1);
+  assert.equal(k.ms, 4000 + 3000);
+  assert.equal(k.tailMs, 52500);
+  // 8 keys over 60000-7000-52500 = 500ms, floored to 1000ms: 8/5 / (1/60) = 96.
   assert.equal(k.flowWpm, 96);
   assert.deepEqual(k.stops[0], { at: 3, ms: 4000, kind: "sentence" });
 });
