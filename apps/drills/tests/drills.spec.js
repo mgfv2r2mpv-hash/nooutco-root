@@ -353,8 +353,10 @@ test('"a word" makes an unknown word known without counting it as clinical', asy
   const saved = await page.evaluate(() => ({ words: window.NoteDrill.data.settings.words, lexicon: window.NoteDrill.data.lexicon }));
   expect(saved.words).toEqual(['zorbly']);
   expect(saved.lexicon).toEqual([]);
-  // Known next time: not flagged at the space.
-  await page.keyboard.press('Enter');
+  // Known next time: not flagged at the space. (Click Again: focus is still on
+  // the button just pressed, and Return on a button does not start a drill.)
+  await page.locator('[data-drill-again]').click();
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'armed');
   await page.locator('[data-drill-box]').pressSequentially('zorbly ', { delay: 12 });
   await expect(page.locator('[data-drill-live]')).toHaveText('');
 });
