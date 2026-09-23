@@ -517,7 +517,7 @@ const BATON_MOCK = () => {
 test('baton pass: keeps the answer, ingests it in the background, and the expert\'s reply is the next passage to copy, then respond', async ({ page }) => {
   await page.addInitScript(BATON_MOCK);
   await page.addInitScript(() => localStorage.setItem('noaba.drills.settings.v1', JSON.stringify({ mode: 'copy', copyDefault: true })));
-  await page.goto('/index.html?clock=1');
+  await page.goto(PAGE);
   await wordsReady(page);
   await page.locator('[data-drill-start]').click();
   const box = page.locator('[data-drill-box]');
@@ -526,7 +526,7 @@ test('baton pass: keeps the answer, ingests it in the background, and the expert
   await expect(page.locator('[data-drill-baton]')).toBeHidden();
   await page.keyboard.press('Enter');
   await expect(page.locator('main.drill')).toHaveAttribute('data-drill-mode', 'respond');
-  await box.pressSequentially('the high probability run builds momentum before the demand ', { delay: 10 });
+  await box.pressSequentially('high p runs build momentum ', { delay: 10 });
   await done(page);
   await expect(page.locator('[data-drill-baton]')).toBeVisible();
   await page.keyboard.press('b');
@@ -539,7 +539,7 @@ test('baton pass: keeps the answer, ingests it in the background, and the expert
   expect(out.kept[0].mode).toBe('respond');
   const batonCall = out.calls.find((c) => c.schema.properties.passage);
   expect(batonCall.webSearch).toBe(true);
-  expect(batonCall.prompt).toContain('builds momentum before the demand');
+  expect(batonCall.prompt).toContain('high p runs build momentum');
   expect(batonCall.prompt).toContain('Momentum before the hard ask');
   await expect.poll(() => page.evaluate(() => window.__sent.length)).toBe(1);
   // Copy the expert's reply, then respond to its question, with its sources beside it.
