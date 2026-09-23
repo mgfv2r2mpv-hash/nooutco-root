@@ -25,26 +25,30 @@ Options:
     --start N      Skip the first N matching people.
 
 Requires:
-    ANTHROPIC_API_KEY environment variable.
-    pip install anthropic
+    Claude Code installed and signed in on this Mac (`claude` on PATH). Each
+    person is one `claude -p` call, so the run bills Kaleb's Claude
+    subscription, not the API account.
 """
+
+from __future__ import annotations
 
 import json
 import os
 import re
+import shutil
+import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
-import anthropic
-
 ROOT       = Path(__file__).resolve().parent.parent
-HTML_PATH  = ROOT / "FamousPersonGame" / "index.html"
+HTML_PATH  = ROOT / "famous-person" / "index.html"
 CKPT_PATH  = Path(__file__).resolve().parent / "facts_checkpoint.json"
 MODEL      = "claude-opus-4-8"
 TARGET     = 4       # facts per person
-MAX_TOKENS = 2000    # one person's 4 rich facts
-PAUSE      = 0.35    # seconds between API calls
+TIMEOUT    = 300     # seconds for one person's 4 rich facts
+PAUSE      = 0.35    # seconds between calls
 
 FACT_SLOTS = [
     "text", "topic", "fragment",
@@ -217,8 +221,49 @@ def apply_all_updates(html: str, updates: list[tuple[list[dict], int, int]]) -> 
 
 
 # ---------------------------------------------------------------------------
-# API Interaction
+# Claude Code interaction
 # ---------------------------------------------------------------------------
+
+# Claude Code prefers an API key over the signed-in subscription when it finds
+# one, so an exported ANTHROPIC_API_KEY would quietly move this run back onto the
+# API bill. The child gets this environment minus the keys. It keeps the rest,
+# because Claude Code finds its login by USER and HOME.
+_KEY_VARS = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")
+
+# The child answers one question and touches nothing: no tools, no MCP
+# servers, no hooks or settings from any source, and no saved session.
+_CLAUDE_ARGS = [
+    "-p",
+    "--output-format", "json",
+    "--model", MODEL,
+    "--system-prompt", SYSTEM_PROMPT,
+    "--tools", "",
+    "--permission-prompts", "none",
+    "--strict-mcp-config",
+    "--mcp-config", '{"mcpServers":{}}',
+    "--setting-sources", "",
+    "--disable-slash-commands",
+    "--no-session-persistence",
+]
+
+
+def ask_claude(user_msg: str) -> str:
+    """Ask the signed-in Claude Code one question and return its text answer."""
+    env = {k: v for k, v in os.environ.items() if k not in _KEY_VARS}
+    with tempfile.TemporaryDirectory() as workdir:   # no project CLAUDE.md here
+        proc = subprocess.run(
+            ["claude", *_CLAUDE_ARGS],
+            input=user_msg, capture_output=True, text=True,
+            env=env, cwd=workdir, timeout=TIMEOUT,
+        )
+    try:
+        envelope = json.loads(proc.stdout)
+    except json.JSONDecodeError:
+        raise RuntimeError(f"claude exited {proc.returncode}: {proc.stderr.strip()[:300]}")
+    if envelope.get("is_error") or proc.returncode != 0:
+        raise RuntimeError(f"claude answered an error: {str(envelope.get('result'))[:300]}")
+    return str(envelope.get("result", ""))
+
 
 def _validate_facts(parsed) -> list[dict]:
     if not isinstance(parsed, list) or len(parsed) < TARGET:
@@ -233,22 +278,15 @@ def _validate_facts(parsed) -> list[dict]:
     return facts
 
 
-def generate_facts(client: anthropic.Anthropic, name: str, years: str, tag: str) -> list[dict]:
+def generate_facts(name: str, years: str, tag: str) -> list[dict]:
     """Generate a connected 4-fact conversation arc for one person."""
     descriptor = name + (f" ({years})" if years else "") + (f" - {tag}" if tag else "")
     user_msg = f"Person: {descriptor}\n\nWrite the 4-fact conversation set for this person."
 
-    response = client.messages.create(
-        model=MODEL,
-        max_tokens=MAX_TOKENS,
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": user_msg}],
-    )
-
-    text_block = next((b.text for b in response.content if b.type == "text"), None)
-    if text_block is None:
-        raise ValueError("no text block in model response")
-    raw = re.sub(r"^```(?:json)?\s*", "", text_block.strip())
+    text = ask_claude(user_msg)
+    if not text.strip():
+        raise ValueError("empty answer from claude")
+    raw = re.sub(r"^```(?:json)?\s*", "", text.strip())
     raw = re.sub(r"\s*```$", "", raw)
     return _validate_facts(json.loads(raw))
 
@@ -286,12 +324,9 @@ def main() -> None:
     start = _int_opt("--start", 0)
     limit = _int_opt("--limit", 0)
 
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        print("ERROR: ANTHROPIC_API_KEY is not set.", file=sys.stderr)
+    if not shutil.which("claude"):
+        print("ERROR: Claude Code (`claude`) is not on PATH.", file=sys.stderr)
         sys.exit(1)
-
-    client = anthropic.Anthropic(api_key=api_key)
 
     print(f"Reading {HTML_PATH} …")
     html = HTML_PATH.read_text(encoding="utf-8")
@@ -321,7 +356,7 @@ def main() -> None:
         name = p["name"]
         print(f"  [{i+1}/{len(todo)}] {name} …", end=" ", flush=True)
         try:
-            ckpt[name] = generate_facts(client, name, p["years"], p["tag"])
+            ckpt[name] = generate_facts(name, p["years"], p["tag"])
             save_checkpoint(ckpt)
             print("OK")
         except Exception as exc:                       # noqa: BLE001
