@@ -193,8 +193,17 @@ export function authorTarget(feature, row) {
      It goes in BEFORE shrinkage and the clamp, in that order, unchanged: shrink
      so it is bought with evidence, clamp last so a great day still writes
      inside the range the house will sign. */
+  /* THE CAP, his ruling 2026-09-22. The lift is bought off the author's own
+     spread, and the sums cannot tell scatter from range: two authors at the
+     same mean landed at 0.70 and 0.99 by n = 40 because one varied more. So the
+     spread the lift reads is capped at the house within-note sd, a house number
+     from the prior that no row can supply. Scatter beyond what the house itself
+     shows buys no extra lift. */
+  const houseWithinSd = Math.sqrt(prior.within_var);
+  const liftSd = seen.n > 1 ? Math.min(seen.sd, houseWithinSd) : 0;
+  const capped = seen.n > 1 && seen.sd > houseWithinSd;
   const offset = prior.direction === "higher" && seen.n > 1
-    ? GREAT_DAY_SDS * w * seen.sd
+    ? GREAT_DAY_SDS * w * liftSd
     : 0;
   const greatDay = authorMean + offset;
   const shrunk = prior.mean + w * (greatDay - prior.mean);
@@ -219,6 +228,7 @@ export function authorTarget(feature, row) {
     direction: prior.direction,
     evidence: prior.evidence,
     offset,
+    capped: prior.direction === "higher" && capped,
     greatDay: seen.n > 0 ? greatDay : null,
     shrunk,
     value,
