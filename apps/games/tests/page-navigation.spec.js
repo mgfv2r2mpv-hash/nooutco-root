@@ -91,6 +91,6 @@ test('every rendered link on the games site resolves to a real page', async ({ p
   }
   expect(broken, `broken links:\n${broken.join('\n')}`).toEqual([]);
   // A walk that stopped early would also find nothing broken.
-  const mustReach = ['/think-or-say/', '/matching/', '/sequences/', '/emotions/', '/famous-person/', '/glam-team-makeover/'];
+  const mustReach = ['/think-or-say/', '/matching/', '/sequences/', '/emotions/', '/red-carpet-convos/', '/glam-team-makeover/'];
   expect(mustReach.filter((p) => !seen.has(p)), 'game pages the walk never reached').toEqual([]);
 });

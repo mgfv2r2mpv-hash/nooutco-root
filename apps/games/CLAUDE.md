@@ -4,7 +4,9 @@
 
 ABA therapy game platform hosted at **games.nooutco.me**. Static HTML game files served from GitHub via Cloudflare Pages/Worker, with a Cloudflare Worker API for image management and admin tooling.
 
-**Games:** IDMatchGame, NameIDGame, FamousPersonGame, FFCGame, IntraverbalGame, SequencesGame, ThinkOrSayGame, HickoryDickoryDockGame, PatternPackCo, MatchingMarket
+**Games:** IDMatchGame, NameIDGame, RedCarpetConvos, FFCGame, IntraverbalGame, SequencesGame, ThinkOrSayGame, HickoryDickoryDockGame, PatternPackCo, MatchingMarket
+
+**FamousPersonGame is retired** in favour of Red Carpet Convos (`red-carpet-convos/people.json` is the live roster). `_worker.js` sends page visits to `/famous-person/` on to `/red-carpet-convos/`, but its files stay: the ImageManager still fetches its `index.html` for the portrait list, and every famous-person portrait (both games) lives under `famous-person/_Resources/_imgSource/images/`.
 
 ## Tech Stack
 
