@@ -1,0 +1,33 @@
+name: Drills Tests
+
+# Clinical Typing Drills (apps/drills). The arithmetic runs under node --test;
+# the page runs in WebKit, the engine the Mac app ships in, and Chromium. The
+# Swift shell is built and self-tested on the Mac it is installed on, not here.
+
+on:
+  push:
+    branches: [main, dev]
+    paths: ['apps/drills/**', '.github/workflows/drills-test.yml']
+  pull_request:
+    branches: [main, dev]
+    paths: ['apps/drills/**', '.github/workflows/drills-test.yml']
+
+defaults:
+  run:
+    working-directory: apps/drills
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    name: Drills (node + WebKit + Chromium)
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: A dictionary, like the Mac's
+        run: sudo apt-get install -y wamerican
+      - run: npm install --no-audit --no-fund
+      - run: npx playwright install --with-deps webkit chromium
+      - run: npm test
