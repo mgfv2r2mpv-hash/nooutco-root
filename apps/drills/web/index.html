@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Clinical Typing Drills</title>
+  <link rel="stylesheet" href="drill.css">
+</head>
+<body>
+  <svg class="garden" data-garden aria-hidden="true"></svg>
+
+  <main class="drill" data-drill-state="idle">
+    <header class="bar">
+      <div class="brand">
+        <svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="7" width="26" height="20" rx="6" class="mark-cap"/><rect x="6" y="9" width="20" height="13" rx="4" class="mark-top"/><path d="M16 4 C 13 1, 9 2, 9 5 C 12 6, 14 6, 16 4 Z M16 4 C 19 1, 23 2, 23 5 C 20 6, 18 6, 16 4 Z" class="mark-leaf"/></svg>
+        <b>Clinical Typing Drills</b>
+      </div>
+      <div class="chips">
+        <span class="chip" data-stat-streak></span>
+        <span class="chip" data-stat-sitting></span>
+      </div>
+    </header>
+
+    <section class="setup" data-drill-setup>
+      <h1>Type the field.</h1>
+      <p class="lede">One clinical question. One to five minutes, as fast and as clean as you can. The garden grows with every word, and warms when you fly.</p>
+      <div class="picker" role="group" aria-label="Minutes">
+        <button type="button" class="min" data-drill-minutes="1">1<small>min</small></button>
+        <button type="button" class="min" data-drill-minutes="2">2<small>min</small></button>
+        <button type="button" class="min" data-drill-minutes="3">3<small>min</small></button>
+        <button type="button" class="min" data-drill-minutes="4">4<small>min</small></button>
+        <button type="button" class="min" data-drill-minutes="5">5<small>min</small></button>
+      </div>
+      <p class="pb" data-drill-pb></p>
+      <div class="row">
+        <button type="button" class="go" data-drill-start>Start <kbd>return</kbd></button>
+        <button type="button" class="soft" data-drill-open="progress">Progress</button>
+        <button type="button" class="soft" data-drill-open="keys">Keys</button>
+        <button type="button" class="soft" data-drill-map-toggle data-drill-open="map">Map</button>
+      </div>
+    </section>
+
+    <section class="play" data-drill-question hidden>
+      <div class="hud">
+        <span class="tag" data-drill-category></span>
+        <span class="spacer"></span>
+        <span class="combo" data-drill-combo hidden></span>
+        <span class="wpm"><b data-drill-wpm>0</b> wpm</span>
+        <span class="clock" data-drill-clock>1:00</span>
+      </div>
+      <div class="race" data-drill-race title="You against your best pace at this clock">
+        <i class="lane"></i><i class="ghost" data-race-ghost></i><i class="you" data-race-you></i>
+        <span class="race-note" data-race-note></span>
+      </div>
+      <h2 class="q" data-drill-q></h2>
+      <ul class="bullets" data-drill-bullets></ul>
+      <textarea class="box" data-drill-box rows="8"
+        spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"
+        placeholder="Start typing. The clock starts on your first key."></textarea>
+      <div class="under">
+        <span class="hint" data-drill-hint>The clock starts on your first keystroke. <kbd>esc</kbd> leaves without scoring.</span>
+        <span class="live" data-drill-live aria-live="polite"></span>
+      </div>
+    </section>
+
+    <section class="results" data-drill-results data-mode="drill" hidden>
+      <div class="hero" data-drill-hero>
+        <div class="big"><span data-drill-nwam></span><small>net words a minute</small></div>
+        <div class="rank">
+          <b data-drill-rating></b> <span class="note" data-drill-rating-note></span>
+          <div class="stars" data-drill-stars></div>
+          <div class="next" data-drill-next></div>
+        </div>
+        <div class="minis">
+          <div><b data-drill-gwam></b><span>GWAM</span></div>
+          <div><b data-drill-errors></b><span>errors</span></div>
+          <div><b data-drill-accuracy></b><span>accuracy</span></div>
+        </div>
+      </div>
+      <p class="basis" data-drill-basis></p>
+
+      <nav class="tabs" role="tablist">
+        <button type="button" role="tab" data-tab="drill">This drill</button>
+        <button type="button" role="tab" data-tab="progress">Progress</button>
+        <button type="button" role="tab" data-tab="keys">Keys</button>
+        <button type="button" role="tab" data-tab="map">Map</button>
+      </nav>
+
+      <div class="pane" data-pane="drill">
+        <h3>Pace</h3>
+        <div class="chartbox" data-drill-pace></div>
+        <div class="two">
+          <div><h3>Tricky keys</h3><ul class="list" data-drill-tricky></ul></div>
+          <div><h3>Rhythm</h3><ul class="list" data-drill-timing></ul></div>
+        </div>
+        <h3>Form</h3>
+        <ul class="tips" data-drill-tips></ul>
+        <div class="review" data-drill-review hidden>
+          <h3>Unknown terms</h3>
+          <p class="basis">Each one counts as an error until you mark it clinical. Clinical goes into your lexicon for good.</p>
+          <ul class="review-list" data-drill-review-list></ul>
+        </div>
+      </div>
+
+      <div class="pane" data-pane="progress" hidden>
+        <h3>Net words a minute</h3>
+        <div class="chartbox" data-chart-nwam></div>
+        <h3>Accuracy</h3>
+        <div class="chartbox" data-chart-accuracy></div>
+        <div class="two">
+          <div><h3>Bests</h3><table class="bests" data-drill-bests></table></div>
+          <div><h3>Lately</h3><p class="trend" data-drill-trend></p></div>
+        </div>
+      </div>
+
+      <div class="pane" data-pane="keys" hidden>
+        <h3>Your keyboard, last twenty drills</h3>
+        <div class="kbdbox" data-drill-keyboard></div>
+        <h3>Tricky keys over time</h3>
+        <ul class="keytrends" data-drill-keytrends></ul>
+      </div>
+
+      <div class="pane drill-map" data-pane="map" data-drill-map hidden>
+        <p class="basis">The BACB outline: nine domains, 104 items. A cell darkens as you answer questions filed under it. The next question comes from the emptiest cell the bank can ask about; outlined cells have a question ready.</p>
+        <div class="map-grid" data-drill-map-grid></div>
+      </div>
+
+      <div class="actions">
+        <button type="button" class="go" data-drill-again>Again <kbd>return</kbd></button>
+        <button type="button" class="keep" data-drill-keep>Keep it <kbd>K</kbd></button>
+        <button type="button" class="soft" data-drill-home>Home</button>
+        <span class="keepnote" data-drill-keepnote></span>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="drill.js"></script>
+</body>
+</html>
