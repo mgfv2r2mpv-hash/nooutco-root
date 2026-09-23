@@ -8,6 +8,7 @@
 </head>
 <body>
   <svg class="garden" data-garden aria-hidden="true"></svg>
+  <div class="sidefx" data-sidefx aria-hidden="true"><div class="fx-side left" data-side="L"></div><div class="fx-side right" data-side="R"></div></div>
 
   <main class="drill" data-drill-state="idle">
     <header class="bar">
@@ -16,8 +17,10 @@
         <b>Clinical Typing Drills</b>
       </div>
       <div class="chips">
-        <span class="chip" data-stat-streak></span>
+        <span class="chip warm" data-stat-streak></span>
+        <span class="chip" data-stat-today></span>
         <span class="chip" data-stat-sitting></span>
+        <button type="button" class="chip trophy-chip" data-stat-trophies data-drill-open="trophies" hidden></button>
       </div>
     </header>
 
@@ -36,6 +39,8 @@
         <button type="button" class="go" data-drill-start>Start <kbd>return</kbd></button>
         <button type="button" class="soft" data-drill-open="progress">Progress</button>
         <button type="button" class="soft" data-drill-open="keys">Keys</button>
+        <button type="button" class="soft" data-drill-open="calendar">Calendar</button>
+        <button type="button" class="soft" data-drill-open="trophies">Trophies</button>
         <button type="button" class="soft" data-drill-map-toggle data-drill-open="map">Map</button>
       </div>
     </section>
@@ -77,11 +82,14 @@
           <div><b data-drill-accuracy></b><span>accuracy</span></div>
         </div>
       </div>
+      <div class="unlocks" data-drill-unlocked hidden></div>
       <p class="basis" data-drill-basis></p>
 
       <nav class="tabs" role="tablist">
         <button type="button" role="tab" data-tab="drill">This drill</button>
         <button type="button" role="tab" data-tab="progress">Progress</button>
+        <button type="button" role="tab" data-tab="calendar">Calendar</button>
+        <button type="button" role="tab" data-tab="trophies">Trophies</button>
         <button type="button" role="tab" data-tab="keys">Keys</button>
         <button type="button" role="tab" data-tab="map">Map</button>
       </nav>
@@ -93,6 +101,8 @@
           <div><h3>Tricky keys</h3><ul class="list" data-drill-tricky></ul></div>
           <div><h3>Rhythm</h3><ul class="list" data-drill-timing></ul></div>
         </div>
+        <h3>Thinking</h3>
+        <p class="trend" data-drill-think></p>
         <h3>Form</h3>
         <ul class="tips" data-drill-tips></ul>
         <div class="review" data-drill-review hidden>
@@ -111,6 +121,14 @@
           <div><h3>Bests</h3><table class="bests" data-drill-bests></table></div>
           <div><h3>Lately</h3><p class="trend" data-drill-trend></p></div>
         </div>
+      </div>
+
+      <div class="pane" data-pane="calendar" hidden>
+        <div class="calendar" data-drill-calendar></div>
+      </div>
+
+      <div class="pane" data-pane="trophies" hidden>
+        <div class="trophy-case" data-drill-trophies></div>
       </div>
 
       <div class="pane" data-pane="keys" hidden>

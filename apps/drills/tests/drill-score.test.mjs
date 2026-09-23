@@ -137,8 +137,14 @@ test("a tip appears only when its trigger fired", () => {
     timing: { medianMs: 120, cv: 0.3, pauses: 0, afterShiftMs: 130, punctuationMs: 140, intervals: 200, slowPairs: [] } });
   assert.deepEqual(quiet, []);
   const loud = formTips({ grossWords: 50, corrections: 8, tricky: { keys: [], confusions: [{ hit: "r", meant: "e", count: 2 }] },
-    timing: { medianMs: 120, cv: 0.8, pauses: 4, afterShiftMs: 300, punctuationMs: 400, intervals: 200, slowPairs: [] } });
-  assert.deepEqual(loud.map((x) => x.id), ["pace", "shift", "punctuation", "drift", "composing", "cadence"]);
+    timing: { medianMs: 120, cv: 0.8, pauses: 4, afterShiftMs: 300, punctuationMs: 400, intervals: 200, wordIntervals: 150, wordCv: 0.7, slowPairs: [] },
+    habits: { wordByHand: 2, keysSpent: 11 }, shift: { ok: 6, same: 4, sameLeft: 3, sameRight: 1 } });
+  assert.deepEqual(loud.map((x) => x.id), ["pace", "shift", "punctuation", "drift", "shiftSide", "optionDelete", "cadence"]);
+  // Pauses no longer earn a tip (they are thinking), and a wide spread BETWEEN
+  // words with even fingers inside them is not a cadence problem.
+  const thinker = formTips({ grossWords: 50, corrections: 1, tricky: { keys: [], confusions: [] },
+    timing: { medianMs: 120, cv: 0.9, pauses: 9, intervals: 200, wordIntervals: 150, wordCv: 0.3, slowPairs: [] } });
+  assert.deepEqual(thinker, []);
 });
 
 test("garbage in the event list is ignored rather than counted", () => {

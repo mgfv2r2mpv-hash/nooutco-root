@@ -6,7 +6,9 @@
  * is five keystrokes, whatever was typed.
  *
  *   GWAM        keystrokes that put a character in the box / 5 / minutes
- *   corrections runs of Backspace, one run = one correction
+ *   corrections runs of Backspace, one run = one correction. A run that used
+ *               Option+Backspace or Command+Backspace is a REVISION instead:
+ *               a change of mind, counted apart and never as an error
  *   uncorrected tokens of the final text the lexicon does not know
  *   NWAM        GWAM minus errors per minute (uncorrected when a lexicon is
  *               given; corrections stand in until one is, and the result says so)
@@ -31,9 +33,13 @@ export const BANDS = Object.freeze([
 ]);
 
 /**
- * @typedef {{ t: number, kind: "char"|"backspace"|"enter", key?: string }} DrillEvent
+ * @typedef {{ t: number, kind: "char"|"backspace"|"enter", key?: string,
+ *   via?: "word"|"line", shift?: "L"|"R"|"B", hand?: "L"|"R" }} DrillEvent
  *   t is milliseconds from the first keystroke. A char event carries the
- *   character it placed; enter places a newline; backspace removes one.
+ *   character it placed; enter places a newline; backspace removes one. A
+ *   backspace with `via` is one character of an Option+Backspace (word) or
+ *   Command+Backspace (line) delete. A char typed with Shift held carries which
+ *   Shift (`shift`, B = both) and which hand the key belongs to (`hand`).
  */
 
 /**
@@ -50,7 +56,7 @@ export function scoreDrill({ events, text, minutes, lexicon } = {}) {
   const grossWords = placed / WORD_KEYSTROKES;
   const gwam = grossWords / mins;
 
-  const corrections = countRuns(evs, "backspace");
+  const { corrections, revisions } = deleteRuns(evs);
   const unknown = lexicon ? unknownWords(text || "", lexicon) : null;
   const uncorrected = unknown ? unknown.length : null;
   const errorsForNet = uncorrected === null ? corrections : uncorrected;
@@ -61,7 +67,10 @@ export function scoreDrill({ events, text, minutes, lexicon } = {}) {
   const rating = rate(nwam, accuracy);
   const tricky = trickyKeys(evs);
   const timing = timingProfile(evs);
-  const tips = formTips({ grossWords, corrections, tricky, timing });
+  const habits = deleteHabits(evs);
+  const shift = shiftStats(evs);
+  const think = thinkProfile(evs, mins);
+  const tips = formTips({ grossWords, corrections, tricky, timing, habits, shift });
   const keys = keyStats(evs, tricky.all);
   const pace = paceSeries(evs, mins);
 
@@ -71,6 +80,7 @@ export function scoreDrill({ events, text, minutes, lexicon } = {}) {
     grossWords: round(grossWords, 1),
     gwam: round(gwam, 1),
     corrections,
+    revisions,
     uncorrected,
     unknownWords: unknown || [],
     netBasis: uncorrected === null ? "corrections" : "uncorrected",
@@ -82,6 +92,9 @@ export function scoreDrill({ events, text, minutes, lexicon } = {}) {
     tips,
     keys,
     pace,
+    habits,
+    shift,
+    think,
   };
 }
 
@@ -119,6 +132,114 @@ export function paceSeries(events, minutes) {
 
 /* ---- pieces, each small enough to test on its own ---------------------- */
 
+/**
+ * Backspace runs, split in two. A run with any Option or Command delete in it
+ * is a revision (he changed his mind on a word or a line); every other run is
+ * a correction. The keystroke cost is the same; only corrections are errors.
+ */
+export function deleteRuns(events) {
+  let corrections = 0, revisions = 0;
+  let run = null;
+  const close = () => { if (run) { if (run.via) revisions += 1; else corrections += 1; } run = null; };
+  for (const e of events) {
+    if (e.kind === "backspace") { if (!run) run = { via: false }; if (e.via) run.via = true; }
+    else close();
+  }
+  close();
+  return { corrections, revisions };
+}
+
+/**
+ * How he deletes. wordByHand counts plain Backspace runs that took out a whole
+ * word of three letters or more, letter by letter, back to a space: the case
+ * Option+Backspace does in one stroke. keysSpent is what those runs cost.
+ */
+export function deleteHabits(events) {
+  const buf = [];
+  let wordByHand = 0, keysSpent = 0, wordDeletes = 0, lineDeletes = 0;
+  let run = null; // { n, via, removed }
+  const close = () => {
+    if (!run) return;
+    if (run.via === "word") wordDeletes += 1;
+    else if (run.via === "line") lineDeletes += 1;
+    else {
+      const removed = run.removed.join("");
+      const atBoundary = buf.length === 0 || /\s/.test(buf[buf.length - 1]);
+      const letters = removed.replace(/[^A-Za-z]/g, "").length;
+      if (atBoundary && letters >= 3 && /[A-Za-z]/.test(removed[0] || "")) { wordByHand += 1; keysSpent += run.n; }
+    }
+    run = null;
+  };
+  for (const e of events) {
+    if (e.kind === "backspace") {
+      if (!run) run = { n: 0, via: null, removed: [] };
+      run.n += 1;
+      if (e.via) run.via = e.via;
+      const ch = buf.pop();
+      if (ch !== undefined) run.removed.unshift(ch);
+      continue;
+    }
+    close();
+    buf.push(e.kind === "enter" ? "\n" : String(e.key || ""));
+  }
+  close();
+  return { wordByHand, keysSpent, wordDeletes, lineDeletes };
+}
+
+/**
+ * Shift side. Touch typing shifts with the hand OPPOSITE the key: a capital T
+ * (left hand) takes the right Shift. `same` counts the ones taken with the
+ * shift on the key's own side, split by the hand of the key.
+ */
+export function shiftStats(events) {
+  const out = { ok: 0, same: 0, sameLeft: 0, sameRight: 0 };
+  for (const e of events) {
+    if (e.kind !== "char" || !e.shift || !e.hand || e.shift === "B") continue;
+    if (e.shift !== e.hand) out.ok += 1;
+    else { out.same += 1; if (e.hand === "L") out.sameLeft += 1; else out.sameRight += 1; }
+  }
+  return out;
+}
+
+/**
+ * Thinking, read apart from typing. A drill is composed, so some stops are
+ * thought and not a fumble. Every gap over PAUSE_MS, and the idle tail after
+ * the last key, is a thinking stop, filed by what came just before it:
+ *   sentence  after . ! ? or a new line (planning the next point)
+ *   clause    after , ; : or a dash
+ *   word      after a space (finding the next word)
+ *   mid       inside a word (hesitation)
+ * flowWpm is the gross speed over the time left once the thinking is taken out.
+ * `stops` lists where each one fell (characters into the text at that moment),
+ * so a kept answer can show the expert where he stopped to think.
+ */
+export function thinkProfile(events, minutes) {
+  const totalMs = (Number.isFinite(minutes) && minutes > 0 ? minutes : 1) * 60000;
+  const out = { ms: 0, count: 0, sentence: 0, clause: 0, word: 0, mid: 0, flowWpm: 0, share: 0, stops: [] };
+  const buf = [];
+  let placed = 0;
+  let lastT = null;
+  const file = (gap) => {
+    const prev = buf.length ? buf[buf.length - 1] : "\n";
+    const kind = /[.!?\n]/.test(prev) ? "sentence" : /[,;:\u2013-]/.test(prev) ? "clause" : /\s/.test(prev) ? "word" : "mid";
+    out[kind] += 1; out.count += 1; out.ms += gap;
+    out.stops.push({ at: buf.length, ms: Math.round(gap), kind });
+  };
+  for (const e of events) {
+    if (lastT !== null && e.t - lastT > PAUSE_MS) file(e.t - lastT);
+    lastT = e.t;
+    if (e.kind === "backspace") { buf.pop(); continue; }
+    placed += 1;
+    buf.push(e.kind === "enter" ? "\n" : String(e.key || ""));
+  }
+  if (lastT !== null && totalMs - lastT > PAUSE_MS) file(totalMs - lastT);
+  const typingMs = Math.max(1000, totalMs - out.ms);
+  out.flowWpm = placed ? round(placed / WORD_KEYSTROKES / (typingMs / 60000), 1) : 0;
+  out.share = round(Math.min(1, out.ms / totalMs), 2);
+  out.ms = Math.round(out.ms);
+  return out;
+}
+
 const isEvent = (e) => e && Number.isFinite(e.t)
   && (e.kind === "char" || e.kind === "backspace" || e.kind === "enter");
 
@@ -137,10 +258,10 @@ export function countRuns(events, kind) {
  *  left alone: a name is not a typo and a bracket is a deliberate unknown. */
 export function unknownWords(text, lexicon) {
   const out = [];
-  const tokens = String(text).match(/[A-Za-z][A-Za-z'-]*/g) || [];
+  const tokens = String(text).match(/[A-Za-z][A-Za-z'\u2019-]*/g) || [];
   for (const tok of tokens) {
     if (/^[A-Z]/.test(tok)) continue;
-    const w = tok.toLowerCase().replace(/^'+|'+$/g, "");
+    const w = tok.toLowerCase().replace(/\u2019/g, "'").replace(/^'+|-+$/g, "");
     if (!w || isKnown(w, lexicon)) continue;
     out.push(w);
   }
@@ -155,7 +276,23 @@ export function unknownWords(text, lexicon) {
  */
 export function isKnown(word, lexicon) {
   if (!word) return false;
+  word = word.replace(/\u2019/g, "'");
   if (lexicon.has(word)) return true;
+  // Possessives and contractions are standard English, never typos:
+  // "gambler's", "clients'", "don't", "they're", "we've", "it'll", "she'd".
+  if (word.includes("'")) {
+    const special = CONTRACTIONS[word];
+    if (special) return isKnown(special, lexicon);
+    for (const end of ["n't", "'re", "'ve", "'ll", "'d", "'m", "'s", "'"]) {
+      if (word.endsWith(end) && word.length > end.length) return isKnown(word.slice(0, -end.length), lexicon);
+    }
+    return false;
+  }
+  // A hyphenated compound is known when every part is: "task-analysis", "follow-up".
+  if (word.includes("-")) {
+    const parts = word.split("-").filter(Boolean);
+    return parts.length > 1 && parts.every((w) => isKnown(w, lexicon));
+  }
   if (word.length < 4) return false;
   const tryBase = (b) => b.length >= 2 && lexicon.has(b);
   for (const [suffix, adds] of SUFFIXES) {
@@ -169,6 +306,9 @@ export function isKnown(word, lexicon) {
   }
   return false;
 }
+
+/** Contractions whose stem is not a word on its own. */
+const CONTRACTIONS = { "can't": "can", "won't": "will", "shan't": "shall", "ain't": "is", "y'all": "you", "o'clock": "clock", "ma'am": "madam" };
 
 /** ending -> what the base may need back: "" (nothing), "e" (named -> name), "y" (families -> family). */
 const SUFFIXES = [
@@ -200,8 +340,9 @@ export function trickyKeys(events) {
   const pairs = new Map();  // "hit>meant" -> count
   let removed = null;       // the run being removed, in typed order
   let replacement = null;   // what has been typed since the run ended
+  let revising = false;     // the run used Option or Command: a change of mind, not a miss
   const settle = () => {
-    if (!removed || !replacement) { removed = null; replacement = null; return; }
+    if (!removed || !replacement || revising) { removed = null; replacement = null; revising = false; return; }
     const n = Math.min(removed.length, replacement.length);
     for (let i = 0; i < n; i++) {
       if (removed[i] === replacement[i]) continue;
@@ -212,11 +353,12 @@ export function trickyKeys(events) {
       }
       break;
     }
-    removed = null; replacement = null;
+    removed = null; replacement = null; revising = false;
   };
   for (const e of events) {
     if (e.kind === "backspace") {
       if (replacement) settle();              // a new run starts: close the last one
+      if (e.via) revising = true;
       const ch = buffer.pop();
       if (ch !== undefined) removed = [ch].concat(removed || []);
       continue;
@@ -247,6 +389,7 @@ const isLetterish = (c) => typeof c === "string" && c.length === 1 && /[A-Za-z]/
 export function timingProfile(events) {
   const placed = events.filter((e) => e.kind !== "backspace");
   const intervals = [];
+  const inWord = [];         // letter to letter: the fingers, with the thinking left out
   const digraph = new Map(); // "ab" -> [ms, ...]
   let afterShift = [];
   let punct = [];
@@ -262,6 +405,7 @@ export function timingProfile(events) {
       const k = a.toLowerCase() + b.toLowerCase();
       if (!digraph.has(k)) digraph.set(k, []);
       digraph.get(k).push(dt);
+      inWord.push(dt);
     }
     if (/[A-Z]/.test(b)) afterShift.push(dt);
     if (/[,.;:!?]/.test(b)) punct.push(dt);
@@ -279,6 +423,8 @@ export function timingProfile(events) {
     intervals: intervals.length,
     medianMs: Math.round(med),
     cv: mean > 0 ? round(sd / mean, 2) : 0,
+    wordIntervals: inWord.length,
+    wordCv: cvOf(inWord),
     pauses,
     afterShiftMs: afterShift.length ? Math.round(median(afterShift)) : null,
     punctuationMs: punct.length ? Math.round(median(punct)) : null,
@@ -287,7 +433,7 @@ export function timingProfile(events) {
 }
 
 /** A tip appears only when its trigger fired. */
-export function formTips({ grossWords, corrections, tricky, timing }) {
+export function formTips({ grossWords, corrections, tricky, timing, habits, shift }) {
   const tips = [];
   if (grossWords >= 10 && corrections / grossWords > 0.1) {
     tips.push({ id: "pace", why: `${corrections} corrections in ${Math.round(grossWords)} words`,
@@ -307,13 +453,21 @@ export function formTips({ grossWords, corrections, tricky, timing }) {
     tips.push({ id: "drift", why: neighbours.map((c) => `${c.hit} for ${c.meant}`).join(", "),
       tip: "Home-row drift. Re-anchor on F and J at every space for one drill and see the pairs disappear." });
   }
-  if (timing.pauses >= 3) {
-    tips.push({ id: "composing", why: `${timing.pauses} pauses over two seconds`,
-      tip: "Those are composing pauses, not typing. Fine for the clinic; for the typing number on its own, run a copy drill." });
+  if (shift && shift.same >= 3 && shift.same / (shift.same + shift.ok) >= 0.2) {
+    const worse = shift.sameLeft >= shift.sameRight ? "left" : "right";
+    const other = worse === "left" ? "right" : "left";
+    tips.push({ id: "shiftSide", why: `${shift.same} of ${shift.same + shift.ok} capitals took the Shift on the key's own side, ${shift.sameLeft} left and ${shift.sameRight} right`,
+      tip: `Opposite hand on Shift. A ${worse}-hand letter wants the ${other} Shift, pressed by the ${other} pinky while the ${worse} hand stays home.` });
   }
-  if (timing.intervals >= 20 && timing.cv > 0.6) {
-    tips.push({ id: "cadence", why: `timing varies ${Math.round(timing.cv * 100)}% around its median`,
-      tip: "Cadence, not speed. Try a drill at a pace you can hold evenly; even cadence is where the next ten words a minute come from." });
+  if (habits && habits.wordByHand >= 2) {
+    tips.push({ id: "optionDelete", why: `${habits.wordByHand} words backspaced letter by letter, ${habits.keysSpent} keys`,
+      tip: "Changed your mind on a word? Option+Backspace takes the whole word in one stroke, and Command+Backspace takes the line. The drill counts those as revisions, not errors." });
+  }
+  // Cadence reads the fingers only: letter to letter inside words. The gaps
+  // between words and sentences are thinking, and the drill wants the thinking.
+  if (timing.wordIntervals >= 20 && timing.wordCv > 0.6) {
+    tips.push({ id: "cadence", why: `letter-to-letter timing inside words varies ${Math.round(timing.wordCv * 100)}%`,
+      tip: "Uneven fingers, not uneven thinking. Pick the two slow pairs above and type each ten times slowly and evenly; the rhythm inside words is the part practice fixes." });
   }
   return tips;
 }
@@ -325,6 +479,12 @@ function median(xs) {
   const s = [...xs].sort((a, b) => a - b);
   const m = s.length >> 1;
   return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+function cvOf(xs) {
+  if (xs.length < 2) return 0;
+  const m = xs.reduce((s, x) => s + x, 0) / xs.length;
+  const sd = Math.sqrt(xs.reduce((s, x) => s + (x - m) * (x - m), 0) / (xs.length - 1));
+  return m > 0 ? round(sd / m, 2) : 0;
 }
 const clamp01 = (x) => Math.max(0, Math.min(1, x));
 const round = (x, d) => { const p = 10 ** d; return Math.round(x * p) / p; };
