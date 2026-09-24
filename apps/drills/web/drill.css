@@ -618,3 +618,48 @@ main.drill[data-settling="1"] .actions button { opacity: .45; transition: opacit
   .unlocked.is-nemesis b { color: #efe6ff; }
   .trophy-group.is-nemeses h3 { color: #c7aef7; }
 }
+
+/* ---- the road and the crest: the bands as something to climb ---- */
+/* Home: ten gems, bottom band on the left. Gilded where his numbers have been,
+   the next one breathes, the rest wait in outline. */
+.road { margin: -4px 0 18px; }
+.road-gems { display: flex; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.road-gems .gem { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 5px; font: 600 10px/1.1 var(--rounded); letter-spacing: .03em; color: var(--muted); text-align: center; }
+.road-gems .gem span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.road-gems .gem i { display: block; width: 100%; height: 8px; border-radius: 4px; background: var(--well); box-shadow: inset 0 0 0 1px var(--line); }
+.road-gems .gem.is-reached i { background: linear-gradient(90deg, var(--gold-hi), var(--gold)); box-shadow: 0 0 0 1px rgba(168,111,28,.35), 0 3px 8px -4px rgba(168,111,28,.7); }
+.road-gems .gem.is-reached span { color: var(--gold-lo); }
+.road-gems .gem.is-next i { background: repeating-linear-gradient(90deg, color-mix(in srgb, var(--gold-hi) 55%, transparent) 0 6px, transparent 6px 10px); box-shadow: 0 0 0 1px var(--gold); animation: gem-breathe 2.8s ease-in-out infinite; }
+.road-gems .gem.is-next span { color: var(--ink); font-weight: 800; }
+.road-gems .gem.is-reached:has(+ .is-next) i, .road-gems .gem.is-reached:last-child i { box-shadow: 0 0 0 1px rgba(168,111,28,.5), 0 0 12px 1px rgba(246,213,138,.9); }
+.road-line { margin: 8px 0 0; font: italic 14px/1.4 var(--display); color: var(--ink2); }
+@keyframes gem-breathe { 0%, 100% { opacity: .65; } 50% { opacity: 1; } }
+
+/* Results: a new band gets a crest over the plaque, a ribbon in gold. */
+.crest { position: relative; display: grid; justify-items: center; gap: 2px; margin: 0 auto 14px; padding: 14px 40px 16px; max-width: 460px; text-align: center; border-radius: 14px;
+  background: radial-gradient(120% 140% at 50% 0%, #fff6dc, #f6d58a 60%, #e0ae52); color: var(--gold-ink);
+  box-shadow: 0 1px 0 rgba(255,255,255,.9) inset, inset 0 0 0 4px rgba(255,246,220,.6), inset 0 0 0 5px rgba(168,111,28,.4), 0 18px 40px -18px rgba(168,111,28,.85); }
+.crest::before, .crest::after { content: "\2726"; position: absolute; top: 50%; translate: 0 -50%; font-size: 22px; color: #b07a22; }
+.crest::before { left: 14px; } .crest::after { right: 14px; }
+.crest-kicker { font: 800 11px/1 var(--rounded); letter-spacing: .22em; text-transform: uppercase; color: #8a5410; }
+.crest b { font: 700 italic 34px/1.1 var(--display); color: #4a2e06; text-shadow: 0 1px 0 rgba(255,255,255,.7); }
+.crest-note { font: italic 14px/1.35 var(--display); color: #6b4a14; }
+.crest.is-in { animation: crest-in .9s cubic-bezier(.2, 1.4, .35, 1) both; }
+@keyframes crest-in { 0% { opacity: 0; translate: 0 -18px; scale: .8; } 60% { opacity: 1; } 100% { opacity: 1; translate: 0 0; scale: 1; } }
+.results[data-levelup] .hero { border-color: var(--gold); }
+
+/* Trophy reveals: each unlock rises in after the one before it, with its medal. */
+.results.is-in .unlocks > .unlocked, .read.is-in .unlocks > .unlocked { animation: reveal .6s cubic-bezier(.2, 1.3, .35, 1) calc(.35s + min(var(--i, 0), 8) * .14s) both; }
+@keyframes reveal { from { opacity: 0; translate: 0 10px; scale: .94; } to { opacity: 1; translate: 0 0; scale: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .road-gems .gem.is-next i, .crest.is-in, .results.is-in .unlocks > .unlocked, .read.is-in .unlocks > .unlocked { animation: none !important; }
+}
+@media (prefers-color-scheme: dark) {
+  .road-gems .gem.is-next span { color: var(--ink); }
+  .crest { background: radial-gradient(120% 140% at 50% 0%, #6a4e1c, #4a3510 60%, #33240a); color: #f6d58a;
+    box-shadow: 0 1px 0 rgba(255,255,255,.08) inset, inset 0 0 0 4px rgba(0,0,0,.18), inset 0 0 0 5px rgba(217,164,65,.5), 0 18px 40px -18px #000; }
+  .crest::before, .crest::after, .crest-kicker { color: #e0b25c; }
+  .crest b { color: #fff0c8; text-shadow: 0 1px 0 rgba(0,0,0,.4); }
+  .crest-note { color: #e6cf9c; }
+}
