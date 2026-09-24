@@ -9,7 +9,9 @@
  * ASCII only, as the passages are, so every character is on the keyboard.
  */
 
-export const VARIANTS = Object.freeze({
+import { VARIANTS_MORE } from "./variants-more.js";
+
+const CORE = {
   "p-iwata": [
     "Nine people with developmental disabilities who hurt themselves took part in the study by Iwata and his team. Instead of interviewing staff about why the self-injury happened, the researchers set up short sessions that repeated across several planned conditions. In the attention condition, an adult ignored the person until self-injury occurred and then offered a brief, mild comment of concern. In the demand condition, the adult presented hard tasks and let the person take a short break from them after self-injury. In the alone condition, the person had no materials and no company. The play condition, with toys, attention and no demands, served as the control. For most people, one condition produced clearly more self-injury than the rest, and that condition pointed to the reinforcer keeping it going: attention, escape, or the sensation itself. The lasting contribution was the method, because it tested the cause by changing the environment instead of inferring it from a story.",
   ],
@@ -58,7 +60,9 @@ export const VARIANTS = Object.freeze({
   "p-multiple": [
     "The multiple baseline design exists for behavior that cannot be taken back. Once a child has learned to wash hands or to buckle a seat belt, the skill usually stays after teaching ends, so a reversal design would fail and would not be wanted anyway. The analyst instead records two or more baselines at the same time, across behaviors, settings, or people, and starts the intervention on one baseline at a time. If each baseline changes only when the intervention reaches it, and not earlier, the pattern builds a convincing case that the intervention produced the change, and not time passing, maturation, or something new at home. The design is weaker when the baselines depend on each other, since a skill taught in one setting can spread to the next before its turn. It is also slow, because the final baseline waits longest, a cost worth weighing when the behavior matters to the client today.",
   ],
-});
+};
+
+export const VARIANTS = Object.freeze({ ...CORE, ...VARIANTS_MORE });
 
 /** The texts a passage can be typed as: the original first, then its variants. */
 export function textsFor(passage) {

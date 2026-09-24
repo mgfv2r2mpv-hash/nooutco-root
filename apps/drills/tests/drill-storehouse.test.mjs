@@ -6,6 +6,9 @@ import { BANK, TAGS } from "../web/bank.js";
 import { BANK_MORE } from "../web/bank-more.js";
 import { ITEMS } from "../web/outline.js";
 import { SEEDS, nextSeed, openWithSeed } from "../web/seeds.js";
+import { PASSAGES, keyLoad, nextPassage } from "../web/passages.js";
+import { PASSAGES_MORE } from "../web/passages-more.js";
+import { VARIANTS_MORE } from "../web/variants-more.js";
 
 test("the bank asks about every one of the outline's 104 items", () => {
   const asked = new Set(BANK.map((b) => b.outline));
@@ -78,4 +81,63 @@ test("seeds and the map take turns: a first conversation opens on a seed, then t
   assert.equal(openWithSeed([{ mode: "answer" }]), true);
   assert.equal(openWithSeed([{ mode: "oracle", seed: "s-hours" }, { mode: "copy" }]), false);
   assert.equal(openWithSeed([{ mode: "oracle", seed: "s-hours" }, { mode: "oracle" }]), true);
+});
+
+/* ---- passages written for his weak keys (passages-more.js) ------------- */
+
+// Every work the new passages cite. As with CHECKED above, a new one is added
+// here on purpose, after checking that the work exists.
+const PASSAGE_WORKS = [
+  "Hanley, Iwata & McCord (2003), JABA",
+  "Hanley, Jin, Vanselow & Hanratty (2014), JABA",
+  "Vollmer, Iwata, Zarcone, Smith & Mazaleski (1993), JABA",
+  "Horner & Day (1991), JABA",
+  "Lovaas (1987), Journal of Consulting and Clinical Psychology",
+  "Fisher, Piazza, Bowman, Hagopian, Owens & Slevin (1992), JABA",
+  "Rincover (1978), Journal of Abnormal Child Psychology",
+  "Michael (1982), JEAB",
+  "Rosales-Ruiz & Baer (1997), JABA",
+  "Parsons, Rollyson & Reid (2012), Behavior Analysis in Practice",
+  "Fisher, Kelley & Lomas (2003), JABA",
+  "Lalli et al. (1999), JABA",
+];
+const TAKE_SOURCE = /^The drill's own position, drawing on (general practice knowledge|Taylor, LeBlanc & Nosik \(2019\), Behavior Analysis in Practice|Fong, Catagnus, Brodhead, Quigley & Field \(2016\), Behavior Analysis in Practice|Skinner \(1957\), Verbal Behavior, and Cooper, Heron & Heward \(2020\), ch\. Verbal Behavior|Cooper, Heron & Heward \(2020\), ch\. Measuring Behavior|general practice knowledge and the BACB Ethics Code for Behavior Analysts \(2020\)|the BACB Ethics Code for Behavior Analysts \(2020\), 1\.11 Multiple Relationships)$/;
+
+test("at least 20 new passages, each long enough, plain ASCII, under a real outline item, with a checked source", () => {
+  assert.ok(PASSAGES_MORE.length >= 20, `${PASSAGES_MORE.length} new passages`);
+  assert.equal(PASSAGES.length, 16 + PASSAGES_MORE.length, "the first sixteen stay, and the new ones follow them");
+  const ids = new Set(ITEMS.map((it) => it.id));
+  for (const p of PASSAGES_MORE) {
+    assert.ok(ids.has(p.outline), `${p.id} -> ${p.outline}`);
+    assert.match(p.text + p.title + p.respond + p.source, /^[\x20-\x7e]+$/, `${p.id} is ASCII`);
+    assert.doesNotMatch(p.text + p.respond, /--| - /, `${p.id} has a dash`);
+    assert.ok(p.text.split(/\s+/).length >= 140, `${p.id} runs a couple of minutes`);
+    if (p.kind === "study") assert.ok(PASSAGE_WORKS.includes(p.source), `${p.id} cites an unchecked work: ${p.source}`);
+    else assert.match(p.source, TAKE_SOURCE, `${p.id} take source`);
+    if (p.kind === "take") assert.match(p.text, /^Here is the position\./, `${p.id} says it is a position`);
+  }
+});
+
+test("every new passage has a variant, and the set works w m b u c harder than the first sixteen", () => {
+  for (const p of PASSAGES_MORE) assert.ok((VARIANTS_MORE[p.id] || []).length >= 1, `${p.id} has no variant`);
+  for (const id of Object.keys(VARIANTS_MORE)) assert.ok(PASSAGES_MORE.some((p) => p.id === id), `variant for unknown ${id}`);
+  const weak = ["w", "m", "b", "u", "c"];
+  const mean = (list) => list.reduce((s, p) => s + keyLoad(p.text, weak), 0) / list.length;
+  const core = PASSAGES.slice(0, 16);
+  assert.ok(mean(PASSAGES_MORE) > mean(core), `new ${mean(PASSAGES_MORE).toFixed(4)} vs first ${mean(core).toFixed(4)}`);
+});
+
+test("a w m b u c player copying round after round rotates through a dozen passages, mostly the new ones", () => {
+  // Before, the last three sat out, so an aimed player looped over the same
+  // four heaviest passages for good. Now a third of them sit out.
+  const recent = [];
+  for (let i = 0; i < 12; i++) recent.push(nextPassage(recent, ["w", "m", "b", "u", "c"]).id);
+  assert.equal(new Set(recent).size, 12, recent.join(" "));
+  const fresh = recent.filter((id) => PASSAGES_MORE.some((p) => p.id === id)).length;
+  assert.ok(fresh >= 8, `${fresh} of 12 are new passages`);
+});
+
+test("the punishment take names the chapter by its 3rd edition title", () => {
+  const p = PASSAGES.find((x) => x.id === "p-punish");
+  assert.match(p.source, /ch\. Positive Punishment$/);
 });
