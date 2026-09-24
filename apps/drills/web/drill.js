@@ -25,6 +25,7 @@ import { renderPassage, markPassage } from "./copy.js";
 import { shelve, unshelve, dueEntry, returned, describeShelf, copyRounds } from "./shelf.js";
 import { pickReview, asReview, describeReviews } from "./review.js";
 import { renderRead } from "./read.js";
+import { nextSeed, openWithSeed } from "./seeds.js";
 import { ORACLE_SYSTEM, ORACLE_SCHEMA, oraclePrompt, readOracle, DRAFT_SYSTEM, DRAFT_SCHEMA, draftPrompt, toProposal,
   BATON_SYSTEM, BATON_SCHEMA, batonPrompt, readBaton, batonWords, relevantRecords } from "./oracle.js";
 
@@ -250,13 +251,19 @@ function busy(text) {
 }
 async function armOracle(followUp) {
   if (state.busy) return;
-  let topic, outline;
+  let topic, outline, seed = null;
   const turns = followUp && state.oracle ? state.oracle.turns.concat([{ question: state.oracle.reply.question, answer: els.box.value.trim() }]) : [];
-  if (followUp && state.oracle) ({ topic, outline } = state.oracle);
+  if (followUp && state.oracle) ({ topic, outline, seed } = state.oracle);
   else {
     const typed = els.oracleTopic ? els.oracleTopic.value.trim() : "";
     if (typed) { topic = typed; outline = null; }
-    else {
+    else if (openWithSeed(data.history)) {
+      // No topic typed, and the last conversation came from the map: a live
+      // question the field has not settled, asking for his view.
+      const s = nextSeed(data.history);
+      ({ topic, outline } = s);
+      seed = s.id;
+    } else {
       // No topic typed: the thinnest part of the map, as the bank does.
       const cell = emptiestCell({ bank: BANK, history: data.history, recent: 0 });
       const it = cell && itemById(cell);
@@ -274,11 +281,11 @@ async function armOracle(followUp) {
     els.pb.textContent = why; els.keepnote.textContent = why;
     return;
   }
-  state.oracle = { topic, outline, turns, reply };
+  state.oracle = { topic, outline, seed, turns, reply };
   const bullets = reply.thoughts.map((t) => ({ text: t.text, source: t.source }));
   if (reply.reflection) bullets.unshift({ text: reply.reflection, source: "the oracle, on your last answer" });
   state.passage = null;
-  state.item = { id: "oracle", outline, tag: `oracle · turn ${turns.length + 1}`, question: reply.question, bullets };
+  state.item = { id: "oracle", outline, tag: `oracle \u00b7 ${seed ? "your view \u00b7 " : ""}turn ${turns.length + 1}`, question: reply.question, bullets };
   startRound("oracle", 1, null);
 }
 
@@ -656,6 +663,7 @@ async function finish() {
     mode: state.mode, ...(state.passage && state.mode !== "answer" ? { passage: state.passage.id } : {}),
     ...(state.mode === "copy" && state.passage.variant ? { variant: state.passage.variant } : {}), ...(state.mode === "copy" && state.passage.fromShelf ? { fromShelf: true } : {}), ...(state.cont ? { cont: state.cont } : {}),
     ...(state.mode === "answer" && state.item.review ? { review: true, lens: state.item.lens } : {}),
+    ...(state.mode === "oracle" && state.oracle && state.oracle.seed ? { seed: state.oracle.seed } : {}),
     seconds: secondsFor(), gwam: s.gwam, nwam: s.nwam, accuracy: s.accuracy, rating: s.rating.name,
     corrections: s.corrections, uncorrected: s.uncorrected, words: s.grossWords, bestCombo: state.bestCombo,
     keys: s.keys, kept: false, revisions: s.revisions, revisedKeys: s.revisedKeys, keptWords: s.kept.words,

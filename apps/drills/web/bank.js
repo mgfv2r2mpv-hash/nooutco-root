@@ -16,11 +16,13 @@
  * chapter TITLE rather than number, so a citation cannot be off by a chapter.
  */
 
+import { BANK_MORE } from "./bank-more.js";
+
 const CHH = "Cooper, Heron & Heward (2020), Applied Behavior Analysis, 3rd ed.";
 
 export const TAGS = Object.freeze(["vignette", "explain", "design", "parent", "ethics", "supervise"]);
 
-export const BANK = Object.freeze([
+const CORE = [
   /* ── A. Philosophy ─────────────────────────────────────────────────── */
   { id: "a-01", outline: "A.1", tag: "parent",
     question: "A dad asks why you keep counting things instead of asking his son how he feels. Tell him what the counting is for.",
@@ -386,7 +388,10 @@ export const BANK = Object.freeze([
       { text: "BST: instructions, modeling, rehearsal, feedback, to criterion.", source: "Parsons, Rollyson & Reid (2012), Behavior Analysis in Practice" },
       { text: "Check it in the session, not only in role play.", source: "Reid, Parsons & Green (2012), The Supervisor's Guidebook" },
     ] },
-]);
+];
+
+// The core above plus bank-more.js, which fills the rest of the outline.
+export const BANK = Object.freeze([...CORE, ...BANK_MORE]);
 
 /**
  * The next question. With a map (an outline id from map.js emptiestCell), the

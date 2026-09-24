@@ -117,14 +117,15 @@ test('the map has 104 cells, the first question is the emptiest cell, and a dril
   await expect(page.locator('[data-map-cell]')).toHaveCount(104);
   await expect(page.locator('[data-map-cell]:not([data-map-total="0"])')).toHaveCount(0);
   await page.locator('[data-drill-again]').click();
-  // Nothing answered: B.4, the first askable item in the heaviest domain.
-  await expect(page.locator('[data-drill-category]')).toContainText('B.4');
-  await page.locator('[data-drill-box]').pressSequentially('negative reinforcement ', { delay: 15 });
+  // Nothing answered: B.1, the first askable item in the heaviest domain.
+  // (It was B.4 until bank-more.js gave B.1 to B.3 a question each.)
+  await expect(page.locator('[data-drill-category]')).toContainText('B.1');
+  await page.locator('[data-drill-box]').pressSequentially('two response classes ', { delay: 15 });
   await done(page);
   await page.locator('[data-tab="map"]').click();
-  await expect(page.locator('[data-map-cell="B.4"]')).toHaveAttribute('data-map-total', '1');
+  await expect(page.locator('[data-map-cell="B.1"]')).toHaveAttribute('data-map-total', '1');
   await page.locator('[data-drill-again]').click();
-  await expect(page.locator('[data-drill-category]')).toContainText('B.6');
+  await expect(page.locator('[data-drill-category]')).toContainText('B.2');
 });
 
 test('the garden grows with words and warms with speed, and goes back to bare ground for the next drill', async ({ page }) => {
@@ -583,6 +584,30 @@ test('the oracle asks, shows its thinking with sources, and the follow-up carrie
   await expect(page.locator('[data-drill-bullets] li').first()).toContainText('You named the timing');
   const second = await page.evaluate(() => window.__calls[1]);
   expect(second.prompt).toContain('He answered: it builds reinforced compliance');
+});
+
+test('with no topic typed the oracle opens on a live question for his view, then on the map next time', async ({ page }) => {
+  await page.addInitScript(ORACLE_MOCK);
+  await page.goto('/index.html?clock=2');
+  await page.locator('[data-drill-mode="oracle"]').click();
+  await page.locator('[data-drill-start]').click();
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-mode', 'oracle');
+  await expect(page.locator('[data-drill-category]')).toContainText('your view');
+  const first = await page.evaluate(() => window.__calls[0].prompt);
+  expect(first).toContain('Topic: how many hours of ABA a week');
+  expect(first).toContain('(BACB outline F.8)');
+  await page.locator('[data-drill-box]').pressSequentially('it depends on the child ', { delay: 10 });
+  await done(page);
+  const rec = await page.evaluate(() => window.NoteDrill.data.history.at(-1));
+  expect(rec.seed).toBe('s-hours');
+  // A new conversation, not a follow-up: the map's turn.
+  await page.evaluate(() => { window.__calls.length = 0; });
+  await page.goto('/index.html?clock=2');
+  await page.locator('[data-drill-mode="oracle"]').click();
+  await page.locator('[data-drill-start]').click();
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-mode', 'oracle');
+  await expect(page.locator('[data-drill-category]')).not.toContainText('your view');
+  expect(await page.evaluate(() => window.__calls[0].prompt)).not.toContain('how many hours');
 });
 
 test('talking fills the box, marks the round spoken, and a spoken round can be kept', async ({ page }) => {
