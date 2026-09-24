@@ -560,3 +560,6 @@ svg.divider { display: block; width: 220px; height: 14px; margin: 2px 0 18px; }
 .trophy.is-secret:not(.is-won) { border-style: dashed; }
 .trophy.is-secret:not(.is-won) .trophy-body b { letter-spacing: .08em; text-transform: uppercase; font-size: 12px; }
 .trophy.is-secret:not(.is-won) .trophy-cond { font-style: italic; }
+
+/* the settle after the bell: keys are off for three seconds, and the actions say so */
+main.drill[data-settling="1"] .actions button { opacity: .45; transition: opacity .3s; }
