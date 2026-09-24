@@ -675,13 +675,14 @@ main.drill[data-settling="1"] .actions button { opacity: .45; transition: opacit
 
 /* an answer left without a Keep: a bar on the home and results screens, never while typing */
 .pending { display: grid; gap: 8px; margin: 0 auto 14px; max-width: 900px; }
+.pending-count { font-size: 13px; color: #8a6a2e; padding: 0 4px; }
 .pending-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 12px; background: rgba(255,244,222,.92); border: 1px solid rgba(199,140,42,.45); font-size: 14px; }
 .pending-row span { flex: 1 1 260px; }
 .pending-row button { height: 34px; padding: 0 14px; font-size: 13px; }
 .pending-row .pending-note { flex: 1 1 100%; font-size: 13px; }
 .pending-row .pending-note:empty { display: none; }
 main.drill[data-drill-state="armed"] .pending, main.drill[data-drill-state="running"] .pending { display: none; }
-@media (prefers-color-scheme: dark) { .pending-row { background: rgba(60,48,28,.92); color: #f3e6cf; } }
+@media (prefers-color-scheme: dark) { .pending-row { background: rgba(60,48,28,.92); color: #f3e6cf; } .pending-count { color: #e2c48f; } }
 
 /* the pair game */
 .pair-go { margin-left: 8px; font: 600 12px/1 -apple-system, sans-serif; padding: 5px 10px; border-radius: 999px; border: 1px solid rgba(199,140,42,.55); background: rgba(255,236,196,.9); color: #7a4a10; cursor: pointer; }

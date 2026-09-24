@@ -257,6 +257,8 @@ func keep(_ r: [String: Any]) -> [String: Any] {
     let meta: [String: Any] = [
         "at": at, "outline": outline, "itemId": r["itemId"] ?? "", "question": r["question"] ?? "",
         "minutes": r["minutes"] ?? 0, "seconds": r["seconds"] ?? 0, "nwam": r["nwam"] ?? 0, "accuracy": r["accuracy"] ?? 0,
+        // Left mid-round with Esc and kept from the bar: no score, so nwam 0 means nothing.
+        "unscored": r["unscored"] ?? false,
         "register": register, "audience": "self", "timed": true, "mode": r["mode"] ?? "answer",
         "oracle": r["oracle"] ?? [:],
         // Where he stopped to think (character offset, ms, kind) and how many
