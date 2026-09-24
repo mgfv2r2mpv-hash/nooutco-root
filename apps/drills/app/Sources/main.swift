@@ -265,6 +265,11 @@ func keep(_ r: [String: Any]) -> [String: Any] {
         // A respond round names the passage it answered; a Keep going round
         // kept after an earlier Keep names the answer it continues.
         "passage": r["passage"] ?? "", "passageSource": r["passageSource"] ?? "", "continues": r["continues"] ?? "",
+        // What was in front of him (claims and sources, never his text), the
+        // lens or seed it came through, and tone counted on this Mac (stance.js).
+        // The drafting step reads research and the stance label; the counts
+        // stay here.
+        "research": r["research"] ?? [:], "tone": r["tone"] ?? [:], "lens": r["lens"] ?? "", "seed": r["seed"] ?? "",
     ]
     try? writeJSON(file.deletingPathExtension().appendingPathExtension("json"), meta)
 

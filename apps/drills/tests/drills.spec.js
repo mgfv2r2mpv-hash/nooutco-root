@@ -676,7 +676,8 @@ const BATON_MOCK = () => {
     },
     expertStatus: async () => ({ connected: true, queued: 1, note: 'Connected.' }),
     expertRecords: async () => ({ ok: true, records: [{ title: 'Momentum before the hard ask', rule: 'High probability requests build momentum before the demand.', topic: 'behavioral-momentum' }] }),
-    expertQueue: async () => ({ items: window.__kept.map((k) => ({ at: k.at, question: k.question, answer: k.text, mode: k.mode })) }),
+    // As the Swift shell does: the queued entry is the kept sidecar plus the answer.
+    expertQueue: async () => ({ items: window.__kept.map((k) => ({ ...k, answer: k.text })) }),
     expertPropose: async (record) => { window.__proposed.push(record); return { ok: true, proposalId: 'pr_b' }; },
     expertSent: async (stamps) => { window.__sent.push(...stamps); return { ok: true, queued: 0 }; },
   };
@@ -719,6 +720,36 @@ test('baton pass: keeps the answer, ingests it in the background, and the expert
   await expect(page.locator('[data-drill-q]')).toHaveText('How would you raise the rate in session?');
   await expect(page.locator('[data-drill-bullets]')).toContainText('Nevin (1992)');
   await expect(page.locator('[data-drill-category]')).toContainText('respond · baton pass 1');
+});
+
+test('a kept respond answer carries the passage it answered and a local stance, and the draft reads them for consensus and dissent', async ({ page }) => {
+  await page.addInitScript(BATON_MOCK);
+  await page.addInitScript(() => localStorage.setItem('noaba.drills.settings.v1', JSON.stringify({ mode: 'copy', copyDefault: true })));
+  await page.goto(PAGE);
+  await wordsReady(page);
+  await page.locator('[data-drill-start]').click();
+  const box = page.locator('[data-drill-box]');
+  await box.pressSequentially('The ', { delay: 10 });
+  await done(page);
+  await page.keyboard.press('Enter');
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-mode', 'respond');
+  await box.pressSequentially('I am not convinced, however it might help ', { delay: 10 });
+  await done(page);
+  await page.keyboard.press('b');
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-mode', 'copy', { timeout: 10000 });
+  await expect.poll(() => page.evaluate(() => window.__sent.length)).toBe(1);
+  const out = await page.evaluate(() => ({ kept: window.__kept[0], passage: window.NoteDrill.data.history.at(-2).passage, calls: window.__calls, proposed: window.__proposed }));
+  expect(out.kept.research.kind).toBe('passage');
+  expect(out.kept.research.passage).toBe(out.passage);
+  expect(out.kept.research.sources.length).toBeGreaterThan(0);
+  expect(out.kept.tone.stance).toBe('pushes back');
+  expect(out.kept.tone.hedges).toBe(1);
+  const draft = out.calls.find((c) => c.schema.properties.records);
+  expect(draft.prompt).toContain('The research in front of him (passage):');
+  expect(draft.prompt).toContain('Stance markers in his answer: pushes back.');
+  expect(draft.prompt).not.toContain('hedges');
+  expect(draft.system).toContain('dissent');
+  expect(out.proposed[0].provenance.sources).toEqual(out.kept.research.sources);
 });
 
 test('for three seconds after the bell, keys do nothing, so typing past it cannot start the next round', async ({ page }) => {
