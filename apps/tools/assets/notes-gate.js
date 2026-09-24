@@ -1951,12 +1951,47 @@
      It is intermittent because it is the model's typing, not ours. Widening the
      shape is the only honest fix: we cannot make a model stop normalising
      brackets, and every shape we do not cover is a silent one. */
-  var OPENERS = "\\[\\(\\uFF08\\uFF3B\\u3010\\u301A\\uFF62";
-  var CLOSERS = "\\]\\)\\uFF09\\uFF3D\\u3011\\u301B\\uFF63";
+  /* WIDENED 2026-09-24: braces, angle brackets, guillemets and the rest of the
+     CJK pairs. Each of them otherwise restored the word and left the delimiter
+     welded to it, {Throwing}, which reads as a typo the clinician made. */
+  var OPENERS = "\\[\\(\\{<\\u00AB\\u2039\\uFF08\\uFF3B\\uFF5B\\u3008\\u300A\\u300C\\u300E\\u3010\\u3014\\u301A\\uFF62";
+  var CLOSERS = "\\]\\)\\}>\\u00BB\\u203A\\uFF09\\uFF3D\\uFF5D\\u3009\\u300B\\u300D\\u300F\\u3011\\u3015\\u301B\\uFF63";
 
   /* One T-number: optional separator between the T and its digits, because a
      model writes T-3 and T_3 as readily as T3. */
-  var ONE = "[Tt]\\s*[-_]?\\s*(\\d+)";
+  /* WIDENED 2026-09-24: a fullwidth T or fullwidth digits, which an input
+     method hands a model as readily as ASCII, a # between the T and its number,
+     and the word spelled out, [Token 3], inside brackets. */
+  var T_LETTER = "[Tt\\uFF34\\uFF54]";
+  var DIGITS = "([0-9\\uFF10-\\uFF19]+)";
+  var ONE = T_LETTER + "(?:oken)?\\s*[-_#]?\\s*" + DIGITS;
+
+  /* THE BARE FORM, T3 with no delimiter at all. Kaleb's sup note on 2026-09-24
+     came back reading "Goal: T2 (Behavior T3)" and "prompted 'T6 now'", six
+     words gone from a signed note, and his ruling was that what was removed
+     MUST be put back. This used to be left to the alert check, on the fear that
+     a loose T3 in prose might be the clinician's own. notes-scrub.js now closes
+     that at the mint: it never issues a number the intake already spells, so a
+     bare T-number that matches this note's map is ours and nobody else's.
+
+     The edges are what keep it off ordinary words. Not after a letter, digit or
+     underscore (AT3, BT3, GT-3), not before one (T3a, T3B, T30), and not before
+     a decimal (T3.5). The separator is a single - _ or #, never a space, so
+     "at 3" and "Part 3" cannot be read as one. "Token 3" is the one spelling
+     allowed a space, because the word itself is the evidence. Glued runs,
+     T101T102, are read as one hit and restored all or nothing. */
+  var BARE =
+    "(^|[^A-Za-z0-9_\\uFF10-\\uFF19\\uFF21-\\uFF3A\\uFF41-\\uFF5A])" +
+    "((?:" + T_LETTER + "(?:oken ?)?[-_#]?[0-9\\uFF10-\\uFF19]+)+)" +
+    "(?![A-Za-z0-9_\\uFF10-\\uFF19\\uFF21-\\uFF3A\\uFF41-\\uFF5A]|\\.[0-9])";
+
+  /* Fullwidth digits read as the number they spell, so T\uFF13 is T3. */
+  function numberOf(digits) {
+    var ascii = String(digits).replace(/[\uFF10-\uFF19]/g, function (c) {
+      return String.fromCharCode(c.charCodeAt(0) - 0xFEE0);
+    });
+    return String(parseInt(ascii, 10));
+  }
 
   function looseTokenRun() {
     /* An opening delimiter, optionally backslash-escaped the way markdown does
@@ -2000,13 +2035,28 @@
       var numbers = [];
       var m;
       var scan = eachNumber();
-      while ((m = scan.exec(run)) !== null) numbers.push(String(parseInt(m[1], 10)));
+      while ((m = scan.exec(run)) !== null) numbers.push(numberOf(m[1]));
       if (!numbers.length) return run;
       var allIssued = numbers.every(function (n) {
         return Object.prototype.hasOwnProperty.call(byNumber, n);
       });
       if (!allIssued) return run;
       return numbers.map(function (n) { return byNumber[n]; }).join(", ");
+    });
+  }
+
+  /* The bare pass, run on whatever the bracket pass left. Only a number this
+     note issued is touched, so T99 and a clinician's own T-number stay put. */
+  function restoreBareOpaque(text, map) {
+    var byNumber = issuedNumbers(map);
+    if (!Object.keys(byNumber).length) return text;
+    return String(text).replace(new RegExp(BARE, "g"), function (hit, lead, tok) {
+      var numbers = (tok.match(/[0-9\uFF10-\uFF19]+/g) || []).map(numberOf);
+      var allIssued = numbers.length && numbers.every(function (n) {
+        return Object.prototype.hasOwnProperty.call(byNumber, n);
+      });
+      if (!allIssued) return hit;
+      return lead + numbers.map(function (n) { return byNumber[n]; }).join(", ");
     });
   }
 
@@ -2113,7 +2163,7 @@
       /* The literal pass still wins for names and role tokens, so a token the
          model echoed back correctly never reaches the tolerant opaque one. It
          only ever sees the survivors. */
-      return restoreLooseOpaque(s, map);
+      return restoreBareOpaque(restoreLooseOpaque(s, map), map);
     }
     if (Array.isArray(value)) return value.map(function (v) { return restoreDeep(v, map); });
     if (value && typeof value === "object") {

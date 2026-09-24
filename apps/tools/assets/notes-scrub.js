@@ -377,10 +377,47 @@
     return counts;
   }
 
+  /* THE HIGHEST T-NUMBER THE CLINICIAN ALREADY TYPED, so the mint starts above it.
+   *
+   * notes-gate.js restores a bare T3 since 2026-09-24, because the model drops
+   * the brackets and his note came back reading "Goal: T2". That restore is safe
+   * only if a T-number this note issued cannot also be one the clinician wrote,
+   * a spinal level or a protocol step. Minting above every number the intake
+   * spells makes that true by construction. Deliberately wider than the restorer
+   * (any spacing, "Token", fullwidth): an over-read here costs a skipped number
+   * and nothing else.
+   */
+  function typedTNumberCeiling(text) {
+    var top = 0;
+    var re = /[Tt\uFF34\uFF54](?:oken)?[\s_#-]*([0-9\uFF10-\uFF19]+)/g;
+    var m;
+    while ((m = re.exec(String(text || ""))) !== null) {
+      var ascii = m[1].replace(/[\uFF10-\uFF19]/g, function (c) {
+        return String.fromCharCode(c.charCodeAt(0) - 0xFEE0);
+      });
+      var n = parseInt(ascii, 10);
+      if (n > top && n < 100000) top = n;
+    }
+    return top;
+  }
+
+  /* OPAQUE NUMBERS START AT 101, so a bare one is never the model's own.
+   *
+   * The ceiling above keeps the mint off a T-number the clinician typed. It
+   * cannot see one the model invents in its reply, and an ABA note abbreviates
+   * trials as T1, T2, T3 without being asked. With the restorer reading bare
+   * T-numbers, "responded on T1" would have come back as "responded on
+   * Aggression". No model labels a trial T101, so starting there leaves every
+   * number it might coin for itself below anything this note issues. A saved
+   * ledger numbered from 1 still restores, because the restorer reads the map,
+   * not the floor.
+   */
+  var OPAQUE_FLOOR = 100;
+
   function defaultTokens(names, freeText, seen) {
     var seeds = seedsFromMap(seen);
     var counts = seeds.counts;
-    var opaque = seeds.opaque;
+    var opaque = Math.max(seeds.opaque, typedTNumberCeiling(freeText), OPAQUE_FLOOR);
     return names.map(function (name) {
       if (!personEvidence(name, freeText)) {
         opaque += 1;
