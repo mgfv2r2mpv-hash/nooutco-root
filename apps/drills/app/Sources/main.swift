@@ -296,11 +296,12 @@ func keep(_ r: [String: Any]) -> [String: Any] {
 
 // ------------------------------------------------------------------ the window
 
-final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNavigationDelegate {
     var window: NSWindow!
     var web: WKWebView!
     let bridge = Bridge()
     let selftest = CommandLine.arguments.contains("--selftest")
+    var askingToQuit = false
 
     func applicationDidFinishLaunching(_ note: Notification) {
         buildMenu()
@@ -322,6 +323,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
         window.titleVisibility = .hidden
         window.backgroundColor = NSColor(calibratedRed: 243/255, green: 245/255, blue: 248/255, alpha: 1)
         window.minSize = NSSize(width: 720, height: 600)
+        window.delegate = self
         window.contentView = web
         window.setFrameAutosaveName("DrillWindow")
         if !window.setFrameUsingName("DrillWindow") { window.center() }
@@ -332,6 +334,52 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ app: NSApplication) -> Bool { true }
+
+    // A1: an answer without a Keep lives only in the page, so a quit would
+    // lose it. The page counts them (window.NoteDrill.unkeptCount) and the
+    // quit waits on a warning. Nothing is written here: his ruling is that
+    // text reaches disk only through Keep.
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        if selftest || web == nil || window == nil { return .terminateNow }
+        if askingToQuit { return .terminateCancel }
+        askingToQuit = true
+        let ask = "window.NoteDrill && window.NoteDrill.unkeptCount ? window.NoteDrill.unkeptCount() : 0"
+        web.evaluateJavaScript(ask) { [weak self] result, error in
+            guard let self else { sender.reply(toApplicationShouldTerminate: true); return }
+            let count = (result as? NSNumber)?.intValue ?? 0
+            if error == nil && count == 0 {
+                self.askingToQuit = false
+                sender.reply(toApplicationShouldTerminate: true)
+                return
+            }
+            if let error { log("unkept count failed: \(error.localizedDescription)") }
+            self.warnUnkept(count: error == nil ? count : nil) { quit in
+                self.askingToQuit = false
+                sender.reply(toApplicationShouldTerminate: quit)
+            }
+        }
+        return .terminateLater
+    }
+
+    func warnUnkept(count: Int?, then reply: @escaping (Bool) -> Void) {
+        let alert = NSAlert()
+        switch count {
+        case .some(1): alert.messageText = "An answer is not kept"
+        case .some(let n): alert.messageText = "\(n) answers are not kept"
+        case .none: alert.messageText = "The app could not check for unkept answers"
+        }
+        alert.informativeText = "Quitting now loses what is not kept, and nothing is saved. Press Cancel, then Keep it on the results screen or the bar at home."
+        alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: "Quit Anyway")
+        window.makeKeyAndOrderFront(nil)
+        alert.beginSheetModal(for: window) { reply($0 == .alertSecondButtonReturn) }
+    }
+
+    // Closing the window quits the app, so Cmd-W goes through the same check.
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        NSApp.terminate(nil)
+        return false
+    }
 
     // Links out of the page open in the browser, never in the drill window.
     func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {

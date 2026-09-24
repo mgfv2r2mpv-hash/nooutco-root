@@ -1354,6 +1354,20 @@ function holdIfUnkept() {
   state.pending = [snapshot(), ...(state.pending || []).filter((p) => p.record !== state.record && !sameAnswer(p))].slice(0, PENDING_MAX);
   renderPending();
 }
+/* A1: how many of his answers a quit would lose right now. The Mac shell
+   asks this before it quits or closes the window, and warns when it is not
+   0. It counts the held rows, plus the answer on screen when it is finished
+   and unkept or still being written. A Keep going round and its held
+   earlier round are one answer. Copy rounds are not his words. */
+function unkeptCount() {
+  const list = (state.pending || []).filter((p) => !(p.record && p.record.kept));
+  const hasWords = state.score && (state.score.gwam > 0 || (state.spoken && roundText().trim()));
+  const finished = ["done", "board"].includes(state.phase) && hasWords && !state.kept && !(state.record && state.record.kept);
+  const writing = state.phase === "running" && Boolean(roundText().trim());
+  const live = !copyLike() && (finished || writing);
+  const held = live ? list.filter((p) => p.record !== state.record && !sameAnswer(p)) : list;
+  return held.length + (live ? 1 : 0);
+}
 /* An earlier Keep going round of the answer on screen: the live round's text
    holds all of it, so the live round's Keep or hold replaces it. */
 function sameAnswer(p) {
@@ -1505,4 +1519,4 @@ async function init() {
 init();
 
 // For tests and a look under the hood; never for the page's own flow.
-window.NoteDrill = { handOf, state, data, BANK, scoreDrill, finish, known: () => knownNow(), garden, drawMap, renderBoard, openBoard, sendToExpert, batonPass };
+window.NoteDrill = { handOf, state, data, BANK, scoreDrill, finish, known: () => knownNow(), garden, drawMap, renderBoard, openBoard, sendToExpert, batonPass, unkeptCount };
