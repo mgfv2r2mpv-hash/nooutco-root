@@ -26,9 +26,11 @@ const HISTORY_MAX = 2000;
 function lsGet(key, fallback) {
   try { const v = JSON.parse(localStorage.getItem(key)); return v == null ? fallback : v; } catch (e) { return fallback; }
 }
+/** false when the browser refuses the write (private mode, a full quota); the drill still works. */
 function lsSet(key, value) {
-  try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* private mode: the drill still works */ }
+  try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch (e) { return false; }
 }
+const saved = (ok) => (ok ? { ok: true } : { ok: false, note: "the browser refused the write" });
 
 async function call(op, payload) {
   return bridge.postMessage({ op, ...(payload || {}) });
@@ -61,20 +63,17 @@ export async function load() {
 export async function saveHistory(list) {
   const trimmed = list.slice(-HISTORY_MAX);
   if (inApp) return call("saveHistory", { history: trimmed });
-  lsSet(LS.history, trimmed);
-  return { ok: true };
+  return saved(lsSet(LS.history, trimmed));
 }
 
 export async function saveLexicon(list) {
   if (inApp) return call("saveLexicon", { lexicon: list });
-  lsSet(LS.lexicon, list);
-  return { ok: true };
+  return saved(lsSet(LS.lexicon, list));
 }
 
 export async function saveSettings(obj) {
   if (inApp) return call("saveSettings", { settings: obj });
-  lsSet(LS.settings, obj);
-  return { ok: true };
+  return saved(lsSet(LS.settings, obj));
 }
 
 /**

@@ -87,6 +87,36 @@ test('numbers are saved after every drill and the text is not; Keep in a browser
   await expect(page.locator('[data-drill-keepnote]')).toContainText('Mac app');
 });
 
+test('S6: a refused save shows one quiet line and no error, and the next good save clears it', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.addInitScript(() => {
+    window.__refuseHistory = true;
+    const set = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (k, v) {
+      if (k === 'noaba.drills.v1' && window.__refuseHistory) throw new Error('QuotaExceededError');
+      return set.call(this, k, v);
+    };
+  });
+  await page.goto(PAGE);
+  const note = page.locator('[data-drill-savenote]');
+  await expect(note).toBeHidden();
+  await page.locator('[data-drill-start]').click();
+  await page.locator('[data-drill-box]').pressSequentially('word word word', { delay: 15 });
+  await done(page);
+  await expect(note).toBeVisible();
+  await expect(note).toHaveText('Your history could not be saved to disk just now. It is still here on screen, and the next save tries again.');
+  await expect(page.locator('[data-drill-results]')).toBeVisible();
+  // The next round saves the whole list again; once the disk takes it, the line goes.
+  await page.evaluate(() => { window.__refuseHistory = false; });
+  await page.locator('[data-drill-again]').click();
+  await page.locator('[data-drill-box]').pressSequentially('word word word', { delay: 15 });
+  await done(page);
+  await expect(note).toBeHidden();
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('noaba.drills.v1')))).toHaveLength(2);
+  expect(errors).toEqual([]);
+});
+
 test('an unknown word is named when the space lands, counted, and marking it clinical takes it out and keeps it', async ({ page }) => {
   await page.goto(PAGE);
   await wordsReady(page);

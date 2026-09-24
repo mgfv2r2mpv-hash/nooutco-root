@@ -3,19 +3,28 @@
  * bests or bands, but it tracks its own progress and has its own trophies,
  * most of them hard to earn.
  *
- * games = { pairs: { br: [run, ...] }, shifty: [run, ...], river: [run, ...] }, kept in settings.
+ * games = { pairs: { br: [run, ...] }, shifty: [run, ...], river: [run, ...], earned: { id: at } }, kept in settings.
+ * earned is the permanent record of each trophy's first date (ids and dates only, no typed
+ * text), so a trophy never vanishes or moves once its run falls off the RUNS_KEPT cap.
  * Pure; node --test reads it.
  */
 
 export const RUNS_KEPT = 60;
 
-/** A copy of games with one run added, the oldest dropped past RUNS_KEPT. */
+/**
+ * A copy of games with one run added, the oldest dropped past RUNS_KEPT. Trophies are
+ * read before the cap trims, and each newly earned one's first date goes into earned.
+ */
 export function addRun(games, kind, run, pair = null) {
-  const g = { pairs: { ...((games && games.pairs) || {}) }, shifty: [...((games && games.shifty) || [])], river: [...((games && games.river) || [])] };
-  if (kind === "pair" && pair) g.pairs[pair] = [...(g.pairs[pair] || []), run].slice(-RUNS_KEPT);
-  if (kind === "shifty") g.shifty = [...g.shifty, run].slice(-RUNS_KEPT);
-  if (kind === "river") g.river = [...g.river, run].slice(-RUNS_KEPT);
-  return g;
+  const g = { pairs: { ...((games && games.pairs) || {}) }, shifty: [...((games && games.shifty) || [])], river: [...((games && games.river) || [])], earned: { ...((games && games.earned) || {}) } };
+  if (kind === "pair" && pair) g.pairs[pair] = [...(g.pairs[pair] || []), run];
+  if (kind === "shifty") g.shifty = [...g.shifty, run];
+  if (kind === "river") g.river = [...g.river, run];
+  const newly = gameTrophies(g).filter((t) => t.at && !g.earned[t.id]);
+  const earned = { ...g.earned, ...Object.fromEntries(newly.map((t) => [t.id, t.at])) };
+  const cap = (runs) => runs.slice(-RUNS_KEPT);
+  const pairs = Object.fromEntries(Object.entries(g.pairs).map(([p, runs]) => [p, cap(runs)]));
+  return { pairs, shifty: cap(g.shifty), river: cap(g.river), earned };
 }
 
 /** Last, best and first for a list of runs, by a field where lower is better. */
@@ -88,7 +97,11 @@ export function gameTrophies(games) {
     { id: "g-glassy", name: "Glassy", cond: "Hold an even beat for 20 seconds without a break.", at: firstAt(river, (r) => r.bestStreak >= 20) },
     { id: "g-rapids", name: "Rapids Runner", cond: "Win River Rhythm in under 25 seconds.", at: firstAt(river, (r) => r.secs < 25) },
   ];
-  return list.map((t) => ({ ...t, family: "Mini games", unlocked: !!t.at }));
+  const earned = (games && games.earned) || {};
+  return list.map((t) => {
+    const when = typeof earned[t.id] === "string" ? earned[t.id] : t.at;
+    return { ...t, at: when, family: "Mini games", unlocked: !!when };
+  });
 }
 
 export { mean };
