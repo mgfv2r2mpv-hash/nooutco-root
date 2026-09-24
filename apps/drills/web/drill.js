@@ -67,6 +67,7 @@ const els = {
   strictShift: $("[data-drill-strict-shift]"), tame: $("[data-drill-tame]"), tameHome: $("[data-drill-tame-home]"),
   read: $("[data-drill-read]"), respond: $("[data-drill-respond]"), shelve: $("[data-drill-shelve]"), numbers: $("[data-drill-numbers]"),
   readHome: $("[data-drill-read-home]"), readNote: $("[data-drill-read-note]"), readUnlocked: $("[data-drill-read-unlocked]"), readLevelUp: $("[data-drill-read-levelup]"),
+  bandsNote: $("[data-drill-bandsnote]"), readBandsNote: $("[data-drill-read-bandsnote]"),
   readParts: { score: $("[data-drill-read-score]"), title: $("[data-drill-read-title]"), source: $("[data-drill-read-source]"),
     text: $("[data-drill-read-text]"), sources: $("[data-drill-read-sources]"), question: $("[data-drill-read-question]") },
   shelf: $("[data-drill-shelf]"), dueReviews: $("[data-drill-reviews]"), mapShelf: $("[data-drill-map-shelf]"),
@@ -931,6 +932,7 @@ function render(s, st, prior) {
   els.rating.textContent = state.mode === "tame" ? "Nemesis drill" : s.rating.name;
   els.ratingNote.textContent = state.mode === "tame" ? "(practice only: no band)" : s.rating.accuracyGated ? "(one band down: accuracy under 96%)" : s.gwam < 1 ? "(nothing typed)" : "";
   renderLevelUp(s);
+  renderBandsNote(s, prior);
   els.next.textContent = s.gwam < 1 ? "" : state.mode === "tame" ? tameReport(state.passage.target, s).line : ladderText(s.nwam, prior.filter((h) => kindOf(h) === roundKind()), state.roundMinutes);
   els.stars.replaceChildren(
     star(st.best, "Personal best"), star(st.beatLast, "Beat your last"), star(st.clean, "97% clean"),
@@ -1042,6 +1044,8 @@ function showRead() {
   // A copy round that opened a band says so here too: this screen comes first.
   els.readLevelUp.hidden = els.levelUp.hidden;
   els.readLevelUp.replaceChildren(...els.levelUp.cloneNode(true).childNodes);
+  els.readBandsNote.hidden = els.bandsNote.hidden;
+  els.readBandsNote.textContent = els.bandsNote.textContent;
   els.readNote.textContent = state.passage.fromShelf ? "Back from the shelf, in new words. Shelve it again if it still is not the day for it." : "";
   els.results.hidden = true;
   els.read.hidden = false;
@@ -1080,6 +1084,24 @@ function renderLevelUp(s) {
     Object.assign(document.createElement("span"), { className: "crest-note", textContent: `Past ${up.from}, the first time over ${up.min} NWAM.` }),
   );
   els.results.dataset.levelup = up.band;
+}
+
+/* The bands above Professional came in on 2026-09-23 with no word on screen,
+   so a round that used to read Professional reads Expert. His first result
+   after that says so once, and settings.bandsNoted keeps it from coming back.
+   Only someone with rounds from before the change sees it. */
+const BANDS_CHANGED_AT = "2026-09-24T03:44:00.000Z";
+const BANDS_NOTE = "The bands changed on 2026-09-23: Expert (85 NWAM), Elite (95), Master (105), Virtuoso (115) and Stenographer (125) now sit above Professional (75), so a round that used to read Professional can read Expert or higher. Older rounds keep the band name they were given.";
+function renderBandsNote(s, prior) {
+  const real = state.mode !== "tame" && s.gwam >= 1 && state.record;
+  const due = real && (state.bandsNoteFor === state.record
+    || (!data.settings.bandsNoted && prior.some((h) => typeof h.at === "string" && h.at < BANDS_CHANGED_AT)));
+  els.bandsNote.hidden = !due;
+  els.bandsNote.textContent = due ? BANDS_NOTE : "";
+  if (!due || data.settings.bandsNoted) return;
+  state.bandsNoteFor = state.record;
+  data.settings = { ...data.settings, bandsNoted: true };
+  persist("saveSettings", data.settings);
 }
 
 /* The band is the field's yardstick; the personal ladder is his own. */
@@ -1268,7 +1290,10 @@ function drawMap() {
 function expertCounts() { const e = window.DrillExpert; return e && typeof e === "object" ? e : {}; }
 
 function showTab(name) {
-  for (const t of els.tabs) t.classList.toggle("is-on", t.dataset.tab === name);
+  for (const t of els.tabs) {
+    t.classList.toggle("is-on", t.dataset.tab === name);
+    t.setAttribute("aria-selected", String(t.dataset.tab === name));
+  }
   for (const p of els.panes) p.hidden = p.dataset.pane !== name;
   if (name === "expert") renderExpert();
 }
@@ -1549,6 +1574,15 @@ els.numbers.addEventListener("click", toggleNumbers);
 els.readHome.addEventListener("click", home);
 for (const b of els.opens) b.addEventListener("click", () => openBoard(b.dataset.drillOpen));
 for (const t of els.tabs) t.addEventListener("click", () => showTab(t.dataset.tab));
+/* Left and right arrows walk the tabs, as a tablist does (AUDIT S16). */
+for (const [i, t] of els.tabs.entries()) t.addEventListener("keydown", (e) => {
+  const step = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+  if (!step) return;
+  e.preventDefault();
+  const next = els.tabs[(i + step + els.tabs.length) % els.tabs.length];
+  showTab(next.dataset.tab);
+  next.focus({ preventScroll: true });
+});
 els.strictShift.addEventListener("change", () => {
   data.settings = { ...data.settings, strictShift: els.strictShift.checked };
   persist("saveSettings", data.settings);
