@@ -183,14 +183,19 @@ export function passageLoad(text, profile) {
  * The next passage. The last few he copied are set aside; of the rest, the one
  * that works his tricky areas hardest wins, and with none yet (a new player)
  * the one least recently copied does. `profile` is a trickyProfile, or a plain
- * list of keys.
+ * list of keys. `shelved` ids are left out: they come back through the shelf.
  */
-export function nextPassage(recentIds = [], profile = null) {
+export function nextPassage(recentIds = [], profile = null, shelved = []) {
   const last = new Map();
   recentIds.forEach((id, i) => last.set(id, i));
   const age = (p) => (last.has(p.id) ? last.get(p.id) + 1 : 0);
   const skip = new Set(recentIds.slice(-Math.min(3, PASSAGES.length - 1)));
-  const pool = PASSAGES.filter((p) => !skip.has(p.id));
+  // A shelved passage waits for its turn on the shelf, never sooner.
+  const wait = new Set(shelved);
+  const open = PASSAGES.filter((p) => !wait.has(p.id));
+  const base = open.length ? open : PASSAGES;
+  const fresh = base.filter((p) => !skip.has(p.id));
+  const pool = fresh.length ? fresh : base;
   const aimed = profile && (Array.isArray(profile) ? profile.length : describeProfile(profile));
   if (aimed) return pool.slice().sort((a, b) => passageLoad(b.text, profile) - passageLoad(a.text, profile) || age(a) - age(b))[0];
   return pool.slice().sort((a, b) => age(a) - age(b))[0];

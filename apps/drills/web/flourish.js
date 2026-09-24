@@ -135,6 +135,7 @@ export function flourish(doc = document) {
 
   frame(setup);
   frame(results);
+  frame(doc.querySelector("[data-drill-read]"));
   const h1 = setup && setup.querySelector("h1");
   if (h1 && !setup.querySelector(".divider")) h1.after(divider());
 

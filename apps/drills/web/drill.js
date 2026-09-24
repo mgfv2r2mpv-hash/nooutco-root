@@ -21,6 +21,8 @@ import { createCalendar, renderTrophies } from "./calendar.js";
 import { handOf, judge, createShiftTracker, createShiftFx } from "./shift.js";
 import { nextPassage, trickyProfile, describeProfile } from "./passages.js";
 import { renderPassage, markPassage } from "./copy.js";
+import { shelve, unshelve, dueEntry, returned, describeShelf, copyRounds } from "./shelf.js";
+import { renderRead } from "./read.js";
 import { ORACLE_SYSTEM, ORACLE_SCHEMA, oraclePrompt, readOracle, DRAFT_SYSTEM, DRAFT_SCHEMA, draftPrompt, toProposal,
   BATON_SYSTEM, BATON_SCHEMA, batonPrompt, readBaton, batonWords, relevantRecords } from "./oracle.js";
 
@@ -52,6 +54,11 @@ const els = {
   oracleTopic: $("[data-drill-oracle-topic]"), oracleOnly: $$("[data-oracle-only]"), mic: $("[data-drill-mic]"), baton: $("[data-drill-baton]"),
   send: $("[data-drill-send]"), expertStatus: $("[data-drill-expert-status]"), expertToken: $("[data-drill-expert-token]"),
   strictShift: $("[data-drill-strict-shift]"),
+  read: $("[data-drill-read]"), respond: $("[data-drill-respond]"), shelve: $("[data-drill-shelve]"), numbers: $("[data-drill-numbers]"),
+  readHome: $("[data-drill-read-home]"), readNote: $("[data-drill-read-note]"), readUnlocked: $("[data-drill-read-unlocked]"),
+  readParts: { score: $("[data-drill-read-score]"), title: $("[data-drill-read-title]"), source: $("[data-drill-read-source]"),
+    text: $("[data-drill-read-text]"), sources: $("[data-drill-read-sources]"), question: $("[data-drill-read-question]") },
+  shelf: $("[data-drill-shelf]"), mapShelf: $("[data-drill-map-shelf]"),
   expertConnect: $("[data-drill-expert-connect]"), expertSend: $("[data-drill-expert-send]"), expertLog: $("[data-drill-expert-log]"),
 };
 
@@ -170,10 +177,13 @@ function home() {
   els.setup.hidden = false;
   els.question.hidden = true;
   els.results.hidden = true;
+  els.read.hidden = true;
+  delete root.dataset.drillView;
   garden.reset(); garden.cool();
   shiftFx.clear();
   setMinutes(state.minutes, false);
   renderChips();
+  renderShelf();
   els.start.focus();
 }
 
@@ -188,7 +198,9 @@ function arm() {
     // The profile is read fresh from the recent drills every time.
     state.tricky = trickyProfile(data.history, keyboardRates(data.history, 20));
     state.weak = state.tricky.keys;
-    armCopy(nextPassage(recent, state.tricky));
+    // A shelved passage whose turn has come goes first, in new words.
+    const back = returned(dueEntry(shelf(), shelfNow()));
+    armCopy(back || nextPassage(recent, state.tricky, shelf().map((e) => e.id)));
     return;
   }
   const recent = data.history.map((h) => h.itemId);
@@ -202,7 +214,8 @@ function arm() {
 /* Copy: the passage for the picked clock, word for word. Never kept. */
 function armCopy(passage) {
   state.passage = passage;
-  state.item = { id: passage.id, outline: passage.outline, tag: passage.kind === "baton" ? `baton pass ${state.baton}` : passage.kind === "take" ? "the drill's take" : "study", question: passage.title, bullets: [] };
+  const tag = passage.kind === "baton" ? `baton pass ${state.baton}` : passage.kind === "take" ? "the drill's take" : "study";
+  state.item = { id: passage.id, outline: passage.outline, tag: passage.fromShelf ? `${tag} \u00b7 back from the shelf` : tag, question: passage.title, bullets: [] };
   startRound("copy", state.minutes, null);
 }
 
@@ -450,13 +463,14 @@ function startRound(mode, minutes, carry) {
   state.prefix = els.box.value.length;
   els.box.disabled = false;
   els.box.placeholder = mode === "copy"
-    ? "Type the passage above, exactly. Capitals and punctuation count. The clock starts on your first key."
+    ? "Type the passage above, exactly. No need to read ahead: it comes back to read properly when the round ends."
     : "Start typing. The clock starts on your first key.";
   els.live.textContent = ""; els.combo.hidden = true; els.wpm.textContent = "0";
-  els.hint.textContent = mode === "copy" ? "Copy it word for word. Finish the passage and the round ends early." : "The clock starts on your first keystroke. esc leaves without scoring.";
+  els.hint.textContent = mode === "copy" ? "Copy it cold, word for word. You get to read it properly afterwards, before you answer." : "The clock starts on your first keystroke. esc leaves without scoring.";
   els.clock.textContent = clockText(secondsFor());
   els.raceYou.style.left = "0%"; els.raceGhost.style.left = "0%"; els.raceNote.textContent = "";
-  els.results.hidden = true; els.setup.hidden = true; els.question.hidden = false;
+  els.results.hidden = true; els.setup.hidden = true; els.read.hidden = true; els.question.hidden = false;
+  delete root.dataset.drillView;
   heat = createHeat(usualAndBest());
   garden.reset();
   if (continuing) garden.update({ words: state.prefix / 5, heat: 0 });
@@ -629,7 +643,8 @@ async function finish() {
   state.scoredMinutes = scoredMinutes;
   state.record = {
     at: new Date().toISOString(), itemId: state.item.id, outline: state.mode === "copy" ? null : state.item.outline, minutes: state.roundMinutes,
-    mode: state.mode, ...(state.passage && state.mode !== "answer" ? { passage: state.passage.id } : {}), ...(state.cont ? { cont: state.cont } : {}),
+    mode: state.mode, ...(state.passage && state.mode !== "answer" ? { passage: state.passage.id } : {}),
+    ...(state.mode === "copy" && state.passage.variant ? { variant: state.passage.variant } : {}), ...(state.mode === "copy" && state.passage.fromShelf ? { fromShelf: true } : {}), ...(state.cont ? { cont: state.cont } : {}),
     seconds: secondsFor(), gwam: s.gwam, nwam: s.nwam, accuracy: s.accuracy, rating: s.rating.name,
     corrections: s.corrections, uncorrected: s.uncorrected, words: s.grossWords, bestCombo: state.bestCombo,
     keys: s.keys, kept: false, revisions: s.revisions, revisedKeys: s.revisedKeys, keptWords: s.kept.words,
@@ -651,6 +666,8 @@ async function finish() {
   if (counts) {
     data.history.push(state.record);
     store.saveHistory(data.history);
+    // Copied again from the shelf: it is off the shelf now. Shelve it again to put it back.
+    if (state.mode === "copy" && state.passage.fromShelf) saveShelf(unshelve(shelf(), state.passage.id));
   }
   state.unlocked = counts ? newlyUnlocked(before, trophyCase(data.history)) : [];
   store.log(`drill ${state.mode} ${state.item.id} ${state.roundMinutes}m nwam ${s.nwam} acc ${s.accuracy}`);
@@ -736,7 +753,59 @@ function render(s, st, prior) {
   window.scrollTo({ top: 0, behavior: "smooth" });
   renderChips();
   els.again.focus();
+  if (copying) showRead();
 }
+/* ---- read and consider, and the shelf --------------------------------------
+   His ask: the copy round is typed cold, then the passage comes back here to
+   read, with its question. Respond (Return) or shelve it (S); a shelved one
+   comes back later in new words (shelf.js, variants.js). */
+const shelf = () => (Array.isArray(data.settings.shelf) ? data.settings.shelf : []);
+const shelfNow = () => ({ round: copyRounds(data.history), today: dayOf(new Date().toISOString()) });
+function saveShelf(next) {
+  data.settings = { ...data.settings, shelf: next };
+  store.saveSettings(data.settings);
+  renderShelf();
+}
+function renderShelf() {
+  const rows = describeShelf(shelf(), shelfNow());
+  els.shelf.hidden = !rows.length;
+  els.shelf.replaceChildren(...(rows.length ? [
+    Object.assign(document.createElement("b"), { textContent: `On the shelf (${rows.length})` }),
+    ...rows.map((r) => Object.assign(document.createElement("span"), { className: r.due ? "is-due" : "", textContent: `${r.title}, ${r.when}` })),
+  ] : []));
+  els.mapShelf.replaceChildren(...(rows.length ? rows.map((r) => li(`${r.title}: ${r.when}`)) : [li("Nothing shelved. Shelve a passage after copying it and it comes back later in new words.")]));
+}
+function showRead() {
+  renderRead(els.readParts, state.passage, state.score);
+  const won = state.unlocked || [];
+  els.readUnlocked.hidden = !won.length;
+  els.readUnlocked.replaceChildren(...els.unlocked.cloneNode(true).childNodes);
+  els.readNote.textContent = state.passage.fromShelf ? "Back from the shelf, in new words. Shelve it again if it still is not the day for it." : "";
+  els.results.hidden = true;
+  els.read.hidden = false;
+  els.read.classList.remove("is-in"); void els.read.offsetWidth; els.read.classList.add("is-in");
+  root.dataset.drillView = "read";
+  window.scrollTo({ top: 0 });
+  els.respond.focus();
+}
+/* The numbers of the copy round, and back again. */
+function toggleNumbers() {
+  if (state.phase !== "done" || state.mode !== "copy") return;
+  if (els.read.hidden) { showRead(); return; }
+  els.read.hidden = true;
+  els.results.hidden = false;
+  delete root.dataset.drillView;
+  els.again.focus();
+}
+function shelveIt() {
+  if (state.phase !== "done" || state.mode !== "copy" || !state.passage) return;
+  const p = state.passage;
+  saveShelf(shelve(shelf(), p, { at: new Date().toISOString(), round: copyRounds(data.history) }));
+  store.log(`shelved ${p.id}${p.variant ? ` variant ${p.variant}` : ""}`);
+  state.baton = 0;
+  arm();
+}
+
 /* The band is the field's yardstick; the personal ladder is his own. */
 function ladderText(nwam, history, minutes) {
   const lad = ladder(nwam);
@@ -926,7 +995,8 @@ function showTab(name) {
 function openBoard(tab) {
   renderBoard();
   els.results.dataset.mode = "board";
-  els.setup.hidden = true; els.question.hidden = true; els.results.hidden = false;
+  els.setup.hidden = true; els.question.hidden = true; els.read.hidden = true; els.results.hidden = false;
+  delete root.dataset.drillView;
   setPhase("board");
   showTab(tab);
 }
@@ -991,6 +1061,10 @@ els.baton.addEventListener("click", batonPass);
 for (const b of els.modes) b.addEventListener("click", () => setMode(b.dataset.drillMode));
 els.home.addEventListener("click", home);
 els.keep.addEventListener("click", keep);
+els.respond.addEventListener("click", armRespond);
+els.shelve.addEventListener("click", shelveIt);
+els.numbers.addEventListener("click", toggleNumbers);
+els.readHome.addEventListener("click", home);
 for (const b of els.opens) b.addEventListener("click", () => openBoard(b.dataset.drillOpen));
 for (const t of els.tabs) t.addEventListener("click", () => showTab(t.dataset.tab));
 els.strictShift.addEventListener("change", () => {
@@ -1031,6 +1105,8 @@ document.addEventListener("keydown", (e) => {
     else if (e.key.toLowerCase() === "k" && state.phase === "done") { e.preventDefault(); keep(); }
     else if (e.key.toLowerCase() === "c" && state.phase === "done") { e.preventDefault(); continueRound(); }
     else if (e.key.toLowerCase() === "b" && state.phase === "done" && !els.baton.hidden) { e.preventDefault(); batonPass(); }
+    else if (e.key.toLowerCase() === "s" && state.phase === "done" && state.mode === "copy") { e.preventDefault(); shelveIt(); }
+    else if (e.key.toLowerCase() === "n" && state.phase === "done" && state.mode === "copy") { e.preventDefault(); toggleNumbers(); }
     else if (e.key === "Escape") { e.preventDefault(); home(); }
   }
 });
@@ -1047,6 +1123,7 @@ async function init() {
   els.strictShift.checked = strictShift();
   renderExpert();
   renderChips();
+  renderShelf();
   drawMap();
   els.start.focus();
   await wordsLoaded;

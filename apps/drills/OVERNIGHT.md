@@ -12,7 +12,7 @@ One line per point of his ask. A line is done only when it names the test or scr
 |---|-----|--------|-------|
 | 1 | Remove the scoring cross-purposes: deleting a thought never costs speed, accuracy, band or star; bands he can climb; a personal ladder | **done** (slice 1) | `tests/drill-cross-purpose.test.mjs` (8 tests); `drills.spec.js` "a thought taken back with plain Backspace costs no error..." in WebKit and Chromium; band tests updated in `drill-score.test.mjs` and `drill-panel.test.mjs` |
 | 2 | Strict Shift mode, default on: a same-side Shift refuses the key and flashes, the combo goes on extinction; toggle in settings; refusals counted and reported | **done** (slice 2) | `tests/drill-strict-shift.test.mjs` (5 tests); `drills.spec.js` "strict Shift, on by default...", "strict Shift refuses in a copy round too...", "strict Shift can be turned off in settings..." in WebKit and Chromium; screenshot of the refusal in the margin, light and dark |
-| 3 | Read-and-consider screen after the copy round: Respond (Return) or Shelve (S); a shelved passage comes back with different transcription text | todo | |
+| 3 | Read-and-consider screen after the copy round: Respond (Return) or Shelve (S); a shelved passage comes back with different transcription text | **done** (slice 3) | `tests/drill-shelf.test.mjs` (9 tests, including every passage has a checked variant); `drills.spec.js` "after the copy round the passage comes back to read...", "S shelves the passage...", "a shelved passage comes back the next day in new words...", "the settle after the bell holds on the read screen too..." in WebKit and Chromium; screenshots of the read screen, light and dark |
 | 4 | Achievements: well over 150, more variety, conversation achievements, and a dynamic "Your nemeses" engine from his own data | todo | |
 | 5 | Clinical knowledge that cycles (spaced repetition), "consider the other side" prompts, and a much bigger storehouse (bank questions in all 9 domains, 20+ passages for w m b u c with variants, oracle seeds) | todo | |
 | 6 | Ingest research with his responses and tone: the queued entry carries the expert's claims, sources and his stance; DRAFT_SYSTEM proposes consensus and dissent; local tone metadata in the kept sidecar | todo | |
@@ -62,3 +62,26 @@ Adversarial review:
 - *Untested:* Caps Lock. Playwright cannot hold Caps Lock reliably in both engines, so that check (`getModifierState("CapsLock")`) is covered by reading the code only.
 
 Stickiness: **7/10.** It turns a nag into a rule he asked for and gives him a weekly number that should fall, but the first few sessions will be slower.
+
+### Slice 3: read it after, not before (2026-09-23 23:56 EDT)
+
+What changed:
+
+- **The copy round is typed cold.** The hint and placeholder now tell him he gets to read the passage properly afterwards, so he has no reason to read ahead.
+- **Read and consider.** When the copy round ends, a new screen shows the passage as a page to read: a parchment folio with a drop cap, the title and source, the text split into paragraphs, the expert's sources for a baton passage, and "Then answer this" with the respond question. One line at the top says how the copy went, and any trophies from the round show there too. The clock is off.
+- **Three keys.** Return responds (the one-minute respond round, as before). S shelves it and starts the next passage. N shows the copy round's full numbers, and N again comes back to the page. The three-second settle after the bell holds here as well.
+- **The shelf** (`web/shelf.js`, saved as `settings.shelf`). A shelved passage comes back after three more copy rounds or on a later day, whichever comes first, ahead of the picker's choice. It comes back in **new words**: the original text and its authored variant take turns, so the second time he types the same idea in different sentences. The tag says "back from the shelf". Once he copies it again it leaves the shelf, and he can shelve it again from the read screen. The picker never offers a shelved passage early. A baton passage has no variant, so it is shelved with the expert's own text and comes back as it was.
+- **Variants** (`web/variants.js`): one for each of the 16 passages. Each restates its passage's content and nothing more, with no new claim and no new citation, and a test checks that it is plain ASCII, has no dashes, is within 75 to 130% of the original's length and repeats at most two sentences verbatim.
+- **Where the shelf shows:** a line on the home screen ("On the shelf (1)", each title and when it comes back, marked when ready) and a list under the Map.
+- **History:** a copy record carries `variant` and `fromShelf` when they apply, numbers and flags only. Item 4 can read them for the "returned to a shelved idea" achievement.
+
+Not built: the `claude -p` paraphrase through askClaude. The ask allowed it as an option ("may"), and the authored variant covers the need without spending one of the six real calls. It stays open as a proposal: when both texts of a passage have been typed, ask for a third, and fall back to the authored variant if the call fails.
+
+Adversarial review:
+
+- *Could it make him use the app less?* The read screen adds a step between the copy and the respond, so a round now takes one more keypress. Return still goes straight on, which keeps it to one key. The real risk is the opposite one: with Shelve one key away, he could shelve every hard passage and only ever answer the easy ones. The shelf brings each one back in three rounds, so he cannot avoid a passage, only put it off, and the home line keeps the pile in view.
+- *New cross-purpose?* Only one he might feel: variant text is new to type, so the second pass of a passage is not a practice run of the same words. That is what he asked for. Copy bests still compare across variants of the same passage, which is fair, since the lengths are within the same band.
+- *Calm typing surface?* Untouched. The folio and its animation live on the read screen only; the copy card changed by one hint line.
+- *Does it feed the expert?* Indirectly: he now answers passages he has actually read and chosen to answer, so the kept answers should be considered answers rather than whatever the clock forced. The shelf itself sends nothing anywhere.
+
+Stickiness: **8/10.** It fixes a habit he named (reading ahead) without asking him to break it by will, and it turns "I am not ready for this one" into a move instead of a skipped round.
