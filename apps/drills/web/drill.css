@@ -605,3 +605,16 @@ main.drill[data-settling="1"] .actions button { opacity: .45; transition: opacit
   .read-source, .read-sources .src { color: #c8b48c; }
   .read-text p:first-child::first-letter { color: #f6d58a; background: linear-gradient(160deg, #5a4318, #3e2e10); }
 }
+
+/* Your nemeses: achievements written from his own drills. */
+.unlocked.is-nemesis { background: linear-gradient(90deg, #f3ecff, #e2d4fb); border-color: rgba(106,63,168,.35); color: #3b2268; box-shadow: 0 6px 16px -10px rgba(106,63,168,.7); }
+.unlocked.is-nemesis b { color: #2a1450; }
+.unlocked.is-nemesis::before { content: "\2694\FE0F  "; }
+.trophy-group.is-nemeses h3 { color: #5a3596; }
+.trophy-intro { margin: -4px 0 10px; font-size: 13px; opacity: .8; }
+.trophy-group.is-nemeses .trophy:not(.is-won) { border-color: rgba(106,63,168,.3); }
+@media (prefers-color-scheme: dark) {
+  .unlocked.is-nemesis { background: linear-gradient(180deg, #3a2758, #2a1b42); color: #dccbff; border-color: rgba(170,130,240,.45); }
+  .unlocked.is-nemesis b { color: #efe6ff; }
+  .trophy-group.is-nemeses h3 { color: #c7aef7; }
+}
