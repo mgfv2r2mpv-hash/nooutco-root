@@ -1516,3 +1516,78 @@ test('while the oracle or the expert is working, Return starts no round under it
   await page.keyboard.press('Enter');
   await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'idle');
 });
+
+/* ---- one game at a time, and no timer outlives its game (AUDIT G3-G6) ---- */
+// Live intervals by delay: River ticks every 100 ms, the hare idles every 1800 ms.
+const TRACK_INTERVALS = () => {
+  const live = new Map();
+  const set = window.setInterval.bind(window), clear = window.clearInterval.bind(window);
+  window.setInterval = (fn, ms, ...a) => { const id = set(fn, ms, ...a); live.set(id, ms); return id; };
+  window.clearInterval = (id) => { live.delete(id); clear(id); };
+  window.__liveIntervals = (ms) => [...live.values()].filter((x) => x === ms).length;
+};
+
+test('a second River open, a second game, or a hare closed before it idles leaves one game and no stray timer', async ({ page }) => {
+  await page.addInitScript(TRACK_INTERVALS);
+  await page.goto(PAGE);
+  const counts = await page.evaluate(async () => {
+    const { openRiver } = await import('/river.js');
+    const { openPairGame } = await import('/pairgame.js');
+    const { openShifty, buildShifty, shiftyPool } = await import('/shifty.js');
+    const { PASSAGES } = await import('/passages.js');
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const out = {};
+    openRiver(host, { text: 'steady beat text' });
+    openRiver(host, { text: 'steady beat text' });
+    out.riverTimers = window.__liveIntervals(100);
+    out.riverBoxes = host.querySelectorAll('[data-river]').length;
+    // A different game closes River first: one game at a time.
+    const built = buildShifty(shiftyPool(PASSAGES));
+    out.built = !!built;
+    if (built) openShifty(host, { built, judge: () => 'ok', handOf: () => 'L' });
+    out.afterShifty = host.querySelectorAll('[data-minigame]').length;
+    out.riverTimersAfterShifty = window.__liveIntervals(100);
+    // The hare starts idling 1.1 s after the first key; Close before then.
+    const box = openPairGame(host, { pair: 'br', words: ['brisk', 'bread'] });
+    out.afterPair = host.querySelectorAll('[data-minigame]').length;
+    const input = box.querySelector('.pg-input');
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', bubbles: true }));
+    box.querySelector('.pg-close').click();
+    await new Promise((r) => setTimeout(r, 1400));
+    out.hareTimers = window.__liveIntervals(1800);
+    out.left = host.querySelectorAll('[data-minigame]').length;
+    return out;
+  });
+  expect(counts).toEqual({ built: true, riverTimers: 1, riverBoxes: 1, afterShifty: 1, riverTimersAfterShifty: 0, afterPair: 1, hareTimers: 0, left: 0 });
+});
+
+test('a game left open on the results is closed by Home and by the next round, and its timer stops', async ({ page }) => {
+  await page.addInitScript(TRACK_INTERVALS);
+  await page.goto('/index.html?clock=4');
+  await wordsReady(page);
+  await page.locator('[data-drill-start]').click();
+  await page.locator('[data-drill-box]').focus();
+  await page.keyboard.down('ShiftLeft'); await page.keyboard.press('KeyT'); await page.keyboard.up('ShiftLeft');
+  await page.locator('[data-drill-box]').pressSequentially('then more words ', { delay: 10 });
+  await done(page);
+  // A River box put in the results the way its button does, then Home.
+  await page.evaluate(async () => {
+    const { openRiver } = await import('/river.js');
+    openRiver(document.querySelector('[data-drill-results]'), { text: 'steady beat text' });
+  });
+  expect(await page.evaluate(() => window.__liveIntervals(100))).toBe(1);
+  await page.locator('[data-drill-home]').click();
+  await expect(page.locator('[data-minigame]')).toHaveCount(0);
+  expect(await page.evaluate(() => window.__liveIntervals(100))).toBe(0);
+  // Shifty open on the results, then Again: the next round starts with no game box in it.
+  await page.locator('[data-drill-start]').click();
+  await page.locator('[data-drill-box]').focus();
+  await page.keyboard.down('ShiftLeft'); await page.keyboard.press('KeyT'); await page.keyboard.up('ShiftLeft');
+  await page.locator('[data-drill-box]').pressSequentially('then more words ', { delay: 10 });
+  await done(page);
+  await page.locator('[data-shifty-offer] [data-shifty-go]').click();
+  await expect(page.locator('[data-shifty]')).toHaveCount(1);
+  await page.evaluate(() => document.querySelector('[data-drill-again]').click());
+  await expect(page.locator('[data-minigame]')).toHaveCount(0);
+});

@@ -7,6 +7,8 @@
  * pickWords is pure and exported for the node tests.
  */
 
+import { closeGames } from "./gamebox.js";
+
 export const GAME_WORDS = 10;
 
 const clean = (w) => String(w || "").toLowerCase().replace(/[^a-z]/g, "");
@@ -78,12 +80,12 @@ function race() {
   const bubble = lane("pg-bubble", "");
   const tortoise = lane("pg-tortoise", "\u{1F422}");
   lane("pg-flag", "\u{1F3C1}");
-  let bit = 0, idle = 0;
+  let bit = 0, idle = 0, wait = 0;
   return {
     node: track,
     go() {
       hare.classList.add("is-bolt");
-      setTimeout(() => {
+      wait = setTimeout(() => {
         const show = () => { const [face, what] = HARE_BITS[bit++ % HARE_BITS.length]; bubble.textContent = face; bubble.title = `The hare is ${what}`; bubble.classList.add("is-on"); };
         show();
         idle = setInterval(show, 1800);
@@ -91,13 +93,13 @@ function race() {
     },
     step(frac) { tortoise.style.left = `${Math.min(1, frac) * 84}%`; },
     win() {
-      clearInterval(idle);
+      clearTimeout(wait); clearInterval(idle);
       tortoise.style.left = "84%";
       tortoise.classList.add("is-win");
       bubble.textContent = "\u{2757}";
       hare.classList.add("is-late");
     },
-    stop() { clearInterval(idle); },
+    stop() { clearTimeout(wait); clearInterval(idle); },
   };
 }
 
@@ -107,7 +109,7 @@ function race() {
  * pair; onResult(run) saves one (minigames.js).
  */
 export function openPairGame(host, { pair, words, roundMs = null, runs = [], progressLine = () => "", onResult = () => {}, onClose = () => {} }) {
-  host.querySelector("[data-pairgame]")?.remove();
+  closeGames(host);
   const box = document.createElement("div");
   box.className = "pairgame";
   box.dataset.pairgame = pair;
@@ -181,8 +183,9 @@ export function openPairGame(host, { pair, words, roundMs = null, runs = [], pro
     track.step(complete / words.length);
     if (complete >= words.length) finishGame();
   });
-  const shut = () => { track.stop(); box.remove(); onClose(); };
-  close.addEventListener("click", shut);
+  const shut = (handBack = true) => { track.stop(); box.remove(); if (handBack) onClose(); };
+  box.shut = () => shut(false);
+  close.addEventListener("click", () => shut());
   input.focus({ preventScroll: true });
   return box;
 }

@@ -31,6 +31,8 @@ export function driftOf(cv) {
   return Math.max(0, Math.min(1, (cv - EVEN_CV) / (WILD_CV - EVEN_CV)));
 }
 
+import { closeGames } from "./gamebox.js";
+
 function el(tag, cls, text) {
   const n = document.createElement(tag);
   if (cls) n.className = cls;
@@ -43,7 +45,7 @@ function el(tag, cls, text) {
  * out); runs: earlier River Rhythm runs; onResult(run) saves one.
  */
 export function openRiver(host, { text, more = () => "", runs = [], progressLine = () => "", onResult = () => {}, onClose = () => {} }) {
-  host.querySelector("[data-river]")?.remove();
+  closeGames(host);
   // Tests shorten the goal through window.__riverGoalS; he always gets the full twenty seconds.
   const goal = typeof window.__riverGoalS === "number" ? window.__riverGoalS : RIVER_GOAL_S;
   const box = el("div", "pairgame river");
@@ -131,8 +133,9 @@ export function openRiver(host, { text, more = () => "", runs = [], progressLine
     box.dataset.done = "1";
     close.focus({ preventScroll: true });
   }
-  const shut = () => { clearInterval(timer); box.remove(); onClose(); };
-  close.addEventListener("click", shut);
+  const shut = (handBack = true) => { clearInterval(timer); box.remove(); if (handBack) onClose(); };
+  box.shut = () => shut(false);
+  close.addEventListener("click", () => shut());
   input.focus({ preventScroll: true });
   return box;
 }

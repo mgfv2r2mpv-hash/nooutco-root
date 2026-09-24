@@ -24,6 +24,7 @@ import { nextPassage, trickyProfile, describeProfile, PASSAGES } from "./passage
 import { pickWords, openPairGame } from "./pairgame.js";
 import { buildShifty, openShifty, shiftyPool } from "./shifty.js";
 import { openRiver } from "./river.js";
+import { closeGames } from "./gamebox.js";
 import { addRun, progressLine, gameTrophies } from "./minigames.js";
 import { tameTarget, tameDrill, tameReport, tameEntry, appendTame, TAME_SECONDS } from "./tame.js";
 import { renderPassage, markPassage } from "./copy.js";
@@ -218,6 +219,8 @@ function home() {
   holdIfUnkept();
   // Esc while talking: the Mac microphone goes off with the round (AUDIT A4).
   if (state.listening) stopMic();
+  // A game left open on the results goes with them, timers and all (AUDIT G3).
+  closeGames(els.results);
   clearTimeout(state.timer);
   setPhase("idle");
   els.setup.hidden = false;
@@ -505,6 +508,7 @@ function continueRound() {
 
 function startRound(mode, minutes, carry) {
   if (typeof carry !== "string") holdIfUnkept();
+  closeGames(els.results);
   state.mode = mode;
   state.roundMinutes = minutes;
   state.events = []; state.score = null; state.flagged = []; state.combo = 0; state.bestCombo = 0;
