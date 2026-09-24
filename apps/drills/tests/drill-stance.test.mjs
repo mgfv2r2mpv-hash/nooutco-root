@@ -107,3 +107,18 @@ test("an overlapping phrase counts once", () => {
   assert.equal(toneOf("It depends on the kid.").hedges, 1, "it depends on, not it depends plus depends on");
   assert.equal(toneOf("I agree.").agree, 1);
 });
+
+test("a steelman or change-your-mind answer is not read as pushing back: the lens asked for the other side", async () => {
+  const { draftPrompt } = await import("../web/oracle.js");
+  const text = "The strongest case against my view: however much I like NCR, the problem is it can thin too fast.";
+  assert.equal(toneOf(text).stance, "pushes back", "with no lens the markers still count");
+  for (const lens of ["steelman", "mind"]) {
+    const t = toneOf(text, lens);
+    assert.equal(t.stance, "not read (lens)");
+    assert.ok(t.pushback > 0, "the counts stay in the sidecar");
+    const p = draftPrompt({ question: "Q", lens, answer: text, tone: t,
+      research: { kind: "bank", claims: [{ text: "NCR reduces problem behavior.", source: "Vollmer (1993)" }], sources: ["Vollmer (1993)"] } });
+    assert.ok(!/Stance markers/.test(p), `no stance line under the ${lens} lens`);
+  }
+  assert.equal(toneOf(text, "kneejerk").stance, "pushes back", "other lenses are read as usual");
+});

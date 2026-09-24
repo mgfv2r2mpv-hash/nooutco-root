@@ -10,6 +10,7 @@
  * shares a run of EIGHT_WORDS or more with his answer is dropped here, before
  * it can be proposed. He still reads every proposal before it is in force.
  */
+import { STANCE_NOT_READ } from "./stance.js";
 
 /* ---- the oracle ------------------------------------------------------- */
 
@@ -108,7 +109,7 @@ export function draftPrompt(entry) {
     lens ? `He was asked through the "${lens}" lens (consider the other side).` : "",
     claims.length ? `The research in front of him (${r.kind || "research"}):` : "",
     ...claims.map((c) => `- ${c.text} (${c.source || "general practice knowledge"})`),
-    stance && claims.length ? `Stance markers in his answer: ${stance}.` : "",
+    stance && stance !== STANCE_NOT_READ && claims.length ? `Stance markers in his answer: ${stance}.` : "",
     `His answer: ${entry.answer || ""}`,
   ].filter(Boolean).join("\n");
 }
@@ -151,7 +152,10 @@ export function toProposal(draft, entry) {
   if (!applies || applies.length > 200) return { error: "applies missing or over 200 characters" };
   if (rationale.length > 4000) return { error: "rationale over 4000 characters" };
   if (!SLUG.test(topic)) return { error: "topic is not a slug" };
-  for (const field of [title, rule, applies, rationale]) {
+  // Every field he could be quoted in: the slug and the keywords as well, read
+  // as words in the order the draft gave them.
+  const draftKeywords = Array.isArray(d.keywords) ? d.keywords.map(String).join(" ") : "";
+  for (const field of [title, rule, applies, rationale, topic.replace(/[-_]+/g, " "), draftKeywords]) {
     if (sharesRun(field, entry && entry.answer)) return { error: "quotes the answer (a run of eight words or more)" };
   }
   // consensus and dissent need research in the entry; without it, practice.

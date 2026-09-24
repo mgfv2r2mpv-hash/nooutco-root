@@ -22,7 +22,7 @@ import { createCalendar, renderTrophies } from "./calendar.js";
 import { handOf, judge, createShiftTracker, createShiftFx } from "./shift.js";
 import { nextPassage, trickyProfile, describeProfile, PASSAGES } from "./passages.js";
 import { pickWords, openPairGame } from "./pairgame.js";
-import { buildShifty, openShifty } from "./shifty.js";
+import { buildShifty, openShifty, shiftyPool } from "./shifty.js";
 import { openRiver } from "./river.js";
 import { addRun, progressLine, gameTrophies } from "./minigames.js";
 import { tameTarget, tameDrill, tameReport, tameEntry, appendTame, TAME_SECONDS } from "./tame.js";
@@ -1229,7 +1229,7 @@ async function keep(held = null) {
     pauses: snap.score.think.stops, revisions: snap.score.revisions,
     mode: snap.mode, register: snap.spoken ? "spoken" : "drill",
     ...(snap.item.lens ? { lens: snap.item.lens } : {}),
-    ...(research ? { research } : {}), tone: toneOf(text),
+    ...(research ? { research } : {}), tone: toneOf(text, snap.item.lens),
     ...(snap.mode === "oracle" && snap.oracle && snap.oracle.seed ? { seed: snap.oracle.seed } : {}),
     ...(snap.mode === "oracle" && snap.oracle ? { oracle: { topic: snap.oracle.topic, question: snap.oracle.reply.question, thoughts: snap.oracle.reply.thoughts } } : {}),
   }).catch((e) => ({ ok: false, note: String(e) }));
@@ -1297,8 +1297,7 @@ function shiftyButton() {
   b.dataset.shiftyGo = "";
   b.title = "Twenty words, thirteen capitals, both Shifts, against the clock";
   b.addEventListener("click", () => {
-    const pool = PASSAGES.flatMap((x) => x.text.split(/\s+/)).map((w) => w.replace(/[^A-Za-z]/g, "")).concat((WORDS || []).slice(0, 4000));
-    const built = buildShifty(pool);
+    const built = buildShifty(shiftyPool(PASSAGES));
     if (!built) return;
     openShifty(els.results, {
       built, runs: games().shifty || [], judge, handOf, progressLine,
