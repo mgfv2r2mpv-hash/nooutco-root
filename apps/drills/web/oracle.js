@@ -63,9 +63,15 @@ export function readOracle(out) {
 export const DRAFT_SYSTEM = [
   "You draft knowledge records for the expert that reviews ABA session notes and treatment documents.",
   "You are given a BCBA's own answer to a clinical question. Draft zero, one or two records that state, in your own words, a general rule of practice or a fact of the field that his answer shows he holds and that would help the expert review notes.",
+  "When you are also given the research that was in front of him (claims with their sources), read his answer against it. Where he took the research on, a record may state the consensus those sources support (kind \"consensus\"). Where he pushed back or named a limit, a record may state that dissent or limit as a live question in the field, with what the research says on each side (kind \"dissent\"). Otherwise a record is a plain rule of practice (kind \"practice\").",
+  "Name a source only if it is in the list you were given; never invent a citation. Say \"general practice knowledge\" when no listed source fits. The stance line is a word count, not a reading: trust his answer over it.",
   "Never quote his answer. Never include a client, a name, a place, a date or a session detail. If the answer holds nothing general enough, return an empty list; an empty list is a good answer.",
-  "Each record: a short title, the rule in plain words (under 120 words), when the expert should fetch it (\"applies\", one line), why (\"rationale\", one or two sentences), a topic slug (lowercase words joined by hyphens) and up to six keywords.",
+  "Each record: a short title, the rule in plain words (under 120 words), when the expert should fetch it (\"applies\", one line), why (\"rationale\", one or two sentences), a topic slug (lowercase words joined by hyphens), up to six keywords, and its kind.",
 ].join(" ");
+
+/* The kinds a drafted record may be. `consensus` and `dissent` need research
+   in the entry; without it every record is `practice`. */
+export const KINDS = Object.freeze(["practice", "consensus", "dissent"]);
 
 export const DRAFT_SCHEMA = {
   type: "object",
@@ -77,6 +83,7 @@ export const DRAFT_SCHEMA = {
         properties: {
           title: { type: "string" }, rule: { type: "string" }, applies: { type: "string" },
           rationale: { type: "string" }, topic: { type: "string" }, keywords: { type: "array", items: { type: "string" } },
+          kind: { type: "string", enum: KINDS },
         },
         required: ["title", "rule", "applies", "topic"],
       },
@@ -85,10 +92,23 @@ export const DRAFT_SCHEMA = {
   required: ["records"],
 };
 
+/**
+ * The drafting prompt for one kept entry. The research is what was in front
+ * of him (never his text); only the stance label rides along from the tone
+ * counts, which otherwise stay in the kept sidecar.
+ */
 export function draftPrompt(entry) {
+  const r = entry.research || null;
+  const lens = entry.lens || (r && r.lens) || "";
+  const claims = r && Array.isArray(r.claims) ? r.claims : [];
+  const stance = entry.tone && entry.tone.stance;
   return [
     `Question: ${entry.question || "(none)"}`,
     entry.outline ? `BACB outline item: ${entry.outline}` : "",
+    lens ? `He was asked through the "${lens}" lens (consider the other side).` : "",
+    claims.length ? `The research in front of him (${r.kind || "research"}):` : "",
+    ...claims.map((c) => `- ${c.text} (${c.source || "general practice knowledge"})`),
+    stance && claims.length ? `Stance markers in his answer: ${stance}.` : "",
     `His answer: ${entry.answer || ""}`,
   ].filter(Boolean).join("\n");
 }
@@ -134,8 +154,17 @@ export function toProposal(draft, entry) {
   for (const field of [title, rule, applies, rationale]) {
     if (sharesRun(field, entry && entry.answer)) return { error: "quotes the answer (a run of eight words or more)" };
   }
-  const keywords = [...new Set((Array.isArray(d.keywords) ? d.keywords : [])
+  // consensus and dissent need research in the entry; without it, practice.
+  const research = entry && entry.research && Array.isArray(entry.research.claims) && entry.research.claims.length ? entry.research : null;
+  const kind = research && KINDS.includes(d.kind) ? d.kind : "practice";
+  // The kind rides as a keyword, a field the store already takes, so the
+  // admin page can find the dissent records without a new field.
+  const keywords = [...new Set([...(kind === "practice" ? [] : [kind]), ...(Array.isArray(d.keywords) ? d.keywords : [])]
     .map((k) => String(k).toLowerCase().trim()).filter((k) => k && k.length <= 40))].slice(0, 24);
+  const sources = [...new Set([
+    ...((entry && entry.oracle && entry.oracle.thoughts) || []).map((t) => t.source),
+    ...((research && research.sources) || []),
+  ].filter(Boolean))];
   return {
     record: {
       tier: "topic", scope: SCOPE, body: BODY, topic, applies, title, rule,
@@ -143,7 +172,7 @@ export function toProposal(draft, entry) {
       provenance: {
         kind: "clickclackoracle", mode: (entry && entry.mode) || "answer", register: (entry && entry.register) || "drill",
         outline: (entry && entry.outline) || null, answeredAt: (entry && entry.at) || null,
-        sources: ((entry && entry.oracle && entry.oracle.thoughts) || []).map((t) => t.source).filter(Boolean),
+        sources,
       },
     },
   };

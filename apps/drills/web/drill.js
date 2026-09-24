@@ -26,6 +26,7 @@ import { shelve, unshelve, dueEntry, returned, describeShelf, copyRounds } from 
 import { pickReview, asReview, describeReviews } from "./review.js";
 import { renderRead } from "./read.js";
 import { nextSeed, openWithSeed } from "./seeds.js";
+import { researchContext, toneOf } from "./stance.js";
 import { ORACLE_SYSTEM, ORACLE_SCHEMA, oraclePrompt, readOracle, DRAFT_SYSTEM, DRAFT_SCHEMA, draftPrompt, toProposal,
   BATON_SYSTEM, BATON_SCHEMA, batonPrompt, readBaton, batonWords, relevantRecords } from "./oracle.js";
 
@@ -1047,16 +1048,21 @@ async function keep() {
   // The whole answer, every Keep going round of it; if an earlier round was
   // already kept, only what came after, marked as continuing that one.
   const from = state.keptUpTo;
+  const text = els.box.value.slice(from);
+  // What was in front of him, and his tone, counted here on the Mac (stance.js).
+  const research = researchContext({ mode: state.mode, item: state.item, passage: state.passage, oracle: state.oracle });
   const r = await store.keep({
     at: state.record.at, itemId: state.item.id, outline: state.item.outline, question: state.item.question,
     ...(from ? { continues: state.answerAt } : {}), ...(state.passage && state.mode === "respond" ? { passage: state.passage.id, passageSource: state.passage.source } : {}),
-    minutes: state.roundMinutes, seconds: secondsFor(), text: els.box.value.slice(from),
+    minutes: state.roundMinutes, seconds: secondsFor(), text,
     nwam: state.score.nwam, gwam: state.score.gwam, accuracy: state.score.accuracy,
     // Where he stopped to think, by character offset: the expert can read
     // what came right before each stop as what he was deciding.
     pauses: state.score.think.stops, revisions: state.score.revisions,
     mode: state.mode, register: state.spoken ? "spoken" : "drill",
     ...(state.item.lens ? { lens: state.item.lens } : {}),
+    ...(research ? { research } : {}), tone: toneOf(text),
+    ...(state.mode === "oracle" && state.oracle && state.oracle.seed ? { seed: state.oracle.seed } : {}),
     ...(state.mode === "oracle" && state.oracle ? { oracle: { topic: state.oracle.topic, question: state.oracle.reply.question, thoughts: state.oracle.reply.thoughts } } : {}),
   }).catch((e) => ({ ok: false, note: String(e) }));
   if (r && r.ok) {
