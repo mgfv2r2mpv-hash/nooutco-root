@@ -81,7 +81,9 @@ export function scoreDrill({ events, text, minutes, lexicon, reference } = {}) {
   const gwam = grossWords / mins;
 
   const compose = !reference;
-  const { corrections, revisions, revisedKeys } = deleteRuns(evs, { compose });
+  // Two real words a slip apart (increase, decrease) are a changed mind, not a typo.
+  const isWord = lexicon ? (w) => isKnown(w, lexicon) : null;
+  const { corrections, revisions, revisedKeys } = deleteRuns(evs, { compose, isWord });
   const copied = reference ? copyErrors(text || "", reference) : null;
   const unknown = copied ? [] : lexicon ? unknownWords(text || "", lexicon) : null;
   const uncorrected = copied ? copied.errors : unknown ? unknown.length : null;
@@ -91,7 +93,7 @@ export function scoreDrill({ events, text, minutes, lexicon, reference } = {}) {
   const accuracy = grossWords > 0 ? clamp01(1 - errorsAll / grossWords) : 0;
 
   const rating = rate(nwam, accuracy);
-  const tricky = trickyKeys(evs, { compose });
+  const tricky = trickyKeys(evs, { compose, isWord });
   const timing = timingProfile(evs);
   const habits = deleteHabits(evs);
   const shift = shiftStats(evs);
@@ -174,16 +176,16 @@ export function paceSeries(events, minutes) {
  * corrections are errors. revisedKeys counts the characters the revisions
  * removed: typed, counted in GWAM, not kept.
  */
-export function deleteRuns(events, { compose = false } = {}) {
+export function deleteRuns(events, { compose = false, isWord = null } = {}) {
   let corrections = 0, revisions = 0, revisedKeys = 0;
-  for (const run of runKinds(events, { compose })) {
+  for (const run of runKinds(events, { compose, isWord })) {
     if (run.revised) { revisions += 1; revisedKeys += run.removed.length; } else corrections += 1;
   }
   return { corrections, revisions, revisedKeys };
 }
 
 /** Every Backspace run in order: what it removed, and whether it was a revision. */
-export function runKinds(events, { compose = false } = {}) {
+export function runKinds(events, { compose = false, isWord = null } = {}) {
   const out = [];
   const buf = [];
   let run = null; // { via, removed: [], atBoundary, next: [] }
@@ -196,7 +198,9 @@ export function runKinds(events, { compose = false } = {}) {
       if (/\s/.test(body)) revised = true;
       else if (r.atBoundary && /^[A-Za-z]/.test(body) && body.replace(/[^A-Za-z]/g, "").length >= 3) {
         const retyped = r.next.join("").trim();
-        revised = !retyped || !nearWord(body.toLowerCase(), retyped.toLowerCase());
+        const a = body.toLowerCase(), b = retyped.toLowerCase();
+        // A slip apart is a typo, unless both are real words: then he changed his mind.
+        revised = !retyped || !nearWord(a, b) || (!!isWord && a !== b && isWord(a) && isWord(b));
       }
     }
     out.push({ removed, revised, via: r.via });
@@ -459,9 +463,9 @@ export function rate(nwam, accuracy) {
  * "wprd" corrected to "word" as p for o, where "last removed versus first
  * typed" would call both wrong.
  */
-export function trickyKeys(events, { compose = false } = {}) {
+export function trickyKeys(events, { compose = false, isWord = null } = {}) {
   // Under compose, a run the classifier calls a changed mind is not a miss either.
-  const kinds = compose ? runKinds(events, { compose }) : null;
+  const kinds = compose ? runKinds(events, { compose, isWord }) : null;
   let runIdx = -1;
   const buffer = [];
   const hits = new Map();   // hit char -> count

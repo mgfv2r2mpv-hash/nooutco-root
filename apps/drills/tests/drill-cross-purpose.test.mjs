@@ -104,3 +104,16 @@ test("the personal ladder: his usual at this clock, his best, and the next miles
   // Under three drills there is no usual yet; with none there is no best.
   assert.deepEqual(personalLadder(40, [], 3), { usual: null, best: null, milestone: 45, toMilestone: 5, n: 0 });
 });
+
+test("two real words a slip apart are a changed mind when the word list knows both; a real misspelling stays a typo", () => {
+  const words = new Set(["the", "rate", "will", "increase", "decrease", "now"]);
+  const isWord = (w) => words.has(w);
+  // "increase" taken back and retyped "decrease": two letters apart, both real words.
+  const flip = typed("the rate will increase<<<<<<<<decrease now");
+  assert.deepEqual(deleteRuns(flip.events, { compose: true, isWord }), { corrections: 0, revisions: 1, revisedKeys: 8 });
+  // Without the word list the old rule stands: a slip apart is a typo.
+  assert.equal(deleteRuns(flip.events, { compose: true }).corrections, 1);
+  // "increaes" is not a word, so taking it back for "increase" is a typo fixed.
+  const slip = typed("the rate will increaes<<<<<<<<increase now");
+  assert.equal(deleteRuns(slip.events, { compose: true, isWord }).corrections, 1);
+});

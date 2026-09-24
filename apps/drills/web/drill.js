@@ -231,7 +231,12 @@ function arm() {
     state.tricky = trickyProfile(data.history, keyboardRates(data.history, 20));
     state.weak = state.tricky.keys;
     // A shelved passage whose turn has come goes first, in new words.
-    const back = returned(dueEntry(shelf(), shelfNow()));
+    // A shelved id that no longer exists is dropped, so it never blocks the ones behind it.
+    let back = null;
+    for (let entry = dueEntry(shelf(), shelfNow()); entry && !back; entry = dueEntry(shelf(), shelfNow())) {
+      back = returned(entry);
+      if (!back) saveShelf(unshelve(shelf(), entry.id));
+    }
     armCopy(back || nextPassage(recent, state.tricky, shelf().map((e) => e.id)));
     return;
   }
@@ -597,6 +602,8 @@ function boundary(textBeforeCaret) {
 const strictShift = () => data.settings.strictShift !== false;
 function shiftCheck(e, ev) {
   if (e.getModifierState && e.getModifierState("CapsLock")) return null;
+  // Capitals only: ? ! @ : and the other shifted symbols are never judged or refused.
+  if (!/^[A-Za-z]$/.test(e.key || "")) return null;
   const side = shiftKeys.side(e);
   const hand = handOf(e.code);
   if (!side || !hand) return null;
