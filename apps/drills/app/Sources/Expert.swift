@@ -15,7 +15,16 @@ let KEYCHAIN_SERVICE = "dev.kaleb.clickclackoracle"
 let KEYCHAIN_ACCOUNT = "tools-admin-token"
 
 enum Keychain {
+    // Read once per launch and held here, so the keychain asks at most once.
+    // `nil` = not read yet; "" = read, and nothing saved.
+    private static var cached: String?
     static func read() -> String? {
+        if let c = cached { return c.isEmpty ? nil : c }
+        let v = readStore()
+        cached = v ?? ""
+        return v
+    }
+    private static func readStore() -> String? {
         let q: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: KEYCHAIN_SERVICE,
                                 kSecAttrAccount as String: KEYCHAIN_ACCOUNT, kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne]
         var out: AnyObject?
@@ -26,6 +35,7 @@ enum Keychain {
         let base: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: KEYCHAIN_SERVICE,
                                    kSecAttrAccount as String: KEYCHAIN_ACCOUNT]
         SecItemDelete(base as CFDictionary)
+        cached = value
         if value.isEmpty { return true }
         var add = base; add[kSecValueData as String] = Data(value.utf8)
         return SecItemAdd(add as CFDictionary, nil) == errSecSuccess
