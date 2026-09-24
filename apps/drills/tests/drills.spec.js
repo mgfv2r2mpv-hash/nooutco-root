@@ -1291,3 +1291,111 @@ test('Esc on the pair race\'s Close, after the race, closes it and leaves the re
   await expect(game).toHaveCount(0);
   await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'done');
 });
+
+/* ---- Keep going and the microphone (AUDIT A3, A4) ------------------------ */
+const KEEP_MOCK = () => {
+  window.__kept = [];
+  window.ClickClackMock = {
+    keep: async (r) => { window.__kept.push(r); return { ok: true, corpus: 'Kept.', expert: 'Queued.' }; },
+    expertStatus: async () => ({ connected: false, queued: window.__kept.length, note: 'Not connected.' }),
+    expertQueue: async () => ({ items: [] }),
+  };
+};
+
+test('Keep going, then Esc mid-round: the finished answer is held on the bar, and Keep it keeps it', async ({ page }) => {
+  await page.addInitScript(KEEP_MOCK);
+  await page.goto('/index.html?clock=2');
+  await wordsReady(page);
+  await page.locator('[data-drill-start]').click();
+  const box = page.locator('[data-drill-box]');
+  await box.pressSequentially('function comes first ', { delay: 10 });
+  await done(page);
+  await page.keyboard.press('c');
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'armed');
+  const bar = page.locator('[data-drill-pending]');
+  await box.pressSequentially('then', { delay: 10 });
+  await page.keyboard.press('Escape');
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'idle');
+  await expect(bar).toBeVisible();
+  await expect(bar.locator('.pending-row')).toHaveCount(1);
+  await page.locator('[data-pending-keep="0"]').click();
+  await expect(bar).toBeHidden();
+  const kept = await page.evaluate(() => window.__kept);
+  expect(kept).toHaveLength(1);
+  expect(kept[0].text).toBe('function comes first ');
+});
+
+test('Keep going to the end: one row holds the whole answer, and a Keep of the last round clears the earlier one', async ({ page }) => {
+  await page.addInitScript(KEEP_MOCK);
+  await page.goto('/index.html?clock=2');
+  await wordsReady(page);
+  await page.locator('[data-drill-start]').click();
+  const box = page.locator('[data-drill-box]');
+  await box.pressSequentially('function comes first ', { delay: 10 });
+  await done(page);
+  await page.keyboard.press('c');
+  await box.pressSequentially('then form ', { delay: 10 });
+  await done(page);
+  const bar = page.locator('[data-drill-pending]');
+  await page.keyboard.press('Escape');
+  await expect(bar.locator('.pending-row')).toHaveCount(1);
+  // Keep it on the one row: the whole answer, once.
+  await page.locator('[data-pending-keep="0"]').click();
+  await expect(bar).toBeHidden();
+  // And kept from the results screen instead: the earlier round is not left held.
+  await page.locator('[data-drill-start]').click();
+  await box.pressSequentially('reinforce the reply ', { delay: 10 });
+  await done(page);
+  await page.keyboard.press('c');
+  await box.pressSequentially('right away ', { delay: 10 });
+  await done(page);
+  await page.keyboard.press('k');
+  await expect(page.locator('[data-drill-keep]')).toHaveText('Kept');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'idle');
+  await expect(bar).toBeHidden();
+  const kept = await page.evaluate(() => window.__kept.map((k) => k.text));
+  expect(kept).toEqual(['function comes first then form ', 'reinforce the reply right away ']);
+});
+
+test('Esc while talking turns the Mac microphone off', async ({ page }) => {
+  await page.addInitScript(ORACLE_MOCK);
+  await page.addInitScript(() => {
+    window.__micStops = 0;
+    const m = window.ClickClackMock;
+    m.micStop = async () => { window.__micStops += 1; return { ok: true }; };
+  });
+  await page.goto('/index.html?clock=5');
+  await page.locator('[data-drill-mode="oracle"]').click();
+  await page.locator('[data-drill-start]').click();
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-mode', 'oracle');
+  await page.locator('[data-drill-mic]').click();
+  await expect(page.locator('[data-drill-mic]')).toHaveClass(/is-on/);
+  await page.locator('[data-drill-box]').focus();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'idle');
+  await expect.poll(() => page.evaluate(() => window.__micStops)).toBe(1);
+  await expect(page.locator('[data-drill-mic]')).not.toHaveClass(/is-on/);
+  await expect(page.locator('[data-drill-mic]')).toHaveText('Talk');
+});
+
+test('Keep going: the earlier round kept from the bar, then K on the last round sends only what came after', async ({ page }) => {
+  await page.addInitScript(KEEP_MOCK);
+  await page.goto('/index.html?clock=2');
+  await wordsReady(page);
+  await page.locator('[data-drill-start]').click();
+  const box = page.locator('[data-drill-box]');
+  await box.pressSequentially('function comes first ', { delay: 10 });
+  await done(page);
+  await page.keyboard.press('c');
+  await box.pressSequentially('then form ', { delay: 10 });
+  await done(page);
+  const bar = page.locator('[data-drill-pending]');
+  await expect(bar).toBeVisible();
+  await page.locator('[data-pending-keep="0"]').click();
+  await expect(bar).toBeHidden();
+  await page.keyboard.press('k');
+  await expect(page.locator('[data-drill-keep]')).toHaveText('Kept');
+  const kept = await page.evaluate(() => window.__kept.map((k) => ({ text: k.text, continues: Boolean(k.continues) })));
+  expect(kept).toEqual([{ text: 'function comes first ', continues: false }, { text: 'then form ', continues: true }]);
+});

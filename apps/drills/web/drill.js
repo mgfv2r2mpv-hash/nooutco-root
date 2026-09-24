@@ -216,6 +216,8 @@ function renderChips() {
 }
 function home() {
   holdIfUnkept();
+  // Esc while talking: the Mac microphone goes off with the round (AUDIT A4).
+  if (state.listening) stopMic();
   clearTimeout(state.timer);
   setPhase("idle");
   els.setup.hidden = false;
@@ -488,6 +490,8 @@ async function ingestInBackground(at) {
    "maybe I had more to say on it and stopped only because time was out." */
 function continueRound() {
   if (!state.score || copyLike()) return;
+  // Held first: an Esc in the new round must not lose this finished one (AUDIT A3).
+  holdIfUnkept();
   startRound(state.mode, state.mode === "respond" ? 1 : state.roundMinutes, els.box.value);
 }
 
@@ -500,6 +504,7 @@ function startRound(mode, minutes, carry) {
   state.pendingDelete = null; state.bsRun = 0; state.coached = false;
   const continuing = typeof carry === "string";
   if (!continuing) state.spoken = false;
+  if (state.listening) stopMic();
   state.listening = false; els.mic.classList.remove("is-on"); els.mic.textContent = "Talk";
   els.mic.hidden = mode === "copy" || mode === "tame";
   if (!continuing) { state.cont = 0; state.answerAt = null; state.keptUpTo = 0; }
@@ -1253,6 +1258,8 @@ async function keepSnap(snap, live) {
       // Held from the round still in state (Home, then Keep it): the round
       // is kept too, so a later Home does not hold it again.
       if (snap.record === state.record) { state.kept = true; state.keptUpTo = snap.text.length; }
+      // An earlier round of the answer still on screen: its later Keep sends only what came after.
+      else if (snap.answerAt && snap.answerAt === state.answerAt) state.keptUpTo = Math.max(state.keptUpTo, snap.text.length);
       store.saveHistory(data.history); renderExpert();
     }
     els.keepnote.textContent = r && r.ok ? ([r.corpus, r.expert].filter(Boolean).join(" ") || "Kept.") : ((r && r.note) || "Could not keep it.");
@@ -1262,6 +1269,7 @@ async function keepSnap(snap, live) {
     state.kept = true;
     state.keptUpTo = els.box.value.length;
     state.record.kept = true;
+    dropSameAnswer();
     store.saveHistory(data.history);
     els.keep.textContent = "Kept";
     els.keepnote.textContent = [r.corpus, r.expert].filter(Boolean).join(" ") || "Kept.";
@@ -1343,8 +1351,18 @@ function snapshot() {
 function holdIfUnkept() {
   const hasWords = state.score && (state.score.gwam > 0 || (state.spoken && roundText().trim()));
   if (!["done", "board"].includes(state.phase) || state.kept || (state.record && state.record.kept) || copyLike() || !hasWords) return;
-  state.pending = [snapshot(), ...(state.pending || []).filter((p) => p.record !== state.record)].slice(0, PENDING_MAX);
+  state.pending = [snapshot(), ...(state.pending || []).filter((p) => p.record !== state.record && !sameAnswer(p))].slice(0, PENDING_MAX);
   renderPending();
+}
+/* An earlier Keep going round of the answer on screen: the live round's text
+   holds all of it, so the live round's Keep or hold replaces it. */
+function sameAnswer(p) {
+  return Boolean(p.answerAt) && p.answerAt === state.answerAt && p.record !== state.record;
+}
+function dropSameAnswer() {
+  const before = (state.pending || []).length;
+  state.pending = (state.pending || []).filter((p) => !sameAnswer(p));
+  if (state.pending.length !== before) renderPending();
 }
 function renderPending() {
   const list = state.pending || [];
