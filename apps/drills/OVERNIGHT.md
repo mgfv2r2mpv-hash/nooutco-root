@@ -35,7 +35,7 @@ What changed:
 Adversarial review:
 
 - *Could it make him use the app less?* The first drill after this lands will read "Expert" where it read "Professional", which is a demotion in name only. The ladder line under it now always has a next rung, which is the point. Two new band trophies (Expert Hands, Elite Fingers) replay from history and appear silently rather than with a reveal, because the before and after trophy cases are both computed on the new bands. That is honest but misses a celebration; slice 7 (level-up moment) should give it one.
-- *New cross-purpose?* The classifier is generous in one direction: a garbled word taken back whole and retyped as something more than two edits away is called a revision, not a typo. That errs toward "never punish thinking", which is his ruling. It cannot be gamed into a better NWAM, because a word left wrong in the final text still costs NWAM.
+- *New cross-purpose?* The classifier is generous in one direction: a garbled word taken back whole and retyped as something more than two edits away is called a revision, not a typo. That errs toward "never punish thinking", which is his ruling. That claim was wrong: text typed and then taken back counts in GWAM and NWAM at no accuracy cost, so typing and deleting raises both. That is his ask ("my total text is calculated on"), kept on purpose; the words kept are reported separately, and the expert and the corpus only ever get the kept text.
 - *Calm typing surface?* Untouched. All of this renders after the bell.
 - *Does it feed the expert?* Indirectly: he can now delete a bad thought without a scoring cost, so what reaches the expert is the thought he meant. Only the final text is ever kept.
 
@@ -265,3 +265,12 @@ Does it feed the expert, or only look busy? It feeds it more than it did yesterd
 
 **Final stickiness: 8/10.** The things that were pushing him away (a score that punished thinking, a top band he already owned, reading ahead) are gone, and there is always a next rung, a nemesis to work, a question coming back, and something the expert will do with what he writes. What keeps it from a 9 is untested contact with his real mornings: the strict Shift slowdown and whether the drafted dissent records are good enough for him to keep reviewing them.
 
+
+## Host review, 2026-09-24 01:45 EDT
+
+An independent review confirmed four defects. Three are fixed, with tests:
+- **Strict Shift refused shifted symbols** (? ! @ : and the rest) as well as capitals. Now only letters are judged or refused.
+- **Two real words a slip apart** (increase, decrease) were scored as a typo fixed. When the word list knows both words, the change is now a revision.
+- **A shelved id that no longer exists** blocked every due entry behind it. It is now dropped.
+
+The fourth, deleted text counting toward speed, is kept as his ask, and the slice 1 note is corrected.

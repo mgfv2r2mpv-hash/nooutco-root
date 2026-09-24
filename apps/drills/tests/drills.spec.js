@@ -974,3 +974,33 @@ test('the results of an ordinary round offer the nemesis drill on D; with nothin
   await page.keyboard.press('d');
   await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'done');
 });
+
+test('strict Shift judges capitals only: shifted symbols type with either Shift', async ({ page }) => {
+  await page.goto('/index.html?clock=4');
+  await page.locator('[data-drill-start]').click();
+  const box = page.locator('[data-drill-box]');
+  await box.focus();
+  // ? is on a right-hand key and ! on a left-hand key; the same-side Shift must still type them.
+  await page.keyboard.down('ShiftRight');
+  await page.keyboard.press('Slash');
+  await page.keyboard.up('ShiftRight');
+  await page.keyboard.down('ShiftLeft');
+  await page.keyboard.press('Digit1');
+  await page.keyboard.up('ShiftLeft');
+  await expect(box).toHaveValue('?!');
+  await expect(page.locator('[data-sidefx]')).not.toHaveAttribute('data-last-shift', 'refused');
+});
+
+test('a shelved passage that no longer exists is dropped, so the due one behind it still comes back', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('noaba.drills.settings.v1', JSON.stringify({
+    mode: 'copy', copyDefault: true,
+    shelf: [{ id: 'p-retired', at: '2026-01-01T12:00:00Z', round: 0 }, { id: 'p-iwata', at: '2026-01-01T12:00:00Z', round: 0 }],
+  })));
+  await page.goto(PAGE);
+  await page.locator('[data-drill-start]').click();
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-mode', 'copy');
+  const st = await page.evaluate(() => ({ id: window.NoteDrill.state.passage.id, back: window.NoteDrill.state.passage.fromShelf, shelf: window.NoteDrill.data.settings.shelf.map((e) => e.id) }));
+  expect(st.id).toBe('p-iwata');
+  expect(st.back).toBe(true);
+  expect(st.shelf).not.toContain('p-retired');
+});
