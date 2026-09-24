@@ -769,7 +769,7 @@ test('baton pass: keeps the answer, ingests it in the background, and the expert
   await page.keyboard.press('Enter');
   await expect(page.locator('[data-drill-q]')).toHaveText('How would you raise the rate in session?');
   await expect(page.locator('[data-drill-bullets]')).toContainText('Nevin (1992)');
-  await expect(page.locator('[data-drill-category]')).toContainText('respond · baton pass 1');
+  await expect(page.locator('[data-drill-category]')).toContainText('respond \u00b7 baton pass 1');
 });
 
 test('a kept respond answer carries the passage it answered and a local stance, and the draft reads them for consensus and dissent', async ({ page }) => {
@@ -943,7 +943,7 @@ test('a bank question answered days ago comes back for review through a lens, an
   await page.goto(PAGE);
   await expect(page.locator('[data-drill-reviews]')).toContainText('1 question due for another look');
   await page.locator('[data-drill-start]').click();
-  await expect(page.locator('[data-drill-category]')).toContainText('review · steelman');
+  await expect(page.locator('[data-drill-category]')).toContainText('review \u00b7 steelman');
   await expect(page.locator('[data-drill-q]')).toContainText('Mom stopped giving candy for screaming');
   await expect(page.locator('[data-drill-q]')).toContainText('strongest case for the view you usually argue against');
   await page.locator('[data-drill-box]').pressSequentially('Extinction bursts are common and she can plan for one.', { delay: 10 });

@@ -23,7 +23,7 @@ const CHH = "Cooper, Heron & Heward (2020), Applied Behavior Analysis, 3rd ed.";
 export const TAGS = Object.freeze(["vignette", "explain", "design", "parent", "ethics", "supervise"]);
 
 const CORE = [
-  /* ── A. Philosophy ─────────────────────────────────────────────────── */
+  /* -- A. Philosophy --------------------------------------------------- */
   { id: "a-01", outline: "A.1", tag: "parent",
     question: "A dad asks why you keep counting things instead of asking his son how he feels. Tell him what the counting is for.",
     bullets: [
@@ -49,7 +49,7 @@ const CORE = [
       { text: "A label is a description of behavior, not a cause of it.", source: CHH + ", ch. Basic Concepts and Principles" },
     ] },
 
-  /* ── B. Concepts and principles ────────────────────────────────────── */
+  /* -- B. Concepts and principles -------------------------------------- */
   { id: "b-01", outline: "B.17", tag: "vignette",
     question: "A learner mands for a break forty times a session and takes it every time. The team says he is 'checking the box'. What is going on?",
     bullets: [
@@ -123,7 +123,7 @@ const CORE = [
       { text: "Generalization is programmed, not hoped for.", source: "Stokes & Baer (1977), JABA" },
     ] },
 
-  /* ── C. Measurement ────────────────────────────────────────────────── */
+  /* -- C. Measurement -------------------------------------------------- */
   { id: "c-01", outline: "C.9", tag: "vignette",
     question: "The team counts tantrums. One lasted four seconds, one lasted forty minutes. What is the count hiding?",
     bullets: [
@@ -161,7 +161,7 @@ const CORE = [
       { text: "A change that coincides with another event is not yet a functional relation.", source: CHH + ", ch. Analyzing Behavior Change: Basic Assumptions and Strategies" },
     ] },
 
-  /* ── D. Experimental design ────────────────────────────────────────── */
+  /* -- D. Experimental design ------------------------------------------ */
   { id: "d-01", outline: "D.7", tag: "design",
     question: "You taught him to request help and would never take it away to prove it worked. Which design shows the effect anyway?",
     bullets: [
@@ -181,7 +181,7 @@ const CORE = [
       { text: "Replication is how single-case designs answer them.", source: "Horner et al. (2005), Exceptional Children" },
     ] },
 
-  /* ── E. Ethics ─────────────────────────────────────────────────────── */
+  /* -- E. Ethics ------------------------------------------------------- */
   { id: "e-01", outline: "E.3", tag: "ethics",
     question: "A family asks you to add feeding therapy. You have read about it and never done it. What do you do this week, and what do you not do?",
     bullets: [
@@ -219,7 +219,7 @@ const CORE = [
       { text: "When in doubt, get it in writing first.", source: "Bailey & Burch (2022), Ethics for Behavior Analysts, 4th ed." },
     ] },
 
-  /* ── F. Assessment ─────────────────────────────────────────────────── */
+  /* -- F. Assessment --------------------------------------------------- */
   { id: "f-01", outline: "F.5", tag: "vignette",
     question: "Elopement from class started the week a substitute took over. Where do you start, and what do you rule out first?",
     bullets: [
@@ -257,7 +257,7 @@ const CORE = [
       { text: "Applied means important to the person and those around them.", source: "Baer, Wolf & Risley (1968), JABA" },
     ] },
 
-  /* ── G. Behavior-change procedures ─────────────────────────────────── */
+  /* -- G. Behavior-change procedures ----------------------------------- */
   { id: "g-01", outline: "G.2", tag: "vignette",
     question: "Your DRO resets on every swear, and he swears at minute 4:59 of every five-minute interval. What is he learning, and what do you change?",
     bullets: [
@@ -319,7 +319,7 @@ const CORE = [
       { text: "Least-to-most gives more independent chances but more errors.", source: CHH + ", ch. Stimulus Control" },
     ] },
 
-  /* ── H. Selecting and implementing interventions ───────────────────── */
+  /* -- H. Selecting and implementing interventions --------------------- */
   { id: "h-01", outline: "H.8", tag: "parent",
     question: "A parent says the plan works for you and not at home. How do you structure the next three parent sessions?",
     bullets: [
@@ -363,7 +363,7 @@ const CORE = [
       { text: "Pick the response form that works fastest for this learner now.", source: CHH + ", ch. Verbal Behavior" },
     ] },
 
-  /* ── I. Supervision ────────────────────────────────────────────────── */
+  /* -- I. Supervision -------------------------------------------------- */
   { id: "i-01", outline: "I.6", tag: "supervise",
     question: "A BT's notes say 'had a great session' three days running. What feedback do you give, and what data do you show her?",
     bullets: [

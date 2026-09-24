@@ -31,8 +31,8 @@ export function createCalendar(root) {
     const byDay = new Map(stats.map((d) => [d.day, d]));
     const st = streakRuns(stats.map((d) => d.day), today);
     const head = h("div", "cal-head");
-    const prev = h("button", "soft cal-nav", "‹"); prev.type = "button"; prev.title = "Earlier month"; prev.dataset.calPrev = "";
-    const next = h("button", "soft cal-nav", "›"); next.type = "button"; next.title = "Later month"; next.dataset.calNext = "";
+    const prev = h("button", "soft cal-nav", "\u2039"); prev.type = "button"; prev.title = "Earlier month"; prev.dataset.calPrev = "";
+    const next = h("button", "soft cal-nav", "\u203a"); next.type = "button"; next.title = "Later month"; next.dataset.calNext = "";
     next.disabled = offset === 0;
     prev.addEventListener("click", () => { offset += 1; draw(); });
     next.addEventListener("click", () => { offset = Math.max(0, offset - 1); draw(); });
@@ -44,7 +44,7 @@ export function createCalendar(root) {
       st.current ? `${plural(st.current, "day")} in a row${st.alive ? "" : ", alive until midnight"}` : "No streak running",
       `longest ${plural(st.longest, "day")}`,
       `${plural(todayCount, "drill")} today`,
-    ].join(" · ");
+    ].join(" \u00b7 ");
     const grid = h("div", "cal-grid");
     const wk = h("div", "cal-weekdays");
     for (const d of WEEKDAYS) wk.appendChild(h("span", null, d));

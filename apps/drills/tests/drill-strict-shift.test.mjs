@@ -58,7 +58,7 @@ test("refusedWeeks sums the last seven days against the seven before, and skips 
 test("refusedText says the round and the trend, his words: down from last week", () => {
   const round = { count: 3, keys: [{ key: "T", count: 2 }, { key: "B", count: 1 }] };
   assert.equal(refusedText(round, { thisWeek: 3, lastWeek: 9, roundsThis: 2, roundsLast: 4 }, true),
-    "3 capitals refused for a same-side Shift (T 2×, B); 3 capitals refused this week, down from 9 last week");
+    "3 capitals refused for a same-side Shift (T 2\u00d7, B); 3 capitals refused this week, down from 9 last week");
   assert.equal(refusedText({ count: 0, keys: [] }, { thisWeek: 0, lastWeek: 0, roundsThis: 1, roundsLast: 0 }, true),
     "No capitals refused this week");
   assert.equal(refusedText({ count: 0, keys: [] }, { thisWeek: 0, lastWeek: 0, roundsThis: 0, roundsLast: 0 }, false), "");

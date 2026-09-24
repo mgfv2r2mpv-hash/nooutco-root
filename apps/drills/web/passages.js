@@ -151,7 +151,7 @@ export function trickyProfile(history, rates) {
   return { keys: weakKeys(rates), pairs, capitals, punctuation };
 }
 
-/** Plain words for the tag and the Keys tab: "w m b · pairs br, ck · capitals". */
+/** Plain words for the tag and the Keys tab: "w m b \u00b7 pairs br, ck \u00b7 capitals". */
 export function describeProfile(p) {
   if (!p) return "";
   const parts = [];
@@ -159,7 +159,7 @@ export function describeProfile(p) {
   if (p.pairs && p.pairs.length) parts.push("pairs " + p.pairs.join(", "));
   if (p.capitals) parts.push("capitals");
   if (p.punctuation) parts.push("punctuation");
-  return parts.join(" · ");
+  return parts.join(" \u00b7 ");
 }
 
 /**

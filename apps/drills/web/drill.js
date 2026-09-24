@@ -314,7 +314,7 @@ function armRespond() {
   if (!p) { arm(); return; }
   // A baton passage carries the expert's sources; they sit beside the question.
   const bullets = (p.sources || []).map((x) => ({ text: x.claim, source: x.source }));
-  state.item = { id: p.id, outline: p.outline, tag: p.kind === "baton" ? `respond · baton pass ${state.baton}` : "respond", question: p.respond, bullets };
+  state.item = { id: p.id, outline: p.outline, tag: p.kind === "baton" ? `respond \u00b7 baton pass ${state.baton}` : "respond", question: p.respond, bullets };
   startRound("respond", 1, null);
 }
 
@@ -585,8 +585,8 @@ function startRound(mode, minutes, carry) {
   els.category.textContent = mode === "tame"
     ? `nemesis drill \u00b7 ${state.passage.target.name} \u00b7 ${TAME_SECONDS} seconds, practice only`
     : mode === "copy"
-    ? `copy · ${state.item.tag} · BACB ${state.item.outline}${describeProfile(state.tricky) ? ` · works ${describeProfile(state.tricky)}` : ""}`
-    : `${state.item.tag} · BACB ${state.item.outline}${state.cont ? ` · keep going ${state.cont}` : ""}`;
+    ? `copy \u00b7 ${state.item.tag} \u00b7 BACB ${state.item.outline}${describeProfile(state.tricky) ? ` \u00b7 works ${describeProfile(state.tricky)}` : ""}`
+    : `${state.item.tag} \u00b7 BACB ${state.item.outline}${state.cont ? ` \u00b7 keep going ${state.cont}` : ""}`;
   els.category.title = ol ? ol.text : "";
   els.q.textContent = state.item.question;
   els.bullets.replaceChildren(...state.item.bullets.map((b) => {
@@ -955,10 +955,10 @@ function render(s, st, prior) {
   renderScoreLines(s, st, prior);
   const pb = bests(prior.filter((h) => kindOf(h) === roundKind()))[String(state.roundMinutes)];
   els.pace.replaceChildren(lineChart([{ values: s.pace, dots: false }], { guide: pb ?? null, guideLabel: pb != null ? `best ${pb.toFixed(0)}` : "", height: 120, min: 0 }));
-  els.tricky.replaceChildren(...(s.tricky.keys.length ? s.tricky.keys.map((k) => li(`${keyName(k.key)} hit by mistake ${k.count}×`)) : [li("Nothing corrected. Clean hands.")]));
-  for (const c of s.tricky.confusions) els.tricky.appendChild(li(`hit ${keyName(c.hit)} for ${keyName(c.meant)}, ${c.count}×`));
+  els.tricky.replaceChildren(...(s.tricky.keys.length ? s.tricky.keys.map((k) => li(`${keyName(k.key)} hit by mistake ${k.count}\u00d7`)) : [li("Nothing corrected. Clean hands.")]));
+  for (const c of s.tricky.confusions) els.tricky.appendChild(li(`hit ${keyName(c.hit)} for ${keyName(c.meant)}, ${c.count}\u00d7`));
   const tm = [];
-  if (s.timing.intervals) tm.push(`${s.timing.medianMs} ms between keys, cadence ±${Math.round(s.timing.cv * 100)}%`);
+  if (s.timing.intervals) tm.push(`${s.timing.medianMs} ms between keys, cadence \u00b1${Math.round(s.timing.cv * 100)}%`);
   if (s.timing.afterShiftMs) tm.push(`${s.timing.afterShiftMs} ms after shift`);
   if (s.timing.punctuationMs) tm.push(`${s.timing.punctuationMs} ms on punctuation`);
   if (s.timing.pauses) tm.push(`${s.timing.pauses} pause${s.timing.pauses === 1 ? "" : "s"} over two seconds`);
@@ -1007,7 +1007,7 @@ function render(s, st, prior) {
   els.baton.disabled = !hasWords;
   els.cont.disabled = !hasWords && !state.prefix;
   renderTameOffer();
-  els.again.replaceChildren(state.mode === "tame" ? `Again \u00b7 ${TAME_SECONDS}s` : copying ? "Respond · 1 min" : state.mode === "oracle" ? "Follow-up" : "Again", Object.assign(document.createElement("kbd"), { textContent: "return" }));
+  els.again.replaceChildren(state.mode === "tame" ? `Again \u00b7 ${TAME_SECONDS}s` : copying ? "Respond \u00b7 1 min" : state.mode === "oracle" ? "Follow-up" : "Again", Object.assign(document.createElement("kbd"), { textContent: "return" }));
   showTab("drill");
   els.question.hidden = true;
   els.results.hidden = false;
@@ -1283,7 +1283,7 @@ function drawMap() {
     const head = document.createElement("div"); head.className = "map-head";
     const b = document.createElement("b"); b.textContent = d.letter;
     const nm = document.createElement("span"); nm.textContent = d.name;
-    const it = document.createElement("i"); it.textContent = `${d.share || 0}% of the exam · ${d.mine} yours${d.expert ? ` · ${d.expert} expert` : ""}`;
+    const it = document.createElement("i"); it.textContent = `${d.share || 0}% of the exam \u00b7 ${d.mine} yours${d.expert ? ` \u00b7 ${d.expert} expert` : ""}`;
     head.append(b, nm, it);
     col.appendChild(head);
     for (const c of d.cells) {
@@ -1291,7 +1291,7 @@ function drawMap() {
       cell.className = "map-cell" + (c.askable ? " is-askable" : "");
       cell.dataset.mapCell = c.id; cell.dataset.mapTotal = String(c.total);
       cell.style.setProperty("--shade", String(c.shade));
-      cell.title = `${c.id} ${c.text}${c.total ? ` · ${c.mine} yours${c.expert ? `, ${c.expert} expert` : ""}` : " · nothing yet"}`;
+      cell.title = `${c.id} ${c.text}${c.total ? ` \u00b7 ${c.mine} yours${c.expert ? `, ${c.expert} expert` : ""}` : " \u00b7 nothing yet"}`;
       cell.textContent = c.id;
       col.appendChild(cell);
     }
