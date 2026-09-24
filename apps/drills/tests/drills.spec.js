@@ -907,3 +907,70 @@ test('a bank question answered days ago comes back for review through a lens, an
   await page.locator('[data-drill-start]').click();
   await expect(page.locator('[data-drill-category]')).not.toContainText('review');
 });
+
+/* ---- item 8: the nemesis drill, offered and never forced ------------------ */
+
+test('home offers a thirty-second drill on his nemesis; it teaches the finger, stays out of history and earns its own trophy', async ({ page }) => {
+  await page.addInitScript(() => {
+    const now = Date.now();
+    // Eight drills that missed u on a quarter of its presses: nem-key-u is spotted on load.
+    const rec = (i) => ({ at: new Date(now - (10 - i) * 3600000).toISOString(), minutes: 1, seconds: 60, nwam: 80, gwam: 84, accuracy: 0.96,
+      words: 84, mode: 'answer', itemId: 'x', outline: 'B.1', keys: { u: { presses: 12, misses: 3 } } });
+    if (!localStorage.getItem('noaba.drills.v1')) localStorage.setItem('noaba.drills.v1', JSON.stringify(Array.from({ length: 8 }, (_, i) => rec(i))));
+  });
+  await page.goto(PAGE);
+  await wordsReady(page);
+  const offer = page.locator('[data-drill-tame-home]');
+  await expect(offer).toBeVisible();
+  await expect(offer).toContainText('thirty seconds on it, if you like');
+  // Offered, never forced: Start still runs an ordinary round.
+  await expect(page.locator('[data-drill-start]')).toBeFocused();
+  await page.keyboard.press('d');
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-mode', 'tame');
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'armed');
+  await expect(page.locator('[data-drill-category]')).toContainText('nemesis drill');
+  await expect(page.locator('.tame-lesson')).toContainText('U is your right index finger, top row');
+  await expect(page.locator('[data-drill-passage]')).toBeVisible();
+  const text = await page.evaluate(() => window.NoteDrill.state.passage.text);
+  expect(text.split(' ').filter((w) => w.includes('u')).length).toBeGreaterThanOrEqual(29);
+  await page.locator('[data-drill-box]').pressSequentially(text.split(' ').slice(0, 4).join(' ') + ' ', { delay: 15 });
+  await done(page);
+  // Straight to the numbers: no read screen, nothing to keep, and the target's own line.
+  await expect(page.locator('[data-drill-read]')).toBeHidden();
+  await expect(page.locator('[data-drill-results]')).toBeVisible();
+  await expect(page.locator('[data-drill-keep]')).toBeHidden();
+  await expect(page.locator('[data-drill-next]')).toContainText(/U: \d+ missed of \d+ presses/);
+  await expect(page.locator('[data-drill-keepnote]')).toContainText('practice only');
+  await expect(page.locator('[data-unlocked="tame-n-1"]')).toContainText('Sparring Partner');
+  const saved = await page.evaluate(() => ({ history: window.NoteDrill.data.history.length, tame: window.NoteDrill.data.settings.tame }));
+  expect(saved.history).toBe(8);
+  expect(saved.tame).toHaveLength(1);
+  expect(saved.tame[0]).toMatchObject({ mode: 'tame', target: 'nem-key-u', minutes: 0.5 });
+  expect(JSON.stringify(saved.tame)).not.toContain(text.split(' ')[0] + ' ');
+  // Again runs a fresh drill on the same target; the button on the results offers it too.
+  await expect(page.locator('[data-drill-tame]')).toContainText('Drill U');
+  await expect(page.locator('[data-drill-again]')).toContainText('Again');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-mode', 'tame');
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'armed');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'idle');
+  // The board counts the drill under its own group, and a reload keeps it.
+  await page.reload();
+  await wordsReady(page);
+  await page.evaluate(() => window.NoteDrill.openBoard('trophies'));
+  await expect(page.locator('[data-trophy="tame-n-1"]')).toBeVisible();
+});
+
+test('the results of an ordinary round offer the nemesis drill on D; with nothing to aim at there is no offer', async ({ page }) => {
+  await page.goto(PAGE);
+  await wordsReady(page);
+  // A first launch: no history, no tricky key, no offer.
+  await expect(page.locator('[data-drill-tame-home]')).toBeHidden();
+  await page.locator('[data-drill-start]').click();
+  await page.locator('[data-drill-box]').pressSequentially('the child ran home', { delay: 15 });
+  await done(page);
+  await expect(page.locator('[data-drill-tame]')).toBeHidden();
+  await page.keyboard.press('d');
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'done');
+});

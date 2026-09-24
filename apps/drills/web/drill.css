@@ -307,7 +307,7 @@ svg.fx-glyph { width: 26px; height: 26px; animation: fx-cheer 1.1s ease-out both
 .pw.is-bad { color: #b4471f; text-decoration: underline wavy rgba(180,71,31,.5); text-underline-offset: 3px; }
 .pw.is-cur { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--ink); box-shadow: 0 2px 0 var(--accent); }
 .pw.is-cur.is-bad { background: rgba(240,164,96,.25); box-shadow: 0 2px 0 #e0873f; text-decoration: none; }
-.drill[data-drill-mode="copy"] .box { min-height: 150px; }
+.drill[data-drill-mode="copy"] .box, .drill[data-drill-mode="tame"] .box { min-height: 150px; }
 .refpass { margin: 0 0 12px; font-size: 13.5px; color: var(--ink2); }
 .refpass summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
 .refpass p { line-height: 1.55; margin: 8px 0 0; max-height: 160px; overflow-y: auto; }
@@ -595,6 +595,8 @@ main.drill[data-settling="1"] .actions button { opacity: .45; transition: opacit
 .shelf b { font: 700 11px/1 var(--rounded); letter-spacing: .12em; text-transform: uppercase; color: var(--gold-lo); }
 .shelf span { font-family: var(--display); font-style: italic; }
 .shelf span.is-due { color: var(--ink2); }
+.tame-offer .tame-go { margin-left: auto; padding: 4px 12px; font-size: 13px; }
+.bullets .tame-lesson { list-style: none; font-style: italic; color: var(--ink2); }
 .shelf span.is-due::before { content: "\2726  "; color: var(--gold); font-style: normal; }
 @media (max-width: 640px) { .folio { padding: 22px 18px; } .read-text p { font-size: 16px; } }
 @media (prefers-reduced-motion: reduce) { .read.is-in .folio { animation: none; } }

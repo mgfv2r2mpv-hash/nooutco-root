@@ -20,7 +20,8 @@ import { trophyCase, newlyUnlocked } from "./trophies.js";
 import { newlySpotted } from "./nemeses.js";
 import { createCalendar, renderTrophies } from "./calendar.js";
 import { handOf, judge, createShiftTracker, createShiftFx } from "./shift.js";
-import { nextPassage, trickyProfile, describeProfile } from "./passages.js";
+import { nextPassage, trickyProfile, describeProfile, PASSAGES } from "./passages.js";
+import { tameTarget, tameDrill, tameReport, tameEntry, appendTame, TAME_SECONDS } from "./tame.js";
 import { renderPassage, markPassage } from "./copy.js";
 import { shelve, unshelve, dueEntry, returned, describeShelf, copyRounds } from "./shelf.js";
 import { pickReview, asReview, describeReviews } from "./review.js";
@@ -58,7 +59,7 @@ const els = {
   cont: $("[data-drill-continue]"), working: $("[data-drill-working]"),
   oracleTopic: $("[data-drill-oracle-topic]"), oracleOnly: $$("[data-oracle-only]"), mic: $("[data-drill-mic]"), baton: $("[data-drill-baton]"),
   send: $("[data-drill-send]"), expertStatus: $("[data-drill-expert-status]"), expertToken: $("[data-drill-expert-token]"),
-  strictShift: $("[data-drill-strict-shift]"),
+  strictShift: $("[data-drill-strict-shift]"), tame: $("[data-drill-tame]"), tameHome: $("[data-drill-tame-home]"),
   read: $("[data-drill-read]"), respond: $("[data-drill-respond]"), shelve: $("[data-drill-shelve]"), numbers: $("[data-drill-numbers]"),
   readHome: $("[data-drill-read-home]"), readNote: $("[data-drill-read-note]"), readUnlocked: $("[data-drill-read-unlocked]"), readLevelUp: $("[data-drill-read-levelup]"),
   readParts: { score: $("[data-drill-read-score]"), title: $("[data-drill-read-title]"), source: $("[data-drill-read-source]"),
@@ -115,9 +116,14 @@ const wordsLoaded = fetch(new URL("./words.txt", import.meta.url))
 /* ---- helpers ------------------------------------------------------------ */
 const secondsFor = () => (CLOCK_OVERRIDE > 0 ? CLOCK_OVERRIDE : state.roundMinutes * 60);
 /** Copy speed and compose speed are different skills: bests and heat never mix them. */
-const kindOf = (h) => (h && h.mode === "copy" ? "copy" : "compose");
-const ofKind = (kind) => data.history.filter((h) => kindOf(h) === kind);
-const roundKind = () => (state.mode === "copy" ? "copy" : "compose");
+const kindOf = (h) => (h && h.mode === "copy" ? "copy" : h && h.mode === "tame" ? "tame" : "compose");
+const ofKind = (kind) => (kind === "tame" ? tameLog() : data.history.filter((h) => kindOf(h) === kind));
+const roundKind = () => kindOf({ mode: state.mode });
+/* A copy round and a nemesis drill both type a reference text, word for word. */
+const copyLike = () => state.mode === "copy" || state.mode === "tame";
+/* The nemesis drill's own log: never in history, so never in bests or bands. */
+const tameLog = () => (Array.isArray(data.settings.tame) ? data.settings.tame : []);
+const trophies = () => trophyCase(data.history, tameLog());
 const minutesFor = () => secondsFor() / 60;
 function clockText(s) {
   const m = Math.floor(s / 60), r = Math.max(0, Math.floor(s - m * 60));
@@ -192,7 +198,7 @@ function renderChips() {
   const today = dayOf(new Date().toISOString());
   const t = data.history.filter((h) => h && h.at && dayOf(h.at) === today).length;
   els.today.textContent = t ? `${t} today` : "";
-  const won = trophyCase(data.history).filter((x) => x.unlocked).length;
+  const won = trophies().filter((x) => x.unlocked).length;
   els.trophyChip.textContent = won ? `${won} trophies` : "";
   els.trophyChip.hidden = !won;
 }
@@ -209,6 +215,7 @@ function home() {
   setMinutes(state.minutes, false);
   renderChips();
   renderShelf();
+  renderTameOffer();
   els.start.focus();
 }
 
@@ -459,7 +466,7 @@ async function ingestInBackground(at) {
 /* Keep going: the same question, the same box, a fresh clock. His ruling:
    "maybe I had more to say on it and stopped only because time was out." */
 function continueRound() {
-  if (!state.score || state.mode === "copy") return;
+  if (!state.score || copyLike()) return;
   startRound(state.mode, state.mode === "respond" ? 1 : state.roundMinutes, els.box.value);
 }
 
@@ -472,13 +479,15 @@ function startRound(mode, minutes, carry) {
   const continuing = typeof carry === "string";
   if (!continuing) state.spoken = false;
   state.listening = false; els.mic.classList.remove("is-on"); els.mic.textContent = "Talk";
-  els.mic.hidden = mode === "copy";
+  els.mic.hidden = mode === "copy" || mode === "tame";
   if (!continuing) { state.cont = 0; state.answerAt = null; state.keptUpTo = 0; }
   else state.cont += 1;
   shiftKeys.clear(); shiftFx.clear();
   root.dataset.drillMode = mode;
   const ol = itemById(state.item.outline);
-  els.category.textContent = mode === "copy"
+  els.category.textContent = mode === "tame"
+    ? `nemesis drill \u00b7 ${state.passage.target.name} \u00b7 ${TAME_SECONDS} seconds, practice only`
+    : mode === "copy"
     ? `copy · ${state.item.tag} · BACB ${state.item.outline}${describeProfile(state.tricky) ? ` · works ${describeProfile(state.tricky)}` : ""}`
     : `${state.item.tag} · BACB ${state.item.outline}${state.cont ? ` · keep going ${state.cont}` : ""}`;
   els.category.title = ol ? ol.text : "";
@@ -489,23 +498,27 @@ function startRound(mode, minutes, carry) {
     n.appendChild(src);
     return n;
   }));
-  if (mode === "copy") {
-    els.bullets.replaceChildren(Object.assign(li(state.passage.source), { className: "passage-src" }));
+  if (mode === "copy" || mode === "tame") {
+    els.bullets.replaceChildren(
+      ...(mode === "tame" ? [Object.assign(li(state.passage.lesson), { className: "tame-lesson" })] : []),
+      Object.assign(li(state.passage.source), { className: "passage-src" }));
     renderPassage(els.passage, state.passage.text, state.weak || []);
     els.passage.scrollTop = 0;
     markPassage(els.passage, "", state.passage.text);
   }
-  els.passage.hidden = mode !== "copy";
+  els.passage.hidden = mode !== "copy" && mode !== "tame";
   els.ref.hidden = mode !== "respond";
   if (mode === "respond") { els.refText.textContent = state.passage.text; els.ref.open = false; }
   els.box.value = continuing ? carry : "";
   state.prefix = els.box.value.length;
   els.box.disabled = false;
-  els.box.placeholder = mode === "copy"
+  els.box.placeholder = mode === "tame"
+    ? "Type the words above, exactly. Clean first, then fast."
+    : mode === "copy"
     ? "Type the passage above, exactly. No need to read ahead: it comes back to read properly when the round ends."
     : "Start typing. The clock starts on your first key.";
   els.live.textContent = ""; els.combo.hidden = true; els.wpm.textContent = "0";
-  els.hint.textContent = mode === "copy" ? "Copy it cold, word for word. You get to read it properly afterwards, before you answer." : "The clock starts on your first keystroke. esc leaves without scoring.";
+  els.hint.textContent = mode === "tame" ? "Thirty seconds, offered not forced: esc leaves without scoring." : mode === "copy" ? "Copy it cold, word for word. You get to read it properly afterwards, before you answer." : "The clock starts on your first keystroke. esc leaves without scoring.";
   els.clock.textContent = clockText(secondsFor());
   els.raceYou.style.left = "0%"; els.raceGhost.style.left = "0%"; els.raceNote.textContent = "";
   els.results.hidden = true; els.setup.hidden = true; els.read.hidden = true; els.question.hidden = false;
@@ -563,7 +576,7 @@ function boundary(textBeforeCaret) {
   const w = tok.toLowerCase().replace(/\u2019/g, "'").replace(/^'+|-+$/g, "");
   const dict = knownNow();
   // A copy round marks its own words against the passage; the lexicon is for his words.
-  const unknown = state.mode !== "copy" && dict && !/^[A-Z]/.test(tok) && w && !isKnown(w, dict);
+  const unknown = !copyLike() && dict && !/^[A-Z]/.test(tok) && w && !isKnown(w, dict);
   if (unknown && !state.flagged.includes(w)) {
     state.flagged.push(w);
     els.live.textContent = "Unknown so far: " + state.flagged.join(", ");
@@ -616,7 +629,7 @@ function coachDelete() {
 
 /* After an Option or Command delete, log one backspace per character it took. */
 function onInput() {
-  if (state.mode === "copy" && state.passage) {
+  if (copyLike() && state.passage) {
     markPassage(els.passage, els.box.value, state.passage.text);
     const typed = els.box.value.trim().split(/\s+/);
     const ref = state.passage.text.split(/\s+/);
@@ -637,7 +650,7 @@ function start() {
   state.t0 = performance.now();
   state.deadline = state.t0 + secondsFor() * 1000;
   setPhase("running");
-  els.hint.textContent = state.mode === "copy" ? "Go. Word for word; finish the passage and the round ends early." : "Go. Backspace and return count; paste does not.";
+  els.hint.textContent = copyLike() ? "Go. Word for word; finish the passage and the round ends early." : "Go. Backspace and return count; paste does not.";
   tick();
 }
 function tick() {
@@ -673,13 +686,14 @@ async function finish() {
   els.hint.textContent = "Time.";
   // A copy round that reaches the end of the passage stops early: score the time it took.
   const elapsed = Math.min(secondsFor(), (performance.now() - state.t0) / 1000);
-  const scoredMinutes = state.mode === "copy" ? Math.max(elapsed, 5) / 60 : minutesFor();
+  const scoredMinutes = copyLike() ? Math.max(elapsed, 5) / 60 : minutesFor();
   await wordsLoaded;
   knownCache = null;
   const prior = data.history.slice();
   state.score = scoreRound(scoredMinutes);
   const s = state.score;
   state.scoredMinutes = scoredMinutes;
+  if (state.mode === "tame") { finishTame(s); return; }
   state.record = {
     at: new Date().toISOString(), itemId: state.item.id, outline: state.mode === "copy" ? null : state.item.outline, minutes: state.roundMinutes,
     mode: state.mode, ...(state.passage && state.mode !== "answer" ? { passage: state.passage.id } : {}),
@@ -703,7 +717,7 @@ async function finish() {
   if (state.mode === "copy" && state.passage.fromShelf && !unshelve(shelf(), state.passage.id).length) state.record.shelfEmpty = true;
   const st = stars(s, prior.filter((h) => kindOf(h) === roundKind()), state.roundMinutes);
   state.levelPrior = prior.filter((h) => kindOf(h) === roundKind());
-  const before = trophyCase(prior);
+  const before = trophyCase(prior, tameLog());
   if (!state.answerAt) state.answerAt = state.record.at;
   // A talked round has no keystrokes but it is still a round, and it can be kept.
   const spokenWords = state.spoken ? roundText().trim().split(/\s+/).filter(Boolean).length : 0;
@@ -715,11 +729,59 @@ async function finish() {
     // Copied again from the shelf: it is off the shelf now. Shelve it again to put it back.
     if (state.mode === "copy" && state.passage.fromShelf) saveShelf(unshelve(shelf(), state.passage.id));
   }
-  const after = counts ? trophyCase(data.history) : before;
+  const after = counts ? trophies() : before;
   state.unlocked = newlyUnlocked(before, after);
   state.spotted = newlySpotted(before, after);
   store.log(`drill ${state.mode} ${state.item.id} ${state.roundMinutes}m nwam ${s.nwam} acc ${s.accuracy}`);
   render(s, st, prior);
+}
+
+/* The nemesis drill ends here: its numbers go to settings.tame, never to
+   history, so a word list never moves his bests, bands or nemeses. */
+function finishTame(s) {
+  const t = state.passage.target;
+  const log = tameLog();
+  const st = stars(s, log, TAME_SECONDS / 60);
+  const before = trophies();
+  state.record = null; state.levelPrior = []; state.spotted = [];
+  if (s.gwam > 0) {
+    data.settings = { ...data.settings, tame: appendTame(log, tameEntry(t, s, new Date().toISOString(), TAME_SECONDS / 60)) };
+    store.saveSettings(data.settings);
+  }
+  state.unlocked = newlyUnlocked(before, trophies());
+  store.log(`drill tame ${t.id} nwam ${s.nwam} acc ${s.accuracy}`);
+  render(s, st, log);
+}
+
+/* ---- the nemesis drill: offered, never forced ------------------------------- */
+function currentTame() {
+  return tameTarget(data.history, trickyProfile(data.history, keyboardRates(data.history, 20)).keys);
+}
+function armTame(target = currentTame()) {
+  const passage = target && tameDrill(target, PASSAGES.map((p) => p.text));
+  if (!passage) return;
+  state.passage = passage;
+  state.baton = 0;
+  state.weak = target.kind === "pair" ? [...target.key] : [target.letter];
+  state.item = { id: passage.id, outline: null, tag: "nemesis drill", question: passage.title, bullets: [] };
+  startRound("tame", TAME_SECONDS / 60, null);
+}
+/* Home: one line naming the nemesis, and the button. Results: the button. */
+function renderTameOffer() {
+  const t = currentTame();
+  els.tameHome.hidden = !t;
+  els.tame.hidden = !t;
+  if (!t) { els.tameHome.replaceChildren(); return; }
+  const go = Object.assign(document.createElement("button"), { type: "button", className: "soft tame-go", textContent: `Drill it \u00b7 ${TAME_SECONDS}s ` });
+  go.dataset.drillTameGo = t.id;
+  go.append(Object.assign(document.createElement("kbd"), { textContent: "D" }));
+  go.addEventListener("click", () => armTame(t));
+  els.tameHome.replaceChildren(
+    Object.assign(document.createElement("b"), { textContent: "Nemesis" }),
+    Object.assign(document.createElement("span"), { textContent: `${t.name}: thirty seconds on it, if you like.` }), go);
+  els.tame.replaceChildren(`Drill ${t.kind === "pair" ? t.key.toUpperCase() : t.letter.toUpperCase()} \u00b7 ${TAME_SECONDS}s `,
+    Object.assign(document.createElement("kbd"), { textContent: "D" }));
+  els.tame.title = `A ${TAME_SECONDS}-second drill on ${t.name}. Practice only: it stays out of your bests and bands.`;
 }
 
 /* The round's own text: a Keep going round scores only what it added. */
@@ -727,7 +789,7 @@ const roundText = () => els.box.value.slice(Math.min(state.prefix, els.box.value
 function scoreRound(minutes) {
   return scoreDrill({
     events: state.events, text: roundText(), minutes, lexicon: knownNow(),
-    reference: state.mode === "copy" ? state.passage.text : undefined,
+    reference: copyLike() ? state.passage.text : undefined,
   });
 }
 
@@ -738,16 +800,17 @@ function render(s, st, prior) {
   els.gwam.textContent = s.gwam.toFixed(1);
   els.errors.textContent = String(s.corrections + (s.uncorrected || 0));
   els.accuracy.textContent = Math.round(s.accuracy * 100) + "%";
-  els.rating.textContent = s.rating.name;
-  els.ratingNote.textContent = s.rating.accuracyGated ? "(one band down: accuracy under 96%)" : s.gwam < 1 ? "(nothing typed)" : "";
+  // A word list is not a band: the drill names itself instead.
+  els.rating.textContent = state.mode === "tame" ? "Nemesis drill" : s.rating.name;
+  els.ratingNote.textContent = state.mode === "tame" ? "(practice only: no band)" : s.rating.accuracyGated ? "(one band down: accuracy under 96%)" : s.gwam < 1 ? "(nothing typed)" : "";
   renderLevelUp(s);
-  els.next.textContent = s.gwam < 1 ? "" : ladderText(s.nwam, prior.filter((h) => kindOf(h) === roundKind()), state.roundMinutes);
+  els.next.textContent = s.gwam < 1 ? "" : state.mode === "tame" ? tameReport(state.passage.target, s).line : ladderText(s.nwam, prior.filter((h) => kindOf(h) === roundKind()), state.roundMinutes);
   els.stars.replaceChildren(
     star(st.best, "Personal best"), star(st.beatLast, "Beat your last"), star(st.clean, "97% clean"),
     ...(state.bestCombo >= 15 ? [star(true, `${state.bestCombo} clean in a row`)] : []),
   );
   els.basis.textContent = s.netBasis === "reference"
-    ? `A copy round: NWAM subtracts the ${s.uncorrected} word${s.uncorrected === 1 ? "" : "s"} that did not match the passage (capitals and punctuation count), over ${Math.round(state.scoredMinutes * 60)} seconds.`
+    ? `${state.mode === "tame" ? "A nemesis drill" : "A copy round"}: NWAM subtracts the ${s.uncorrected} word${s.uncorrected === 1 ? "" : "s"} that did not match the passage (capitals and punctuation count), over ${Math.round(state.scoredMinutes * 60)} seconds.`
     : s.netBasis === "corrections"
     ? `NWAM counts your ${s.corrections} corrections as the errors, because the word list has not loaded; uncorrected typos are not scored.`
     : `NWAM subtracts ${s.uncorrected} unknown word${s.uncorrected === 1 ? "" : "s"}; your ${s.corrections} correction${s.corrections === 1 ? "" : "s"} cost you time, not words. Mark a term clinical below and it comes out of the count.`
@@ -765,7 +828,7 @@ function render(s, st, prior) {
   if (s.shift.ok + s.shift.same) tm.push(`${s.shift.ok} of ${s.shift.ok + s.shift.same} capitals with the opposite Shift`);
   const refusedLine = refusedText(s.refused, refusedWeeks(data.history), strictShift());
   if (refusedLine) tm.push(refusedLine);
-  if (s.revisions) tm.push(state.mode === "copy"
+  if (s.revisions) tm.push(copyLike()
     ? `${s.revisions} revision${s.revisions === 1 ? "" : "s"} with Option or Command+Backspace`
     : `${s.revisions} revision${s.revisions === 1 ? "" : "s"} (a changed mind, never an error), ${s.kept.words} word${s.kept.words === 1 ? "" : "s"} kept`);
   els.timing.replaceChildren(...(tm.length ? tm.map(li) : [li("Not enough keys to read a rhythm.")]));
@@ -780,13 +843,15 @@ function render(s, st, prior) {
   renderUnlocked(state.unlocked || [], state.spotted || []);
   renderReview(s);
   renderBoard();
-  const copying = state.mode === "copy";
+  const copying = copyLike();
   const hasWords = s.gwam > 0 || (state.spoken && roundText().trim().length > 0);
   if (state.spoken) els.basis.textContent = `You talked ${state.record && state.record.spokenWords ? state.record.spokenWords + " words of " : ""}this one. Talking has no typing score; what you typed around it is scored as usual.`;
   els.keep.hidden = copying;
   els.keep.disabled = !hasWords;
   els.keep.textContent = "Keep it"; els.keep.appendChild(Object.assign(document.createElement("kbd"), { textContent: "K" }));
-  els.keepnote.textContent = copying
+  els.keepnote.textContent = state.mode === "tame"
+    ? "A nemesis drill is practice only: its numbers stay out of your bests, your bands and the nemesis count. The nemesis is tamed in real rounds."
+    : copying
     ? "Copy rounds are never kept: the words are the passage's, not yours. Respond is next, one minute."
     : store.inApp
       ? `Keep sends ${state.cont ? "this answer, every round of it," : "this answer"} to your voice corpus (${state.spoken ? "spoken" : "drill"} register) and the expert queue.`
@@ -795,14 +860,15 @@ function render(s, st, prior) {
   els.baton.hidden = state.mode !== "respond";
   els.baton.disabled = !hasWords;
   els.cont.disabled = !hasWords && !state.prefix;
-  els.again.replaceChildren(copying ? "Respond · 1 min" : state.mode === "oracle" ? "Follow-up" : "Again", Object.assign(document.createElement("kbd"), { textContent: "return" }));
+  renderTameOffer();
+  els.again.replaceChildren(state.mode === "tame" ? `Again \u00b7 ${TAME_SECONDS}s` : copying ? "Respond · 1 min" : state.mode === "oracle" ? "Follow-up" : "Again", Object.assign(document.createElement("kbd"), { textContent: "return" }));
   showTab("drill");
   els.question.hidden = true;
   els.results.hidden = false;
   window.scrollTo({ top: 0, behavior: "smooth" });
   renderChips();
   els.again.focus();
-  if (copying) showRead();
+  if (state.mode === "copy") showRead();
 }
 /* ---- read and consider, and the shelf --------------------------------------
    His ask: the copy round is typed cold, then the passage comes back here to
@@ -1025,7 +1091,7 @@ function renderBoard() {
   }) : [li("No key has cost you a correction yet. Keep typing and this fills in.")]));
   drawMap();
   calendar.render(data.history);
-  renderTrophies(els.trophies, data.history);
+  renderTrophies(els.trophies, data.history, tameLog());
 }
 function trendText(hist) {
   if (hist.length < 2) return "A few more drills and this reads your trend.";
@@ -1085,7 +1151,7 @@ function openBoard(tab) {
 
 async function keep() {
   const hasWords = state.score && (state.score.gwam > 0 || (state.spoken && roundText().trim()));
-  if (!state.score || state.kept || state.mode === "copy" || !hasWords) return;
+  if (!state.score || state.kept || copyLike() || !hasWords) return;
   els.keep.disabled = true;
   els.keepnote.textContent = "Keeping...";
   // The whole answer, every Keep going round of it; if an earlier round was
@@ -1126,11 +1192,13 @@ async function keep() {
 for (const b of els.mins) b.addEventListener("click", () => setMinutes(Number(b.dataset.drillMinutes)));
 els.start.addEventListener("click", arm);
 function again() {
-  if (state.phase === "done" && state.mode === "copy") armRespond();
+  if (state.phase === "done" && state.mode === "tame") armTame(state.passage.target);
+  else if (state.phase === "done" && state.mode === "copy") armRespond();
   else if (state.phase === "done" && state.mode === "oracle") armOracle(true);
   else arm();
 }
 els.again.addEventListener("click", again);
+els.tame.addEventListener("click", () => armTame());
 els.mic.addEventListener("click", toggleMic);
 /* Send from the results or the board keeps the answer on screen first. His
    miss of 2026-09-23: four Keep going rounds were sent without a Keep, and
@@ -1188,9 +1256,11 @@ document.addEventListener("keydown", (e) => {
   if (state.phase === "idle") {
     if (e.key === "Enter" && !inButton) { e.preventDefault(); arm(); }
     else if (/^[1-5]$/.test(e.key)) setMinutes(Number(e.key));
+    else if (e.key.toLowerCase() === "d" && !els.tameHome.hidden) { e.preventDefault(); armTame(); }
   } else if (state.phase === "done" || state.phase === "board") {
     if (e.key === "Enter" && !(inButton && e.target !== els.again)) { e.preventDefault(); again(); }
     else if (e.key.toLowerCase() === "k" && state.phase === "done") { e.preventDefault(); keep(); }
+    else if (e.key.toLowerCase() === "d" && state.phase === "done" && !els.tame.hidden) { e.preventDefault(); armTame(); }
     else if (e.key.toLowerCase() === "c" && state.phase === "done") { e.preventDefault(); continueRound(); }
     else if (e.key.toLowerCase() === "b" && state.phase === "done" && !els.baton.hidden) { e.preventDefault(); batonPass(); }
     else if (e.key.toLowerCase() === "s" && state.phase === "done" && state.mode === "copy") { e.preventDefault(); shelveIt(); }
@@ -1212,6 +1282,7 @@ async function init() {
   renderExpert();
   renderChips();
   renderShelf();
+  renderTameOffer();
   drawMap();
   els.start.focus();
   await wordsLoaded;
