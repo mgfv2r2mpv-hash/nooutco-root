@@ -17,6 +17,7 @@ import * as store from "./store.js";
 import { createGarden, createHeat } from "./ornament.js";
 import { bests, streak, sitting, ladder, personalLadder, refusedWeeks, refusedText, stars, keyTrends, keyboardRates, lineChart, sparkline, keyboard, dayOf } from "./panel.js";
 import { trophyCase, newlyUnlocked } from "./trophies.js";
+import { newlySpotted } from "./nemeses.js";
 import { createCalendar, renderTrophies } from "./calendar.js";
 import { handOf, judge, createShiftTracker, createShiftFx } from "./shift.js";
 import { nextPassage, trickyProfile, describeProfile } from "./passages.js";
@@ -655,7 +656,11 @@ async function finish() {
     lexicon: data.lexicon.length,
     // Names of what was slow and which tips fired: what the copy picker aims at next.
     slowPairs: s.timing.slowPairs.map((p) => p.pair), tips: s.tips.map((t) => t.id),
+    // Letter for letter, "meant>hit": what the nemesis engine reads. Letters only, never text.
+    confusions: s.tricky.confusions.filter((c) => /^[a-z]$/.test(c.meant) && /^[a-z]$/.test(c.hit)).map((c) => `${c.meant}>${c.hit}`),
   };
+  // The last passage on the shelf copied again: the shelf is empty after this round.
+  if (state.mode === "copy" && state.passage.fromShelf && !unshelve(shelf(), state.passage.id).length) state.record.shelfEmpty = true;
   const st = stars(s, prior.filter((h) => kindOf(h) === roundKind()), state.roundMinutes);
   const before = trophyCase(prior);
   if (!state.answerAt) state.answerAt = state.record.at;
@@ -669,7 +674,9 @@ async function finish() {
     // Copied again from the shelf: it is off the shelf now. Shelve it again to put it back.
     if (state.mode === "copy" && state.passage.fromShelf) saveShelf(unshelve(shelf(), state.passage.id));
   }
-  state.unlocked = counts ? newlyUnlocked(before, trophyCase(data.history)) : [];
+  const after = counts ? trophyCase(data.history) : before;
+  state.unlocked = newlyUnlocked(before, after);
+  state.spotted = newlySpotted(before, after);
   store.log(`drill ${state.mode} ${state.item.id} ${state.roundMinutes}m nwam ${s.nwam} acc ${s.accuracy}`);
   render(s, st, prior);
 }
@@ -728,7 +735,7 @@ function render(s, st, prior) {
     return n;
   }) : [li("Nothing fired. Same form, faster, next time.")]));
   els.think.textContent = thinkText(s);
-  renderUnlocked(state.unlocked || []);
+  renderUnlocked(state.unlocked || [], state.spotted || []);
   renderReview(s);
   renderBoard();
   const copying = state.mode === "copy";
@@ -777,7 +784,7 @@ function renderShelf() {
 }
 function showRead() {
   renderRead(els.readParts, state.passage, state.score);
-  const won = state.unlocked || [];
+  const won = [...(state.unlocked || []), ...(state.spotted || [])];
   els.readUnlocked.hidden = !won.length;
   els.readUnlocked.replaceChildren(...els.unlocked.cloneNode(true).childNodes);
   els.readNote.textContent = state.passage.fromShelf ? "Back from the shelf, in new words. Shelve it again if it still is not the day for it." : "";
@@ -841,16 +848,20 @@ function thinkText(s) {
     : "More of your stops fell mid-sentence than between ideas; try settling the next point at the full stop, then typing it through.";
   return `You stopped to think ${k.count} time${k.count === 1 ? "" : "s"}, ${Math.round(k.ms / 1000)} seconds in all: ${where}. While typing you ran ${Math.round(k.flowWpm)} gross words a minute.${read ? " " + read : ""}${tail}`;
 }
-function renderUnlocked(list) {
-  els.unlocked.hidden = !list.length;
-  els.unlocked.replaceChildren(...list.map((t) => {
+/* Trophies won this round, then any nemesis the round spotted: a new
+   achievement written from his own numbers, there to be tamed. */
+function renderUnlocked(list, spotted = []) {
+  const row = (t, lead, cls) => {
     const n = document.createElement("span");
-    n.className = "unlocked";
-    n.dataset.unlocked = t.id;
+    n.className = cls;
+    n.dataset[cls === "unlocked" ? "unlocked" : "spotted"] = t.id;
     const b = document.createElement("b"); b.textContent = t.name;
-    n.append("Trophy: ", b, ` · ${t.condition}`);
+    n.append(lead, b, ` \u00b7 ${t.condition}`);
     return n;
-  }));
+  };
+  els.unlocked.hidden = !list.length && !spotted.length;
+  els.unlocked.replaceChildren(...list.map((t) => row(t, t.kind ? "Nemesis tamed: " : "Trophy: ", "unlocked")),
+    ...spotted.map((t) => row(t, "New nemesis: ", "unlocked is-nemesis")));
 }
 
 function star(on, label) { const n = document.createElement("span"); n.className = "star" + (on ? " on" : ""); n.textContent = label; return n; }

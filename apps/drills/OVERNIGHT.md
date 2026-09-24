@@ -13,7 +13,7 @@ One line per point of his ask. A line is done only when it names the test or scr
 | 1 | Remove the scoring cross-purposes: deleting a thought never costs speed, accuracy, band or star; bands he can climb; a personal ladder | **done** (slice 1) | `tests/drill-cross-purpose.test.mjs` (8 tests); `drills.spec.js` "a thought taken back with plain Backspace costs no error..." in WebKit and Chromium; band tests updated in `drill-score.test.mjs` and `drill-panel.test.mjs` |
 | 2 | Strict Shift mode, default on: a same-side Shift refuses the key and flashes, the combo goes on extinction; toggle in settings; refusals counted and reported | **done** (slice 2) | `tests/drill-strict-shift.test.mjs` (5 tests); `drills.spec.js` "strict Shift, on by default...", "strict Shift refuses in a copy round too...", "strict Shift can be turned off in settings..." in WebKit and Chromium; screenshot of the refusal in the margin, light and dark |
 | 3 | Read-and-consider screen after the copy round: Respond (Return) or Shelve (S); a shelved passage comes back with different transcription text | **done** (slice 3) | `tests/drill-shelf.test.mjs` (9 tests, including every passage has a checked variant); `drills.spec.js` "after the copy round the passage comes back to read...", "S shelves the passage...", "a shelved passage comes back the next day in new words...", "the settle after the bell holds on the read screen too..." in WebKit and Chromium; screenshots of the read screen, light and dark |
-| 4 | Achievements: well over 150, more variety, conversation achievements, and a dynamic "Your nemeses" engine from his own data | todo | |
+| 4 | Achievements: well over 150, more variety, conversation achievements, and a dynamic "Your nemeses" engine from his own data | **done** (slice 4) | `tests/drill-nemeses.test.mjs` (12 tests: 185 static, baton chains, Keep going, carried across days, shelf, strict clean, domains, and the four nemesis kinds with spotting, taming, sample guards and replay); `drills.spec.js` "a round that spots a nemesis says so..." in WebKit and Chromium; screenshots of the nemesis line and the "Your nemeses" board, light and dark |
 | 5 | Clinical knowledge that cycles (spaced repetition), "consider the other side" prompts, and a much bigger storehouse (bank questions in all 9 domains, 20+ passages for w m b u c with variants, oracle seeds) | todo | |
 | 6 | Ingest research with his responses and tone: the queued entry carries the expert's claims, sources and his stance; DRAFT_SYSTEM proposes consensus and dissent; local tone metadata in the kept sidecar | todo | |
 | 7 | Dazzle the non-typing screens (home, read-and-consider, results, band level-up, trophy reveals, board); typing surface stays calm; reduced motion; light and dark; offline | todo | |
@@ -85,3 +85,31 @@ Adversarial review:
 - *Does it feed the expert?* Indirectly: he now answers passages he has actually read and chosen to answer, so the kept answers should be considered answers rather than whatever the clock forced. The shelf itself sends nothing anywhere.
 
 Stickiness: **8/10.** It fixes a habit he named (reading ahead) without asking him to break it by will, and it turns "I am not ready for this one" into a move instead of a skipped round.
+
+### Slice 4: more achievements, and nemeses written from his drills (2026-09-24 00:02 EDT)
+
+What changed:
+
+- **185 static achievements** (112 before), every old id kept so old unlock dates hold. The new ones:
+  - **Conversations**, a new group: baton chains of 1, 2, 3, 5 and 10 passes (read from the "baton-N" passage ids already in history), expert passages copied (10, 50), Keep going on one answer (1, 4, 7), the same prompt answered on 2 and 3 different days, shelved passages copied when they come back (1, 5, 20), the shelf emptied (1, 5), a passage copied in its second wording (1, 10), respond rounds (10, 50, 150) and kept answers (1, 10, 50, 150).
+  - Modes: copy rounds, distinct passages, Oracle and spoken rounds in tiers, and **thoughts taken back** (10, 100, 500 revisions), so the principle "thinking is never punished" now earns something as well.
+  - Hands, Speed, Clean, Habits: strict Shift drills with 10 capitals and none refused, 110 and 120 GWAM, a 200-word combo, flawless and 97% drills in tiers, 200 and 365 day streaks, 365 days, a lunch drill, all seven weekdays, all four seasons.
+  - Field: a pair for each of the nine BACB domains, 3 and 15 answers filed under it ("Ethics Initiate", "Ethics Scholar").
+- **Your nemeses** (`web/nemeses.js`), shown first on the board in their own group. The replay writes an achievement when an issue first shows up often enough to be more than one bad drill, dated the drill that spotted it, with the baseline in its condition:
+  - a **key** missed on 3% or more of 60+ presses over 8 drills (his keys run 1 to 4.5%, so this catches his worst, not his normal); tamed at half that rate over 12 drills since.
+  - a **slow pair** flagged in 3 of 10 drills of 40+ words; tamed by 15 such drills in a row without it.
+  - a **letter confusion** ("B Is Not V") in 3 drills; tamed by 8 drills in a row without it, with 40+ presses of the meant letter among them. The history record now carries `confusions` as "meant>hit" letter pairs, letters only.
+  - a **refused same-side capital** ("Extinction: Same-Side T"), 3 refusals in 5 strict drills; tamed by 5 strict drills in a row with none, 10+ capitals among them.
+  - The round that spots one says so on the results and the read screen ("New nemesis: U No More"); a tamed one says "Nemesis tamed". The board shows "Spotted" and "Tamed" dates and a bar that stops one drill short of full until it is really tamed.
+- The copy record carries `shelfEmpty` when the last shelved passage is copied again.
+- Replayed against his real history (numbers only): 15 nemeses spotted, 6 tamed. The first cut tamed 9 of them, because a window spotted at its worst drifts back to his usual by chance; the taming windows were lengthened (keys 8 to 12, pairs 10 to 15) until a lucky stretch could not earn one.
+
+Adversarial review:
+
+- *Could it make him use the app less?* 185 trophies can read as noise. The board still shows only what is won plus the next tier of each family, so the page grows by the new families and not by every tier. The nemeses are the opposite risk: 15 on his first look is a lot of enemies. Six of them are already tamed from his own history, which should read as progress rather than a list of faults.
+- *New cross-purpose?* A nemesis rewards a stretch without an issue, and he could chase that by avoiding the letter. The guards stop the cheap version: a key needs 60 presses in the taming window, a confusion needs 40 presses of the meant letter, a refusal needs 10 capitals. Pairs have no such guard (the history carries no pair counts), so a pair can be tamed by passages that happen not to use it. That is a known soft spot.
+- *Calm typing surface?* Untouched. Everything renders after the bell, on the results, the read screen and the board.
+- *Does it feed the expert?* No, this is a typing slice. The conversation trophies do reward the behaviour that feeds it (baton passes, kept answers, answering across days), which is the nearest a trophy can get.
+- *Not built:* a "tame it" achievement for a coached tip. The seven "Retire the tip" trophies already do that job with the same shape, so a second copy would be duplication.
+
+Stickiness: **8/10.** The nemesis line is the first thing in the app that talks about HIS numbers as a story (spotted on a day, beaten on a later one), and conversation trophies finally reward the rounds that feed the expert.

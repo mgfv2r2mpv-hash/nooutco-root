@@ -375,6 +375,31 @@ test('achievements carry their new names; a secret shows only its hint until it 
   await expect(page.locator('[data-trophy="leap"]')).toContainText('Not yet');
 });
 
+test('a round that spots a nemesis says so, and the board shows it under Your nemeses with the day it was spotted', async ({ page }) => {
+  await page.addInitScript(() => {
+    const now = Date.now();
+    // Seven earlier drills that missed u on a quarter of its presses; the round typed here is the eighth.
+    const rec = (i) => ({ at: new Date(now - (10 - i) * 3600000).toISOString(), minutes: 1, seconds: 60, nwam: 80, gwam: 84, accuracy: 0.96,
+      words: 84, mode: 'answer', itemId: 'x', outline: 'B.1', keys: { u: { presses: 12, misses: 3 } } });
+    localStorage.setItem('noaba.drills.v1', JSON.stringify(Array.from({ length: 7 }, (_, i) => rec(i))));
+  });
+  await page.goto(PAGE);
+  await wordsReady(page);
+  await page.locator('[data-drill-start]').click();
+  await page.locator('[data-drill-box]').pressSequentially('the bus runs up', { delay: 15 });
+  await done(page);
+  const spotted = page.locator('[data-spotted="nem-key-u"]');
+  await expect(spotted).toContainText('New nemesis:');
+  await expect(spotted).toContainText('U missed on');
+  const rec = await page.evaluate(() => window.NoteDrill.data.history.at(-1));
+  expect(Array.isArray(rec.confusions)).toBe(true);
+  await page.evaluate(() => window.NoteDrill.openBoard('trophies'));
+  const card = page.locator('[data-trophy="nem-key-u"]');
+  await expect(card).toContainText('Spotted');
+  await expect(card).toContainText('0 of 12');
+  await expect(page.locator('.trophy-group.is-nemeses h3')).toHaveText('Your nemeses');
+});
+
 /* ---- round three --------------------------------------------------------- */
 
 test('Keep going carries the answer into a fresh clock and scores only what the new round added', async ({ page }) => {

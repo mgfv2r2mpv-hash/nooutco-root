@@ -7,6 +7,8 @@
  */
 import { dayOf } from "./panel.js";
 import { BANDS } from "./score.js";
+import { OUTLINE } from "./outline.js";
+import { nemeses } from "./nemeses.js";
 
 const DAY_MS = 86400000;
 const SITTING_GAP_MS = 20 * 60000;
@@ -80,6 +82,9 @@ const secret = (id, name, condition, hint, measure) => ({ ...one("Secrets", id, 
 const CLOCK_NAMES = { 1: "Sprinter", 2: "Runner", 3: "Pacer", 4: "Distance Runner", 5: "Marathoner" };
 const BAND_NAMES = { Average: "Cruising", Intermediate: "Picking Up Speed", Fluent: "Fluent Fingers", Professional: "Pro Typist",
   Expert: "Expert Hands", Elite: "Elite Fingers", Master: "Keyboard Master", Virtuoso: "Virtuoso", Stenographer: "Court Reporter" };
+
+/* Short names for the domain trophies, one per BACB outline letter. */
+const DOMAIN_NAMES = { A: "Radical", B: "Principled", C: "Data", D: "Design", E: "Ethics", F: "Assessment", G: "Procedures", H: "Intervention", I: "Supervision" };
 
 /** His weak keys as of 2026-09-23, the ones the copy passages aim at. */
 export const WEAK_KEYS = Object.freeze(["w", "m", "b", "u", "c"]);
@@ -172,6 +177,56 @@ export const TROPHIES = Object.freeze([
     "Raise your average NWAM by 5 at one clock: your last 5 drills there against your first 5.", (a) => a.speedBetter),
   ...RETIRABLE.map(([tip, name, what]) => one("Getting better", `retire-${tip}`, name,
     `Retire ${what}: it came up in 3 drills or more, then stayed quiet 5 drills in a row (40 words or more each).`, (a) => a.retired[tip] || 0)),
+  // Conversations: staying with one idea over rounds, passes and days.
+  ...tiers("Conversations", "baton", (a) => a.batonMax, [
+    [1, "Pass the Baton"], [2, "Relay Team"], [3, "Anchor Leg"], [5, "Ultra Relay"], [10, "Endless Conversation"],
+  ], (n) => (n === 1 ? "Pass the baton once: the expert answers your respond round with the next passage." : `Keep one baton chain going for ${n} passes.`)),
+  ...tiers("Conversations", "baton-total", (a) => a.batonCopies, [[10, "Frequent Correspondent"], [50, "Pen Pals"]],
+    (n) => `Copy ${n} passages the expert wrote back to you.`),
+  ...tiers("Conversations", "keep-going", (a) => a.contMax, [[1, "Keep Going"], [4, "Stream of Thought"], [7, "Filibuster"]],
+    (n) => (n === 1 ? "Keep going once: a second round on the same answer." : `Keep going ${n} times on one answer.`)),
+  ...tiers("Conversations", "carried", (a) => a.carried, [[2, "Sleep On It"], [3, "The Long Game"]],
+    (n) => `Answer the same prompt on ${n} different days.`),
+  ...tiers("Conversations", "shelf-back", (a) => a.shelfBack, [[1, "Second Look"], [5, "Circle Back"], [20, "Nothing Left Behind"]],
+    (n) => (n === 1 ? "Copy a shelved passage when it comes back to you." : `Copy ${n} shelved passages when they come back.`)),
+  ...tiers("Conversations", "shelf-clear", (a) => a.shelfCleared, [[1, "Clean Shelf"], [5, "Tidy Mind"]],
+    (n) => (n === 1 ? "Empty the shelf: copy the last passage waiting on it." : `Empty the shelf ${n} times.`)),
+  ...tiers("Conversations", "variant", (a) => a.variants, [[1, "Same Idea, New Words"], [10, "Paraphrase Pro"]],
+    (n) => (n === 1 ? "Copy a passage in its second wording." : `Copy ${n} passages in their second wording.`)),
+  ...tiers("Conversations", "respond-n", (a) => a.respondN, [[10, "Conversationalist"], [50, "Debater"], [150, "Symposium"]],
+    (n) => `Finish ${n} respond rounds.`),
+  ...tiers("Conversations", "kept-n", (a) => a.keptN, [[1, "On the Record"], [10, "Testimony"], [50, "Oral History"], [150, "Collected Works"]],
+    (n) => (n === 1 ? "Keep an answer: it goes to your voice corpus and the expert queue." : `Keep ${n} answers.`)),
+  ...tiers("Modes", "copy-n", (a) => a.copyN, [[10, "Scribe"], [50, "Scriptorium"], [150, "Illuminator"]],
+    (n) => `Finish ${n} copy rounds.`),
+  ...tiers("Modes", "passages", (a) => a.passages, [[10, "Well Read"], [25, "Bookworm"]],
+    (n) => `Copy ${n} different passages from the field.`),
+  ...tiers("Modes", "oracle-n", (a) => a.oracleN, [[10, "Pilgrim"], [50, "Oracle's Confidant"]],
+    (n) => `Finish ${n} rounds in Oracle mode.`),
+  ...tiers("Modes", "spoken-n", (a) => a.spokenN, [[10, "Radio Voice"], [50, "Podcaster"]],
+    (n) => `Answer ${n} rounds by talking.`),
+  // Thinking is never punished: taking back a thought earns something too.
+  ...tiers("Modes", "revisions", (a) => a.revisions, [[10, "Second Thoughts"], [100, "Editor's Eye"], [500, "Ruthless Editor"]],
+    (n) => `Take back ${n} thoughts in answer rounds (whole words deleted and rethought, never scored as errors).`),
+  ...tiers("Hands", "strict-clean", (a) => a.strictClean, [[1, "Right Hand, Left Hand"], [10, "Crossed Wires No More"], [50, "Ambidextrous"]],
+    (n) => `Finish ${n === 1 ? "a strict Shift drill" : `${n} strict Shift drills`} with 10 capitals or more and none refused.`),
+  ...tiers("Speed", "gwam", (a) => a.bestGwam, [[110, "Blur"], [120, "Lightning Fingers"]],
+    (n) => `Reach ${n} GWAM on any clock.`),
+  one("Clean", "combo-200", "Unbreakable", "Type 200 clean words in a row: known, and no Backspace.", (a) => a.bestCombo, 200),
+  ...tiers("Clean", "flawless-n", (a) => a.flawlessN, [[5, "Clean Sweep"], [25, "Immaculate"]],
+    (n) => `Finish ${n} drills of 40 words or more at 100% accuracy.`),
+  ...tiers("Clean", "clean-n", (a) => a.clean97N, [[10, "Marksman"], [50, "Sniper"], [150, "Dead Eye"]],
+    (n) => `Finish ${n} drills of 20 words or more at 97% accuracy or better.`),
+  ...tiers("Streaks", "streak-long", (a) => a.streak, [[200, "Bicentennial"], [365, "Year of Keys"]],
+    (n) => `Drill ${n} days in a row.`),
+  one("Days", "days-365", "Keeper of the Calendar", "Drill on 365 different days.", (a) => a.days, 365),
+  one("Habits", "lunch", "Lunch Break", "Finish a drill between noon and 1 in the afternoon.", (a) => a.lunch),
+  one("Habits", "every-weekday", "Seven Days a Week", "Drill on each day of the week, Sunday to Saturday.", (a) => a.weekdays, 7),
+  one("Habits", "seasons", "Four Seasons", "Drill in all four seasons: winter, spring, summer and autumn.", (a) => a.seasons, 4),
+  // One pair per BACB domain: answers filed under it.
+  ...OUTLINE.flatMap((d) => tiers("Field", `domain-${d.letter}`, (a) => a.perDomain[d.letter] || 0,
+    [[3, `${DOMAIN_NAMES[d.letter]} Initiate`], [15, `${DOMAIN_NAMES[d.letter]} Scholar`]],
+    (n) => `Answer ${n} questions filed under ${d.letter}, ${d.name}.`)),
   secret("midnight", "Midnight Oil", "Finish a drill between midnight and 4 in the morning.", "Some ideas only come after midnight.", (a) => a.midnight),
   secret("friday-13", "Unlucky for Some", "Finish a drill on a Friday the 13th.", "Drill on a day most people would rather skip.", (a) => a.friday13),
   secret("new-year", "Fresh Start", "Finish a drill on New Year's Day.", "Start the year on the keys.", (a) => a.newYear),
@@ -280,6 +335,9 @@ function emptyAgg() {
     early: 0, late: 0, weekend: 0, comeback: 0, copy: 0, respond: 0, chain: 0, spoken: 0, oracle: 0,
     shiftBetter: 0, shiftRun: 0, optionReflex: 0, weakBetter: 0, midBetter: 0, accBetter: 0, speedBetter: 0, retired: {},
     midnight: 0, friday13: 0, newYear: 0, photo: 0, dejaVu: 0,
+    batonMax: 0, batonCopies: 0, contMax: 0, carried: 0, shelfBack: 0, shelfCleared: 0, variants: 0, respondN: 0, keptN: 0,
+    copyN: 0, passages: 0, oracleN: 0, spokenN: 0, revisions: 0, strictClean: 0, flawlessN: 0, clean97N: 0,
+    lunch: 0, weekdays: 0, seasons: 0, perDomain: {},
   };
 }
 
@@ -295,6 +353,7 @@ export function trophyCase(history) {
   const byClock = {};
   const fired = {};
   let lastDay = null, run = 0, sit = 0, lastT = null, shiftRun = 0, lastNwam = null;
+  const talk = { passages: new Set(), convDays: new Map(), weekdays: new Set(), seasons: new Set() };
   for (const h of list) {
     const t = Date.parse(h.at), day = dayOf(h.at), when = new Date(t);
     for (const [k, keep] of Object.entries(QUALIFIES)) if (keep(h)) lists[k].push(h);
@@ -354,6 +413,14 @@ export function trophyCase(history) {
     if (when.getDay() === 0 || when.getDay() === 6) a.weekend = 1;
     if (when.getDay() === 5 && when.getDate() === 13) a.friday13 = 1;
     if (when.getMonth() === 0 && when.getDate() === 1) a.newYear = 1;
+    conversations(a, h, day, talk);
+    if (hour === 12) a.lunch = 1;
+    talk.weekdays.add(when.getDay()); a.weekdays = talk.weekdays.size;
+    talk.seasons.add(Math.floor(((when.getMonth() + 1) % 12) / 3));
+    a.seasons = talk.seasons.size;
+    if (words >= 20 && num(h.accuracy) >= 0.97) a.clean97N += 1;
+    if (words >= 40 && num(h.accuracy) >= 1) a.flawlessN += 1;
+    if (h.refused !== undefined && num(sh.ok) >= 10 && num(h.refused) === 0) a.strictClean += 1;
     // Improvements are sticky: once earned, a later slip does not take them back.
     if (m && num(h.gwam) > 0) (byClock[m] ||= []).push(h);
     if (QUALIFIES.tipped(h)) for (const tip of h.tips) fired[tip] = (fired[tip] || 0) + 1;
@@ -366,11 +433,47 @@ export function trophyCase(history) {
     if (QUALIFIES.tipped(h)) for (const tip of Object.keys(retiredTips(lists.tipped, fired))) a.retired[tip] = 1;
     for (const tr of TROPHIES) if (!got.has(tr.id) && tr.measure(a) >= tr.need) got.set(tr.id, h.at);
   }
-  return TROPHIES.map((tr) => ({
+  // His nemeses first: they are the ones written from his own data.
+  const mine = nemeses(list).map((n) => ({
+    id: n.id, family: n.family, group: n.group, kind: n.kind, name: n.name, condition: n.condition, need: n.need,
+    // A full window that has not tamed it yet is one drill short, never "12 of 12".
+    have: n.unlocked ? n.need : Math.min(n.need - 1, n.have), spotted: n.spotted, unlocked: n.unlocked,
+  }));
+  return [...mine, ...TROPHIES.map((tr) => ({
     id: tr.id, family: tr.family, group: tr.group, name: tr.name, condition: tr.condition, need: tr.need,
     ...(tr.secret ? { secret: true, hint: tr.hint } : {}),
     have: Math.min(tr.need, tr.measure(a)), unlocked: got.get(tr.id) || null,
-  }));
+  }))];
+}
+
+/* The conversation measures, one drill at a time. A baton passage's id is
+   "baton-N", N the pass it came from; a conversation is one prompt (the
+   passage, or the bank question) answered in any composed mode. Baton ids
+   restart with every chain, so they are not counted as one conversation. */
+function conversations(a, h, day, talk) {
+  const baton = /^baton-(\d+)$/.exec(h.passage || "");
+  if (baton) a.batonMax = Math.max(a.batonMax, Number(baton[1]));
+  if (h.mode === "copy") {
+    a.copyN += 1;
+    if (baton) a.batonCopies += 1;
+    else if (h.passage) { talk.passages.add(h.passage); a.passages = talk.passages.size; }
+    if (h.fromShelf) a.shelfBack += 1;
+    if (h.shelfEmpty) a.shelfCleared += 1;
+    if (h.variant) a.variants += 1;
+    return;
+  }
+  a.contMax = Math.max(a.contMax, num(h.cont));
+  a.revisions += num(h.revisions);
+  if (h.mode === "respond") a.respondN += 1;
+  if (h.mode === "oracle") a.oracleN += 1;
+  if (h.spoken) a.spokenN += 1;
+  if (h.kept) a.keptN += 1;
+  if (h.outline) { const d = String(h.outline)[0]; a.perDomain[d] = (a.perDomain[d] || 0) + 1; }
+  const key = baton ? null : h.passage || h.itemId;
+  if (!key) return;
+  const seen = talk.convDays.get(key) || new Set();
+  seen.add(day); talk.convDays.set(key, seen);
+  a.carried = Math.max(a.carried, seen.size);
 }
 
 /** Trophies the last drill unlocked: in the case now, not in it one drill ago. */

@@ -111,6 +111,10 @@ export function renderTrophies(root, history) {
   for (const g of groups) {
     const sec = h("section", "trophy-group");
     sec.appendChild(h("h3", null, g));
+    if (g === "Your nemeses") {
+      sec.classList.add("is-nemeses");
+      sec.appendChild(h("p", "trophy-intro", "Written from your own drills: each appeared the day the app spotted it, and is earned when you beat the number it was spotted at."));
+    }
     const ul = h("ul", "trophies");
     const mine = all.filter((t) => t.group === g);
     // Unlocked first, newest last; then locked, nearest to done first.
@@ -126,9 +130,9 @@ export function renderTrophies(root, history) {
       // A secret keeps its name and condition to itself until it is earned; the hint is all it gives.
       body.appendChild(h("b", null, hidden ? "Secret" : t.name));
       body.appendChild(h("span", "trophy-cond", hidden ? t.hint : t.condition));
+      if (t.spotted) body.appendChild(h("span", "trophy-date", `Spotted ${day(t.spotted)}`));
       if (t.unlocked) {
-        const when = new Date(t.unlocked);
-        body.appendChild(h("span", "trophy-date", `Unlocked ${when.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`));
+        body.appendChild(h("span", "trophy-date", `${t.spotted ? "Tamed" : "Unlocked"} ${day(t.unlocked)}`));
       } else if (hidden) {
         body.appendChild(h("span", "trophy-date", "Not found yet"));
       } else if (t.need === 1) {
@@ -150,6 +154,7 @@ export function renderTrophies(root, history) {
   return { won, total: all.length };
 }
 const fmt = (n) => Math.floor(n).toLocaleString("en-US");
+const day = (iso) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
 const NS = "http://www.w3.org/2000/svg";
 function cup(won) {
