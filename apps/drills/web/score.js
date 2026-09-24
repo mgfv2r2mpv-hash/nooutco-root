@@ -571,41 +571,45 @@ export function timingProfile(events) {
   };
 }
 
-/** A tip appears only when its trigger fired. */
+/**
+ * A tip appears only when its trigger fired. His ruling of 2026-09-24: kind
+ * but direct. Each tip says what was measured and what to do next, and never
+ * guesses at why (the app cannot know what he was thinking).
+ */
 export function formTips({ grossWords, corrections, tricky, timing, habits, shift }) {
   const tips = [];
   if (grossWords >= 10 && corrections / grossWords > 0.1) {
-    tips.push({ id: "pace", why: `${corrections} corrections in ${Math.round(grossWords)} words`,
-      tip: "You are out-typing your eyes. Take five percent off the pace; NWAM goes up when the corrections stop, not when the fingers speed up." });
+    tips.push({ id: "pace", why: `${corrections} fixes in ${Math.round(grossWords)} words`,
+      tip: "More than one word in ten needed a fix. For the next round, type about 5% slower and aim for fewer than one fix in twenty words; net speed rises as the fixes drop." });
   }
   const med = timing.medianMs || 0;
   if (med && timing.afterShiftMs && timing.afterShiftMs > SLOW_FACTOR * med) {
-    tips.push({ id: "shift", why: `${timing.afterShiftMs}ms after Shift against a ${med}ms median`,
-      tip: "Capitals cost you. Shift with the hand opposite the letter, and hold it only as long as the letter takes." });
+    tips.push({ id: "shift", why: `a capital took ${timing.afterShiftMs} ms, against ${med} ms for your other keys`,
+      tip: "Capitals are slowing you down. Press Shift with the pinky opposite the letter just before the letter, and let go as soon as the letter is down. Shifty Shifts practises exactly this." });
   }
   if (med && timing.punctuationMs && timing.punctuationMs > SLOW_FACTOR * med) {
-    tips.push({ id: "punctuation", why: `${timing.punctuationMs}ms on commas and full stops against a ${med}ms median`,
-      tip: "Punctuation is breaking your rhythm. Type the mark and the space as one motion; the space is part of the key." });
+    tips.push({ id: "punctuation", why: `commas and full stops took ${timing.punctuationMs} ms, against ${med} ms for your other keys`,
+      tip: "Commas and full stops are slower than your other keys. Practise the mark and the space after it as one quick two-key move." });
   }
   const neighbours = tricky.confusions.filter((c) => NEIGHBOURS.has(c.hit + c.meant) || NEIGHBOURS.has(c.meant + c.hit));
   if (neighbours.length) {
     tips.push({ id: "drift", why: neighbours.map((c) => `${c.hit} for ${c.meant}`).join(", "),
-      tip: "Home-row drift. Re-anchor on F and J at every space for one drill and see the pairs disappear." });
+      tip: "These misses were the key next door. For the next round, bring your index fingers back to the bumps on F and J after each word." });
   }
   if (shift && shift.same >= 3 && shift.same / (shift.same + shift.ok) >= 0.2) {
     const worse = shift.sameLeft >= shift.sameRight ? "left" : "right";
     const other = worse === "left" ? "right" : "left";
     tips.push({ id: "shiftSide", why: `${shift.same} of ${shift.same + shift.ok} capitals took the Shift on the key's own side, ${shift.sameLeft} left and ${shift.sameRight} right`,
-      tip: `Opposite hand on Shift. A ${worse}-hand letter wants the ${other} Shift, pressed by the ${other} pinky while the ${worse} hand stays home.` });
+      tip: `Use the Shift on the other side from the letter. ${worse === "left" ? "A left-hand letter (like T or A)" : "A right-hand letter (like I or M)"} takes the ${other} Shift, pressed with your ${other} pinky. Shifty Shifts practises both sides.` });
   }
   if (habits && habits.wordByHand >= 2) {
-    tips.push({ id: "optionDelete", why: `${habits.wordByHand} words backspaced letter by letter, ${habits.keysSpent} keys`,
-      tip: "Changed your mind on a word? Option+Backspace takes the whole word in one stroke, and Command+Backspace takes the line. A changed mind is a revision either way, never an error; the shortcut saves the keys." });
+    tips.push({ id: "optionDelete", why: `${habits.wordByHand} whole words deleted one letter at a time, ${habits.keysSpent} keys`,
+      tip: "Option+Backspace deletes a whole word in one press, and Command+Backspace deletes the line. Deleting never lowers your score either way; the shortcut saves keys." });
   }
-  // Cadence reads the fingers only: letter to letter inside words. The gaps
-  // between words and sentences are thinking, and the drill wants the thinking.
+  // Cadence reads letter to letter inside words only; the gaps between words
+  // and sentences are left out, since those are pauses of every kind.
   if (timing.wordIntervals >= 20 && timing.wordCv > 0.6) {
-    tips.push({ id: "cadence", why: `letter-to-letter timing inside words varies ${Math.round(timing.wordCv * 100)}%`,
+    tips.push({ id: "cadence", why: `the time between letters inside words varied ${Math.round(timing.wordCv * 100)}% (the app flags anything over 60%)`,
       tip: cadenceTip(timing.slowestPairs) });
   }
   return tips;
@@ -614,10 +618,10 @@ export function formTips({ grossWords, corrections, tricky, timing, habits, shif
 /** The cadence tip, naming the pairs that ran slowest this round. */
 export function cadenceTip(slowest) {
   const named = (slowest || []).map((d) => `${d.pair} (${d.ms} ms)`);
-  const drill = named.length
-    ? `Your slowest pairs this round were ${named.join(" and ")}. Type ${named.length === 1 ? "it" : "each"} ten times slowly and evenly`
-    : "Type a line of your weak letters slowly and evenly";
-  return `Uneven fingers, not uneven thinking. ${drill}; the rhythm inside words is the part practice fixes.`;
+  const pairs = named.length
+    ? ` Your slowest letter pairs were ${named.join(" and ")}; the pair race drills ${named.length === 1 ? "it" : "each"}.`
+    : "";
+  return `Your timing between letters was uneven.${pairs} To even it out, type a little slower than usual at a steady beat, then build speed; River Rhythm practises holding that beat.`;
 }
 
 const NEIGHBOURS = new Set(["er", "io", "nm", "ui", "op", "as", "sd", "df", "jk", "kl", "cv", "vb", "tr", "ty", "gh", "fg"]);

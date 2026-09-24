@@ -1077,7 +1077,11 @@ test('a slow pair opens the pair game: ten words, the clock, and a time to beat'
   expect(words.every((w) => w.includes('br'))).toBe(true);
   await game.locator('.pg-input').pressSequentially(words.join(' ') + ' ', { delay: 5 });
   await expect(game).toHaveAttribute('data-done', '1');
-  await expect(game.locator('[data-pairgame-out]')).toContainText('10 words in');
+  await expect(game.locator('[data-pairgame-out]')).toContainText('The tortoise wins. 10 words in');
+  await expect(game.locator('.pg-tortoise')).toHaveClass(/is-win/);
+  const runs = await page.evaluate(() => window.NoteDrill.data.settings.games.pairs.br);
+  expect(runs).toHaveLength(1);
+  expect(runs[0].wpm).toBeGreaterThan(0);
   await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'done'); // no shortcut fired
   await game.locator('.pg-close').click();
   await expect(game).toHaveCount(0);
@@ -1097,4 +1101,67 @@ test('strict Shift in a copy round: the wrong-side Shift lights red on its side 
   await expect(page.locator(`[data-side="${hand === 'L' ? 'R' : 'L'}"]`)).toHaveClass(/is-cue-good/);
   await page.keyboard.up(wrong);
   await expect(page.locator(`[data-side="${hand}"]`)).not.toHaveClass(/is-cue-bad/);
+});
+
+test('a wrong-side Shift offers Shifty Shifts: twenty words, thirteen capitals, the car drives, and the run is saved', async ({ page }) => {
+  await page.goto('/index.html?clock=4');
+  await wordsReady(page);
+  await page.locator('[data-drill-start]').click();
+  await page.locator('[data-drill-box]').focus();
+  // T with the left Shift: refused under strict Shift, so the round offers the game.
+  await page.keyboard.down('ShiftLeft'); await page.keyboard.press('KeyT'); await page.keyboard.up('ShiftLeft');
+  await page.locator('[data-drill-box]').pressSequentially('then more words ', { delay: 10 });
+  await done(page);
+  const go = page.locator('[data-shifty-offer] [data-shifty-go]');
+  await expect(go).toBeVisible();
+  await go.click();
+  const game = page.locator('[data-shifty]');
+  await expect(game).toBeVisible();
+  await expect(game.locator('.sh-tach')).toBeVisible();
+  const words = await game.locator('.pg-word').allTextContents();
+  expect(words).toHaveLength(20);
+  expect(words.filter((w) => /[A-Z]/.test(w))).toHaveLength(13);
+  const input = game.locator('.pg-input');
+  await input.focus();
+  const left = 'qwertasdfgzxcvb';
+  for (const ch of words.join(' ') + ' ') {
+    if (/[A-Z]/.test(ch)) {
+      const shift = left.includes(ch.toLowerCase()) ? 'ShiftRight' : 'ShiftLeft';
+      await page.keyboard.down(shift); await page.keyboard.press('Key' + ch); await page.keyboard.up(shift);
+    } else await page.keyboard.type(ch);
+  }
+  await expect(game).toHaveAttribute('data-done', '1');
+  await expect(game.locator('[data-shifty-out]')).toContainText('0 wrong-side');
+  await expect(game.locator('[data-shifty-out]')).toContainText('First run');
+  const run = await page.evaluate(() => window.NoteDrill.data.settings.games.shifty[0]);
+  expect(run.shifts).toBe(13);
+  expect(run.wrong).toBe(0);
+  expect(await page.evaluate(() => window.NoteDrill.data.history.length)).toBe(1); // never in history
+});
+
+test('the uneven-timing tip offers River Rhythm: an even beat keeps the kayak mid-river and wins', async ({ page }) => {
+  await page.addInitScript(() => { window.__riverGoalS = 2; });
+  await page.goto('/index.html?clock=6');
+  await wordsReady(page);
+  await page.locator('[data-drill-start]').click();
+  const box = page.locator('[data-drill-box]');
+  await box.focus();
+  // Uneven on purpose: alternate quick and slow letters so the rhythm tip fires.
+  for (const w of ['behavior', 'function', 'reinforce', 'schedule']) {
+    for (const [i, ch] of [...w].entries()) { await page.keyboard.type(ch); await page.waitForTimeout(i % 2 ? 260 : 25); }
+    await page.keyboard.type(' ');
+  }
+  await done(page);
+  const go = page.locator('[data-river-go]').first();
+  await expect(go).toBeVisible();
+  await go.click();
+  const game = page.locator('[data-river]');
+  await expect(game).toBeVisible();
+  const input = game.locator('.pg-input');
+  await input.focus();
+  for (let i = 0; i < 40; i++) { await page.keyboard.type('a'); await page.waitForTimeout(90); }
+  await expect(game).toHaveAttribute('data-done', '1', { timeout: 10000 });
+  await expect(game.locator('[data-river-out]')).toContainText('You won in');
+  const run = await page.evaluate(() => window.NoteDrill.data.settings.games.river[0]);
+  expect(run.secs).toBeGreaterThan(0);
 });

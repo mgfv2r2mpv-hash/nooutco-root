@@ -22,6 +22,9 @@ import { createCalendar, renderTrophies } from "./calendar.js";
 import { handOf, judge, createShiftTracker, createShiftFx } from "./shift.js";
 import { nextPassage, trickyProfile, describeProfile, PASSAGES } from "./passages.js";
 import { pickWords, openPairGame } from "./pairgame.js";
+import { buildShifty, openShifty } from "./shifty.js";
+import { openRiver } from "./river.js";
+import { addRun, progressLine, gameTrophies } from "./minigames.js";
 import { tameTarget, tameDrill, tameReport, tameEntry, appendTame, TAME_SECONDS } from "./tame.js";
 import { renderPassage, markPassage } from "./copy.js";
 import { shelve, unshelve, dueEntry, returned, describeShelf, copyRounds } from "./shelf.js";
@@ -878,12 +881,20 @@ function render(s, st, prior) {
     : `${s.revisions} revision${s.revisions === 1 ? "" : "s"} (a changed mind, never an error), ${s.kept.words} word${s.kept.words === 1 ? "" : "s"} kept`);
   const slowNodes = s.timing.slowPairs.map((p) => { const n = li(`${p.pair} runs slow: ${p.ms} ms `); n.append(pairButton(p.pair, p.ms)); return n; });
   els.timing.replaceChildren(...(tm.length || slowNodes.length ? [...tm.map(li), ...slowNodes] : [li("Not enough keys to read a rhythm.")]));
+  // A Shift that went wrong (same side, or refused) offers the Shifty Shifts game.
+  if ((s.shift && s.shift.same) || (s.refused && s.refused.count)) {
+    const n = li("Shifts went wrong this round. ");
+    n.dataset.shiftyOffer = "";
+    n.append(shiftyButton());
+    els.timing.appendChild(n);
+  }
   els.tips.replaceChildren(...(s.tips.length ? s.tips.map((t) => {
     const n = document.createElement("li");
     const b = document.createElement("b"); b.textContent = t.tip;
     const w = document.createElement("span"); w.textContent = "because " + t.why;
     n.append(b, w);
-    if (t.id === "cadence") for (const p of s.timing.slowestPairs || []) n.append(pairButton(p.pair, p.ms));
+    if (t.id === "cadence") { n.append(riverButton()); for (const p of s.timing.slowestPairs || []) n.append(pairButton(p.pair, p.ms)); }
+    if (t.id === "shift" || t.id === "shiftSide") n.append(shiftyButton());
     return n;
   }) : [li("Nothing fired. Same form, faster, next time.")]));
   els.think.textContent = thinkText(s);
@@ -1010,23 +1021,20 @@ function revisionText(s) {
   const n = s.revisions;
   return `${n} revision${n === 1 ? "" : "s"} took out ${s.revisedKeys} key${s.revisedKeys === 1 ? "" : "s"}: counted in your speed, never as errors. ${s.kept.words} word${s.kept.words === 1 ? "" : "s"} kept, and only those are kept.`;
 }
-/* The thinking, read apart from the typing. NWAM keeps the thinking in, as a
+/* The pauses, read apart from the typing. NWAM keeps the pauses in, as a
    real note's fifteen minutes do; flow speed is the fingers alone. */
 function thinkText(s) {
   const k = s.think;
   const tail = k.tailMs ? ` The last ${Math.round(k.tailMs / 1000)} seconds, after your last key, are left out of this.` : "";
-  if (!k.count) return `No stops over two seconds while you were typing: straight through at ${Math.round(k.flowWpm)} gross words a minute.${tail}`;
+  if (!k.count) return `No pauses over two seconds: ${Math.round(k.flowWpm)} gross words a minute, straight through.${tail}`;
   const where = [
     k.sentence && `${k.sentence} at the end of a sentence`, k.clause && `${k.clause} after a comma`,
     k.word && `${k.word} between words`, k.mid && `${k.mid} inside a word`,
   ].filter(Boolean).join(", ");
-  const planned = k.sentence + k.clause;
-  // One or two stops are not a pattern; the read waits for three.
-  const read = k.count < 3 ? ""
-    : planned >= k.word + k.mid
-    ? "Most of your thinking landed between ideas, which is where a note wants it."
-    : "More of your stops fell mid-sentence than between ideas; try settling the next point at the full stop, then typing it through.";
-  return `You stopped to think ${k.count} time${k.count === 1 ? "" : "s"}, ${Math.round(k.ms / 1000)} seconds in all: ${where}. While typing you ran ${Math.round(k.flowWpm)} gross words a minute.${read ? " " + read : ""}${tail}`;
+  // What a pause means is his to know; the app says where it fell, and one
+  // practical note when two or more fell inside words, where they cost the most.
+  const read = k.mid >= 2 ? " Pauses inside a word cost the most speed; if a key was hard to find, the Keys tab shows which letters to practise." : "";
+  return `${k.count} pause${k.count === 1 ? "" : "s"} over two seconds, ${Math.round(k.ms / 1000)} seconds in all: ${where}. Between pauses you typed ${Math.round(k.flowWpm)} gross words a minute.${read}${tail}`;
 }
 /* Trophies won this round, then any nemesis the round spotted: a new
    achievement written from his own numbers, there to be tamed. */
@@ -1137,7 +1145,7 @@ function renderBoard() {
   }) : [li("No key has cost you a correction yet. Keep typing and this fills in.")]));
   drawMap();
   calendar.render(data.history);
-  renderTrophies(els.trophies, data.history, tameLog());
+  renderTrophies(els.trophies, data.history, tameLog(), gameTrophies(games()).map((t) => ({ ...t, condition: t.cond, group: t.family, unlocked: t.at, need: 1, have: t.at ? 1 : 0 })));
 }
 function trendText(hist) {
   if (hist.length < 2) return "A few more drills and this reads your trend.";
@@ -1254,7 +1262,48 @@ function pairButton(pair, ms) {
   b.addEventListener("click", () => {
     const field = [...PASSAGES.map((x) => x.text), ...BANK.map((x) => x.question || "")];
     const words = pickWords(pair, { field, dictionary: WORDS || [] });
-    if (words.length) openPairGame(els.results, { pair, words, roundMs: ms, onClose: () => els.again.focus({ preventScroll: true }) });
+    if (!words.length) return;
+    openPairGame(els.results, {
+      pair, words, roundMs: ms, runs: (games().pairs || {})[pair] || [], progressLine,
+      onResult: (run) => saveRun("pair", run, pair), onClose: () => els.again.focus({ preventScroll: true }),
+    });
+  });
+  return b;
+}
+
+/* The mini games keep their own runs in settings, never in history (minigames.js). */
+const games = () => (data.settings.games && typeof data.settings.games === "object" ? data.settings.games : {});
+function saveRun(kind, run, pair) {
+  data.settings = { ...data.settings, games: addRun(games(), kind, run, pair) };
+  store.saveSettings(data.settings);
+}
+
+/* River Rhythm (river.js): offered with the uneven-timing tip. */
+function riverButton() {
+  const b = Object.assign(document.createElement("button"), { type: "button", className: "pair-go river-go", textContent: "River Rhythm" });
+  b.dataset.riverGo = "";
+  b.title = "Keep an even beat and the kayak stays mid-river";
+  const passage = () => PASSAGES[Math.floor(Math.random() * PASSAGES.length)].text;
+  b.addEventListener("click", () => openRiver(els.results, {
+    text: passage(), more: passage, runs: games().river || [], progressLine,
+    onResult: (run) => saveRun("river", run), onClose: () => els.again.focus({ preventScroll: true }),
+  }));
+  return b;
+}
+
+/* Shifty Shifts (shifty.js): offered when a Shift went wrong this round. */
+function shiftyButton() {
+  const b = Object.assign(document.createElement("button"), { type: "button", className: "pair-go shifty-go", textContent: "Shifty Shifts" });
+  b.dataset.shiftyGo = "";
+  b.title = "Twenty words, thirteen capitals, both Shifts, against the clock";
+  b.addEventListener("click", () => {
+    const pool = PASSAGES.flatMap((x) => x.text.split(/\s+/)).map((w) => w.replace(/[^A-Za-z]/g, "")).concat((WORDS || []).slice(0, 4000));
+    const built = buildShifty(pool);
+    if (!built) return;
+    openShifty(els.results, {
+      built, runs: games().shifty || [], judge, handOf, progressLine,
+      onResult: (run) => saveRun("shifty", run), onClose: () => els.again.focus({ preventScroll: true }),
+    });
   });
   return b;
 }

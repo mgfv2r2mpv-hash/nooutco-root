@@ -14,9 +14,12 @@ test("the slowest two pairs are named even when none is slow past the cut", () =
   assert.ok(p.slowestPairs.every((d) => /^[a-z]{2}$/.test(d.pair) && d.ms > 0));
 });
 
-test("the tip names the pairs, or says what to type when there are none", () => {
-  assert.match(cadenceTip([{ pair: "br", ms: 180 }, { pair: "mu", ms: 160 }]), /slowest pairs this round were br \(180 ms\) and mu \(160 ms\)\. Type each ten times/);
-  assert.match(cadenceTip([{ pair: "br", ms: 180 }]), /were br \(180 ms\)\. Type it ten times/);
-  assert.match(cadenceTip([]), /Type a line of your weak letters/);
-  assert.doesNotMatch(cadenceTip([]), /above/);
+test("the tip says what was uneven and what to do, names the pairs, and never guesses at thinking", () => {
+  const two = cadenceTip([{ pair: "br", ms: 180 }, { pair: "mu", ms: 160 }]);
+  assert.match(two, /slowest letter pairs were br \(180 ms\) and mu \(160 ms\); the pair race drills each\./);
+  assert.match(two, /type a little slower than usual at a steady beat/);
+  assert.match(cadenceTip([{ pair: "br", ms: 180 }]), /were br \(180 ms\); the pair race drills it\./);
+  const none = cadenceTip([]);
+  assert.doesNotMatch(none, /above|pairs were/);
+  for (const t of [two, none]) assert.doesNotMatch(t, /thinking/i);
 });
