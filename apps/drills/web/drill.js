@@ -404,6 +404,15 @@ window.ClickClack = {
     state.spoken = true;
     if (final) { state.micBase = els.box.value + " "; state.micHeard = ""; state.micSkip = 0; }
   },
+  // The Mac stopped listening on its own (a final result, an error, or its
+  // time limit): the button goes back to Talk and the words heard stay (AUDIT S14).
+  speechEnded() {
+    if (!state.listening) return;
+    state.listening = false;
+    els.mic.classList.remove("is-on");
+    els.mic.textContent = "Talk";
+    els.hint.textContent = "The microphone stopped. Press Talk to go on talking, or type.";
+  },
 };
 /* Typing while talking: what he typed stays, so the words heard so far are
    fixed into micBase and the next partial adds only its new words (AUDIT A12). */

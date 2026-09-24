@@ -659,6 +659,26 @@ test('talking fills the box, marks the round spoken, and a spoken round can be k
   expect(rec.spokenWords).toBe(5);
 });
 
+test('when the Mac stops listening on its own, the Talk button resets and the words heard stay (AUDIT S14)', async ({ page }) => {
+  await page.addInitScript(ORACLE_MOCK);
+  await page.goto('/index.html?clock=2');
+  await page.locator('[data-drill-mode="oracle"]').click();
+  await page.locator('[data-drill-start]').click();
+  await page.locator('[data-drill-mic]').click();
+  await expect(page.locator('[data-drill-mic]')).toHaveClass(/is-on/);
+  await page.evaluate(() => window.ClickClack.speech({ text: 'I would fade the prompts', final: true }));
+  await page.evaluate(() => window.ClickClack.speechEnded());
+  await expect(page.locator('[data-drill-mic]')).not.toHaveClass(/is-on/);
+  await expect(page.locator('[data-drill-mic]')).toHaveText('Talk');
+  await expect(page.locator('[data-drill-hint]')).toContainText('The microphone stopped');
+  // A late partial after the stop does not reach the box.
+  await page.evaluate(() => window.ClickClack.speech({ text: 'stray words', final: false }));
+  await expect(page.locator('[data-drill-box]')).toHaveValue('I would fade the prompts');
+  // Talk starts again from what is in the box.
+  await page.locator('[data-drill-mic]').click();
+  await expect(page.locator('[data-drill-mic]')).toHaveClass(/is-on/);
+});
+
 test('send to the expert drafts, drops a draft that quotes him, proposes the rest, and marks the answer sent', async ({ page }) => {
   await page.addInitScript(ORACLE_MOCK);
   await page.goto('/index.html');
