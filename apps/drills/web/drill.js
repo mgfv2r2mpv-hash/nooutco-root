@@ -237,6 +237,9 @@ function home() {
 /* ---- arm ---------------------------------------------------------------- */
 /* A new drill: a bank question, or a passage to copy. */
 function arm() {
+  // Busy is more than CSS: a reply that lands later would take over a round
+  // started under it and clear its box (AUDIT S3).
+  if (state.busy) return;
   state.baton = 0;
   if (data.settings.mode === "oracle") { armOracle(false); return; }
   if (data.settings.mode === "copy") {
@@ -297,6 +300,8 @@ function busy(text) {
   state.busy = !!text;
   root.dataset.busy = text ? "1" : "";
   if (text) { els.pb.textContent = text; els.keepnote.textContent = text; }
+  // Busy over: home's line goes back to the minute line (AUDIT S4).
+  else if (state.phase === "idle") setMinutes(state.minutes, false);
 }
 async function armOracle(followUp) {
   if (state.busy) return;
@@ -427,8 +432,11 @@ async function sendToExpert() {
   const st = await renderExpert();
   if (!st.connected) { els.expertLog.textContent = st.note || "Not connected."; return; }
   const { items = [] } = await store.expertQueue();
-  const out = await draftAndPropose(items, (i, n) => busy(`Drafting from answer ${i + 1} of ${n}...`));
-  busy("");
+  // try/finally: a refused expertSent must not leave the oracle, baton and
+  // Send dead until relaunch (AUDIT S5).
+  let out;
+  try { out = await draftAndPropose(items, (i, n) => busy(`Drafting from answer ${i + 1} of ${n}...`)); }
+  finally { busy(""); }
   els.expertLog.textContent = expertReport(out);
   els.keepnote.textContent = els.expertLog.textContent;
   await renderExpert();
@@ -1203,6 +1211,9 @@ function showTab(name) {
   if (name === "expert") renderExpert();
 }
 function openBoard(tab) {
+  // Not mid-round: the clock would run on and the finish would pull him off
+  // the board to the results (AUDIT S2).
+  if (state.phase === "armed" || state.phase === "running") return;
   renderBoard();
   els.results.dataset.mode = "board";
   els.setup.hidden = true; els.question.hidden = true; els.read.hidden = true; els.results.hidden = false;
@@ -1419,6 +1430,7 @@ async function keepPending(snap, thenSend, buttons = [], note = null) {
 for (const b of els.mins) b.addEventListener("click", () => setMinutes(Number(b.dataset.drillMinutes)));
 els.start.addEventListener("click", arm);
 function again() {
+  if (state.busy) return;
   if (state.phase === "done" && state.mode === "tame") armTame(state.passage.target);
   else if (state.phase === "done" && state.mode === "copy") armRespond();
   else if (state.phase === "done" && state.mode === "oracle") armOracle(true);
@@ -1481,6 +1493,10 @@ document.addEventListener("keydown", (e) => {
   if (e.target && e.target.closest && e.target.closest("[data-minigame]")) return;
   const inButton = e.target && e.target.tagName === "BUTTON";
   if (e.target === els.oracleTopic) { if (e.key === "Enter") { e.preventDefault(); arm(); } return; }
+  // A typed field gets its own keys: k, c, d, s or Return typed there never
+  // keep, continue or start a drill (AUDIT S1).
+  if (e.target === els.expertToken) { if (e.key === "Enter") { e.preventDefault(); connectExpert(); } return; }
+  if (e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName) && e.target.type !== "checkbox") return;
   if (state.phase === "idle") {
     if (e.key === "Enter" && !inButton) { e.preventDefault(); arm(); }
     else if (/^[1-5]$/.test(e.key)) setMinutes(Number(e.key));

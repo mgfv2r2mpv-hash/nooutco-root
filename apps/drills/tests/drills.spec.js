@@ -1452,3 +1452,67 @@ test('unkeptCount: Keep going mid-round counts the answer once, not the held rou
   await box.pressSequentially('then', { delay: 10 });
   expect(await page.evaluate(() => window.NoteDrill.unkeptCount())).toBe(1);
 });
+
+/* ---- busy, the board and typed fields (AUDIT S1, S2, S4, S5) ------------- */
+
+test('Send from home puts the minute line back when it is done, not "Drafting from answer 1 of 1"', async ({ page }) => {
+  await page.addInitScript(ORACLE_MOCK);
+  await page.goto(PAGE);
+  const pb = page.locator('[data-drill-pb]');
+  const before = await pb.textContent();
+  await page.evaluate(() => window.NoteDrill.sendToExpert());
+  expect(await page.evaluate(() => window.__sent.length)).toBe(1);
+  await expect(pb).toHaveText(before || '');
+  await expect(page.locator('main.drill')).toHaveAttribute('data-busy', '');
+});
+
+test('a refused expertSent still clears busy, so the oracle, baton and Send work again', async ({ page }) => {
+  await page.addInitScript(ORACLE_MOCK);
+  await page.addInitScript(() => { window.ClickClackMock.expertSent = async () => { throw new Error('disk said no'); }; });
+  await page.goto(PAGE);
+  await page.evaluate(() => window.NoteDrill.sendToExpert().catch(() => {}));
+  expect(await page.evaluate(() => window.NoteDrill.state.busy)).toBe(false);
+  await expect(page.locator('main.drill')).toHaveAttribute('data-busy', '');
+});
+
+test('the trophy chip does nothing while a round is running, so the finish never yanks him off the board', async ({ page }) => {
+  await page.goto(PAGE);
+  await wordsReady(page);
+  await page.locator('[data-drill-start]').click();
+  await page.locator('[data-drill-box]').pressSequentially('function ', { delay: 10 });
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'running');
+  await page.locator('[data-stat-trophies]').evaluate((b) => b.click());
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'running');
+  await done(page);
+});
+
+test('typing in the admin-token field fires no shortcut, and Return in it connects', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__tokens = [];
+    window.ClickClackMock = {
+      expertToken: async (t) => { window.__tokens.push(t); return { ok: true }; },
+      expertStatus: async () => ({ connected: false, queued: 0, note: 'Not connected.' }),
+      expertQueue: async () => ({ items: [] }),
+    };
+  });
+  await page.goto(PAGE);
+  await page.locator('.row [data-drill-open="expert"]').click();
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'board');
+  const field = page.locator('[data-drill-expert-token]');
+  await field.focus();
+  await page.keyboard.type('abc');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'board');
+  await expect.poll(() => page.evaluate(() => window.__tokens)).toEqual(['abc']);
+});
+
+test('while the oracle or the expert is working, Return starts no round under it', async ({ page }) => {
+  await page.goto(PAGE);
+  await wordsReady(page);
+  await page.evaluate(() => { window.NoteDrill.state.busy = true; });
+  await page.locator('[data-drill-start]').focus();
+  await page.keyboard.press('Enter');
+  await page.locator('body').focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'idle');
+});
