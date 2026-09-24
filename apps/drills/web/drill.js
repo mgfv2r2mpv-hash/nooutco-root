@@ -934,8 +934,17 @@ function again() {
 }
 els.again.addEventListener("click", again);
 els.mic.addEventListener("click", toggleMic);
-els.send.addEventListener("click", sendToExpert);
-els.expertSend.addEventListener("click", sendToExpert);
+/* Send from the results or the board keeps the answer on screen first. His
+   miss of 2026-09-23: four Keep going rounds were sent without a Keep, and
+   Send only reads answers already kept, so they were lost. keep() itself
+   skips a copy round, a kept one, and an empty one. */
+async function keepThenSend() {
+  if (state.busy) return;
+  if (["done", "board"].includes(state.phase) && state.score && !state.kept) await keep();
+  await sendToExpert();
+}
+els.send.addEventListener("click", keepThenSend);
+els.expertSend.addEventListener("click", keepThenSend);
 els.expertConnect.addEventListener("click", connectExpert);
 els.cont.addEventListener("click", continueRound);
 els.baton.addEventListener("click", batonPass);

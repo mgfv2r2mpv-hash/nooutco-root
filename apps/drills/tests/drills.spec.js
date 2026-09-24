@@ -594,3 +594,24 @@ test('for three seconds after the bell, keys do nothing, so typing past it canno
   await page.keyboard.press('Enter');
   await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'armed');
 });
+
+test('Send to the expert keeps the answer on screen first, so Keep going rounds are never sent without it', async ({ page }) => {
+  await page.addInitScript(BATON_MOCK);
+  await page.goto(PAGE);
+  await wordsReady(page);
+  await page.locator('[data-drill-start]').click();
+  const box = page.locator('[data-drill-box]');
+  await box.pressSequentially('reinforcement comes first ', { delay: 10 });
+  await done(page);
+  await page.keyboard.press('c');
+  await box.pressSequentially('and then the rate ', { delay: 10 });
+  await done(page);
+  await expect(page.locator('[data-drill-send]')).toBeVisible();
+  await page.locator('[data-drill-send]').click();
+  await expect.poll(() => page.evaluate(() => window.__sent.length)).toBe(1);
+  const kept = await page.evaluate(() => window.__kept);
+  expect(kept).toHaveLength(1);
+  expect(kept[0].text).toContain('reinforcement comes first');
+  expect(kept[0].text).toContain('and then the rate');
+  await expect(page.locator('[data-drill-keep]')).toHaveText(/Kept/);
+});
