@@ -15,7 +15,9 @@
  * kept: it is not his writing and never goes near the voice corpus.
  */
 
-export const PASSAGES = Object.freeze([
+import { PASSAGES_MORE } from "./passages-more.js";
+
+const CORE = [
   { id: "p-iwata", outline: "F.6", kind: "study", title: "Toward a functional analysis of self-injury",
     source: "Iwata, Dorsey, Slifer, Bauman & Richman (1982; reprinted 1994), JABA",
     text: "Iwata and his colleagues worked with nine people with developmental disabilities who engaged in self-injury. Each person was observed across brief, repeated sessions in several conditions that were arranged on purpose. In one, an adult paid attention only after self-injury, with a mild statement of concern. In another, the adult presented difficult learning tasks and removed them for a moment after self-injury. In a third, the person was alone with nothing to do. A play condition, with attention and toys freely available and no demands, served as the comparison. For most of the participants, self-injury was consistently higher in one particular condition, which pointed to what was maintaining it: attention, escape from demands, or the sensory result of the behavior itself. The point of the study was not the rates. It was the method. Instead of guessing at a cause from a description, the team changed the environment and watched the behavior change with it. That experimental logic, testing function directly, became the basis for much of the treatment work that followed.",
@@ -72,7 +74,7 @@ export const PASSAGES = Object.freeze([
     respond: "Pick a measure you collect that nobody uses. Keep it or kill it, and say why." },
 
   { id: "p-punish", outline: "G.17", kind: "take", title: "The drill's take: punishment belongs behind reinforcement, not in front of it",
-    source: "The drill's own position, drawing on the BACB Ethics Code (2020) and Cooper, Heron & Heward (2020), ch. Punishment by Stimulus Presentation",
+    source: "The drill's own position, drawing on the BACB Ethics Code (2020) and Cooper, Heron & Heward (2020), ch. Positive Punishment",
     text: "Here is the position. A punishment procedure should never be the first thing on a plan and should never stand alone. Before it is considered, the team should know the function of the behavior, have taught a replacement that meets the same need, and have made the reinforcer for the replacement richer than the one for the problem behavior. Often that is enough, and punishment is never needed. When it is considered, the reason should be written down, the least restrictive option should be tried first, and the data should show quickly whether it is working, because a punisher that is not suppressing the behavior is just a harm with no benefit. Punishment can also produce side effects, like aggression, escape from the person delivering it, or a child who learns only what not to do. A plan that leans on it first is usually a plan that skipped the assessment.",
     respond: "Is there a case where you would reach for response cost early? Make the argument either way." },
 
@@ -98,7 +100,10 @@ export const PASSAGES = Object.freeze([
     source: "Baer, Wolf & Risley (1968), JABA; Cooper, Heron & Heward (2020), ch. Multiple Baseline and Changing Criterion Designs",
     text: "A multiple baseline design is built for behavior that cannot be withdrawn. Once a child has learned to wash hands or buckle a seat belt, the skill usually does not go away when the teaching stops, so a reversal design would not work and would not be welcome. Instead, the analyst measures two or more baselines at once, across behaviors, across settings, or across people, and begins the intervention on one baseline at a time. If each baseline changes only when, and not before, the intervention reaches it, the pattern makes a believable case that the intervention caused the change, and not the calendar, maturation, or a change at home. The design is weaker when the baselines are not independent, because a skill taught in one setting may spread to the next before its turn. It is also slower, because the last baseline waits the longest, which is a cost to weigh when the behavior matters to the client now.",
     respond: "You have three kids and one new procedure. Would you stagger it, and how would you explain the wait to the third family?" },
-]);
+];
+
+// The first sixteen, then the ones written for his weak keys (passages-more.js).
+export const PASSAGES = Object.freeze([...CORE, ...PASSAGES_MORE]);
 
 /* ---- aiming at his weak keys ------------------------------------------- */
 
@@ -182,14 +187,18 @@ export function passageLoad(text, profile) {
 /**
  * The next passage. The last few he copied are set aside; of the rest, the one
  * that works his tricky areas hardest wins, and with none yet (a new player)
- * the one least recently copied does. `profile` is a trickyProfile, or a plain
+ * the one least recently copied does. The last third he copied sit out. `profile` is a trickyProfile, or a plain
  * list of keys. `shelved` ids are left out: they come back through the shelf.
  */
 export function nextPassage(recentIds = [], profile = null, shelved = []) {
   const last = new Map();
   recentIds.forEach((id, i) => last.set(id, i));
   const age = (p) => (last.has(p.id) ? last.get(p.id) + 1 : 0);
-  const skip = new Set(recentIds.slice(-Math.min(3, PASSAGES.length - 1)));
+  // A third of the passages sit out after he copies them (never fewer than
+  // three), so an aimed player rotates through a dozen heavy passages, not
+  // the same four.
+  const sitOut = Math.min(Math.max(3, Math.floor(PASSAGES.length / 3)), PASSAGES.length - 1);
+  const skip = new Set(recentIds.slice(-sitOut));
   // A shelved passage waits for its turn on the shelf, never sooner.
   const wait = new Set(shelved);
   const open = PASSAGES.filter((p) => !wait.has(p.id));

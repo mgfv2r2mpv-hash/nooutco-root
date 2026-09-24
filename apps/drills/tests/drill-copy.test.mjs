@@ -76,7 +76,7 @@ test("the tricky profile is read from the recent drills, so an old problem ages 
   assert.equal(describeProfile(p), "pairs zq, br, ck · capitals · punctuation");
 });
 
-test("the picker takes the passage that works the profile hardest, skipping the last three copied", () => {
+test("the picker takes the passage that works the profile hardest, skipping the ones copied lately", () => {
   const p = { keys: ["w", "m", "b", "u", "c"], pairs: [], capitals: false, punctuation: false };
   const best = nextPassage([], p);
   for (const x of PASSAGES) assert.ok(passageLoad(best.text, p) >= passageLoad(x.text, p), x.id);
