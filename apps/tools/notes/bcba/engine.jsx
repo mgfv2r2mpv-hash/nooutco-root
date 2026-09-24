@@ -1802,6 +1802,33 @@ function App() {
     return review;
   };
 
+  /* THE CORRECTIONS PASS SPEAKS TOKENS BOTH WAYS, like every other model turn.
+
+     What he read on 2026-09-23: "Minimal Redirect (Request [[T6]])" in a
+     parent-training note, where he had typed "Request Attn". finalize() had put
+     Attn back into the draft. The pass was then handed that restored draft
+     beside the SCRUBBED intake, copied [[T6]] out of the intake, and its answer
+     went into S.output with nothing restoring it. It was the one writer of the
+     note that skipped the restore, and it also sent every word the scrubber had
+     held back from the drafting call out in clear.
+
+     So the note goes out under the note's map and the answer comes back through
+     restoreOutput, whole: `why` and each reason's `quote` too, because
+     corrections.js finds a mark by its quote in the restored text. */
+  const correctionsRound = async (opts) => {
+    const map = scrubMapRef.current || [];
+    const out = (text) => NotesScrub.applyMap(String(text || ""), map);
+    const pass = await NotesGate.correctionsPass({
+      ...opts,
+      draft: (opts.draft || []).map((d) => ({ ...d, text: out(d.text) })),
+      heldOut: (opts.heldOut || []).map((h) => ({ ...h, text: out(h.text) })),
+      // `about` quotes the note, so it goes out under the map with the note.
+      asks: (opts.asks || []).map((a) => ({ ...a, about: out(a.about) })),
+    });
+    if (!pass) return pass;
+    return { ...pass, corrections: NotesScrub.restoreOutput(pass.corrections, scrubMapRef.current || []) };
+  };
+
   // One-way, and the banner says so. Certifying stops the NEXT scrub taking the
   // word; it does not reach back into the draft that was just generated from a
   // prompt containing the token.
@@ -2738,7 +2765,7 @@ function App() {
           passIntakeRef.current = intakeBody(scrubbedValues) +
             (extra && extra.trim() ? "\n\n[ANSWERED FOLLOW-UP QUESTIONS]\n" + extra.trim() : "");
           const pass = draftSections.length
-            ? await NotesGate.correctionsPass({
+            ? await correctionsRound({
                 tool: tool.id,
                 intake: passIntakeRef.current,
                 draft: draftSections,
@@ -4026,7 +4053,7 @@ function App() {
     const held = heldOutNow();
     setLoading(true);
     try {
-      const pass = await NotesGate.correctionsPass({
+      const pass = await correctionsRound({
         tool: tool.id,
         intake: passIntakeRef.current || "",
         draft: draftSections,
