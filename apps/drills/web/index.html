@@ -49,6 +49,7 @@
         <input type="checkbox" data-drill-strict-shift checked> Strict Shift: a same-side Shift refuses the capital
       </label>
       <p class="pb" data-drill-pb></p>
+      <div class="shelf" data-drill-shelf hidden></div>
       <div class="row">
         <button type="button" class="go" data-drill-start>Start <kbd>return</kbd></button>
         <button type="button" class="soft" data-drill-open="progress">Progress</button>
@@ -83,6 +84,29 @@
         <button type="button" class="mic" data-drill-mic title="Talk instead of type. On this Mac only; the audio is never saved.">Talk</button>
         <span class="hint" data-drill-hint>The clock starts on your first keystroke. <kbd>esc</kbd> leaves without scoring.</span>
         <span class="live" data-drill-live aria-live="polite"></span>
+      </div>
+    </section>
+
+    <section class="read" data-drill-read hidden>
+      <p class="read-score" data-drill-read-score></p>
+      <div class="unlocks" data-drill-read-unlocked hidden></div>
+      <article class="folio">
+        <p class="read-kicker">Read it now. The clock is off.</p>
+        <h2 class="read-title" data-drill-read-title></h2>
+        <p class="read-source" data-drill-read-source></p>
+        <div class="read-text" data-drill-read-text></div>
+        <ul class="read-sources" data-drill-read-sources hidden></ul>
+        <div class="read-ask">
+          <span>Then answer this</span>
+          <p data-drill-read-question></p>
+        </div>
+      </article>
+      <div class="actions">
+        <button type="button" class="go" data-drill-respond>Respond · 1 min <kbd>return</kbd></button>
+        <button type="button" class="soft" data-drill-shelve title="Not ready to answer this one. It comes back after three copy rounds or tomorrow, with new words to type.">Shelve it <kbd>S</kbd></button>
+        <button type="button" class="soft" data-drill-numbers>The numbers <kbd>N</kbd></button>
+        <button type="button" class="soft" data-drill-read-home>Home</button>
+        <span class="keepnote" data-drill-read-note></span>
       </div>
     </section>
 
@@ -162,6 +186,8 @@
       <div class="pane drill-map" data-pane="map" data-drill-map hidden>
         <p class="basis">The BACB outline: nine domains, 104 items. A cell darkens as you answer questions filed under it. The next question comes from the emptiest cell the bank can ask about; outlined cells have a question ready.</p>
         <div class="map-grid" data-drill-map-grid></div>
+        <h3>On the shelf</h3>
+        <ul class="list" data-drill-map-shelf></ul>
       </div>
 
       <div class="pane" data-pane="expert" hidden>

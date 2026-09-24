@@ -708,3 +708,98 @@ test('Send to the expert keeps the answer on screen first, so Keep going rounds 
   expect(kept[0].text).toContain('and then the rate');
   await expect(page.locator('[data-drill-keep]')).toHaveText(/Kept/);
 });
+
+/* ---- read and consider, and the shelf (his ask of 2026-09-23) ------------ */
+
+test('after the copy round the passage comes back to read, with its question; N shows the numbers and Return responds', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('noaba.drills.settings.v1', JSON.stringify({ mode: 'copy', copyDefault: true })));
+  await page.goto(PAGE);
+  await page.locator('[data-drill-start]').click();
+  await expect(page.locator('[data-drill-hint]')).toContainText('read it properly afterwards');
+  const words = (await page.locator('[data-drill-passage]').textContent()).trim().split(/\s+/);
+  await page.locator('[data-drill-box]').pressSequentially(words.slice(0, 2).join(' ') + ' ', { delay: 10 });
+  await done(page);
+  const read = page.locator('[data-drill-read]');
+  await expect(read).toBeVisible();
+  await expect(page.locator('[data-drill-results]')).toBeHidden();
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-view', 'read');
+  const p = await page.evaluate(() => window.NoteDrill.state.passage);
+  await expect(page.locator('[data-drill-read-title]')).toHaveText(p.title);
+  await expect(page.locator('[data-drill-read-question]')).toHaveText(p.respond);
+  await expect(page.locator('[data-drill-read-score]')).toContainText('Copied at');
+  const paras = await page.locator('[data-drill-read-text] p').allTextContents();
+  expect(paras.length).toBeGreaterThan(1);
+  expect(paras.join(' ')).toBe(p.text.replace(/\s+/g, ' ').trim());
+  // The numbers are one key away, and the same key comes back.
+  await page.keyboard.press('n');
+  await expect(page.locator('[data-drill-results]')).toBeVisible();
+  await expect(read).toBeHidden();
+  await page.keyboard.press('n');
+  await expect(read).toBeVisible();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-mode', 'respond');
+  await expect(page.locator('[data-drill-q]')).toHaveText(p.respond);
+  await expect(read).toBeHidden();
+});
+
+test('S shelves the passage: the next one starts, the shelf is saved, and home says what is on it', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('noaba.drills.settings.v1', JSON.stringify({ mode: 'copy', copyDefault: true })));
+  await page.goto(PAGE);
+  await page.locator('[data-drill-start]').click();
+  await page.locator('[data-drill-box]').pressSequentially('The ', { delay: 10 });
+  await done(page);
+  const first = await page.evaluate(() => window.NoteDrill.state.passage);
+  await page.keyboard.press('s');
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'armed');
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-mode', 'copy');
+  const next = await page.evaluate(() => window.NoteDrill.state.passage);
+  expect(next.id).not.toBe(first.id);
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('noaba.drills.settings.v1')));
+  expect(saved.shelf).toHaveLength(1);
+  expect(saved.shelf[0].id).toBe(first.id);
+  expect(Object.keys(saved.shelf[0]).sort()).toEqual(['at', 'id', 'round', 'shown']);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('[data-drill-shelf]')).toContainText('On the shelf (1)');
+  await expect(page.locator('[data-drill-shelf]')).toContainText(first.title);
+  await page.locator('.row [data-drill-open="map"]').click();
+  await expect(page.locator('[data-drill-map-shelf]')).toContainText(first.title);
+});
+
+test('a shelved passage comes back the next day in new words, and leaves the shelf once copied', async ({ page }) => {
+  await page.addInitScript(() => {
+    const at = new Date(Date.now() - 2 * 86400000).toISOString();
+    localStorage.setItem('noaba.drills.settings.v1', JSON.stringify({ mode: 'copy', copyDefault: true, shelf: [{ id: 'p-wolf', at, round: 0, shown: 0 }] }));
+  });
+  await page.goto(PAGE);
+  await page.locator('[data-drill-start]').click();
+  await expect(page.locator('[data-drill-category]')).toContainText('back from the shelf');
+  const variant = await page.evaluate(() => import('./variants.js').then((m) => m.VARIANTS['p-wolf'][0]));
+  const shown = (await page.locator('[data-drill-passage]').textContent()).replace(/\s+/g, ' ').trim();
+  expect(shown).toBe(variant);
+  const words = shown.split(' ');
+  await page.locator('[data-drill-box]').pressSequentially(words.slice(0, 2).join(' ') + ' ', { delay: 10 });
+  await done(page);
+  const rec = await page.evaluate(() => window.NoteDrill.data.history.at(-1));
+  expect(rec.passage).toBe('p-wolf');
+  expect(rec.variant).toBe(1);
+  expect(rec.fromShelf).toBe(true);
+  await expect(page.locator('[data-drill-read-note]')).toContainText('Back from the shelf');
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('noaba.drills.settings.v1')));
+  expect(saved.shelf).toEqual([]);
+});
+
+test('the settle after the bell holds on the read screen too: Return and S do nothing for three seconds', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('noaba.drills.settings.v1', JSON.stringify({ mode: 'copy', copyDefault: true })));
+  await page.goto('/index.html?clock=2&settle');
+  await page.locator('[data-drill-start]').click();
+  await page.locator('[data-drill-box]').pressSequentially('The ', { delay: 10 });
+  await done(page);
+  await expect(page.locator('[data-drill-read]')).toBeVisible();
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('s');
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-mode', 'copy');
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'done');
+  await expect(page.locator('main.drill')).not.toHaveAttribute('data-settling', '1', { timeout: 5000 });
+  await page.keyboard.press('Enter');
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-mode', 'respond');
+});
