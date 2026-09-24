@@ -1936,3 +1936,40 @@ test('G10: reduced motion stills the hare bolt and the river fill', async ({ pag
   expect(out.hare).toBe('0s');
   expect(out.fill).toBe('0s');
 });
+
+test('S11: the progress chart and Lately read answering rounds only, never copy rounds', async ({ page }) => {
+  await page.addInitScript(() => {
+    const now = Date.now();
+    const rec = (i, mode, nwam) => ({ at: new Date(now - (20 - i) * 3600000).toISOString(), minutes: 1, seconds: 60, nwam, gwam: nwam + 2,
+      accuracy: 0.98, words: nwam, mode, itemId: 'x', outline: 'B.1' });
+    // Ten answers (five at 40, then five at 50), then five copy rounds at 100.
+    const h = [...Array.from({ length: 10 }, (_, i) => rec(i, 'answer', i < 5 ? 40 : 50)), ...Array.from({ length: 5 }, (_, i) => rec(10 + i, 'copy', 100))];
+    if (!localStorage.getItem('noaba.drills.v1')) localStorage.setItem('noaba.drills.v1', JSON.stringify(h));
+  });
+  await page.goto(PAGE);
+  await page.locator('[data-drill-open="progress"]').click();
+  await expect(page.locator('[data-chart-nwam] svg .chart-dot')).toHaveCount(10);
+  await expect(page.locator('[data-chart-accuracy] svg .chart-dot')).toHaveCount(10);
+  await expect(page.locator('[data-drill-trend]')).toContainText('Your last five answers average 50.0 NWAM, up 10.0 on the five before.');
+  await expect(page.locator('[data-drill-trend]')).toContainText('15 drills in all (10 answering, 5 copying)');
+});
+
+test('S10: marking a word clinical re-reads the band note, the basis and the ladder from the new score', async ({ page }) => {
+  await page.goto(PAGE);
+  await wordsReady(page);
+  await page.locator('[data-drill-start]').click();
+  await page.locator('[data-drill-box]').pressSequentially('The parent ran the dysregulatn plan ', { delay: 15 });
+  await done(page);
+  // One unknown word in six is under the 96% gate.
+  await expect(page.locator('[data-drill-rating-note]')).toHaveText('(one band down: accuracy under 96%)');
+  await expect(page.locator('[data-drill-basis]')).toContainText('1 unknown word');
+  const ladderBefore = await page.locator('[data-drill-next]').textContent();
+  await page.locator('[data-drill-clinical="dysregulatn"]').click();
+  await expect(page.locator('[data-drill-accuracy]')).toHaveText('100%');
+  await expect(page.locator('[data-drill-rating-note]')).toHaveText('');
+  await expect(page.locator('[data-drill-basis]')).toContainText('0 unknown words');
+  const nwam = (await page.locator('[data-drill-nwam]').textContent()).trim();
+  const ladderAfter = await page.locator('[data-drill-next]').textContent();
+  if (ladderBefore.includes('NWAM')) expect(ladderAfter).not.toBe(ladderBefore);
+  expect(nwam).not.toBe('');
+});
