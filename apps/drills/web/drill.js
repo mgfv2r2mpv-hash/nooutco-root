@@ -596,6 +596,7 @@ async function finish() {
   if (state.listening) await stopMic();
   clearTimeout(state.timer);
   setPhase("done");
+  settle();
   els.box.disabled = true;
   els.clock.textContent = "0:00";
   els.hint.textContent = "Time.";
@@ -949,6 +950,22 @@ els.box.addEventListener("blur", () => shiftKeys.clear());
 els.box.addEventListener("input", onInput);
 els.box.addEventListener("keydown", onKeydown);
 els.box.addEventListener("paste", onPaste);
+/* The settle: for three seconds after a round ends, keys do nothing. His
+   ask: fingers still typing past the bell pressed Return on Again and started
+   the next round. Clicks still work; a click is on purpose. Tests set
+   window.__settleMs to skip the wait. */
+const SETTLE_MS = 3000;
+let settleUntil = 0;
+function settle() {
+  const ms = typeof window.__settleMs === "number" ? window.__settleMs : SETTLE_MS;
+  settleUntil = Date.now() + ms;
+  if (!ms) return;
+  root.dataset.settling = "1";
+  setTimeout(() => { if (Date.now() >= settleUntil) delete root.dataset.settling; }, ms);
+}
+document.addEventListener("keydown", (e) => {
+  if (Date.now() < settleUntil) { e.preventDefault(); e.stopImmediatePropagation(); }
+}, true);
 document.addEventListener("keydown", (e) => {
   if (e.target === els.box || e.metaKey || e.ctrlKey || e.altKey) return;
   const inButton = e.target && e.target.tagName === "BUTTON";

@@ -19,6 +19,7 @@ const done = (page) => expect(page.locator('main.drill')).toHaveAttribute('data-
 // test says otherwise; the default itself has its own test below.
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
+    if (!location.search.includes('settle')) window.__settleMs = 0; // the settle has its own test
     const k = 'noaba.drills.settings.v1';
     if (location.search.includes('fresh')) return; // a first launch, as he gets it
     if (!localStorage.getItem(k)) localStorage.setItem(k, JSON.stringify({ mode: 'answer', copyDefault: true }));
@@ -575,4 +576,21 @@ test('baton pass: keeps the answer, ingests it in the background, and the expert
   await expect(page.locator('[data-drill-q]')).toHaveText('How would you raise the rate in session?');
   await expect(page.locator('[data-drill-bullets]')).toContainText('Nevin (1992)');
   await expect(page.locator('[data-drill-category]')).toContainText('respond · baton pass 1');
+});
+
+test('for three seconds after the bell, keys do nothing, so typing past it cannot start the next round', async ({ page }) => {
+  await page.goto('/index.html?clock=2&settle');
+  await page.locator('[data-drill-start]').click();
+  const box = page.locator('[data-drill-box]');
+  await box.pressSequentially('one two ', { delay: 10 });
+  await done(page);
+  await expect(page.locator('main.drill')).toHaveAttribute('data-settling', '1');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('k');
+  await page.keyboard.press('c');
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'done');
+  await expect(page.locator('[data-drill-keep]')).not.toHaveText('Kept');
+  await expect(page.locator('main.drill')).not.toHaveAttribute('data-settling', '1', { timeout: 5000 });
+  await page.keyboard.press('Enter');
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'armed');
 });
