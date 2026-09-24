@@ -843,8 +843,9 @@ async function finish() {
   };
   // The last passage on the shelf copied again: the shelf is empty after this round.
   if (state.mode === "copy" && state.passage.fromShelf && !unshelve(shelf(), state.passage.id).length) state.record.shelfEmpty = true;
-  const st = stars(s, prior.filter((h) => kindOf(h) === roundKind()), state.roundMinutes);
   state.levelPrior = prior.filter((h) => kindOf(h) === roundKind());
+  state.starsPrior = state.levelPrior; state.starsMinutes = state.roundMinutes;
+  const st = stars(s, state.starsPrior, state.starsMinutes);
   const before = trophyCase(prior, tameLog());
   if (!state.answerAt) state.answerAt = state.record.at;
   // A talked round has no keystrokes but it is still a round, and it can be kept.
@@ -869,6 +870,7 @@ async function finish() {
 function finishTame(s) {
   const t = state.passage.target;
   const log = tameLog();
+  state.starsPrior = log; state.starsMinutes = TAME_SECONDS / 60;
   const st = stars(s, log, TAME_SECONDS / 60);
   const before = trophies();
   state.record = null; state.levelPrior = []; state.spotted = [];
@@ -922,17 +924,10 @@ function scoreRound(minutes) {
 }
 
 /* ---- results ------------------------------------------------------------- */
-function render(s, st, prior) {
-  els.results.dataset.mode = "drill";
-  els.nwam.textContent = s.nwam.toFixed(1);
-  els.gwam.textContent = s.gwam.toFixed(1);
-  els.errors.textContent = String(s.corrections + (s.uncorrected || 0));
-  els.accuracy.textContent = Math.round(s.accuracy * 100) + "%";
-  // A word list is not a band: the drill names itself instead.
-  els.rating.textContent = state.mode === "tame" ? "Nemesis drill" : s.rating.name;
+/* The lines that read the score: the band note, the ladder, the stars and the
+   basis. A word marked clinical re-scores the round and runs these again. */
+function renderScoreLines(s, st, prior) {
   els.ratingNote.textContent = state.mode === "tame" ? "(practice only: no band)" : s.rating.accuracyGated ? "(one band down: accuracy under 96%)" : s.gwam < 1 ? "(nothing typed)" : "";
-  renderLevelUp(s);
-  renderBandsNote(s, prior);
   els.next.textContent = s.gwam < 1 ? "" : state.mode === "tame" ? tameReport(state.passage.target, s).line : ladderText(s.nwam, prior.filter((h) => kindOf(h) === roundKind()), state.roundMinutes);
   els.stars.replaceChildren(
     star(st.best, "Personal best"), star(st.beatLast, "Beat your last"), star(st.clean, "97% clean"),
@@ -944,6 +939,20 @@ function render(s, st, prior) {
     ? `NWAM counts your ${s.corrections} corrections as the errors, because the word list has not loaded; uncorrected typos are not scored.`
     : `NWAM subtracts ${s.uncorrected} unknown word${s.uncorrected === 1 ? "" : "s"}; your ${s.corrections} correction${s.corrections === 1 ? "" : "s"} cost you time, not words. Mark a term clinical below and it comes out of the count.`
       + (s.revisions ? ` ${revisionText(s)}` : "");
+  if (state.spoken) els.basis.textContent = `You talked ${state.record && state.record.spokenWords ? state.record.spokenWords + " words of " : ""}this one. Talking has no typing score; what you typed around it is scored as usual.`;
+}
+function render(s, st, prior) {
+  els.results.dataset.mode = "drill";
+  els.nwam.textContent = s.nwam.toFixed(1);
+  els.gwam.textContent = s.gwam.toFixed(1);
+  els.errors.textContent = String(s.corrections + (s.uncorrected || 0));
+  els.accuracy.textContent = Math.round(s.accuracy * 100) + "%";
+  // A word list is not a band: the drill names itself instead.
+  els.rating.textContent = state.mode === "tame" ? "Nemesis drill" : s.rating.name;
+  renderLevelUp(s);
+  renderBandsNote(s, prior);
+  state.renderPrior = prior;
+  renderScoreLines(s, st, prior);
   const pb = bests(prior.filter((h) => kindOf(h) === roundKind()))[String(state.roundMinutes)];
   els.pace.replaceChildren(lineChart([{ values: s.pace, dots: false }], { guide: pb ?? null, guideLabel: pb != null ? `best ${pb.toFixed(0)}` : "", height: 120, min: 0 }));
   els.tricky.replaceChildren(...(s.tricky.keys.length ? s.tricky.keys.map((k) => li(`${keyName(k.key)} hit by mistake ${k.count}×`)) : [li("Nothing corrected. Clean hands.")]));
@@ -983,7 +992,6 @@ function render(s, st, prior) {
   renderBoard();
   const copying = copyLike();
   const hasWords = s.gwam > 0 || (state.spoken && roundText().trim().length > 0);
-  if (state.spoken) els.basis.textContent = `You talked ${state.record && state.record.spokenWords ? state.record.spokenWords + " words of " : ""}this one. Talking has no typing score; what you typed around it is scored as usual.`;
   els.keep.hidden = copying;
   els.keep.disabled = !hasWords;
   els.keep.textContent = "Keep it"; els.keep.appendChild(Object.assign(document.createElement("kbd"), { textContent: "K" }));
@@ -1197,6 +1205,7 @@ function markKnown(w, row, as) {
   els.accuracy.textContent = Math.round(s.accuracy * 100) + "%";
   els.rating.textContent = s.rating.name;
   renderLevelUp(s);
+  renderScoreLines(s, stars(s, state.starsPrior || [], state.starsMinutes || state.roundMinutes), state.renderPrior || []);
   if (state.record) {
     Object.assign(state.record, { nwam: s.nwam, accuracy: s.accuracy, rating: s.rating.name, uncorrected: s.uncorrected });
     persist("saveHistory", data.history);
@@ -1206,7 +1215,8 @@ function markKnown(w, row, as) {
 
 /* ---- the board: progress, keys, map ---------------------------------------- */
 function renderBoard() {
-  const h = data.history.slice(-60);
+  // Copy speed and answer speed never mix: the charts and Lately read answers only.
+  const h = ofKind("compose").slice(-60);
   const nw = h.map((x) => x.nwam);
   const roll = nw.map((_, i) => { const w = nw.slice(Math.max(0, i - 4), i + 1); return w.reduce((a, b) => a + b, 0) / w.length; });
   const pb = bests(ofKind("compose"))[String(state.minutes)];
@@ -1223,7 +1233,7 @@ function renderBoard() {
     tr.append(a, c, d);
     return tr;
   }));
-  els.trend.textContent = trendText(data.history);
+  els.trend.textContent = trendText(data.history, ofKind("compose"));
   els.keyboard.replaceChildren(keyboard(keyboardRates(data.history, 20)));
   const now = describeProfile(trickyProfile(data.history, keyboardRates(data.history, 20)));
   els.working.textContent = now
@@ -1247,15 +1257,17 @@ function renderBoard() {
   calendar.render(data.history);
   renderTrophies(els.trophies, data.history, tameLog(), gameTrophies(games()).map((t) => ({ ...t, condition: t.cond, group: t.family, unlocked: t.at, need: 1, have: t.at ? 1 : 0 })));
 }
-function trendText(hist) {
+function trendText(hist, answers) {
   if (hist.length < 2) return "A few more drills and this reads your trend.";
-  const last5 = hist.slice(-5), prev5 = hist.slice(-10, -5);
+  const last5 = answers.slice(-5), prev5 = answers.slice(-10, -5);
   const avg = (xs, k) => xs.reduce((s, x) => s + x[k], 0) / xs.length;
   const today = hist.filter((h) => new Date(h.at).toDateString() === new Date().toDateString()).length;
-  const parts = [`${hist.length} drills in all, ${today} today.`];
+  const copies = hist.length - answers.length;
+  const split = copies ? ` (${answers.length} answering, ${copies} copying)` : "";
+  const parts = [`${hist.length} drills in all${split}, ${today} today.`];
   if (prev5.length) {
     const d = avg(last5, "nwam") - avg(prev5, "nwam");
-    parts.push(`Your last five average ${avg(last5, "nwam").toFixed(1)} NWAM, ${d >= 0 ? "up" : "down"} ${Math.abs(d).toFixed(1)} on the five before.`);
+    parts.push(`Your last five answers average ${avg(last5, "nwam").toFixed(1)} NWAM, ${d >= 0 ? "up" : "down"} ${Math.abs(d).toFixed(1)} on the five before.`);
     const a = (avg(last5, "accuracy") - avg(prev5, "accuracy")) * 100;
     parts.push(`Accuracy ${a >= 0 ? "up" : "down"} ${Math.abs(a).toFixed(1)} points.`);
   }

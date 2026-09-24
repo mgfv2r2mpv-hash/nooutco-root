@@ -6,7 +6,8 @@
  * think); a missing field counts as zero, never as a guess.
  */
 import { dayOf } from "./panel.js";
-import { BANDS } from "./score.js";
+import { BANDS, ACCURACY_GATE } from "./score.js";
+import { bandOf } from "./bands.js";
 import { OUTLINE } from "./outline.js";
 import { nemeses } from "./nemeses.js";
 
@@ -121,8 +122,9 @@ export const TROPHIES = Object.freeze([
   ...tiers("Words", "kept", (a) => a.kept, [
     [250, "In Your Own Words"], [1000, "Found My Voice"], [5000, "Signature Style"], [20000, "Voice of Experience"],
   ], (n) => `Keep ${commas(n)} words: answers you pressed Keep it on, in your voice corpus.`),
-  ...BANDS.slice(0, -1).slice().reverse().map((b) => one("Speed", `band-${b.name.toLowerCase()}`, BAND_NAMES[b.name] || b.name,
-    `Reach ${b.min} NWAM on any clock (${b.name}).`, (a) => a.bestNwam, b.min)),
+  // A band trophy reads the band one round earned, accuracy gate and all, as the road does.
+  ...BANDS.slice(0, -1).map((b, i) => [b, BANDS.length - 1 - i]).reverse().map(([b, rank]) => one("Speed", `band-${b.name.toLowerCase()}`, BAND_NAMES[b.name] || b.name,
+    `Reach ${b.min} NWAM on any clock at ${Math.round(ACCURACY_GATE * 100)}% accuracy or better (${b.name}), copying or answering.`, (a) => a.bandRank, rank)),
   one("Speed", "gwam-100", "Hundred Club", "Reach 100 GWAM on any clock.", (a) => a.bestGwam, 100),
   ...tiers("Speed", "pb", (a) => a.pbs, [[5, "Personal Best"], [25, "Record Breaker"], [75, "Never Satisfied"]],
     (n) => `Set ${n} personal bests (beating your old best at that clock).`),
@@ -347,7 +349,7 @@ function retiredTips(q, fired) {
 /** The running totals the trophies read, advanced one drill at a time. */
 function emptyAgg() {
   return {
-    sessions: 0, days: 0, streak: 0, perLen: {}, words: 0, kept: 0, bestNwam: 0, bestGwam: 0, pbs: 0, leap: 0,
+    sessions: 0, days: 0, streak: 0, perLen: {}, words: 0, kept: 0, bandRank: 0, bestNwam: 0, bestGwam: 0, pbs: 0, leap: 0,
     clean97: 0, flawless: 0, flawlessLong: 0, bestCombo: 0, shiftOk: 0, shiftCleanDrill: 0, wordDeletes: 0, weakClean: 0,
     domains: 0, items: 0, lexicon: 0, bestSitting: 0, bestDay: 0, bestDayMinutes: 0, fullSpectrum: 0,
     early: 0, late: 0, weekend: 0, comeback: 0, copy: 0, respond: 0, chain: 0, spoken: 0, oracle: 0,
@@ -416,6 +418,7 @@ export function trophyCase(history, tame = []) {
     lastNwam = nwam;
     if (m) bestAt[m] = Math.max(bestAt[m] ?? -1, nwam);
     a.bestNwam = Math.max(a.bestNwam, nwam); a.bestGwam = Math.max(a.bestGwam, num(h.gwam));
+    if (bandOf(h) >= 0) a.bandRank = Math.max(a.bandRank, BANDS.length - 1 - bandOf(h));
     if (words >= 20 && num(h.accuracy) >= 0.97) a.clean97 = 1;
     if (words >= 40 && num(h.accuracy) >= 1) a.flawless = 1;
     if (m >= 2 && words >= 40 && num(h.accuracy) >= 1) a.flawlessLong = 1;

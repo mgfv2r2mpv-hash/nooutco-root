@@ -204,3 +204,14 @@ test("an improvement once earned stays earned even if the habit slips back", () 
   const slipped = good.concat(Array.from({ length: 5 }, (_, i) => rec(11, 9, i * 2, { shift: { ok: 3, same: 2 } })));
   assert.equal(find(slipped, "shift-better").unlocked, find(good, "shift-better").unlocked);
 });
+
+test("S9: a band trophy needs the band a round earned, accuracy gate and all, as the road reads it", () => {
+  // 96 NWAM at 95% accuracy is gated down a band: the road says Expert, so the trophy says Expert too.
+  const gated = [rec(1, 9, 0, { mode: "respond", nwam: 96, accuracy: 0.95 })];
+  assert.ok(unlockedIds(gated).has("band-expert"));
+  assert.ok(!unlockedIds(gated).has("band-elite"));
+  // The same speed over the gate earns Elite, on the date of that round.
+  const clean = [...gated, rec(2, 9, 0, { mode: "respond", nwam: 96, accuracy: 0.98 })];
+  assert.equal(find(clean, "band-elite").unlocked, at(2, 9, 0));
+  assert.equal(find(clean, "band-elite").condition, "Reach 95 NWAM on any clock at 96% accuracy or better (Elite), copying or answering.");
+});
