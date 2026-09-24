@@ -7,7 +7,7 @@
  * pickWords is pure and exported for the node tests.
  */
 
-import { closeGames } from "./gamebox.js";
+import { closeGames, unfinishedLine } from "./gamebox.js";
 
 export const GAME_WORDS = 10;
 
@@ -181,7 +181,10 @@ export function openPairGame(host, { pair, words, roundMs = null, runs = [], pro
       s.classList.toggle("is-cur", i === complete);
     });
     track.step(complete / words.length);
-    if (complete >= words.length) finishGame();
+    if (complete < words.length) { out.textContent = ""; return; }
+    const why = unfinishedLine(typed, words, t0 > 0);
+    if (why) out.textContent = why;
+    else finishGame();
   });
   const shut = (handBack = true) => { track.stop(); box.remove(); if (handBack) onClose(); };
   box.shut = () => shut(false);

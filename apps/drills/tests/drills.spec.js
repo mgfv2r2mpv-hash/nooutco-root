@@ -1591,3 +1591,79 @@ test('a game left open on the results is closed by Home and by the next round, a
   await page.evaluate(() => document.querySelector('[data-drill-again]').click());
   await expect(page.locator('[data-minigame]')).toHaveCount(0);
 });
+
+/* ---- a run finishes on the right words, with a clock (AUDIT G7, G12, G15) ---- */
+test('a pair race or Shifty run with wrong words, or with no key typed, is not finished or saved', async ({ page }) => {
+  await page.goto(PAGE);
+  const out = await page.evaluate(async () => {
+    const { openPairGame } = await import('/pairgame.js');
+    const { openShifty, buildShifty, shiftyPool } = await import('/shifty.js');
+    const { PASSAGES } = await import('/passages.js');
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const typeInto = (input, value) => {
+      for (const ch of value) input.dispatchEvent(new KeyboardEvent('keydown', { key: ch, bubbles: true }));
+      input.value = value;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+    const r = {};
+    // Twenty quick spaces: every word wrong. No run, a line saying what to fix.
+    const pairRuns = [];
+    let box = openPairGame(host, { pair: 'br', words: ['brisk', 'bread', 'broad'], onResult: (x) => pairRuns.push(x) });
+    let input = box.querySelector('.pg-input');
+    typeInto(input, 'x y z ');
+    r.pairDoneWrong = box.dataset.done || '';
+    r.pairLine = box.querySelector('[data-pairgame-out]').textContent;
+    // Fix the words: now it finishes and saves one run.
+    typeInto(input, 'brisk bread broad ');
+    r.pairDoneRight = box.dataset.done || '';
+    r.pairRuns = pairRuns.length;
+    // Text with no key at all (e.g. dictation): the clock never started.
+    box = openPairGame(host, { pair: 'br', words: ['brisk'], onResult: (x) => pairRuns.push(x) });
+    input = box.querySelector('.pg-input');
+    input.value = 'brisk ';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    r.noClockDone = box.dataset.done || '';
+    r.noClockLine = box.querySelector('[data-pairgame-out]').textContent;
+    r.pairRunsAfter = pairRuns.length;
+    // Shifty: all spaces, no run.
+    const built = buildShifty(shiftyPool(PASSAGES));
+    const shRuns = [];
+    box = openShifty(host, { built, judge: () => 'ok', handOf: () => 'L', onResult: (x) => shRuns.push(x) });
+    input = box.querySelector('.pg-input');
+    typeInto(input, ' '.repeat(built.words.length));
+    r.shiftyDoneWrong = box.dataset.done || '';
+    r.shiftyLine = box.querySelector('[data-shifty-out]').textContent;
+    typeInto(input, built.words.join(' ') + ' ');
+    r.shiftyDoneRight = box.dataset.done || '';
+    r.shiftyRuns = shRuns.length;
+    return r;
+  });
+  expect(out.pairDoneWrong).toBe('');
+  expect(out.pairLine).toContain('3 words do not match');
+  expect(out.pairDoneRight).toBe('1');
+  expect(out.pairRuns).toBe(1);
+  expect(out.noClockDone).toBe('');
+  expect(out.noClockLine).toContain('The clock did not start');
+  expect(out.pairRunsAfter).toBe(1);
+  expect(out.shiftyDoneWrong).toBe('');
+  expect(out.shiftyLine).toContain('words do not match');
+  expect(out.shiftyDoneRight).toBe('1');
+  expect(out.shiftyRuns).toBe(1);
+});
+
+test('keys typed into a game in the settle after the bell reach the game', async ({ page }) => {
+  await page.addInitScript(() => { window.__settleMs = 3000; });
+  await page.goto('/index.html?clock=3&settle');
+  await wordsReady(page);
+  await page.locator('[data-drill-start]').click();
+  await page.locator('[data-drill-box]').focus();
+  await page.keyboard.down('ShiftLeft'); await page.keyboard.press('KeyT'); await page.keyboard.up('ShiftLeft');
+  await page.locator('[data-drill-box]').pressSequentially('then more words ', { delay: 10 });
+  await done(page);
+  await page.locator('[data-shifty-offer] [data-shifty-go]').click();
+  const input = page.locator('[data-shifty] .pg-input');
+  await input.focus();
+  await page.keyboard.type('abc');
+  await expect(input).toHaveValue('abc');
+});
