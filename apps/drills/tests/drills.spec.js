@@ -1973,3 +1973,57 @@ test('S10: marking a word clinical re-reads the band note, the basis and the lad
   if (ladderBefore.includes('NWAM')) expect(ladderAfter).not.toBe(ladderBefore);
   expect(nwam).not.toBe('');
 });
+
+/* ---- a game is modal: aria-modal, and Tab stays inside (AUDIT G13) ---- */
+test('G13: each game says it is modal and Tab and Shift-Tab stay inside it', async ({ page }) => {
+  await page.goto(PAGE);
+  for (const game of ['pair', 'shifty', 'river']) {
+    await page.evaluate(async (game) => {
+      const { openRiver } = await import('/river.js');
+      const { openPairGame } = await import('/pairgame.js');
+      const { openShifty, buildShifty, shiftyPool } = await import('/shifty.js');
+      const { PASSAGES } = await import('/passages.js');
+      let host = document.querySelector('[data-g13-host]');
+      if (!host) { host = document.createElement('div'); host.dataset.g13Host = ''; document.body.appendChild(host); }
+      if (game === 'pair') openPairGame(host, { pair: 'br', words: ['brisk', 'bread'] });
+      if (game === 'shifty') openShifty(host, { built: buildShifty(shiftyPool(PASSAGES)), judge: () => 'ok', handOf: () => 'L' });
+      if (game === 'river') openRiver(host, { text: 'steady beat text' });
+    }, game);
+    const box = page.locator('[data-g13-host] [data-minigame]');
+    await expect(box).toHaveAttribute('aria-modal', 'true');
+    await box.locator('.pg-close').focus();
+    await page.keyboard.press('Tab');
+    expect(await page.evaluate(() => !!document.activeElement.closest('[data-minigame]')), `${game}: Tab from Close`).toBe(true);
+    await box.locator('.pg-input').focus();
+    await page.keyboard.press('Shift+Tab');
+    expect(await page.evaluate(() => !!document.activeElement.closest('[data-minigame]')), `${game}: Shift-Tab from the box`).toBe(true);
+    await page.keyboard.press('Escape');
+  }
+});
+
+/* ---- dark mode: the game's marks can be read (AUDIT G11) ---- */
+test('G11: in dark mode the ok and bad words read at 4.5:1 and the tachometer hub and ticks at 3:1', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.goto(PAGE);
+  const r = await page.evaluate(async () => {
+    const { openShifty, buildShifty, shiftyPool } = await import('/shifty.js');
+    const { PASSAGES } = await import('/passages.js');
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const box = openShifty(host, { built: buildShifty(shiftyPool(PASSAGES)), judge: () => 'ok', handOf: () => 'L' }) || host.querySelector('[data-minigame]');
+    const rgba = (s) => { const m = s.match(/[\d.]+/g).map(Number); return { r: m[0], g: m[1], b: m[2], a: m.length > 3 ? m[3] : 1 }; };
+    const over = (fg, bg) => ({ r: fg.r * fg.a + bg.r * (1 - fg.a), g: fg.g * fg.a + bg.g * (1 - fg.a), b: fg.b * fg.a + bg.b * (1 - fg.a) });
+    const lum = (c) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(c.r) + 0.7152 * f(c.g) + 0.0722 * f(c.b); };
+    const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+    const bg = rgba(getComputedStyle(box).backgroundColor);
+    const word = (cls) => { const s = document.createElement('span'); s.className = `pg-word ${cls}`; s.textContent = 'x'; box.append(s); return rgba(getComputedStyle(s).color); };
+    const svg = (sel, prop) => rgba(getComputedStyle(box.querySelector(sel))[prop]);
+    return {
+      ok: ratio(over(word('is-ok'), bg), bg) >= 4.5,
+      bad: ratio(over(word('is-bad'), bg), bg) >= 4.5,
+      hub: ratio(over(svg('.sh-hub', 'fill'), bg), bg) >= 3,
+      tick: ratio(over(svg('.sh-tick', 'stroke'), bg), bg) >= 3,
+    };
+  });
+  expect(r).toEqual({ ok: true, bad: true, hub: true, tick: true });
+});
