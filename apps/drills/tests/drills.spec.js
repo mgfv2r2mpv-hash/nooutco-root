@@ -1399,3 +1399,56 @@ test('Keep going: the earlier round kept from the bar, then K on the last round 
   const kept = await page.evaluate(() => window.__kept.map((k) => ({ text: k.text, continues: Boolean(k.continues) })));
   expect(kept).toEqual([{ text: 'function comes first ', continues: false }, { text: 'then form ', continues: true }]);
 });
+
+/* A1: the Mac shell asks the page how many answers would be lost before it
+   quits or closes the window. Nothing is written by the asking. */
+test('unkeptCount: a finished answer counts until Keep, a held row counts on home, a copy round never counts', async ({ page }) => {
+  await page.addInitScript(KEEP_MOCK);
+  await page.goto('/index.html?clock=2');
+  await wordsReady(page);
+  const count = () => page.evaluate(() => window.NoteDrill.unkeptCount());
+  expect(await count()).toBe(0);
+  await page.locator('[data-drill-start]').click();
+  const box = page.locator('[data-drill-box]');
+  await box.pressSequentially('function comes first ', { delay: 10 });
+  // Still being written: quitting now would lose it too.
+  expect(await count()).toBe(1);
+  await done(page);
+  expect(await count()).toBe(1);
+  await page.keyboard.press('k');
+  await expect.poll(() => page.evaluate(() => (window.__kept || []).length)).toBe(1);
+  expect(await count()).toBe(0);
+  await page.keyboard.press('Escape');
+  // A second answer left without a Keep is held on the bar at home: still 1.
+  await page.locator('[data-drill-start]').click();
+  await box.pressSequentially('reinforce the reply ', { delay: 10 });
+  await done(page);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('[data-drill-pending] .pending-row')).toHaveCount(1);
+  expect(await count()).toBe(1);
+  expect(await page.evaluate(() => window.__kept.length)).toBe(1);
+  await page.locator('[data-pending-keep="0"]').click();
+  await expect(page.locator('[data-drill-pending]')).toBeHidden();
+  expect(await count()).toBe(0);
+  // A copy round is not his words, so it is never counted.
+  await page.locator('[data-drill-mode="copy"]').click();
+  await page.locator('[data-drill-start]').click();
+  const words = (await page.locator('[data-drill-passage]').textContent()).trim().split(/\s+/);
+  await box.pressSequentially(words[0] + ' ', { delay: 10 });
+  expect(await count()).toBe(0);
+  await done(page);
+  expect(await count()).toBe(0);
+});
+
+test('unkeptCount: Keep going mid-round counts the answer once, not the held round and the live one', async ({ page }) => {
+  await page.addInitScript(KEEP_MOCK);
+  await page.goto('/index.html?clock=2');
+  await wordsReady(page);
+  await page.locator('[data-drill-start]').click();
+  const box = page.locator('[data-drill-box]');
+  await box.pressSequentially('function comes first ', { delay: 10 });
+  await done(page);
+  await page.keyboard.press('c');
+  await box.pressSequentially('then', { delay: 10 });
+  expect(await page.evaluate(() => window.NoteDrill.unkeptCount())).toBe(1);
+});
