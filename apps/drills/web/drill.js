@@ -542,8 +542,15 @@ async function ingestInBackground(at) {
   const { items = [] } = await store.expertQueue().catch(() => ({ items: [] }));
   const mine = items.filter((e) => e.at === at);
   if (!mine.length) return;
-  const out = await draftAndPropose(mine);
-  els.expertLog.textContent = `Baton pass: ${expertReport(out)}`;
+  // Nobody awaits this, so a refusal is caught here and named in the log
+  // instead of becoming an unhandled rejection (AUDIT S7).
+  try {
+    const out = await draftAndPropose(mine);
+    els.expertLog.textContent = `Baton pass: ${expertReport(out)}`;
+  } catch (e) {
+    console.warn("expert: baton ingest failed", e);
+    els.expertLog.textContent = "Baton pass: the answer could not reach the expert just now. It stays in the queue, and Send tries again.";
+  }
   renderExpert();
 }
 
@@ -1617,4 +1624,4 @@ async function init() {
 init();
 
 // For tests and a look under the hood; never for the page's own flow.
-window.NoteDrill = { handOf, state, data, BANK, scoreDrill, finish, known: () => knownNow(), garden, drawMap, renderBoard, openBoard, sendToExpert, batonPass, unkeptCount };
+window.NoteDrill = { handOf, state, data, BANK, scoreDrill, finish, known: () => knownNow(), garden, drawMap, renderBoard, openBoard, sendToExpert, batonPass, unkeptCount, ingestInBackground };

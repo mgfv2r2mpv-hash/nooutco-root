@@ -1646,6 +1646,16 @@ test('a refused expertSent still clears busy, so the oracle, baton and Send work
   await expect(page.locator('main.drill')).toHaveAttribute('data-busy', '');
 });
 
+test('S7: a refused expertSent in the background baton ingest is caught and named in the expert log', async ({ page }) => {
+  await page.addInitScript(ORACLE_MOCK);
+  await page.addInitScript(() => { window.ClickClackMock.expertSent = async () => { throw new Error('disk said no'); }; });
+  await page.goto(PAGE);
+  const outcome = await page.evaluate(() => window.NoteDrill.ingestInBackground('2026-09-23T15:00:00Z').then(() => 'resolved', (e) => `rejected: ${e}`));
+  expect(outcome).toBe('resolved');
+  await expect(page.locator('[data-drill-expert-log]')).toContainText('could not reach the expert');
+  expect(await page.evaluate(() => window.NoteDrill.state.busy)).toBe(false);
+});
+
 test('the trophy chip does nothing while a round is running, so the finish never yanks him off the board', async ({ page }) => {
   await page.goto(PAGE);
   await wordsReady(page);

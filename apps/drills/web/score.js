@@ -372,17 +372,6 @@ export function thinkProfile(events, minutes) {
 const isEvent = (e) => e && Number.isFinite(e.t)
   && (e.kind === "char" || e.kind === "backspace" || e.kind === "enter");
 
-/** Consecutive events of one kind count once. */
-export function countRuns(events, kind) {
-  let runs = 0;
-  let inRun = false;
-  for (const e of events) {
-    if (e.kind === kind) { if (!inRun) runs += 1; inRun = true; }
-    else inRun = false;
-  }
-  return runs;
-}
-
 /** Tokens the lexicon does not know. Proper nouns, numbers and brackets are
  *  left alone: a name is not a typo and a bracket is a deliberate unknown. */
 export function unknownWords(text, lexicon) {

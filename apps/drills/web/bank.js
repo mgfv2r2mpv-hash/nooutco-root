@@ -414,7 +414,7 @@ export function nextItem(recentIds, rng = Math.random, cell = null) {
 
 /* Terms the Mac's own dictionary does not carry and a clinician types daily.
  * His lexicon grows on top of this. */
-export const CLINICAL_SEED = Object.freeze([
+const CLINICAL_SEED = Object.freeze([
   "prompting", "mand", "mands", "manding", "manded", "tact", "tacts", "tacting", "tacted", "intraverbal", "intraverbals",
   "echoic", "echoics", "elopement", "elopes", "eloped", "eloping", "dysregulation", "dysregulated", "self-injury",
   "reinforcer", "reinforcers", "reinforcement", "reinforced", "reinforcing", "punisher", "punishers", "redirection",
