@@ -1823,7 +1823,9 @@ function App() {
       draft: (opts.draft || []).map((d) => ({ ...d, text: out(d.text) })),
       heldOut: (opts.heldOut || []).map((h) => ({ ...h, text: out(h.text) })),
       // `about` quotes the note, so it goes out under the map with the note.
-      asks: (opts.asks || []).map((a) => ({ ...a, about: out(a.about) })),
+      // `text` is what they typed. sendAsks has already run it through the
+      // scrub gate, so any new name in it is in the map by now.
+      asks: (opts.asks || []).map((a) => ({ ...a, about: out(a.about), text: out(a.text) })),
     });
     if (!pass) return pass;
     return { ...pass, corrections: NotesScrub.restoreOutput(pass.corrections, scrubMapRef.current || []) };
@@ -4049,6 +4051,13 @@ function App() {
       .map((sec) => ({ id: sec.key, heading: sec.heading, text: String(S.output[sec.key] || "") }))
       .filter((d) => d.text.trim());
     if (!draftSections.length) return;
+
+    /* What they typed into each ask is free text like any composer message,
+       so it passes the same gate the panel's own Send does before it leaves.
+       A name typed here for the first time is detected and joins the note's
+       map; cancelling the review sends nothing and keeps the queue. */
+    const typed = asks.map((a) => String(a.text || "")).filter((t) => t.trim());
+    if (typed.length && !(await scrubGate(typed.join("\n"), { carryOver: true }))) return;
 
     const held = heldOutNow();
     setLoading(true);

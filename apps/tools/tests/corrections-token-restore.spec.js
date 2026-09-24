@@ -158,3 +158,25 @@ test('the pass is sent the tokenised draft, never the restored word', async ({ p
   expect(sent.text).toMatch(OPAQUE);
   expect(sent.text).not.toContain('Attn');
 });
+
+test('what they type into an ask leaves under the map too, and not as typed', async ({ page }) => {
+  const passBodies = [];
+  await stub(page, passBodies);
+  await page.goto('/notes/bt/');
+  await draft(page);
+  const section = page.locator('[data-corrections-section="behaviorPlanNarrative"]');
+  await expect(section).toBeVisible({ timeout: 20000 });
+
+  // The ask names the word the scrubber held back from every other call.
+  await section.locator('[data-correction-type="ins"]').first().click();
+  await page.locator('[data-correction-ask]').first().click();
+  await page.locator('[data-correction-ask-input]').first().fill('say Request Attn ended each one');
+  await page.locator('[data-correction-ask-save]').first().click();
+  await page.locator('[data-panel-ask-send]').click();
+  await acceptScrubGate(page);
+  await expect.poll(() => passBodies.length, { timeout: 20000 }).toBe(2);
+
+  const typed = passBodies[1].asks[0].text;
+  expect(typed).toMatch(OPAQUE);
+  expect(typed).not.toContain('Attn');
+});
