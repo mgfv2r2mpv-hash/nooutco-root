@@ -50,6 +50,12 @@ export const canonicalAll = () => /\[\[T(\d+)\]\]/g;
  */
 const SHAPES = [
   (n) => `[T${n}]`,
+  /* Added 2026-09-24: the brackets dropped altogether. Kaleb's sup note came
+     back reading "Goal: T2 (Behavior T3)", and the restorer puts these back
+     now. Second and third on purpose: a shape is picked by token number and an
+     intake issues only a handful, so a shape at the end is never emitted. */
+  (n) => `T${n}`,
+  (n) => `**T${n}**`,
   (n) => `[[t${n}]]`,
   (n) => `[[T ${n}]]`,
   (n) => `[[T${n}]`,
@@ -70,12 +76,11 @@ const SHAPES = [
    original five without saying so. */
 export const SHAPE_COUNT = SHAPES.length;
 
-/* DELIBERATELY NOT IN THE LIST ABOVE: a bare T3 with the brackets gone.
-   The restorer will not substitute a word for two characters sitting loose in
-   prose, because that is how a sentence the clinician wrote gets corrupted. So
-   a bare token is caught rather than repaired, and it is asserted where that
-   behaviour lives, in alert-budget.spec.js, not here where the claim is that
-   nothing survives into the note. */
+/* A bare T3 used to be left out of the list above, on the fear that
+   substituting a word for a loose T3 would corrupt a sentence the clinician
+   wrote. That fear is closed at the mint instead: notes-scrub.js never issues a
+   number the intake already spells. So the bare shape is in the list and every
+   path below has to put it back. */
 
 /* Deterministic on the number, so a test that builds a quote for [[T4]] and a
    test that reads the note are talking about the same string. Spreading the

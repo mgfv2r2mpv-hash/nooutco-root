@@ -77,10 +77,12 @@
      Measured that day rather than reasoned: six reshapings of [[T3]] rode past
      BOTH, including a bare T3 with the brackets gone, a parenthesised (T3), a
      markdown-escaped \\[T3\\] and a merged [[T3, T4]]. notes-gate.js now restores
-     every delimited one of those. It deliberately does NOT restore a bare T3,
-     because substituting a word for two characters sitting loose in prose is
-     how you corrupt a sentence the clinician wrote, so the bare form is this
-     function's to catch and the technician's to fix.
+     every delimited one of those, and since 2026-09-24 the bare T3 as well:
+     Kaleb's note came back reading "Goal: T2" and he ruled that what was removed
+     must be put back. So every arm here is widened again to stay ahead of it,
+     with no left edge on the bare arm (AT3 counts) and fullwidth characters, a
+     # and a spelled-out Token all read. The scrub never mints a number the
+     intake already spells, so a hit that matches the map is ours.
 
      A NUMBER THIS NOTE NEVER ISSUED IS NOT A FINDING. The caller cross-checks
      every hit against the map, so a clinician writing about T3 as a spinal
@@ -93,10 +95,13 @@
   var SQUARE_CLOSE = "\\\\?\\]";
   /* Parentheses and the fullwidth and CJK brackets a model reaches for when it
      decides our square brackets were markup. */
-  var LOOSE_OPEN = "[\\(\\uFF08\\uFF3B\\u3010\\u301A\\uFF62]";
-  var LOOSE_CLOSE = "[\\)\\uFF09\\uFF3D\\u3011\\u301B\\uFF63]";
-  /* One T-number. A model writes T-3 and T_3 as readily as T3. */
-  var ONE_T = "[Tt]\\s*[-_]?\\s*\\d+";
+  var LOOSE_OPEN = "[\\(\\{<\\u00AB\\u2039\\uFF08\\uFF3B\\uFF5B\\u3008\\u300A\\u300C\\u300E\\u3010\\u3014\\u301A\\uFF62]";
+  var LOOSE_CLOSE = "[\\)\\}>\\u00BB\\u203A\\uFF09\\uFF3D\\uFF5D\\u3009\\u300B\\u300D\\u300F\\u3011\\u3015\\u301B\\uFF63]";
+  /* One T-number. A model writes T-3, T_3, T#3, Token 3 and fullwidth forms
+     as readily as T3. */
+  var T_CHAR = "[Tt\\uFF34\\uFF54]";
+  var T_DIGITS = "[0-9\\uFF10-\\uFF19]+";
+  var ONE_T = T_CHAR + "(?:oken)?\\s*[-_#]?\\s*" + T_DIGITS;
   var MORE_T = "(?:\\s*[,;/]\\s*" + ONE_T + ")*";
 
   /* THE SQUARE-BRACKET ARM NEEDS NO MAP, AND MUST NOT HAVE ONE.
@@ -117,7 +122,7 @@
      be told their note is wrong. */
   function looseTokenFamily() {
     return new RegExp(
-      LOOSE_OPEN + "\\s*" + ONE_T + MORE_T + "\\s*" + LOOSE_CLOSE + "|\\b[Tt]\\d+\\b",
+      LOOSE_OPEN + "\\s*" + ONE_T + MORE_T + "\\s*" + LOOSE_CLOSE + "|" + T_CHAR + "(?:oken)?\\s*[-_#]?" + T_DIGITS,
       "g",
     );
   }
@@ -125,9 +130,14 @@
   /* Every number inside one hit, so a merged [[T3, T4]] is read as two. */
   function numbersIn(hit) {
     var found = [];
-    var scan = /[Tt]\s*[-_]?\s*(\d+)/g;
+    var scan = /[Tt\uFF34\uFF54](?:oken)?\s*[-_#]?\s*([0-9\uFF10-\uFF19]+)/g;
     var m;
-    while ((m = scan.exec(hit)) !== null) found.push(String(parseInt(m[1], 10)));
+    while ((m = scan.exec(hit)) !== null) {
+      var ascii = m[1].replace(/[\uFF10-\uFF19]/g, function (c) {
+        return String.fromCharCode(c.charCodeAt(0) - 0xFEE0);
+      });
+      found.push(String(parseInt(ascii, 10)));
+    }
     return found;
   }
 
