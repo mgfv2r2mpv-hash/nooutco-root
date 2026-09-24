@@ -1004,3 +1004,97 @@ test('a shelved passage that no longer exists is dropped, so the due one behind 
   expect(st.back).toBe(true);
   expect(st.shelf).not.toContain('p-retired');
 });
+
+test('every screen opens at its top: focusing a button never scrolls the page down', async ({ page }) => {
+  await page.setViewportSize({ width: 1180, height: 900 });
+  await page.addInitScript(() => localStorage.setItem('noaba.drills.settings.v1', JSON.stringify({ mode: 'copy', copyDefault: true })));
+  await page.goto('/index.html?clock=2');
+  const box = page.locator('[data-drill-box]');
+  const atTop = async (state) => {
+    await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', state, { timeout: 10000 });
+    await expect.poll(() => page.evaluate(() => Math.round(window.scrollY))).toBe(0);
+  };
+  await page.keyboard.press('Enter');
+  await atTop('armed');
+  await box.pressSequentially('Iwata ', { delay: 10 });
+  await atTop('done'); // the read screen, taller than the window
+  await page.keyboard.press('Enter');
+  await atTop('armed');
+  await box.pressSequentially('function first ', { delay: 10 });
+  await atTop('done'); // the results, taller than the window
+  await page.keyboard.press('c');
+  await atTop('armed');
+});
+
+test('an answer left without a Keep is held: a nemesis or a new round later, Keep it and Send still reach it', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__kept = []; window.__sent = [];
+    window.ClickClackMock = {
+      keep: async (r) => { window.__kept.push(r); return { ok: true, corpus: 'Kept.', expert: 'Queued.' }; },
+      expertStatus: async () => ({ connected: true, queued: window.__kept.length, note: 'Connected.' }),
+      expertQueue: async () => ({ items: [] }),
+      expertSent: async (s) => { window.__sent.push(...s); return { ok: true }; },
+    };
+  });
+  await page.goto(PAGE);
+  await wordsReady(page);
+  await page.locator('[data-drill-start]').click();
+  await page.locator('[data-drill-box]').pressSequentially('function comes first ', { delay: 10 });
+  await done(page);
+  await expect(page.locator('[data-drill-pending]')).toBeHidden();
+  await page.keyboard.press('Enter'); // a new round, the answer not kept
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'armed');
+  await expect(page.locator('[data-drill-pending]')).toBeHidden(); // never while typing
+  await page.keyboard.press('Escape');
+  await expect(page.locator('[data-drill-pending]')).toBeVisible();
+  await expect(page.locator('[data-drill-pending]')).toContainText('is not kept');
+  await page.locator('[data-pending-keep="0"]').click();
+  await expect(page.locator('[data-drill-pending]')).toBeHidden();
+  const kept = await page.evaluate(() => window.__kept);
+  expect(kept).toHaveLength(1);
+  expect(kept[0].text).toContain('function comes first');
+});
+
+test('a slow pair opens the pair game: ten words, the clock, and a time to beat', async ({ page }) => {
+  await page.goto(PAGE);
+  await wordsReady(page);
+  await page.locator('[data-drill-start]').click();
+  await page.locator('[data-drill-box]').focus();
+  // "br" typed slowly, everything else quick: br is the slow pair.
+  const box = page.locator('[data-drill-box]');
+  for (const w of ['brisk', 'bread', 'brown', 'brick']) {
+    await page.keyboard.press('KeyB'); await page.waitForTimeout(400);
+    await box.pressSequentially(w.slice(1) + ' ', { delay: 15 });
+  }
+  await done(page);
+  const go = page.locator('.pair-go[data-pair="br"]').first();
+  await expect(go).toBeVisible();
+  await go.click();
+  const game = page.locator('[data-pairgame="br"]');
+  await expect(game).toBeVisible();
+  const words = await game.locator('.pg-word').allTextContents();
+  expect(words).toHaveLength(10);
+  expect(words.every((w) => w.includes('br'))).toBe(true);
+  await game.locator('.pg-input').pressSequentially(words.join(' ') + ' ', { delay: 5 });
+  await expect(game).toHaveAttribute('data-done', '1');
+  await expect(game.locator('[data-pairgame-out]')).toContainText('10 words in');
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'done'); // no shortcut fired
+  await game.locator('.pg-close').click();
+  await expect(game).toHaveCount(0);
+});
+
+test('strict Shift in a copy round: the wrong-side Shift lights red on its side and green on the other, before the letter', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('noaba.drills.settings.v1', JSON.stringify({ mode: 'copy', copyDefault: true })));
+  await page.goto(PAGE);
+  await page.locator('[data-drill-start]').click();
+  const first = await page.evaluate(() => window.NoteDrill.state.passage.text.trim()[0]);
+  await page.locator('[data-drill-box]').focus();
+  // The first letter of a passage is a capital: hold the Shift on its own side.
+  const hand = await page.evaluate((ch) => ('qwertasdfgzxcvb'.includes(ch.toLowerCase()) ? 'L' : 'R'), first);
+  const wrong = hand === 'L' ? 'ShiftLeft' : 'ShiftRight';
+  await page.keyboard.down(wrong);
+  await expect(page.locator(`[data-side="${hand}"]`)).toHaveClass(/is-cue-bad/);
+  await expect(page.locator(`[data-side="${hand === 'L' ? 'R' : 'L'}"]`)).toHaveClass(/is-cue-good/);
+  await page.keyboard.up(wrong);
+  await expect(page.locator(`[data-side="${hand}"]`)).not.toHaveClass(/is-cue-bad/);
+});

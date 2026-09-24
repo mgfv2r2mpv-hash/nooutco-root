@@ -21,6 +21,7 @@ import { newlySpotted } from "./nemeses.js";
 import { createCalendar, renderTrophies } from "./calendar.js";
 import { handOf, judge, createShiftTracker, createShiftFx } from "./shift.js";
 import { nextPassage, trickyProfile, describeProfile, PASSAGES } from "./passages.js";
+import { pickWords, openPairGame } from "./pairgame.js";
 import { tameTarget, tameDrill, tameReport, tameEntry, appendTame, TAME_SECONDS } from "./tame.js";
 import { renderPassage, markPassage } from "./copy.js";
 import { shelve, unshelve, dueEntry, returned, describeShelf, copyRounds } from "./shelf.js";
@@ -57,7 +58,7 @@ const els = {
   opens: $$("[data-drill-open]"), modes: $$("[data-drill-mode]"), lede: $("[data-drill-lede]"),
   passage: $("[data-drill-passage]"), ref: $("[data-drill-ref]"), refText: $("[data-drill-ref-text]"),
   cont: $("[data-drill-continue]"), working: $("[data-drill-working]"),
-  oracleTopic: $("[data-drill-oracle-topic]"), oracleOnly: $$("[data-oracle-only]"), mic: $("[data-drill-mic]"), baton: $("[data-drill-baton]"),
+  oracleTopic: $("[data-drill-oracle-topic]"), oracleOnly: $$("[data-oracle-only]"), mic: $("[data-drill-mic]"), baton: $("[data-drill-baton]"), pending: $("[data-drill-pending]"),
   send: $("[data-drill-send]"), expertStatus: $("[data-drill-expert-status]"), expertToken: $("[data-drill-expert-token]"),
   strictShift: $("[data-drill-strict-shift]"), tame: $("[data-drill-tame]"), tameHome: $("[data-drill-tame-home]"),
   read: $("[data-drill-read]"), respond: $("[data-drill-respond]"), shelve: $("[data-drill-shelve]"), numbers: $("[data-drill-numbers]"),
@@ -129,7 +130,15 @@ function clockText(s) {
   const m = Math.floor(s / 60), r = Math.max(0, Math.floor(s - m * 60));
   return m + ":" + String(r).padStart(2, "0");
 }
-function setPhase(p) { state.phase = p; root.dataset.drillState = p; }
+/* Every new screen starts at its top. His report of 2026-09-24: focusing a
+   button scrolled the results to their bottom, and the next, shorter screen
+   kept that scroll and showed white space. So focus never scrolls, and a
+   screen change (anything but armed to running) resets it. */
+function setPhase(p) {
+  const changed = p !== state.phase && p !== "running";
+  state.phase = p; root.dataset.drillState = p;
+  if (changed || p === "armed") window.scrollTo(0, 0);
+}
 function li(text) { const n = document.createElement("li"); n.textContent = text; return n; }
 function keyName(k) { return k === " " ? "space" : k === "\n" ? "return" : k; }
 const median = (xs) => { if (!xs.length) return 0; const s = [...xs].sort((a, b) => a - b); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
@@ -203,6 +212,7 @@ function renderChips() {
   els.trophyChip.hidden = !won;
 }
 function home() {
+  holdIfUnkept();
   clearTimeout(state.timer);
   setPhase("idle");
   els.setup.hidden = false;
@@ -216,7 +226,7 @@ function home() {
   renderChips();
   renderShelf();
   renderTameOffer();
-  els.start.focus();
+  els.start.focus({ preventScroll: true });
 }
 
 /* ---- arm ---------------------------------------------------------------- */
@@ -476,6 +486,7 @@ function continueRound() {
 }
 
 function startRound(mode, minutes, carry) {
+  if (typeof carry !== "string") holdIfUnkept();
   state.mode = mode;
   state.roundMinutes = minutes;
   state.events = []; state.score = null; state.flagged = []; state.combo = 0; state.bestCombo = 0;
@@ -532,7 +543,9 @@ function startRound(mode, minutes, carry) {
   garden.reset();
   if (continuing) garden.update({ words: state.prefix / 5, heat: 0 });
   setPhase("armed");
-  els.box.focus();
+  els.box.focus({ preventScroll: true });
+  // The one scroll a screen may need: the typing box, when a short window hides it.
+  if (els.box.getBoundingClientRect().bottom > window.innerHeight) els.box.scrollIntoView({ block: "nearest" });
   els.box.setSelectionRange(els.box.value.length, els.box.value.length);
 }
 
@@ -621,7 +634,33 @@ function shiftCheck(e, ev) {
   else if (j === "ok") shiftFx.ok(side);
   return j;
 }
-function onShiftKey(e) { shiftKeys.key(e); }
+function onShiftKey(e) {
+  shiftKeys.key(e);
+  if (e.key !== "Shift") return;
+  if (e.type === "keyup") { shiftFx.uncue(); return; }
+  if (!e.repeat) shiftCue(e);
+}
+/* In a copy round the next letter is known, so the warning comes before the
+   key: his ask of 2026-09-24. A Shift on the letter's own side lights that
+   side red and the other side green, the moment Shift goes down. */
+function nextCopyChar() {
+  if (!copyLike() || !state.passage) return "";
+  const ref = state.passage.text.split(/\s+/).filter(Boolean);
+  const typed = els.box.value.slice(0, els.box.selectionStart ?? els.box.value.length);
+  const words = typed.split(/\s+/);
+  const i = words.length - 1;
+  const partial = words[i] || "";
+  return (ref[i] || "")[partial.length] || "";
+}
+function shiftCue(e) {
+  if (!strictShift() || !["armed", "running"].includes(state.phase)) return;
+  if (e.getModifierState && e.getModifierState("CapsLock")) return;
+  const ch = nextCopyChar();
+  if (!/^[A-Z]$/.test(ch)) return;
+  const hand = handOf("Key" + ch);
+  const side = e.code === "ShiftLeft" ? "L" : e.code === "ShiftRight" ? "R" : null;
+  if (hand && side && side === hand) shiftFx.cue(side);
+}
 
 /* A word backspaced letter by letter, back to a space: once a drill, say so. */
 function coachDelete() {
@@ -831,19 +870,20 @@ function render(s, st, prior) {
   if (s.timing.afterShiftMs) tm.push(`${s.timing.afterShiftMs} ms after shift`);
   if (s.timing.punctuationMs) tm.push(`${s.timing.punctuationMs} ms on punctuation`);
   if (s.timing.pauses) tm.push(`${s.timing.pauses} pause${s.timing.pauses === 1 ? "" : "s"} over two seconds`);
-  for (const p of s.timing.slowPairs) tm.push(`${p.pair} runs slow: ${p.ms} ms`);
   if (s.shift.ok + s.shift.same) tm.push(`${s.shift.ok} of ${s.shift.ok + s.shift.same} capitals with the opposite Shift`);
   const refusedLine = refusedText(s.refused, refusedWeeks(data.history), strictShift());
   if (refusedLine) tm.push(refusedLine);
   if (s.revisions) tm.push(copyLike()
     ? `${s.revisions} revision${s.revisions === 1 ? "" : "s"} with Option or Command+Backspace`
     : `${s.revisions} revision${s.revisions === 1 ? "" : "s"} (a changed mind, never an error), ${s.kept.words} word${s.kept.words === 1 ? "" : "s"} kept`);
-  els.timing.replaceChildren(...(tm.length ? tm.map(li) : [li("Not enough keys to read a rhythm.")]));
+  const slowNodes = s.timing.slowPairs.map((p) => { const n = li(`${p.pair} runs slow: ${p.ms} ms `); n.append(pairButton(p.pair, p.ms)); return n; });
+  els.timing.replaceChildren(...(tm.length || slowNodes.length ? [...tm.map(li), ...slowNodes] : [li("Not enough keys to read a rhythm.")]));
   els.tips.replaceChildren(...(s.tips.length ? s.tips.map((t) => {
     const n = document.createElement("li");
     const b = document.createElement("b"); b.textContent = t.tip;
     const w = document.createElement("span"); w.textContent = "because " + t.why;
     n.append(b, w);
+    if (t.id === "cadence") for (const p of s.timing.slowestPairs || []) n.append(pairButton(p.pair, p.ms));
     return n;
   }) : [li("Nothing fired. Same form, faster, next time.")]));
   els.think.textContent = thinkText(s);
@@ -872,9 +912,8 @@ function render(s, st, prior) {
   showTab("drill");
   els.question.hidden = true;
   els.results.hidden = false;
-  window.scrollTo({ top: 0, behavior: "smooth" });
   renderChips();
-  els.again.focus();
+  els.again.focus({ preventScroll: true });
   if (state.mode === "copy") showRead();
 }
 /* ---- read and consider, and the shelf --------------------------------------
@@ -920,7 +959,7 @@ function showRead() {
   els.read.classList.remove("is-in"); void els.read.offsetWidth; els.read.classList.add("is-in");
   root.dataset.drillView = "read";
   window.scrollTo({ top: 0 });
-  els.respond.focus();
+  els.respond.focus({ preventScroll: true });
 }
 /* The numbers of the copy round, and back again. */
 function toggleNumbers() {
@@ -929,7 +968,7 @@ function toggleNumbers() {
   els.read.hidden = true;
   els.results.hidden = false;
   delete root.dataset.drillView;
-  els.again.focus();
+  els.again.focus({ preventScroll: true });
 }
 function shelveIt() {
   if (state.phase !== "done" || state.mode !== "copy" || !state.passage) return;
@@ -1156,31 +1195,41 @@ function openBoard(tab) {
   showTab(tab);
 }
 
-async function keep() {
-  const hasWords = state.score && (state.score.gwam > 0 || (state.spoken && roundText().trim()));
-  if (!state.score || state.kept || copyLike() || !hasWords) return;
-  els.keep.disabled = true;
-  els.keepnote.textContent = "Keeping...";
+async function keep(held = null) {
+  // held: an answer left without a Keep (renderPending); otherwise the one on screen.
+  const live = !held || held instanceof Event;
+  if (live) {
+    const hasWords = state.score && (state.score.gwam > 0 || (state.spoken && roundText().trim()));
+    if (!state.score || state.kept || copyLike() || !hasWords) return;
+    els.keep.disabled = true;
+    els.keepnote.textContent = "Keeping...";
+  }
+  const snap = live ? snapshot() : held;
   // The whole answer, every Keep going round of it; if an earlier round was
   // already kept, only what came after, marked as continuing that one.
-  const from = state.keptUpTo;
-  const text = els.box.value.slice(from);
+  const from = snap.from;
+  const text = snap.text.slice(from);
   // What was in front of him, and his tone, counted here on the Mac (stance.js).
-  const research = researchContext({ mode: state.mode, item: state.item, passage: state.passage, oracle: state.oracle });
+  const research = researchContext({ mode: snap.mode, item: snap.item, passage: snap.passage, oracle: snap.oracle });
   const r = await store.keep({
-    at: state.record.at, itemId: state.item.id, outline: state.item.outline, question: state.item.question,
-    ...(from ? { continues: state.answerAt } : {}), ...(state.passage && state.mode === "respond" ? { passage: state.passage.id, passageSource: state.passage.source } : {}),
-    minutes: state.roundMinutes, seconds: secondsFor(), text,
-    nwam: state.score.nwam, gwam: state.score.gwam, accuracy: state.score.accuracy,
+    at: snap.record.at, itemId: snap.item.id, outline: snap.item.outline, question: snap.item.question,
+    ...(from ? { continues: snap.answerAt } : {}), ...(snap.passage && snap.mode === "respond" ? { passage: snap.passage.id, passageSource: snap.passage.source } : {}),
+    minutes: snap.roundMinutes, seconds: snap.seconds, text,
+    nwam: snap.score.nwam, gwam: snap.score.gwam, accuracy: snap.score.accuracy,
     // Where he stopped to think, by character offset: the expert can read
     // what came right before each stop as what he was deciding.
-    pauses: state.score.think.stops, revisions: state.score.revisions,
-    mode: state.mode, register: state.spoken ? "spoken" : "drill",
-    ...(state.item.lens ? { lens: state.item.lens } : {}),
+    pauses: snap.score.think.stops, revisions: snap.score.revisions,
+    mode: snap.mode, register: snap.spoken ? "spoken" : "drill",
+    ...(snap.item.lens ? { lens: snap.item.lens } : {}),
     ...(research ? { research } : {}), tone: toneOf(text),
-    ...(state.mode === "oracle" && state.oracle && state.oracle.seed ? { seed: state.oracle.seed } : {}),
-    ...(state.mode === "oracle" && state.oracle ? { oracle: { topic: state.oracle.topic, question: state.oracle.reply.question, thoughts: state.oracle.reply.thoughts } } : {}),
+    ...(snap.mode === "oracle" && snap.oracle && snap.oracle.seed ? { seed: snap.oracle.seed } : {}),
+    ...(snap.mode === "oracle" && snap.oracle ? { oracle: { topic: snap.oracle.topic, question: snap.oracle.reply.question, thoughts: snap.oracle.reply.thoughts } } : {}),
   }).catch((e) => ({ ok: false, note: String(e) }));
+  if (!live) {
+    if (r && r.ok) { snap.record.kept = true; store.saveHistory(data.history); renderExpert(); }
+    els.keepnote.textContent = r && r.ok ? ([r.corpus, r.expert].filter(Boolean).join(" ") || "Kept.") : ((r && r.note) || "Could not keep it.");
+    return r;
+  }
   if (r && r.ok) {
     state.kept = true;
     state.keptUpTo = els.box.value.length;
@@ -1192,6 +1241,68 @@ async function keep() {
   } else {
     els.keep.disabled = false;
     els.keepnote.textContent = (r && r.note) || "Could not keep it.";
+  }
+  return r;
+}
+
+/* ---- the pair game (pairgame.js) -------------------------------------------
+   A slow pair is a button: ten words that hold it, typed against the clock. */
+function pairButton(pair, ms) {
+  const b = Object.assign(document.createElement("button"), { type: "button", className: "pair-go", textContent: `Blast ${pair}` });
+  b.dataset.pair = pair;
+  b.title = `Ten words with "${pair}", against the clock`;
+  b.addEventListener("click", () => {
+    const field = [...PASSAGES.map((x) => x.text), ...BANK.map((x) => x.question || "")];
+    const words = pickWords(pair, { field, dictionary: WORDS || [] });
+    if (words.length) openPairGame(els.results, { pair, words, roundMs: ms, onClose: () => els.again.focus({ preventScroll: true }) });
+  });
+  return b;
+}
+
+/* ---- an answer left without a Keep ------------------------------------------
+   His report of 2026-09-24: respond, then a nemesis drill, and the answer had
+   no way left to reach the expert. His ruling stands: text is kept only when
+   he presses Keep. So the answer is held for this session, and a bar on the
+   home and results screens offers Keep it and Send to the expert. */
+const PENDING_MAX = 3;
+function snapshot() {
+  return {
+    record: state.record, item: state.item, passage: state.passage, oracle: state.oracle, mode: state.mode,
+    roundMinutes: state.roundMinutes, seconds: secondsFor(), score: state.score, spoken: state.spoken,
+    from: state.keptUpTo, answerAt: state.answerAt, text: els.box.value,
+  };
+}
+function holdIfUnkept() {
+  const hasWords = state.score && (state.score.gwam > 0 || (state.spoken && roundText().trim()));
+  if (!["done", "board"].includes(state.phase) || state.kept || copyLike() || !hasWords) return;
+  state.pending = [snapshot(), ...(state.pending || []).filter((p) => p.record !== state.record)].slice(0, PENDING_MAX);
+  renderPending();
+}
+function renderPending() {
+  const list = state.pending || [];
+  els.pending.hidden = !list.length;
+  els.pending.replaceChildren(...list.map((snap, i) => {
+    const row = document.createElement("div");
+    row.className = "pending-row";
+    const q = (snap.item.question || "").slice(0, 70);
+    const at = new Date(snap.record.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    const t = Object.assign(document.createElement("span"), { textContent: `Your answer to "${q}${q.length >= 70 ? "..." : ""}" (${at}) is not kept.` });
+    const k = Object.assign(document.createElement("button"), { type: "button", className: "keep", textContent: "Keep it" });
+    k.dataset.pendingKeep = String(i);
+    const send = Object.assign(document.createElement("button"), { type: "button", className: "soft", textContent: "Send to the expert" });
+    send.dataset.pendingSend = String(i);
+    k.addEventListener("click", () => keepPending(snap, false));
+    send.addEventListener("click", () => keepPending(snap, true));
+    row.append(t, k, send);
+    return row;
+  }));
+}
+async function keepPending(snap, thenSend) {
+  const r = await keep(snap);
+  if (r && r.ok) {
+    state.pending = (state.pending || []).filter((p) => p !== snap);
+    renderPending();
+    if (thenSend) await sendToExpert();
   }
 }
 
@@ -1258,6 +1369,7 @@ document.addEventListener("keydown", (e) => {
 }, true);
 document.addEventListener("keydown", (e) => {
   if (e.target === els.box || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.target && e.target.closest && e.target.closest("[data-pairgame]")) return;
   const inButton = e.target && e.target.tagName === "BUTTON";
   if (e.target === els.oracleTopic) { if (e.key === "Enter") { e.preventDefault(); arm(); } return; }
   if (state.phase === "idle") {
@@ -1291,7 +1403,7 @@ async function init() {
   renderShelf();
   renderTameOffer();
   drawMap();
-  els.start.focus();
+  els.start.focus({ preventScroll: true });
   await wordsLoaded;
   store.ready({ bank: BANK.length, outline: ITEMS.length, words: WORDS ? WORDS.length : 0, history: data.history.length });
 }

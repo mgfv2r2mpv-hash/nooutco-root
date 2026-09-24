@@ -550,10 +550,11 @@ export function timingProfile(events) {
   const sd = intervals.length > 1
     ? Math.sqrt(intervals.reduce((s, x) => s + (x - mean) * (x - mean), 0) / (intervals.length - 1))
     : 0;
-  const slow = [...digraph.entries()]
+  const pairs = [...digraph.entries()]
     .map(([k, xs]) => ({ pair: k, n: xs.length, ms: Math.round(xs.reduce((s, x) => s + x, 0) / xs.length) }))
-    .filter((d) => d.n >= 2 && med > 0 && d.ms > SLOW_FACTOR * med)
-    .sort((a, b) => b.ms - a.ms).slice(0, 5);
+    .filter((d) => d.n >= 2 && !/\s/.test(d.pair))
+    .sort((a, b) => b.ms - a.ms);
+  const slow = pairs.filter((d) => med > 0 && d.ms > SLOW_FACTOR * med).slice(0, 5);
   return {
     intervals: intervals.length,
     medianMs: Math.round(med),
@@ -564,6 +565,9 @@ export function timingProfile(events) {
     afterShiftMs: afterShift.length ? Math.round(median(afterShift)) : null,
     punctuationMs: punct.length ? Math.round(median(punct)) : null,
     slowPairs: slow,
+    // The slowest two pairs typed at least twice, slow past the cut or not:
+    // what the cadence tip names, so it never points at an empty list.
+    slowestPairs: pairs.slice(0, 2).map((d) => ({ pair: d.pair, ms: d.ms })),
   };
 }
 
@@ -602,9 +606,18 @@ export function formTips({ grossWords, corrections, tricky, timing, habits, shif
   // between words and sentences are thinking, and the drill wants the thinking.
   if (timing.wordIntervals >= 20 && timing.wordCv > 0.6) {
     tips.push({ id: "cadence", why: `letter-to-letter timing inside words varies ${Math.round(timing.wordCv * 100)}%`,
-      tip: "Uneven fingers, not uneven thinking. Pick the two slow pairs above and type each ten times slowly and evenly; the rhythm inside words is the part practice fixes." });
+      tip: cadenceTip(timing.slowestPairs) });
   }
   return tips;
+}
+
+/** The cadence tip, naming the pairs that ran slowest this round. */
+export function cadenceTip(slowest) {
+  const named = (slowest || []).map((d) => `${d.pair} (${d.ms} ms)`);
+  const drill = named.length
+    ? `Your slowest pairs this round were ${named.join(" and ")}. Type ${named.length === 1 ? "it" : "each"} ten times slowly and evenly`
+    : "Type a line of your weak letters slowly and evenly";
+  return `Uneven fingers, not uneven thinking. ${drill}; the rhythm inside words is the part practice fixes.`;
 }
 
 const NEIGHBOURS = new Set(["er", "io", "nm", "ui", "op", "as", "sd", "df", "jk", "kl", "cv", "vb", "tr", "ty", "gh", "fg"]);

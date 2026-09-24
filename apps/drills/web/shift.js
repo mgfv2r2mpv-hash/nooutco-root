@@ -150,10 +150,25 @@ export function createShiftFx(layer) {
     /** Strict Shift: the same-side capital was refused. The same paint, and the key he hit struck through and shaken on its own side. */
     refuse(hand, key) {
       this.same(hand, key);
+      // The same red and green as the warning, held while the Shift is down.
+      this.cue(hand);
       const wrong = sides[hand];
       const cap = wrong && wrong.lastElementChild;
       if (cap && cap.classList.contains("fx-key")) cap.classList.add("is-refused");
       layer.dataset.lastShift = "refused";
+    },
+    /** The warning before the key: the Shift he holds is on the letter's own
+        side, so that side glows red and the other side green until he lets go. */
+    cue(wrongSide) {
+      const rightSide = wrongSide === "L" ? "R" : "L";
+      if (!sides[wrongSide] || !sides[rightSide]) return;
+      sides[wrongSide].classList.add("is-cue-bad");
+      sides[rightSide].classList.add("is-cue-good");
+      layer.dataset.cue = wrongSide;
+    },
+    uncue() {
+      for (const s of Object.values(sides)) if (s) s.classList.remove("is-cue-bad", "is-cue-good");
+      delete layer.dataset.cue;
     },
     /** An opposite-side capital: a small cheer on the side of the Shift he used. */
     ok(shift) {
@@ -165,6 +180,6 @@ export function createShiftFx(layer) {
       later(g, 1100);
       layer.dataset.lastShift = "ok";
     },
-    clear() { for (const s of Object.values(sides)) if (s) { s.replaceChildren(); s.classList.remove("is-warn"); } delete layer.dataset.lastShift; },
+    clear() { for (const s of Object.values(sides)) if (s) { s.replaceChildren(); s.classList.remove("is-warn", "is-cue-bad", "is-cue-good"); } delete layer.dataset.lastShift; delete layer.dataset.cue; },
   };
 }
