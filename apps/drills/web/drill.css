@@ -731,7 +731,7 @@ main.drill[data-drill-state="armed"] .pending, main.drill[data-drill-state="runn
 .sh-rpm { font: 700 11px/1 -apple-system, sans-serif; text-anchor: middle; fill: currentColor; }
 .shifty.is-stall .sh-road { animation: sh-stall .35s ease-in-out 1; }
 @keyframes sh-stall { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
-@media (prefers-reduced-motion: reduce) { .pg-track > span, .sh-car, .sh-needle { transition: none; } .pg-bubble.is-on, .pg-tortoise.is-win, .pg-hare.is-late, .shifty.is-stall .sh-road { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .pg-track > span, .sh-car, .sh-needle { transition: none; } .pg-bubble.is-on, .pg-tortoise.is-win, .pg-hare.is-late, .shifty.is-stall .sh-road { animation: none; } .pg-hare.is-bolt { transition: none; } }
 
 /* River Rhythm: the kayak holds mid-river on an even beat */
 .rv-how { margin: 0 0 10px; font-size: 14px; opacity: .85; }
@@ -745,4 +745,4 @@ main.drill[data-drill-state="armed"] .pending, main.drill[data-drill-state="runn
 .rv-label { position: relative; display: block; text-align: center; font: 600 12px/22px -apple-system, sans-serif; }
 .rv-text { max-height: 7.5em; overflow: hidden; font-size: 16px !important; }
 @keyframes rv-flow { to { background-position: 26px 0; } }
-@media (prefers-reduced-motion: reduce) { .rv-water::before { animation: none; } .rv-kayak { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .rv-water::before { animation: none; } .rv-kayak, .rv-fill { transition: none; } }

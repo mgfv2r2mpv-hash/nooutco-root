@@ -1848,3 +1848,91 @@ test('keys typed into a game in the settle after the bell reach the game', async
   await page.keyboard.type('abc');
   await expect(input).toHaveValue('abc');
 });
+
+test('S8: the first result after the band change says so once, then never again', async ({ page }) => {
+  await page.addInitScript(() => {
+    if (localStorage.getItem('noaba.drills.v1')) return;
+    localStorage.setItem('noaba.drills.v1', JSON.stringify([{
+      at: '2026-09-20T15:00:00.000Z', minutes: 1, seconds: 60, nwam: 80, gwam: 82, accuracy: 0.98,
+      words: 82, mode: 'answer', rating: 'Professional', keys: {},
+    }]));
+  });
+  await page.goto(PAGE);
+  await page.locator('[data-drill-start]').click();
+  await page.locator('[data-drill-box]').pressSequentially('The BCBA modeled the prompt.', { delay: 12 });
+  await done(page);
+  const note = page.locator('[data-drill-bandsnote]');
+  await expect(note).toBeVisible();
+  await expect(note).toContainText('The bands changed on 2026-09-23');
+  await expect(note).toContainText('Expert (85 NWAM)');
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('noaba.drills.settings.v1')).bandsNoted)).toBe(true);
+  // The next round, and the next launch, carry no note.
+  await page.locator('[data-drill-again]').click();
+  await page.locator('[data-drill-box]').pressSequentially('The parent ran the prompt.', { delay: 12 });
+  await done(page);
+  await expect(note).toBeHidden();
+  await page.reload();
+  await page.locator('[data-drill-start]').click();
+  await page.locator('[data-drill-box]').pressSequentially('The parent ran the prompt.', { delay: 12 });
+  await done(page);
+  await expect(note).toBeHidden();
+});
+
+test('S8: no band-change note with no rounds from before the change, and a copy round shows it on the read screen', async ({ page }) => {
+  await page.goto(PAGE);
+  await page.locator('[data-drill-start]').click();
+  await page.locator('[data-drill-box]').pressSequentially('The BCBA modeled the prompt.', { delay: 12 });
+  await done(page);
+  await expect(page.locator('[data-drill-bandsnote]')).toBeHidden();
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('noaba.drills.settings.v1')).bandsNoted)).toBeUndefined();
+
+  await page.evaluate(() => {
+    localStorage.setItem('noaba.drills.settings.v1', JSON.stringify({ mode: 'copy', copyDefault: true }));
+    localStorage.setItem('noaba.drills.v1', JSON.stringify([{
+      at: '2026-09-20T15:00:00.000Z', minutes: 1, seconds: 60, nwam: 80, gwam: 82, accuracy: 0.98,
+      words: 82, mode: 'copy', passage: 'p-x', rating: 'Professional', keys: {},
+    }]));
+  });
+  await page.reload();
+  await page.locator('[data-drill-start]').click();
+  const words = ((await page.locator('[data-drill-passage]').textContent()) || '').trim().split(/\s+/);
+  await page.locator('[data-drill-box]').pressSequentially(words.slice(0, 8).join(' ') + ' ', { delay: 10 });
+  await done(page);
+  await expect(page.locator('[data-drill-read]')).toBeVisible();
+  await expect(page.locator('[data-drill-read-bandsnote]')).toContainText('The bands changed on 2026-09-23');
+});
+
+test('S16: the tabs say which one is selected, and the arrow keys walk them', async ({ page }) => {
+  await page.goto(PAGE);
+  await page.locator('[data-drill-start]').click();
+  await page.locator('[data-drill-box]').pressSequentially('The BCBA modeled the prompt.', { delay: 12 });
+  await done(page);
+  const tab = (name) => page.locator(`[data-tab="${name}"]`);
+  await expect(tab('drill')).toHaveAttribute('aria-selected', 'true');
+  await expect(tab('progress')).toHaveAttribute('aria-selected', 'false');
+  await tab('drill').focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(tab('progress')).toHaveAttribute('aria-selected', 'true');
+  await expect(tab('progress')).toBeFocused();
+  await expect(page.locator('[data-pane="progress"]')).toBeVisible();
+  await expect(tab('drill')).toHaveAttribute('aria-selected', 'false');
+  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.press('ArrowLeft');
+  await expect(tab('expert')).toHaveAttribute('aria-selected', 'true');
+  await expect(tab('expert')).toBeFocused();
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'done');
+});
+
+test('G10: reduced motion stills the hare bolt and the river fill', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto(PAGE);
+  const out = await page.evaluate(() => {
+    const host = document.createElement('div');
+    host.innerHTML = '<div class="pg-track"><span class="pg-hare is-bolt"></span></div><div class="rv-bar"><div class="rv-fill"></div></div>';
+    document.body.append(host);
+    const d = (sel) => getComputedStyle(host.querySelector(sel)).transitionDuration;
+    return { hare: d('.pg-hare'), fill: d('.rv-fill') };
+  });
+  expect(out.hare).toBe('0s');
+  expect(out.fill).toBe('0s');
+});
