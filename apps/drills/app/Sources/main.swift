@@ -346,7 +346,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         if askingToQuit { return .terminateCancel }
         askingToQuit = true
         let ask = "window.NoteDrill && window.NoteDrill.unkeptCount ? window.NoteDrill.unkeptCount() : 0"
+        // A page that never answers must not make the app unquittable: after
+        // two seconds the quit falls back to the "could not check" warning.
+        var answered = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+            guard let self, !answered else { return }
+            answered = true
+            log("unkept count timed out")
+            self.warnUnkept(count: nil) { quit in
+                self.askingToQuit = false
+                sender.reply(toApplicationShouldTerminate: quit)
+            }
+        }
         web.evaluateJavaScript(ask) { [weak self] result, error in
+            guard !answered else { return }
+            answered = true
             guard let self else { sender.reply(toApplicationShouldTerminate: true); return }
             let count = (result as? NSNumber)?.intValue ?? 0
             if error == nil && count == 0 {
