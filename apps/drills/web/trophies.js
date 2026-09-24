@@ -207,6 +207,14 @@ export const TROPHIES = Object.freeze([
     (n) => `Answer ${n} questions that came back for review.`),
   ...tiers("The other side", "lens-steelman-n", (a) => a.lens.steelman || 0, [[10, "Steel Sharpens Steel"]],
     (n) => `Steelman the other side ${n} times.`),
+  // Teaching moments: the thirty-second nemesis drill (tame.js). Its rounds
+  // come from settings.tame, never from history, and count only here.
+  ...tiers("Teaching moments", "tame-n", (a) => a.tameN, [[1, "Sparring Partner"], [10, "Dojo Regular"], [50, "Sensei"]],
+    (n) => (n === 1 ? "Take the thirty-second drill on a nemesis." : `Take ${n} nemesis drills.`)),
+  ...tiers("Teaching moments", "tame-clean", (a) => a.tameClean, [[1, "Clean Hit"], [10, "Muscle Memory"]],
+    (n) => (n === 1 ? "Finish a nemesis drill with the target costing you nothing." : `Finish ${n} nemesis drills with the target costing you nothing.`)),
+  ...tiers("Teaching moments", "tame-targets", (a) => a.tameTargets, [[3, "Rogues' Gallery"]],
+    (n) => `Drill ${n} different nemeses.`),
   ...tiers("Modes", "copy-n", (a) => a.copyN, [[10, "Scribe"], [50, "Scriptorium"], [150, "Illuminator"]],
     (n) => `Finish ${n} copy rounds.`),
   ...tiers("Modes", "passages", (a) => a.passages, [[10, "Well Read"], [25, "Bookworm"]],
@@ -347,13 +355,17 @@ function emptyAgg() {
     midnight: 0, friday13: 0, newYear: 0, photo: 0, dejaVu: 0,
     batonMax: 0, batonCopies: 0, contMax: 0, carried: 0, shelfBack: 0, shelfCleared: 0, variants: 0, respondN: 0, keptN: 0,
     copyN: 0, passages: 0, oracleN: 0, spokenN: 0, revisions: 0, strictClean: 0, flawlessN: 0, clean97N: 0,
-    lunch: 0, weekdays: 0, seasons: 0, perDomain: {}, reviewN: 0, lens: {},
+    lunch: 0, weekdays: 0, seasons: 0, perDomain: {}, reviewN: 0, lens: {}, tameN: 0, tameClean: 0, tameTargets: 0,
   };
 }
 
-/** The trophy case: every trophy with { unlocked: ISO or null, have, need }. */
-export function trophyCase(history) {
-  const list = sorted(history);
+/**
+ * The trophy case: every trophy with { unlocked: ISO or null, have, need }.
+ * tame is the nemesis drill log (settings.tame): replayed in time order with
+ * the history so its dates stay true, but counted only by its own trophies.
+ */
+export function trophyCase(history, tame = []) {
+  const list = sorted([...(history || []), ...(tame || [])]);
   const a = emptyAgg();
   const got = new Map();
   const days = new Set(), domains = new Set(), items = new Set();
@@ -364,7 +376,15 @@ export function trophyCase(history) {
   const fired = {};
   let lastDay = null, run = 0, sit = 0, lastT = null, shiftRun = 0, lastNwam = null;
   const talk = { passages: new Set(), convDays: new Map(), weekdays: new Set(), seasons: new Set() };
+  const tamed = new Set();
   for (const h of list) {
+    if (h.mode === "tame") {
+      a.tameN += 1;
+      if (h.clean) a.tameClean += 1;
+      tamed.add(String(h.target)); a.tameTargets = tamed.size;
+      for (const tr of TROPHIES) if (!got.has(tr.id) && tr.measure(a) >= tr.need) got.set(tr.id, h.at);
+      continue;
+    }
     const t = Date.parse(h.at), day = dayOf(h.at), when = new Date(t);
     for (const [k, keep] of Object.entries(QUALIFIES)) if (keep(h)) lists[k].push(h);
     a.sessions += 1;
@@ -444,7 +464,7 @@ export function trophyCase(history) {
     for (const tr of TROPHIES) if (!got.has(tr.id) && tr.measure(a) >= tr.need) got.set(tr.id, h.at);
   }
   // His nemeses first: they are the ones written from his own data.
-  const mine = nemeses(list).map((n) => ({
+  const mine = nemeses(list.filter((h) => h.mode !== "tame")).map((n) => ({
     id: n.id, family: n.family, group: n.group, kind: n.kind, name: n.name, condition: n.condition, need: n.need,
     // A full window that has not tamed it yet is one drill short, never "12 of 12".
     have: n.unlocked ? n.need : Math.min(n.need - 1, n.have), spotted: n.spotted, unlocked: n.unlocked,

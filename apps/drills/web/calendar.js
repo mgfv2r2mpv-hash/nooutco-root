@@ -92,8 +92,8 @@ export function createCalendar(root) {
  * toggle shows every trophy.
  */
 let showAll = false;
-export function renderTrophies(root, history) {
-  const everything = trophyCase(history);
+export function renderTrophies(root, history, tame = []) {
+  const everything = trophyCase(history, tame);
   const won = everything.filter((t) => t.unlocked).length;
   const nextOf = new Set();
   // The next one in each family; a secret is never "next", it waits to be found.
@@ -104,7 +104,7 @@ export function renderTrophies(root, history) {
   sum.dataset.trophySummary = "";
   const toggle = h("button", "soft trophy-toggle", showAll ? "Show won and next" : "Show every trophy");
   toggle.type = "button"; toggle.dataset.trophyToggle = "";
-  toggle.addEventListener("click", () => { showAll = !showAll; renderTrophies(root, history); });
+  toggle.addEventListener("click", () => { showAll = !showAll; renderTrophies(root, history, tame); });
   top.append(sum, toggle);
   const groups = [...new Set(all.map((t) => t.group))];
   const out = [top];
