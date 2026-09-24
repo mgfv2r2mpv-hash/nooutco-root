@@ -731,6 +731,8 @@ main.drill[data-drill-state="armed"] .pending, main.drill[data-drill-state="runn
 .sh-rpm { font: 700 11px/1 -apple-system, sans-serif; text-anchor: middle; fill: currentColor; }
 .shifty.is-stall .sh-road { animation: sh-stall .35s ease-in-out 1; }
 @keyframes sh-stall { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+/* dark mode: the word marks and the tachometer stay readable on the dark box (AUDIT G11) */
+@media (prefers-color-scheme: dark) { .pg-word.is-ok { color: #7fd08a; } .pg-word.is-bad { color: #ff8f86; } .sh-hub { fill: #d8d8de; } .sh-tick { stroke: rgba(210,210,220,.8); } .sh-dial { stroke: rgba(170,170,180,.55); } }
 @media (prefers-reduced-motion: reduce) { .pg-track > span, .sh-car, .sh-needle { transition: none; } .pg-bubble.is-on, .pg-tortoise.is-win, .pg-hare.is-late, .shifty.is-stall .sh-road { animation: none; } .pg-hare.is-bolt { transition: none; } }
 
 /* River Rhythm: the kayak holds mid-river on an even beat */

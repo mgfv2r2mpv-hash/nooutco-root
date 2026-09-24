@@ -7,7 +7,7 @@
  * pickWords is pure and exported for the node tests.
  */
 
-import { closeGames, unfinishedLine } from "./gamebox.js";
+import { closeGames, makeModal, unfinishedLine } from "./gamebox.js";
 
 export const GAME_WORDS = 10;
 
@@ -114,6 +114,7 @@ export function openPairGame(host, { pair, words, roundMs = null, runs = [], pro
   box.className = "pairgame";
   box.dataset.pairgame = pair;
   box.setAttribute("role", "dialog");
+  makeModal(box);
   box.dataset.minigame = "pair";
   // Keys aimed anywhere in the game (its Close too) stay in the game, where
   // the page's shortcuts never see them, and Escape closes it from anywhere.
