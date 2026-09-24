@@ -61,19 +61,61 @@ export function pairMs(events, pair) {
   return gaps.length ? Math.round(gaps.reduce((s, x) => s + x, 0) / gaps.length) : null;
 }
 
+/* The race: the hare bolts, then idles doing something silly; the tortoise
+   moves only as he types, and it always wins when the last word lands. */
+const HARE_BITS = [
+  ["\u{1FAA5}", "brushing his teeth"],
+  ["\u{1F4FA}", "watching TV"],
+  ["\u{1F4A4}", "napping"],
+  ["\u{1F955}", "snacking"],
+  ["\u{1F4F1}", "scrolling his phone"],
+];
+function race() {
+  const track = document.createElement("div");
+  track.className = "pg-track";
+  const lane = (cls, face) => { const n = document.createElement("span"); n.className = cls; n.textContent = face; track.appendChild(n); return n; };
+  const hare = lane("pg-hare", "\u{1F407}");
+  const bubble = lane("pg-bubble", "");
+  const tortoise = lane("pg-tortoise", "\u{1F422}");
+  lane("pg-flag", "\u{1F3C1}");
+  let bit = 0, idle = 0;
+  return {
+    node: track,
+    go() {
+      hare.classList.add("is-bolt");
+      setTimeout(() => {
+        const show = () => { const [face, what] = HARE_BITS[bit++ % HARE_BITS.length]; bubble.textContent = face; bubble.title = `The hare is ${what}`; bubble.classList.add("is-on"); };
+        show();
+        idle = setInterval(show, 1800);
+      }, 1100);
+    },
+    step(frac) { tortoise.style.left = `${Math.min(1, frac) * 84}%`; },
+    win() {
+      clearInterval(idle);
+      tortoise.style.left = "84%";
+      tortoise.classList.add("is-win");
+      bubble.textContent = "\u{2757}";
+      hare.classList.add("is-late");
+    },
+    stop() { clearInterval(idle); },
+  };
+}
+
 /**
  * Open the game over the page. host is where the window goes; roundMs is the
- * pair's time in the round just typed, for the comparison at the end.
+ * pair's time in the round just typed; runs are his earlier races on this
+ * pair; onResult(run) saves one (minigames.js).
  */
-export function openPairGame(host, { pair, words, roundMs = null, onClose = () => {} }) {
+export function openPairGame(host, { pair, words, roundMs = null, runs = [], progressLine = () => "", onResult = () => {}, onClose = () => {} }) {
   host.querySelector("[data-pairgame]")?.remove();
   const box = document.createElement("div");
   box.className = "pairgame";
   box.dataset.pairgame = pair;
   box.setAttribute("role", "dialog");
-  box.setAttribute("aria-label", `Pair game: ${pair}`);
+  box.setAttribute("aria-label", `Pair race: ${pair}`);
   const title = document.createElement("h3");
-  title.textContent = `Blast through "${pair}"`;
+  title.textContent = `The tortoise and the hare: "${pair}"`;
+  const track = race();
   const list = document.createElement("p");
   list.className = "pg-words";
   const spans = words.map((w) => {
@@ -95,7 +137,7 @@ export function openPairGame(host, { pair, words, roundMs = null, onClose = () =
   close.type = "button";
   close.className = "soft pg-close";
   close.textContent = "Close";
-  box.append(title, list, input, out, close);
+  box.append(title, track.node, list, input, out, close);
   host.appendChild(box);
 
   const events = [];
@@ -104,11 +146,15 @@ export function openPairGame(host, { pair, words, roundMs = null, onClose = () =
   const finishGame = () => {
     done = true;
     input.disabled = true;
-    const secs = (performance.now() - t0) / 1000;
+    track.win();
+    const secs = Math.round(((performance.now() - t0) / 1000) * 10) / 10;
     const wpm = Math.round((words.join(" ").length + 1) / 5 / (secs / 60));
     const ms = pairMs(events, pair);
-    const vs = ms != null && roundMs ? ` ${pair} took ${ms} ms, against ${roundMs} ms in the round${ms < roundMs ? ". Faster." : "."}` : "";
-    out.textContent = `${words.length} words in ${secs.toFixed(1)} s, ${wpm} wpm.${vs}`;
+    const run = { at: new Date().toISOString(), secs, wpm, ms, roundMs };
+    onResult(run);
+    const vs = ms != null && roundMs ? ` "${pair}" took ${ms} ms, against ${roundMs} ms in the round${ms < roundMs ? ". Faster." : "."}` : "";
+    const prog = ms != null ? progressLine([...runs, run], "ms", "ms on the pair") : "";
+    out.textContent = `The tortoise wins. ${words.length} words in ${secs.toFixed(1)} s, ${wpm} wpm.${vs} ${prog}`.trim();
     box.dataset.done = "1";
     close.focus({ preventScroll: true });
   };
@@ -116,7 +162,7 @@ export function openPairGame(host, { pair, words, roundMs = null, onClose = () =
     e.stopPropagation();
     if (e.key === "Escape") { shut(); return; }
     if (done) return;
-    if (!t0 && e.key.length === 1) t0 = performance.now();
+    if (!t0 && e.key.length === 1) { t0 = performance.now(); track.go(); }
     if (e.key.length === 1) events.push({ t: performance.now(), kind: "char", key: e.key });
   });
   input.addEventListener("input", () => {
@@ -127,9 +173,10 @@ export function openPairGame(host, { pair, words, roundMs = null, onClose = () =
       s.classList.toggle("is-bad", i < complete && typed[i] !== words[i]);
       s.classList.toggle("is-cur", i === complete);
     });
+    track.step(complete / words.length);
     if (complete >= words.length) finishGame();
   });
-  const shut = () => { box.remove(); onClose(); };
+  const shut = () => { track.stop(); box.remove(); onClose(); };
   close.addEventListener("click", shut);
   input.focus({ preventScroll: true });
   return box;
