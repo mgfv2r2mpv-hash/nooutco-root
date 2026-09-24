@@ -513,8 +513,12 @@ test.describe('annotate + panel revision', () => {
     // The change is marked in place, against what was there before.
     const diff = page.locator('.diff-view').first();
     await expect(diff).toBeVisible({ timeout: 15000 });
-    await expect(diff.locator('.diff-del')).toContainText('utilized');
-    await expect(diff.locator('.diff-ins')).toContainText('used');
+    // A reworded run shows only its new wording. The old one is behind a tap.
+    const change = diff.locator('[data-pending-hunk="change"]');
+    await expect(change).toHaveText('used');
+    await expect(diff).not.toContainText('utilized');
+    await change.click();
+    await expect(diff.locator('[data-pending-pop]')).toContainText('utilized');
 
     // The revision replays the whole conversation, so the cached prefix holds.
     expect(revisionBody.messages.length).toBeGreaterThan(1);
@@ -548,6 +552,30 @@ test.describe('annotate + panel revision', () => {
 
     await expect(field).toHaveValue(/used a three-item array/);
     await expect(field).not.toHaveValue(/utilized/);
+  });
+
+  test('the circle on a proposed change opens it in Ask NoMe, quoted in the chip', async ({ page }) => {
+    await draft(page, (route) => route.fulfill(reply(note({
+      lessonProgressNarrative: 'The behavior technician used a three-item array.',
+    }))));
+    await page.getByText('Narrative of Lesson Progress', { exact: true }).click();
+    await page.locator('.revision-input').fill('drop the word utilized');
+    await page.locator('.revision-send').click();
+    const diff = page.locator('.diff-view').first();
+    await expect(diff).toBeVisible({ timeout: 15000 });
+
+    // Hover shows it on a mouse, and moving off puts it away.
+    const change = diff.locator('[data-pending-hunk="change"]');
+    await change.hover();
+    await expect(diff.locator('[data-pending-pop]')).toBeVisible();
+    await page.mouse.move(0, 0);
+    await expect(diff.locator('[data-pending-pop]')).toHaveCount(0);
+
+    await change.click();
+    await diff.locator('[data-pending-ask]').click();
+    await expect(page.locator('.revision-panel')).toBeVisible();
+    await expect(page.locator('.revision-chip')).toContainText('used');
+    await expect(diff.locator('[data-pending-pop]')).toHaveCount(0);
   });
 
   test('selecting a phrase scopes the revision to that phrase', async ({ page }) => {

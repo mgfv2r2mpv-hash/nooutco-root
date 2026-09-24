@@ -4626,13 +4626,16 @@ function App() {
     return (
       <div style={{ marginTop: 10 }}>
         {change.kind === "narrative" ? (
-          <div className="diff-view">
-            {NoteDiff.words(change.prev || "", change.value || "").map((op, i) =>
-              op.type === "same"
-                ? <span key={i}>{op.text}</span>
-                : <span key={i} className={op.type === "ins" ? "diff-ins" : "diff-del"}>{op.text}</span>
-            )}
-          </div>
+          <window.PendingDiff
+            before={change.prev}
+            after={change.value}
+            onAsk={(hunk) => targetSection({
+              kind: "span",
+              id: change.id,
+              heading: correctionHeadings[change.id] || "",
+              text: hunk.text.trim(),
+            })}
+          />
         ) : (
           <div className="diff-view">
             {change.kind === "table"
@@ -4646,7 +4649,7 @@ function App() {
           </button>
           <button type="button" className="diff-discard" onClick={discardProposal}>Discard</button>
           <p className="diff-note">
-            {count > 1 ? `${count} sections changed - accepting applies them together.` : "Green is added, struck-through is removed."}
+            {count > 1 ? `${count} sections changed - accepting applies them together.` : "Green is added, striped is reworded, a red mark is removed. Tap one to see what it was."}
           </p>
         </div>
       </div>
