@@ -67,6 +67,15 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 
-echo "signing (ad hoc, this Mac only)"
-codesign --force --deep --sign - "$APP" >/dev/null 2>&1
+# Sign with his Apple Development identity when this Mac has one: the
+# keychain trusts an app by its signature, and an ad hoc signature is the hash
+# of this one build, so every rebuild asked for his password again. A real
+# identity keeps one "Always Allow" good across rebuilds. Ad hoc otherwise.
+IDENTITY="$(security find-identity -v -p codesigning 2>/dev/null | sed -n 's/.*"\(Apple Development: [^"]*\)".*/\1/p' | head -1)"
+if [ -n "$IDENTITY" ] && codesign --force --deep --sign "$IDENTITY" "$APP" >/dev/null 2>&1; then
+  echo "signing ($IDENTITY)"
+else
+  echo "signing (ad hoc, this Mac only)"
+  codesign --force --deep --sign - "$APP" >/dev/null 2>&1
+fi
 echo "built $APP"
