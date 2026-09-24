@@ -9,7 +9,7 @@ Status is one of: **open**, **fixed** (with the test that failed before the
 fix), **deferred** (with the reason) or **not a bug** (with the evidence).
 
 Baseline before any change: 161 node tests and 122 Playwright tests
-(WebKit and Chromium) pass. After iteration 6: 164 node tests and 160
+(WebKit and Chromium) pass. After iteration 7: 164 node tests and 164
 Playwright tests pass.
 
 Ordered by what matters most to him: his answers first (lost, doubled or
@@ -75,15 +75,15 @@ Practice-only holds: all three save through `saveRun` into `settings.games`; not
 | G4 | `river.js:46`, `92` | bug | MED | A second River open removes the old box without clearing its timer. | Reopen through the old box's close. | **fixed**: `drills.spec.js` "a second River open, a second game, or a hare closed before it idles leaves one game and no stray timer" (a River open runs `closeGames` first, so the old box's interval is cleared) |
 | G5 | `pairgame.js:86-90`, `100`, `110` | bug | MED | The hare's interval is set inside a 1.1 s timeout; closing within that window, or reopening, leaves a 1.8 s interval running on a detached node. | Keep the timeout id and clear it in `stop()`; stop before removing an old box. | **fixed**: same test as G4 (the race keeps the 1.1 s timeout id and `stop()` and `win()` clear it; a reopen shuts the old box) |
 | G6 | `drill.css:687` | bug | LOW | Two different games can be open at once, stacked at the same spot with two live inputs. | One game at a time. | **fixed**: same test as G4 (every game opens through `closeGames(host)`, so opening Shifty closes River and its timer) |
-| G7 | `pairgame.js:177`, `shifty.js:194` | bug | MED | A run ends on a count of spaces, right words or not: twenty quick spaces give a huge wpm and earn Shell Shock, Redline and Heel and Toe. | Advance only on a matching word, or refuse to save a run with wrong words. | open |
+| G7 | `pairgame.js:177`, `shifty.js:194` | bug | MED | A run ends on a count of spaces, right words or not: twenty quick spaces give a huge wpm and earn Shell Shock, Redline and Heel and Toe. | Advance only on a matching word, or refuse to save a run with wrong words. | **fixed**: `drills.spec.js` "a pair race or Shifty run with wrong words, or with no key typed, is not finished or saved" (`unfinishedLine` in `web/gamebox.js`: at the last space every word must match, or the game says how many do not and saves nothing) |
 | G8 | `minigames.js:13-17`, `47` | bug | MED | Game trophies are rebuilt from the last 60 runs only, so a trophy can vanish or change its date once old runs drop off. | Store the first-earned date for each trophy. | open |
 | G9 | `drill.js:1300` | weak use case | MED | Shifty's pool took the first 4000 words of the Mac's sorted word list: every one starts with "a" (aa to agla), about two thirds of the pool. Stripping punctuation also glued "self-injury" into "selfinjury". | Pool from the passages only (`shiftyPool`), split at every non-letter. | **fixed**: `drill-minigames.test.mjs` "Shifty's words come from his field" |
 | G10 | `drill.css:704`, `730`, `740` | bug | LOW | Reduced motion misses the hare's bolt (`.pg-hare.is-bolt` wins on specificity) and `.rv-fill`. | Add both to the reduced-motion block. | open |
 | G11 | `drill.css:692-693`, `724-726` | bug | LOW | Dark mode: ok green about 3.0:1 and bad red about 2.2:1 on `#23262e`; the tachometer hub and ticks nearly vanish. | Dark-mode colours for these. | open |
-| G12 | `pairgame.js:150`, `shifty.js:200` | bug | LOW | A clock that never started (text arrived with no keydown) gives `secs` of the page's age and saves a nonsense run. | Refuse to finish when the clock never started. | open |
+| G12 | `pairgame.js:150`, `shifty.js:200` | bug | LOW | A clock that never started (text arrived with no keydown) gives `secs` of the page's age and saves a nonsense run. | Refuse to finish when the clock never started. | **fixed**: same test (`unfinishedLine` refuses a line with no key behind it and says the clock did not start) |
 | G13 | all three games | incomplete | LOW | `role=dialog` without `aria-modal` or a focus trap; Tab walks into the page behind. | `aria-modal` and keep Tab inside. | open |
 | G14 | tests | incomplete | LOW | Only the Shifty browser test checks history is unchanged; nothing covers Esc, a reopen or closing mid-run. | History checks for the pair race and River; one lifecycle test. | open |
-| G15 | `drill.js:1416-1418` *(uncertain)* | bug | LOW | For 3 s after the bell every key is swallowed, including keys typed into a game opened by a click in that window. | Exempt keys aimed at a game box. | open |
+| G15 | `drill.js:1416-1418` *(uncertain)* | bug | LOW | For 3 s after the bell every key is swallowed, including keys typed into a game opened by a click in that window. | Exempt keys aimed at a game box. | **fixed**: `drills.spec.js` "keys typed into a game in the settle after the bell reach the game" (the settle's capture listener returns for a target inside `[data-minigame]`) |
 
 ## 5. Dead code
 

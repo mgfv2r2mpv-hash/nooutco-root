@@ -1490,6 +1490,8 @@ function settle() {
   setTimeout(() => { if (Date.now() >= settleUntil) delete root.dataset.settling; }, ms);
 }
 document.addEventListener("keydown", (e) => {
+  // A game opened by a click during the settle takes its keys at once (AUDIT G15).
+  if (e.target && e.target.closest && e.target.closest("[data-minigame]")) return;
   if (Date.now() < settleUntil) { e.preventDefault(); e.stopImmediatePropagation(); }
 }, true);
 document.addEventListener("keydown", (e) => {

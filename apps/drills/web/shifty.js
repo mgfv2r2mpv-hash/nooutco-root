@@ -12,7 +12,7 @@
  * buildShifty is pure and exported for the node tests.
  */
 
-import { closeGames } from "./gamebox.js";
+import { closeGames, unfinishedLine } from "./gamebox.js";
 
 export const SHIFTY_WORDS = 20;
 export const SHIFTY_CAPS = 13;
@@ -208,7 +208,10 @@ export function openShifty(host, { built, runs = [], judge, handOf, progressLine
       s.classList.toggle("is-cur", i === complete);
     });
     car.style.left = `${Math.min(1, complete / built.words.length) * 86}%`;
-    if (complete >= built.words.length) finishGame();
+    if (complete < built.words.length) { out.textContent = ""; return; }
+    const why = unfinishedLine(typed, built.words, t0 > 0);
+    if (why) out.textContent = why;
+    else finishGame();
   });
 
   function finishGame() {
