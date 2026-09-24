@@ -1249,6 +1249,34 @@ test('the baton pass run twice at once keeps once and asks the expert once', asy
   expect(out).toEqual({ kept: 1, baton: 1 });
 });
 
+test('a baton reply that quotes his answer is not used, so his words never reach the shelf (AUDIT A10)', async ({ page }) => {
+  await page.addInitScript(BATON_MOCK);
+  await page.addInitScript(() => {
+    const ask = window.ClickClackMock.askClaude;
+    window.ClickClackMock.askClaude = async (req) => {
+      const r = await ask(req);
+      if (req.schema.properties.passage) r.output.passage += ' As you said, high p runs build momentum before the hard ask every time.';
+      return r;
+    };
+  });
+  await page.addInitScript(() => localStorage.setItem('noaba.drills.settings.v1', JSON.stringify({ mode: 'copy', copyDefault: true })));
+  await page.goto(PAGE);
+  await wordsReady(page);
+  await page.locator('[data-drill-start]').click();
+  const box = page.locator('[data-drill-box]');
+  await box.pressSequentially('The ', { delay: 10 });
+  await done(page);
+  await page.keyboard.press('Enter');
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-mode', 'respond');
+  await box.pressSequentially('high p runs build momentum before the hard ask every time ', { delay: 5 });
+  await done(page);
+  await page.evaluate(() => window.NoteDrill.batonPass());
+  await expect(page.locator('[data-drill-keepnote]')).toContainText('quoted your answer');
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-mode', 'respond');
+  expect(await page.evaluate(() => window.NoteDrill.state.passage.kind)).not.toBe('baton');
+  expect(await page.evaluate(() => window.__kept.length)).toBe(1);
+});
+
 /* ---- keys inside a mini game stay in the game (AUDIT G1, G2) ------------- */
 test('on a finished or open game, K and C on Close do nothing to the round, and Esc closes the game, not the results', async ({ page }) => {
   await page.addInitScript(SLOW_KEEP);
@@ -1377,6 +1405,31 @@ test('Esc while talking turns the Mac microphone off', async ({ page }) => {
   await expect.poll(() => page.evaluate(() => window.__micStops)).toBe(1);
   await expect(page.locator('[data-drill-mic]')).not.toHaveClass(/is-on/);
   await expect(page.locator('[data-drill-mic]')).toHaveText('Talk');
+});
+
+test('words typed while talking stay in the box when the next spoken words arrive (AUDIT A12)', async ({ page }) => {
+  await page.addInitScript(ORACLE_MOCK);
+  await page.goto('/index.html?clock=30');
+  await page.locator('[data-drill-mode="oracle"]').click();
+  await page.locator('[data-drill-start]').click();
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-mode', 'oracle');
+  const box = page.locator('[data-drill-box]');
+  await box.pressSequentially('I start ', { delay: 10 });
+  await page.locator('[data-drill-mic]').click();
+  await expect(page.locator('[data-drill-mic]')).toHaveClass(/is-on/);
+  await page.evaluate(() => window.ClickClack.speech({ text: 'with a pairing', final: false }));
+  await expect(box).toHaveValue('I start with a pairing');
+  await box.focus();
+  await page.keyboard.press('End');
+  await box.pressSequentially(' (typed)', { delay: 10 });
+  // The recognizer's partials are cumulative: the next one repeats what it
+  // already heard and adds the new words.
+  await page.evaluate(() => window.ClickClack.speech({ text: 'with a pairing session first', final: false }));
+  await expect(box).toHaveValue('I start with a pairing (typed) session first');
+  await page.evaluate(() => window.ClickClack.speech({ text: 'with a pairing session first today', final: true }));
+  await expect(box).toHaveValue('I start with a pairing (typed) session first today');
+  await page.evaluate(() => window.ClickClack.speech({ text: 'then demands', final: false }));
+  await expect(box).toHaveValue('I start with a pairing (typed) session first today then demands');
 });
 
 test('Keep going: the earlier round kept from the bar, then K on the last round sends only what came after', async ({ page }) => {

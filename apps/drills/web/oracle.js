@@ -281,6 +281,19 @@ export function relevantRecords(records, text, n = 6) {
     .map(({ r }) => ({ title: r.title, rule: String(r.rule).slice(0, 600), ...(r.topic ? { topic: r.topic } : {}) }));
 }
 
+/**
+ * Does a baton reply quote his answer? The reply becomes a copy passage and,
+ * if he shelves it, sits in settings.json, so a reply that carries eight of
+ * his words in a row would put his text on disk outside Keep. Every field
+ * the page shows or shelves is checked.
+ */
+export function batonQuotes(reply, answer) {
+  const r = reply || {};
+  const fields = [r.title, r.text, r.respond, r.stance,
+    ...(r.sources || []).flatMap((s) => [s && s.claim, s && s.source])];
+  return fields.some((f) => sharesRun(f, answer));
+}
+
 /** The prompt for one baton pass. */
 export function batonPrompt({ passage, question, answer, records = [], words: target = 120, weak = [], turn = 1 }) {
   const lines = [

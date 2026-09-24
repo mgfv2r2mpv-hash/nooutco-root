@@ -35,7 +35,7 @@ import { bandUp, bandRoad } from "./bands.js";
 import { nextSeed, openWithSeed } from "./seeds.js";
 import { researchContext, toneOf } from "./stance.js";
 import { ORACLE_SYSTEM, ORACLE_SCHEMA, oraclePrompt, readOracle, DRAFT_SYSTEM, DRAFT_SCHEMA, draftPrompt, toProposal,
-  BATON_SYSTEM, BATON_SCHEMA, batonPrompt, readBaton, batonWords, relevantRecords } from "./oracle.js";
+  BATON_SYSTEM, BATON_SCHEMA, batonPrompt, readBaton, batonQuotes, batonWords, relevantRecords } from "./oracle.js";
 
 const params = new URLSearchParams(location.search);
 // ?clock=SECONDS overrides the minute picker: tests, and a quick look.
@@ -89,6 +89,9 @@ const state = {
   // The oracle: its topic, the turns so far ({ question, answer }), and this turn's reply.
   // listening/spoken: the microphone is on / this round holds words he TALKED.
   oracle: null, busy: false, listening: false, spoken: false, micBase: "",
+  // micHeard: the last partial of the utterance under way; micSkip: how many
+  // of its words already sit in micBase, because he typed after them.
+  micHeard: "", micSkip: 0,
   // The baton pass: how many times this chain has gone to the expert and back.
   baton: 0,
 };
@@ -356,6 +359,7 @@ async function toggleMic() {
   if (!r || !r.ok) { els.hint.textContent = (r && r.note) || "The microphone would not start."; return; }
   const v = els.box.value;
   state.micBase = v && !/\s$/.test(v) ? v + " " : v;
+  state.micHeard = ""; state.micSkip = 0;
   state.listening = true;
   els.mic.classList.add("is-on");
   els.mic.textContent = "Stop talking";
@@ -372,11 +376,22 @@ async function stopMic() {
 window.ClickClack = {
   speech({ text, final } = {}) {
     if (!state.listening || typeof text !== "string") return;
-    els.box.value = state.micBase + text;
+    // A partial repeats the whole utterance so far; the words he typed after
+    // are already in micBase, so only the words past them are added.
+    const fresh = text.split(/\s+/).filter(Boolean).slice(state.micSkip).join(" ");
+    const base = state.micBase;
+    els.box.value = base + (fresh && base && !/\s$/.test(base) ? " " : "") + fresh;
+    state.micHeard = text;
     state.spoken = true;
-    if (final) { state.micBase = els.box.value + " "; }
+    if (final) { state.micBase = els.box.value + " "; state.micHeard = ""; state.micSkip = 0; }
   },
 };
+/* Typing while talking: what he typed stays, so the words heard so far are
+   fixed into micBase and the next partial adds only its new words (AUDIT A12). */
+function typedWhileTalking() {
+  state.micBase = els.box.value;
+  state.micSkip = state.micHeard.split(/\s+/).filter(Boolean).length;
+}
 
 /* ---- the expert on the website --------------------------------------------
    His ruling 2A: kept answers become PROPOSED records he commits or rejects
@@ -476,6 +491,13 @@ async function batonPass() {
   busy("");
   if (!reply) {
     els.keepnote.textContent = (r && r.note) || "The expert's reply could not be read. Your answer is kept.";
+    return;
+  }
+  // A reply that quotes him would become a copy passage and could be shelved
+  // to disk, so it is not used (AUDIT A10).
+  if (batonQuotes(reply, answer)) {
+    store.log(`baton ${turn}: dropped, the reply quoted the answer`);
+    els.keepnote.textContent = "The expert's reply quoted your answer, so it was not used. Your answer is kept. Press B to ask again.";
     return;
   }
   state.baton = turn;
@@ -698,6 +720,7 @@ function coachDelete() {
 
 /* After an Option or Command delete, log one backspace per character it took. */
 function onInput() {
+  if (state.listening) typedWhileTalking();
   if (copyLike() && state.passage) {
     markPassage(els.passage, els.box.value, state.passage.text);
     const typed = els.box.value.trim().split(/\s+/);

@@ -1,7 +1,7 @@
 /* The baton pass: the expert's reply made typable, sized and checked. node --test. */
 import test from "node:test";
 import assert from "node:assert/strict";
-import { BATON_SYSTEM, BATON_SCHEMA, batonPrompt, readBaton, batonWords, relevantRecords, typable, trimToWords } from "../web/oracle.js";
+import { BATON_SYSTEM, BATON_SCHEMA, batonPrompt, readBaton, batonQuotes, batonWords, relevantRecords, typable, trimToWords } from "../web/oracle.js";
 
 test("the baton instructions ask for gentle push back, typable text and real sources", () => {
   assert.match(BATON_SYSTEM, /gently name one or two things he has not considered/);
@@ -59,4 +59,16 @@ test("a reply becomes a passage only with enough words and a next question", () 
   assert.equal(readBaton({ passage: "Too short.", respond: "Q?" }), null);
   assert.equal(readBaton({ passage: long, respond: "" }), null);
   assert.equal(readBaton(null), null);
+});
+
+test("a baton reply that quotes eight of his words in a row is caught in every field (AUDIT A10)", () => {
+  const answer = "I would pair the break card with a visual timer so the kid can see the wait";
+  const quoting = "Research agrees: pair the break card with a visual timer so the kid learns.";
+  const clean = { title: "Timers help", text: "A visual timer makes the wait concrete for many learners.", respond: "What would you fade first?", stance: "agrees", sources: [{ claim: "Timers help", source: "Grey (2019)" }] };
+  assert.equal(batonQuotes(clean, answer), false);
+  for (const field of ["title", "text", "respond", "stance"]) assert.equal(batonQuotes({ ...clean, [field]: quoting }, answer), true, field);
+  assert.equal(batonQuotes({ ...clean, sources: [{ claim: quoting, source: "x" }] }, answer), true, "source claim");
+  assert.equal(batonQuotes({ ...clean, sources: [{ claim: "c", source: quoting }] }, answer), true, "source name");
+  assert.equal(batonQuotes({ ...clean, text: "pair the break card with a timer" }, answer), false, "seven words is not a quote");
+  assert.equal(batonQuotes(clean, ""), false);
 });
