@@ -70,10 +70,29 @@ const els = {
   readParts: { score: $("[data-drill-read-score]"), title: $("[data-drill-read-title]"), source: $("[data-drill-read-source]"),
     text: $("[data-drill-read-text]"), sources: $("[data-drill-read-sources]"), question: $("[data-drill-read-question]") },
   shelf: $("[data-drill-shelf]"), dueReviews: $("[data-drill-reviews]"), mapShelf: $("[data-drill-map-shelf]"),
+  saveNote: $("[data-drill-savenote]"),
   expertConnect: $("[data-drill-expert-connect]"), expertSend: $("[data-drill-expert-send]"), expertLog: $("[data-drill-expert-log]"),
 };
 
 const data = { history: [], lexicon: [], settings: {} };
+
+/* Every save goes through persist (AUDIT S6): a refused write is caught and shows
+ * one quiet line under the bar, never an unhandled rejection. Each save writes the
+ * whole list, so the next save of the same kind retries it and clears the line. */
+const SAVE_WHAT = { saveHistory: "history", saveLexicon: "clinical words", saveSettings: "settings" };
+const saveFailed = new Set();
+function persist(op, value) {
+  const done = (ok, why) => {
+    if (ok) saveFailed.delete(op);
+    else { saveFailed.add(op); store.log(`save ${op} failed: ${String(why).slice(0, 200)}`); }
+    const what = [...saveFailed].map((k) => SAVE_WHAT[k]);
+    els.saveNote.hidden = !what.length;
+    els.saveNote.textContent = what.length ? `Your ${what.join(" and ")} could not be saved to disk just now. It is still here on screen, and the next save tries again.` : "";
+  };
+  return Promise.resolve()
+    .then(() => store[op](value))
+    .then((r) => done(!(r && r.ok === false), r && r.note), (e) => done(false, e));
+}
 let WORDS = null;
 let bankSet = bankWords();
 
@@ -171,7 +190,7 @@ function setMinutes(m, save = true) {
   els.pb.textContent = b != null
     ? `Your best ${what} at ${m} minute${m === 1 ? "" : "s"}: ${b.toFixed(1)} NWAM. Beat it.`
     : `No ${what} drill at ${m} minute${m === 1 ? "" : "s"} yet. This one sets the bar.`;
-  if (save) { data.settings = { ...data.settings, minutes: m }; store.saveSettings(data.settings); }
+  if (save) { data.settings = { ...data.settings, minutes: m }; persist("saveSettings", data.settings); }
   renderRoad(ofKind(copying ? "copy" : "compose"), what);
 }
 /* The bands as a road on the home screen: gilded where his numbers have been. */
@@ -817,7 +836,7 @@ async function finish() {
   const counts = s.gwam > 0 || spokenWords > 0;
   if (counts) {
     data.history.push(state.record);
-    store.saveHistory(data.history);
+    persist("saveHistory", data.history);
     // Copied again from the shelf: it is off the shelf now. Shelve it again to put it back.
     if (state.mode === "copy" && state.passage.fromShelf) saveShelf(unshelve(shelf(), state.passage.id));
   }
@@ -838,7 +857,7 @@ function finishTame(s) {
   state.record = null; state.levelPrior = []; state.spotted = [];
   if (s.gwam > 0) {
     data.settings = { ...data.settings, tame: appendTame(log, tameEntry(t, s, new Date().toISOString(), TAME_SECONDS / 60)) };
-    store.saveSettings(data.settings);
+    persist("saveSettings", data.settings);
   }
   state.unlocked = newlyUnlocked(before, trophies());
   store.log(`drill tame ${t.id} nwam ${s.nwam} acc ${s.accuracy}`);
@@ -978,7 +997,7 @@ const shelf = () => (Array.isArray(data.settings.shelf) ? data.settings.shelf : 
 const shelfNow = () => ({ round: copyRounds(data.history), today: dayOf(new Date().toISOString()) });
 function saveShelf(next) {
   data.settings = { ...data.settings, shelf: next };
-  store.saveSettings(data.settings);
+  persist("saveSettings", data.settings);
   renderShelf();
 }
 function renderDueReviews() {
@@ -1124,10 +1143,10 @@ function plainWords() { return Array.isArray(data.settings.words) ? data.setting
 function markKnown(w, row, as) {
   if (as === "clinical") {
     data.lexicon = [...new Set(data.lexicon.concat([w]))];
-    store.saveLexicon(data.lexicon);
+    persist("saveLexicon", data.lexicon);
   } else {
     data.settings = { ...data.settings, words: [...new Set(plainWords().concat([w]))] };
-    store.saveSettings(data.settings);
+    persist("saveSettings", data.settings);
   }
   knownCache = null;
   row.dataset.drillReviewed = as;
@@ -1142,7 +1161,7 @@ function markKnown(w, row, as) {
   renderLevelUp(s);
   if (state.record) {
     Object.assign(state.record, { nwam: s.nwam, accuracy: s.accuracy, rating: s.rating.name, uncorrected: s.uncorrected });
-    store.saveHistory(data.history);
+    persist("saveHistory", data.history);
     renderBoard();
   }
 }
@@ -1301,7 +1320,7 @@ async function keepSnap(snap, live) {
       if (snap.record === state.record) { state.kept = true; state.keptUpTo = snap.text.length; }
       // An earlier round of the answer still on screen: its later Keep sends only what came after.
       else if (snap.answerAt && snap.answerAt === state.answerAt) state.keptUpTo = Math.max(state.keptUpTo, snap.text.length);
-      store.saveHistory(data.history); renderExpert();
+      persist("saveHistory", data.history); renderExpert();
     }
     els.keepnote.textContent = r && r.ok ? ([r.corpus, r.expert].filter(Boolean).join(" ") || "Kept.") : ((r && r.note) || "Could not keep it.");
     return r;
@@ -1311,7 +1330,7 @@ async function keepSnap(snap, live) {
     state.keptUpTo = els.box.value.length;
     state.record.kept = true;
     dropSameAnswer();
-    store.saveHistory(data.history);
+    persist("saveHistory", data.history);
     els.keep.textContent = "Kept";
     els.keepnote.textContent = [r.corpus, r.expert].filter(Boolean).join(" ") || "Kept.";
     renderExpert();
@@ -1344,7 +1363,7 @@ function pairButton(pair, ms) {
 const games = () => (data.settings.games && typeof data.settings.games === "object" ? data.settings.games : {});
 function saveRun(kind, run, pair) {
   data.settings = { ...data.settings, games: addRun(games(), kind, run, pair) };
-  store.saveSettings(data.settings);
+  persist("saveSettings", data.settings);
 }
 
 /* River Rhythm (river.js): offered with the uneven-timing tip. */
@@ -1516,7 +1535,7 @@ for (const b of els.opens) b.addEventListener("click", () => openBoard(b.dataset
 for (const t of els.tabs) t.addEventListener("click", () => showTab(t.dataset.tab));
 els.strictShift.addEventListener("change", () => {
   data.settings = { ...data.settings, strictShift: els.strictShift.checked };
-  store.saveSettings(data.settings);
+  persist("saveSettings", data.settings);
 });
 els.box.addEventListener("keydown", onShiftKey);
 els.box.addEventListener("keyup", onShiftKey);
@@ -1574,7 +1593,7 @@ async function init() {
   state.minutes = Number(data.settings.minutes) || last || 1;
   // His ruling of 2026-09-23: copy, then respond is the default mode. Moved
   // over once; after that the app opens on whatever mode he last picked.
-  if (!data.settings.copyDefault) { data.settings = { ...data.settings, mode: "copy", copyDefault: true }; store.saveSettings(data.settings); }
+  if (!data.settings.copyDefault) { data.settings = { ...data.settings, mode: "copy", copyDefault: true }; persist("saveSettings", data.settings); }
   setMode(data.settings.mode, false);
   els.strictShift.checked = strictShift();
   renderExpert();

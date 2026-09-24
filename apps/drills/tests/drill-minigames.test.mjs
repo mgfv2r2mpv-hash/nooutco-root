@@ -99,3 +99,33 @@ test("Shifty's words come from his field, never from the top of an alphabetical 
   assert.ok(initials.size >= 15, `only ${initials.size} first letters`);
   assert.ok(buildShifty(pool));
 });
+
+test("G8: an earned game trophy keeps its first date after its run falls off the 60-run cap", () => {
+  const at = (i) => `2026-09-24T12:${String(Math.floor(i / 60)).padStart(2, "0")}:${String(i % 60).padStart(2, "0")}Z`;
+  let g = {};
+  // The first Shifty run is clean and earns Heel and Toe; every later run has a wrong-side Shift.
+  g = addRun(g, "shifty", { at: at(0), secs: 40, wpm: 60, wrong: 0 });
+  for (let i = 1; i <= RUNS_KEPT + 5; i++) g = addRun(g, "shifty", { at: at(i), secs: 40, wpm: 60, wrong: 1 });
+  assert.equal(g.shifty.length, RUNS_KEPT);
+  assert.ok(!g.shifty.some((r) => r.wrong === 0), "the clean run has fallen off the cap");
+  const won = Object.fromEntries(gameTrophies(g).map((t) => [t.id, t]));
+  assert.equal(won["g-heel-toe"].at, at(0));
+  assert.equal(won["g-heel-toe"].unlocked, true);
+  // Clutch keeps the first run's date, not the oldest run still kept.
+  assert.equal(won["g-clutch"].at, at(0));
+  // The permanent record holds ids and dates only, never a run.
+  for (const [id, when] of Object.entries(g.earned)) {
+    assert.match(id, /^g-[a-z-]+$/);
+    assert.equal(typeof when, "string");
+  }
+});
+
+test("G8: a recorded first date is never moved by a later run, and other kinds keep the record", () => {
+  let g = { earned: { "g-flat-water": "2026-01-01T00:00:00Z" } };
+  g = addRun(g, "river", { at: "2026-09-24T12:00:00Z", secs: 40, bestStreak: 3 });
+  g = addRun(g, "pair", { at: "2026-09-24T12:01:00Z", ms: 200, wpm: 70 }, "br");
+  const won = Object.fromEntries(gameTrophies(g).map((t) => [t.id, t.at]));
+  assert.equal(won["g-flat-water"], "2026-01-01T00:00:00Z");
+  assert.equal(won["g-hare-today"], "2026-09-24T12:01:00Z");
+  assert.equal(g.earned["g-hare-today"], "2026-09-24T12:01:00Z");
+});

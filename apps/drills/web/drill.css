@@ -159,6 +159,7 @@ kbd { font: 600 11px/1 -apple-system, sans-serif; padding: 3px 6px; border-radiu
 .review-list button[disabled] { opacity: .45; cursor: default; }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 22px; }
 .keepnote { font-size: 12.5px; color: var(--muted); }
+.savenote { font-size: 12.5px; color: var(--muted); margin: 4px 0 0; }
 
 /* charts */
 .chartbox svg.chart { width: 100%; height: auto; display: block; }
