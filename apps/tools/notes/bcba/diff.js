@@ -113,6 +113,52 @@
     return words(before, after).some(function (op) { return op.type !== "same"; });
   }
 
+  /* ── Hunks: a rewrite read as one run ─────────────────────────────────────
+     words() is right about WHICH words changed and wrong about how to show a
+     rewritten clause. Rewording a sentence alternates one-word deletions and
+     insertions, and drawn one op at a time that is red and green confetti with
+     the old and new sentences interleaved word by word. His words, 2026-09-23:
+     "this is hard to read".
+
+     hunks() groups those ops into runs a person reads as one change. A run of
+     del and ins ops, bridged across any unchanged stretch of BRIDGE_WORDS words
+     or fewer, is ONE hunk carrying the new wording as `text` and the old as
+     `was`. A hunk with only an insertion stays "ins", only a deletion stays
+     "del", and one with both is "change". Whitespace counts as zero words, so a
+     single space between a deletion and its replacement never splits them. */
+
+  const BRIDGE_WORDS = 2;
+
+  function flushHunk(out, run) {
+    if (!run.length) return;
+    let text = "", was = "", hasIns = false, hasDel = false;
+    run.forEach(function (op) {
+      if (op.type !== "del") text += op.text;
+      if (op.type !== "ins") was += op.text;
+      if (op.type === "ins") hasIns = true;
+      if (op.type === "del") hasDel = true;
+    });
+    if (hasIns && hasDel) out.push({ type: "change", text: text, was: was });
+    else if (hasIns) out.push({ type: "ins", text: text });
+    else out.push({ type: "del", text: was });
+  }
+
+  function hunks(before, after) {
+    const ops = words(before, after);
+    const out = [];
+    let run = [];
+    ops.forEach(function (op, i) {
+      if (op.type !== "same") { run.push(op); return; }
+      const bridges = run.length && i < ops.length - 1 && wordCount(op.text) <= BRIDGE_WORDS;
+      if (bridges) { run.push(op); return; }
+      flushHunk(out, run);
+      run = [];
+      out.push({ type: "same", text: op.text });
+    });
+    flushHunk(out, run);
+    return out;
+  }
+
   /* ── Moves ────────────────────────────────────────────────────────────────
      words() is the wrong granularity for restructuring. Word-level LCS over a
      reordered paragraph produces alternating one-word insertions and deletions
@@ -255,5 +301,8 @@
     return out;
   }
 
-  window.NoteDiff = { words: words, changed: changed, sections: sections, MIN_MOVE_WORDS: MIN_MOVE_WORDS };
+  window.NoteDiff = {
+    words: words, hunks: hunks, changed: changed, sections: sections,
+    MIN_MOVE_WORDS: MIN_MOVE_WORDS, BRIDGE_WORDS: BRIDGE_WORDS,
+  };
 })();

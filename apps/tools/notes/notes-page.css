@@ -706,6 +706,45 @@ body.is-pointing, body.is-pointing * { cursor: crosshair !important; }
 .diff-del { border-radius: 3px; padding: 1px 2px; margin: 0 1px; }
 .diff-ins { background: #dbf0d5; color: #1f4416; text-decoration: none; }
 .diff-del { background: #f7dcd6; color: #7d2b1a; text-decoration: line-through; }
+
+/* A proposed rewrite, drawn as its new wording on a green-red candystripe (his
+   2026-09-23 ruling). The stripes are pale so the dark text reads over both
+   bands. box-decoration-break keeps the padding and rounding on every line a
+   long rewrite wraps across. The old wording lives in .pd-pop, which exists
+   only while open. See pending-diff.jsx. */
+.pd-hunk { position: relative; }
+.pd-change {
+  background: repeating-linear-gradient(135deg, #d6eecf 0 6px, #f8dcd5 6px 12px);
+  color: #22301a; border-radius: 3px; padding: 1px 2px; margin: 0 1px;
+  box-shadow: inset 0 -1.5px 0 rgba(125, 43, 26, .35);
+  -webkit-box-decoration-break: clone; box-decoration-break: clone;
+  cursor: pointer;
+}
+.pd-view .diff-ins { cursor: pointer; }
+.pd-change:hover, .pd-change[aria-expanded="true"] {
+  background: repeating-linear-gradient(135deg, #c3e5b9 0 6px, #f2c6bb 6px 12px);
+}
+.pd-change:focus-visible, .pd-view .diff-ins:focus-visible { outline: 2px solid #2f68c4; outline-offset: 1px; }
+.pd-cut { cursor: pointer; }
+.pd-pop {
+  position: absolute; left: 0; top: calc(100% + 4px); z-index: 30;
+  display: flex; align-items: flex-start; gap: 8px;
+  width: max-content; max-width: min(46ch, 78vw);
+  padding: 7px 9px; border-radius: 8px;
+  background: #ffffff; border: 1.5px solid #c8b26a;
+  box-shadow: 0 6px 18px rgba(45, 58, 31, .18);
+  white-space: normal; font-size: 13px; line-height: 1.45; color: #2d3a1f;
+}
+.pd-pop-label {
+  flex: none; font-size: 10.5px; font-weight: 700; letter-spacing: .04em;
+  text-transform: uppercase; color: #8a7430; padding-top: 2px;
+}
+.pd-pop-was { flex: 1; }
+.pd-ask {
+  flex: none; width: 22px; height: 22px; border-radius: 50%;
+  border: 2px solid #374528; background: #fffbef; padding: 0; cursor: pointer;
+}
+.pd-ask:hover, .pd-ask:focus-visible { background: #374528; box-shadow: 0 0 0 3px rgba(55, 69, 40, .22); }
 .diff-actions {
   display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
   margin-top: 8px;
