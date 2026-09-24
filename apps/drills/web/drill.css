@@ -665,3 +665,32 @@ main.drill[data-settling="1"] .actions button { opacity: .45; transition: opacit
   .crest b { color: #fff0c8; text-shadow: 0 1px 0 rgba(0,0,0,.4); }
   .crest-note { color: #e6cf9c; }
 }
+
+/* Strict Shift, the warning before the key: red on the side he is holding, green on the side to use */
+.fx-side.left.is-cue-bad { background: linear-gradient(90deg, rgba(214,48,49,.42), rgba(214,48,49,0)); }
+.fx-side.right.is-cue-bad { background: linear-gradient(270deg, rgba(214,48,49,.42), rgba(214,48,49,0)); }
+.fx-side.left.is-cue-good { background: linear-gradient(90deg, rgba(46,160,67,.38), rgba(46,160,67,0)); }
+.fx-side.right.is-cue-good { background: linear-gradient(270deg, rgba(46,160,67,.38), rgba(46,160,67,0)); }
+.fx-side.is-cue-bad, .fx-side.is-cue-good { animation: none; transition: background .08s linear; }
+
+/* an answer left without a Keep: a bar on the home and results screens, never while typing */
+.pending { display: grid; gap: 8px; margin: 0 auto 14px; max-width: 900px; }
+.pending-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 12px; background: rgba(255,244,222,.92); border: 1px solid rgba(199,140,42,.45); font-size: 14px; }
+.pending-row span { flex: 1 1 260px; }
+.pending-row button { height: 34px; padding: 0 14px; font-size: 13px; }
+main.drill[data-drill-state="armed"] .pending, main.drill[data-drill-state="running"] .pending { display: none; }
+@media (prefers-color-scheme: dark) { .pending-row { background: rgba(60,48,28,.92); color: #f3e6cf; } }
+
+/* the pair game */
+.pair-go { margin-left: 8px; font: 600 12px/1 -apple-system, sans-serif; padding: 5px 10px; border-radius: 999px; border: 1px solid rgba(199,140,42,.55); background: rgba(255,236,196,.9); color: #7a4a10; cursor: pointer; }
+.pair-go:hover { background: #ffe2a8; }
+.pairgame { position: fixed; left: 50%; top: 18vh; transform: translateX(-50%); width: min(560px, calc(100vw - 32px)); z-index: 50; padding: 18px 20px; border-radius: 16px; background: var(--card, #fffdf8); border: 1px solid rgba(199,140,42,.55); box-shadow: 0 24px 60px rgba(40,30,10,.28); }
+.pairgame h3 { margin: 0 0 10px; font-size: 18px; }
+.pg-words { font: 500 19px/1.7 -apple-system, sans-serif; margin: 0 0 12px; }
+.pg-word { padding: 1px 4px; border-radius: 6px; }
+.pg-word.is-cur { background: rgba(120,160,230,.22); }
+.pg-word.is-ok { color: #2e7d32; }
+.pg-word.is-bad { color: #b3261e; text-decoration: line-through; }
+.pg-input { width: 100%; box-sizing: border-box; font: 17px/1.4 -apple-system, sans-serif; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line, #ddd); }
+.pg-out { min-height: 1.4em; margin: 10px 0; font-weight: 600; }
+@media (prefers-color-scheme: dark) { .pairgame { background: #23262e; color: #eee; } .pg-input { background: #1b1d23; color: #eee; } .pair-go { background: rgba(80,60,20,.9); color: #ffd9a8; } }
