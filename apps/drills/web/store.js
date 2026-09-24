@@ -21,7 +21,7 @@ const LS = {
   lexicon: "noaba.drills.lexicon.v1",
   settings: "noaba.drills.settings.v1",
 };
-const HISTORY_MAX = 2000;
+export const HISTORY_MAX = 2000;
 
 function lsGet(key, fallback) {
   try { const v = JSON.parse(localStorage.getItem(key)); return v == null ? fallback : v; } catch (e) { return fallback; }

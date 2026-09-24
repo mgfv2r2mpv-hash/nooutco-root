@@ -9,6 +9,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const sources = [
   ...readdirSync(join(root, "web")).filter((f) => f.endsWith(".js")).map((f) => join("web", f)),
   ...readdirSync(join(root, "tests")).filter((f) => /\.(m?js)$/.test(f)).map((f) => join("tests", f)),
+  ...readdirSync(join(root, "app")).filter((f) => /\.(m?js)$/.test(f)).map((f) => join("app", f)),
   "playwright.config.js",
 ];
 
