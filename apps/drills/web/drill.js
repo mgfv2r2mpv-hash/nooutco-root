@@ -15,7 +15,7 @@ import { emptiestCell, render as renderMap } from "./map.js";
 import { itemById, ITEMS } from "./outline.js";
 import * as store from "./store.js";
 import { createGarden, createHeat } from "./ornament.js";
-import { bests, streak, sitting, ladder, personalLadder, stars, keyTrends, keyboardRates, lineChart, sparkline, keyboard, dayOf } from "./panel.js";
+import { bests, streak, sitting, ladder, personalLadder, refusedWeeks, refusedText, stars, keyTrends, keyboardRates, lineChart, sparkline, keyboard, dayOf } from "./panel.js";
 import { trophyCase, newlyUnlocked } from "./trophies.js";
 import { createCalendar, renderTrophies } from "./calendar.js";
 import { handOf, judge, createShiftTracker, createShiftFx } from "./shift.js";
@@ -51,6 +51,7 @@ const els = {
   cont: $("[data-drill-continue]"), working: $("[data-drill-working]"),
   oracleTopic: $("[data-drill-oracle-topic]"), oracleOnly: $$("[data-oracle-only]"), mic: $("[data-drill-mic]"), baton: $("[data-drill-baton]"),
   send: $("[data-drill-send]"), expertStatus: $("[data-drill-expert-status]"), expertToken: $("[data-drill-expert-token]"),
+  strictShift: $("[data-drill-strict-shift]"),
   expertConnect: $("[data-drill-expert-connect]"), expertSend: $("[data-drill-expert-send]"), expertLog: $("[data-drill-expert-log]"),
 };
 
@@ -484,7 +485,12 @@ function onKeydown(e) {
   if (state.phase === "armed") start();
   const t = performance.now() - state.t0;
   const ev = kind === "char" ? { t, kind, key } : { t, kind };
-  if (kind === "char" && e.shiftKey) shiftCheck(e, ev);
+  if (kind === "char" && e.shiftKey && shiftCheck(e, ev) === "refused") {
+    // Strict Shift: nothing lands. Logged apart, never a typing error.
+    e.preventDefault();
+    state.events.push({ t, kind: "refused", key, shift: ev.shift, hand: ev.hand });
+    return;
+  }
   state.events.push(ev);
   if (kind === "backspace") { state.backspaceInWord = true; state.bsRun += 1; }
   else { coachDelete(); heat.press(t, kind === "enter" ? "\n" : key); }
@@ -518,17 +524,29 @@ function boundary(textBeforeCaret) {
   els.combo.textContent = `${state.combo} clean`;
   if (state.combo && state.combo % 10 === 0) { els.combo.classList.remove("pop"); void els.combo.offsetWidth; els.combo.classList.add("pop"); }
 }
-/* Shift side: which Shift is down, which hand owns the key. */
+/* Shift side: which Shift is down, which hand owns the key. Strict Shift
+   (his ask of 2026-09-23, default on) refuses a same-side capital, so the
+   wrong-finger combo never pays off and goes on extinction. Caps Lock
+   capitals are never judged. Returns the verdict: "ok", "same", "refused". */
+const strictShift = () => data.settings.strictShift !== false;
 function shiftCheck(e, ev) {
+  if (e.getModifierState && e.getModifierState("CapsLock")) return null;
   const side = shiftKeys.side(e);
   const hand = handOf(e.code);
-  if (!side || !hand) return;
+  if (!side || !hand) return null;
   // Only the first capital of a Shift press is judged: "EHR" on one held Shift is right.
-  if (!shiftKeys.firstInHold()) return;
+  if (!shiftKeys.firstInHold()) return null;
   ev.shift = side; ev.hand = hand;
   const j = judge(side, hand);
+  if (j === "same" && strictShift()) {
+    // Judge the retry too: holding the same Shift and pressing again must not slip through.
+    shiftKeys.rejudge();
+    shiftFx.refuse(hand, e.key);
+    return "refused";
+  }
   if (j === "same") shiftFx.same(hand, e.key);
   else if (j === "ok") shiftFx.ok(side);
+  return j;
 }
 function onShiftKey(e) { shiftKeys.key(e); }
 
@@ -617,6 +635,7 @@ async function finish() {
     keys: s.keys, kept: false, revisions: s.revisions, revisedKeys: s.revisedKeys, keptWords: s.kept.words,
     habits: { wordByHand: s.habits.wordByHand, wordDeletes: s.habits.wordDeletes, lineDeletes: s.habits.lineDeletes },
     shift: s.shift,
+    ...(s.refused.count || strictShift() ? { refused: s.refused.count, refusedKeys: s.refused.keys.map((k) => k.key) } : {}),
     think: { ms: s.think.ms, count: s.think.count, sentence: s.think.sentence, clause: s.think.clause, word: s.think.word, mid: s.think.mid, flowWpm: s.think.flowWpm },
     lexicon: data.lexicon.length,
     // Names of what was slow and which tips fired: what the copy picker aims at next.
@@ -678,6 +697,8 @@ function render(s, st, prior) {
   if (s.timing.pauses) tm.push(`${s.timing.pauses} pause${s.timing.pauses === 1 ? "" : "s"} over two seconds`);
   for (const p of s.timing.slowPairs) tm.push(`${p.pair} runs slow: ${p.ms} ms`);
   if (s.shift.ok + s.shift.same) tm.push(`${s.shift.ok} of ${s.shift.ok + s.shift.same} capitals with the opposite Shift`);
+  const refusedLine = refusedText(s.refused, refusedWeeks(data.history), strictShift());
+  if (refusedLine) tm.push(refusedLine);
   if (s.revisions) tm.push(state.mode === "copy"
     ? `${s.revisions} revision${s.revisions === 1 ? "" : "s"} with Option or Command+Backspace`
     : `${s.revisions} revision${s.revisions === 1 ? "" : "s"} (a changed mind, never an error), ${s.kept.words} word${s.kept.words === 1 ? "" : "s"} kept`);
@@ -972,6 +993,10 @@ els.home.addEventListener("click", home);
 els.keep.addEventListener("click", keep);
 for (const b of els.opens) b.addEventListener("click", () => openBoard(b.dataset.drillOpen));
 for (const t of els.tabs) t.addEventListener("click", () => showTab(t.dataset.tab));
+els.strictShift.addEventListener("change", () => {
+  data.settings = { ...data.settings, strictShift: els.strictShift.checked };
+  store.saveSettings(data.settings);
+});
 els.box.addEventListener("keydown", onShiftKey);
 els.box.addEventListener("keyup", onShiftKey);
 els.box.addEventListener("blur", () => shiftKeys.clear());
@@ -1019,6 +1044,7 @@ async function init() {
   // over once; after that the app opens on whatever mode he last picked.
   if (!data.settings.copyDefault) { data.settings = { ...data.settings, mode: "copy", copyDefault: true }; store.saveSettings(data.settings); }
   setMode(data.settings.mode, false);
+  els.strictShift.checked = strictShift();
   renderExpert();
   renderChips();
   drawMap();
@@ -1029,4 +1055,4 @@ async function init() {
 init();
 
 // For tests and a look under the hood; never for the page's own flow.
-window.NoteDrill = { state, data, BANK, scoreDrill, finish, known: () => knownNow(), garden, drawMap, renderBoard, openBoard, sendToExpert, batonPass };
+window.NoteDrill = { handOf, state, data, BANK, scoreDrill, finish, known: () => knownNow(), garden, drawMap, renderBoard, openBoard, sendToExpert, batonPass };

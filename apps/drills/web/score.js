@@ -95,6 +95,7 @@ export function scoreDrill({ events, text, minutes, lexicon, reference } = {}) {
   const timing = timingProfile(evs);
   const habits = deleteHabits(evs);
   const shift = shiftStats(evs);
+  const refused = refusedStats(Array.isArray(events) ? events : []);
   const think = thinkProfile(evs, mins);
   const tips = formTips({ grossWords, corrections, tricky, timing, habits, shift });
   const keys = keyStats(evs, tricky.all);
@@ -123,6 +124,7 @@ export function scoreDrill({ events, text, minutes, lexicon, reference } = {}) {
     pace,
     habits,
     shift,
+    refused,
     think,
   };
 }
@@ -299,6 +301,26 @@ export function shiftStats(events) {
     if (e.shift !== e.hand) out.ok += 1;
     else { out.same += 1; if (e.hand === "L") out.sameLeft += 1; else out.sameRight += 1; }
   }
+  return out;
+}
+
+/**
+ * Strict Shift: a same-side capital the page refused. A refused key placed
+ * nothing, so it is not a typing event and never an error: speed, accuracy and
+ * the band never see it. It is counted apart so the habit can be watched going
+ * on extinction. `keys` is the capitals refused, most often first.
+ */
+export function refusedStats(events) {
+  const out = { count: 0, left: 0, right: 0, keys: [] };
+  const by = new Map();
+  for (const e of events || []) {
+    if (!e || e.kind !== "refused") continue;
+    out.count += 1;
+    if (e.hand === "L") out.left += 1; else if (e.hand === "R") out.right += 1;
+    const k = String(e.key || "").toUpperCase();
+    if (k) by.set(k, (by.get(k) || 0) + 1);
+  }
+  out.keys = [...by].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1)).map(([key, count]) => ({ key, count }));
   return out;
 }
 
