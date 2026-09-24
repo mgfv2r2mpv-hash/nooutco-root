@@ -828,3 +828,26 @@ test('the settle after the bell holds on the read screen too: Return and S do no
   await page.keyboard.press('Enter');
   await expect(page.locator('main.drill')).toHaveAttribute('data-drill-mode', 'respond');
 });
+
+test('a bank question answered days ago comes back for review through a lens, and home says it is due', async ({ page }) => {
+  await page.addInitScript(() => {
+    const at = new Date(Date.now() - 5 * 86400000).toISOString();
+    localStorage.setItem('noaba.drills.v1', JSON.stringify([{ at, minutes: 1, nwam: 80, gwam: 82, accuracy: 0.97, words: 82, keptWords: 80, mode: 'answer', outline: 'B.11', itemId: 'b-04' }]));
+  });
+  await page.goto(PAGE);
+  await expect(page.locator('[data-drill-reviews]')).toContainText('1 question due for another look');
+  await page.locator('[data-drill-start]').click();
+  await expect(page.locator('[data-drill-category]')).toContainText('review · steelman');
+  await expect(page.locator('[data-drill-q]')).toContainText('Mom stopped giving candy for screaming');
+  await expect(page.locator('[data-drill-q]')).toContainText('strongest case for the view you usually argue against');
+  await page.locator('[data-drill-box]').pressSequentially('Extinction bursts are common and she can plan for one.', { delay: 10 });
+  await done(page);
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('noaba.drills.v1')).at(-1));
+  expect(saved.review).toBe(true);
+  expect(saved.lens).toBe('steelman');
+  expect(saved.itemId).toBe('b-04');
+  // Never two reviews in a row: the next one is a new question from the map.
+  await page.keyboard.press('Escape');
+  await page.locator('[data-drill-start]').click();
+  await expect(page.locator('[data-drill-category]')).not.toContainText('review');
+});

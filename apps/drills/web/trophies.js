@@ -197,6 +197,16 @@ export const TROPHIES = Object.freeze([
     (n) => `Finish ${n} respond rounds.`),
   ...tiers("Conversations", "kept-n", (a) => a.keptN, [[1, "On the Record"], [10, "Testimony"], [50, "Oral History"], [150, "Collected Works"]],
     (n) => (n === 1 ? "Keep an answer: it goes to your voice corpus and the expert queue." : `Keep ${n} answers.`)),
+  // The other side: a question that comes back for review wears a lens (review.js).
+  one("The other side", "lens-steelman", "Devil's Advocate", "Answer a review question by steelmanning the view you usually argue against.", (a) => a.lens.steelman || 0),
+  one("The other side", "lens-kneejerk", "Gut Check", "Answer a review question by testing your first reaction: habit or evidence?", (a) => a.lens.kneejerk || 0),
+  one("The other side", "lens-mind", "Open Mind", "Answer a review question by naming what would change your mind.", (a) => a.lens.mind || 0),
+  one("The other side", "lens-research", "Up to Date", "Answer a review question by saying what current research says and how you would check it.", (a) => a.lens.research || 0),
+  one("The other side", "lens-all", "All Sides", "Answer through all four lenses: steelman, knee-jerk, what would change your mind, current research.", (a) => Object.keys(a.lens).length, 4),
+  ...tiers("The other side", "reviews", (a) => a.reviewN, [[5, "Come Back Around"], [25, "Spaced Repetition"], [100, "Long-Term Memory"]],
+    (n) => `Answer ${n} questions that came back for review.`),
+  ...tiers("The other side", "lens-steelman-n", (a) => a.lens.steelman || 0, [[10, "Steel Sharpens Steel"]],
+    (n) => `Steelman the other side ${n} times.`),
   ...tiers("Modes", "copy-n", (a) => a.copyN, [[10, "Scribe"], [50, "Scriptorium"], [150, "Illuminator"]],
     (n) => `Finish ${n} copy rounds.`),
   ...tiers("Modes", "passages", (a) => a.passages, [[10, "Well Read"], [25, "Bookworm"]],
@@ -337,7 +347,7 @@ function emptyAgg() {
     midnight: 0, friday13: 0, newYear: 0, photo: 0, dejaVu: 0,
     batonMax: 0, batonCopies: 0, contMax: 0, carried: 0, shelfBack: 0, shelfCleared: 0, variants: 0, respondN: 0, keptN: 0,
     copyN: 0, passages: 0, oracleN: 0, spokenN: 0, revisions: 0, strictClean: 0, flawlessN: 0, clean97N: 0,
-    lunch: 0, weekdays: 0, seasons: 0, perDomain: {},
+    lunch: 0, weekdays: 0, seasons: 0, perDomain: {}, reviewN: 0, lens: {},
   };
 }
 
@@ -468,6 +478,11 @@ function conversations(a, h, day, talk) {
   if (h.mode === "oracle") a.oracleN += 1;
   if (h.spoken) a.spokenN += 1;
   if (h.kept) a.keptN += 1;
+  // A Keep going round of a review is the same answer, not a second review.
+  if (h.review && !num(h.cont)) {
+    a.reviewN += 1;
+    if (h.lens) a.lens = { ...a.lens, [h.lens]: (a.lens[h.lens] || 0) + 1 };
+  }
   if (h.outline) { const d = String(h.outline)[0]; a.perDomain[d] = (a.perDomain[d] || 0) + 1; }
   const key = baton ? null : h.passage || h.itemId;
   if (!key) return;

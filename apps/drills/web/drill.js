@@ -23,6 +23,7 @@ import { handOf, judge, createShiftTracker, createShiftFx } from "./shift.js";
 import { nextPassage, trickyProfile, describeProfile } from "./passages.js";
 import { renderPassage, markPassage } from "./copy.js";
 import { shelve, unshelve, dueEntry, returned, describeShelf, copyRounds } from "./shelf.js";
+import { pickReview, asReview, describeReviews } from "./review.js";
 import { renderRead } from "./read.js";
 import { ORACLE_SYSTEM, ORACLE_SCHEMA, oraclePrompt, readOracle, DRAFT_SYSTEM, DRAFT_SCHEMA, draftPrompt, toProposal,
   BATON_SYSTEM, BATON_SCHEMA, batonPrompt, readBaton, batonWords, relevantRecords } from "./oracle.js";
@@ -59,7 +60,7 @@ const els = {
   readHome: $("[data-drill-read-home]"), readNote: $("[data-drill-read-note]"), readUnlocked: $("[data-drill-read-unlocked]"),
   readParts: { score: $("[data-drill-read-score]"), title: $("[data-drill-read-title]"), source: $("[data-drill-read-source]"),
     text: $("[data-drill-read-text]"), sources: $("[data-drill-read-sources]"), question: $("[data-drill-read-question]") },
-  shelf: $("[data-drill-shelf]"), mapShelf: $("[data-drill-map-shelf]"),
+  shelf: $("[data-drill-shelf]"), dueReviews: $("[data-drill-reviews]"), mapShelf: $("[data-drill-map-shelf]"),
   expertConnect: $("[data-drill-expert-connect]"), expertSend: $("[data-drill-expert-send]"), expertLog: $("[data-drill-expert-log]"),
 };
 
@@ -204,13 +205,21 @@ function arm() {
     armCopy(back || nextPassage(recent, state.tricky, shelf().map((e) => e.id)));
     return;
   }
-  const recent = data.history.map((h) => h.itemId);
-  // His ruling: the next question comes from the emptiest cell of the map.
-  const cell = emptiestCell({ bank: BANK, history: data.history });
-  state.item = nextItem(recent, Math.random, cell);
+  // A question due for another look goes first, from the other side (review.js);
+  // never two reviews in a row, so the map still gets its turn.
+  const review = pickReview(data.history, Date.now(), inBank);
+  if (review) state.item = asReview(BANK.find((b) => b.id === review.itemId), review.lens);
+  else {
+    const recent = data.history.map((h) => h.itemId);
+    // His ruling: the next question comes from the emptiest cell of the map.
+    const cell = emptiestCell({ bank: BANK, history: data.history });
+    state.item = nextItem(recent, Math.random, cell);
+  }
   state.passage = null;
   startRound("answer", state.minutes, null);
 }
+
+const inBank = (id) => BANK.some((b) => b.id === id);
 
 /* Copy: the passage for the picked clock, word for word. Never kept. */
 function armCopy(passage) {
@@ -646,6 +655,7 @@ async function finish() {
     at: new Date().toISOString(), itemId: state.item.id, outline: state.mode === "copy" ? null : state.item.outline, minutes: state.roundMinutes,
     mode: state.mode, ...(state.passage && state.mode !== "answer" ? { passage: state.passage.id } : {}),
     ...(state.mode === "copy" && state.passage.variant ? { variant: state.passage.variant } : {}), ...(state.mode === "copy" && state.passage.fromShelf ? { fromShelf: true } : {}), ...(state.cont ? { cont: state.cont } : {}),
+    ...(state.mode === "answer" && state.item.review ? { review: true, lens: state.item.lens } : {}),
     seconds: secondsFor(), gwam: s.gwam, nwam: s.nwam, accuracy: s.accuracy, rating: s.rating.name,
     corrections: s.corrections, uncorrected: s.uncorrected, words: s.grossWords, bestCombo: state.bestCombo,
     keys: s.keys, kept: false, revisions: s.revisions, revisedKeys: s.revisedKeys, keptWords: s.kept.words,
@@ -773,7 +783,16 @@ function saveShelf(next) {
   store.saveSettings(data.settings);
   renderShelf();
 }
+function renderDueReviews() {
+  const line = describeReviews(data.history, Date.now(), inBank);
+  els.dueReviews.hidden = !line;
+  els.dueReviews.replaceChildren(...(line ? [
+    Object.assign(document.createElement("b"), { textContent: "Review" }),
+    Object.assign(document.createElement("span"), { textContent: line }),
+  ] : []));
+}
 function renderShelf() {
+  renderDueReviews();
   const rows = describeShelf(shelf(), shelfNow());
   els.shelf.hidden = !rows.length;
   els.shelf.replaceChildren(...(rows.length ? [
@@ -1029,6 +1048,7 @@ async function keep() {
     // what came right before each stop as what he was deciding.
     pauses: state.score.think.stops, revisions: state.score.revisions,
     mode: state.mode, register: state.spoken ? "spoken" : "drill",
+    ...(state.item.lens ? { lens: state.item.lens } : {}),
     ...(state.mode === "oracle" && state.oracle ? { oracle: { topic: state.oracle.topic, question: state.oracle.reply.question, thoughts: state.oracle.reply.thoughts } } : {}),
   }).catch((e) => ({ ok: false, note: String(e) }));
   if (r && r.ok) {
