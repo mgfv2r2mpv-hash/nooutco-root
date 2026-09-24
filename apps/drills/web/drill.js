@@ -1280,10 +1280,13 @@ async function keepSnap(snap, live) {
     at: snap.record.at, itemId: snap.item.id, outline: snap.item.outline, question: snap.item.question,
     ...(from ? { continues: snap.answerAt } : {}), ...(snap.passage && snap.mode === "respond" ? { passage: snap.passage.id, passageSource: snap.passage.source } : {}),
     minutes: snap.roundMinutes, seconds: snap.seconds, text,
-    nwam: snap.score.nwam, gwam: snap.score.gwam, accuracy: snap.score.accuracy,
-    // Where he stopped to think, by character offset: the expert can read
-    // what came right before each stop as what he was deciding.
-    pauses: snap.score.think.stops, revisions: snap.score.revisions,
+    // Left mid-round (AUDIT A11): no score to send, and it says so.
+    ...(snap.score ? {
+      nwam: snap.score.nwam, gwam: snap.score.gwam, accuracy: snap.score.accuracy,
+      // Where he stopped to think, by character offset: the expert can read
+      // what came right before each stop as what he was deciding.
+      pauses: snap.score.think.stops, revisions: snap.score.revisions,
+    } : { unscored: true }),
     mode: snap.mode, register: snap.spoken ? "spoken" : "drill",
     ...(snap.item.lens ? { lens: snap.item.lens } : {}),
     ...(research ? { research } : {}), tone: toneOf(text, snap.item.lens),
@@ -1378,18 +1381,35 @@ function shiftyButton() {
    no way left to reach the expert. His ruling stands: text is kept only when
    he presses Keep. So the answer is held for this session, and a bar on the
    home and results screens offers Keep it and Send to the expert. */
-const PENDING_MAX = 3;
-function snapshot() {
+/* No cap (AUDIT A8): a held answer lives in memory only, never on disk, so
+   holding a tenth costs nothing, and dropping the oldest dropped his text.
+   Empty answers are never held in the first place. */
+function snapshot(over = {}) {
   return {
     record: state.record, item: state.item, passage: state.passage, oracle: state.oracle, mode: state.mode,
     roundMinutes: state.roundMinutes, seconds: secondsFor(), score: state.score, spoken: state.spoken,
-    from: state.keptUpTo, answerAt: state.answerAt, text: els.box.value,
+    from: state.keptUpTo, answerAt: state.answerAt, text: els.box.value, ...over,
   };
 }
+/* Esc mid-round (AUDIT A11): twenty words or more is an answer worth holding.
+   It is held unscored, with a record of its own that never goes to history,
+   so bests, bands and nemeses are untouched and Keep it is still the only
+   way it reaches the disk. */
+const HOLD_MIN_WORDS = 20;
+function holdRunning() {
+  const words = roundText().trim().split(/\s+/).filter(Boolean).length;
+  if (copyLike() || words < HOLD_MIN_WORDS) return;
+  const at = new Date().toISOString();
+  const elapsed = Math.round(Math.min(secondsFor(), (performance.now() - state.t0) / 1000));
+  const snap = snapshot({ record: { at, kept: false, unscored: true }, score: null, seconds: elapsed, answerAt: state.answerAt || at });
+  state.pending = [snap, ...(state.pending || []).filter((p) => !sameAnswer(p))];
+  renderPending();
+}
 function holdIfUnkept() {
+  if (state.phase === "running") { holdRunning(); return; }
   const hasWords = state.score && (state.score.gwam > 0 || (state.spoken && roundText().trim()));
   if (!["done", "board"].includes(state.phase) || state.kept || (state.record && state.record.kept) || copyLike() || !hasWords) return;
-  state.pending = [snapshot(), ...(state.pending || []).filter((p) => p.record !== state.record && !sameAnswer(p))].slice(0, PENDING_MAX);
+  state.pending = [snapshot(), ...(state.pending || []).filter((p) => p.record !== state.record && !sameAnswer(p))];
   renderPending();
 }
 /* A1: how many of his answers a quit would lose right now. The Mac shell
@@ -1419,12 +1439,17 @@ function dropSameAnswer() {
 function renderPending() {
   const list = state.pending || [];
   els.pending.hidden = !list.length;
-  els.pending.replaceChildren(...list.map((snap, i) => {
+  const count = Object.assign(document.createElement("div"), {
+    className: "pending-count",
+    textContent: list.length === 1 ? "1 answer is held for this session, not kept." : `${list.length} answers are held for this session, not kept.`,
+  });
+  count.dataset.pendingCount = "";
+  els.pending.replaceChildren(count, ...list.map((snap, i) => {
     const row = document.createElement("div");
     row.className = "pending-row";
     const q = (snap.item.question || "").slice(0, 70);
     const at = new Date(snap.record.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-    const t = Object.assign(document.createElement("span"), { textContent: `Your answer to "${q}${q.length >= 70 ? "..." : ""}" (${at}) is not kept.` });
+    const t = Object.assign(document.createElement("span"), { textContent: `Your answer to "${q}${q.length >= 70 ? "..." : ""}" (${at})${snap.score ? "" : ", left mid-round and not scored,"} is not kept.` });
     const k = Object.assign(document.createElement("button"), { type: "button", className: "keep", textContent: "Keep it" });
     k.dataset.pendingKeep = String(i);
     const send = Object.assign(document.createElement("button"), { type: "button", className: "soft", textContent: "Send to the expert" });

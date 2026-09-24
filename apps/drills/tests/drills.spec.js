@@ -1231,6 +1231,74 @@ test('a failed Keep from the pending bar says so on the bar and leaves the answe
   await expect(page.locator('[data-pending-keep="0"]')).toBeEnabled();
 });
 
+/* ---- more than three unkept answers, and Esc mid-round (AUDIT A8, A11) ---- */
+test('four unkept answers in a row are all held, and the bar says how many', async ({ page }) => {
+  await page.addInitScript(SLOW_KEEP);
+  await page.goto('/index.html?clock=2');
+  await wordsReady(page);
+  const words = ['alpha', 'bravo', 'charlie', 'delta'];
+  for (const w of words) {
+    await page.locator('[data-drill-start]').click();
+    await page.locator('[data-drill-box]').pressSequentially(`${w} comes first `, { delay: 10 });
+    await done(page);
+    await page.keyboard.press('Escape');
+    await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'idle');
+  }
+  const bar = page.locator('[data-drill-pending]');
+  await expect(bar.locator('.pending-row')).toHaveCount(4);
+  await expect(page.locator('[data-pending-count]')).toHaveText('4 answers are held for this session, not kept.');
+  expect(await page.evaluate(() => window.NoteDrill.unkeptCount())).toBe(4);
+  // The oldest is still there, text and all, and Keep it keeps it.
+  await page.locator('[data-pending-keep="3"]').click();
+  await expect(bar.locator('.pending-row')).toHaveCount(3);
+  await expect(page.locator('[data-pending-count]')).toHaveText('3 answers are held for this session, not kept.');
+  const kept = await page.evaluate(() => window.__kept);
+  expect(kept).toHaveLength(1);
+  expect(kept[0].text).toBe('alpha comes first ');
+});
+
+const TWENTY_WORDS = 'The parent ran the prompt and the learner answered each time without a model so the team faded the prompt over the next week ';
+test('Esc mid-round with twenty words or more holds the answer unscored, and history is untouched', async ({ page }) => {
+  await page.addInitScript(KEEP_MOCK);
+  await page.goto('/index.html?clock=120');
+  await wordsReady(page);
+  const before = await page.evaluate(() => window.NoteDrill.data.history.length);
+  await page.locator('[data-drill-start]').click();
+  await page.locator('[data-drill-box]').pressSequentially(TWENTY_WORDS, { delay: 5 });
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'running');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'idle');
+  const bar = page.locator('[data-drill-pending]');
+  await expect(bar.locator('.pending-row')).toHaveCount(1);
+  await expect(bar).toContainText('not scored');
+  expect(await page.evaluate(() => window.NoteDrill.data.history.length)).toBe(before);
+  await page.locator('[data-pending-keep="0"]').click();
+  await expect(bar).toBeHidden();
+  const kept = await page.evaluate(() => window.__kept);
+  expect(kept).toHaveLength(1);
+  expect(kept[0].text).toBe(TWENTY_WORDS);
+  expect(kept[0].unscored).toBe(true);
+  expect(kept[0].nwam).toBeUndefined();
+  expect(await page.evaluate(() => window.NoteDrill.data.history.length)).toBe(before);
+});
+
+test('Esc mid-round with fewer than twenty words holds nothing, and Esc in a copy round never holds', async ({ page }) => {
+  await page.addInitScript(KEEP_MOCK);
+  await page.goto('/index.html?clock=120');
+  await wordsReady(page);
+  await page.locator('[data-drill-start]').click();
+  await page.locator('[data-drill-box]').pressSequentially('just a few words here ', { delay: 5 });
+  await page.keyboard.press('Escape');
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'idle');
+  await expect(page.locator('[data-drill-pending]')).toBeHidden();
+  await page.evaluate(() => { const s = { ...window.NoteDrill.data.settings, mode: 'copy' }; window.NoteDrill.data.settings = s; });
+  await page.locator('[data-drill-start]').click();
+  await page.locator('[data-drill-box]').pressSequentially(TWENTY_WORDS, { delay: 5 });
+  await page.keyboard.press('Escape');
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'idle');
+  await expect(page.locator('[data-drill-pending]')).toBeHidden();
+});
+
 test('the baton pass run twice at once keeps once and asks the expert once', async ({ page }) => {
   await page.addInitScript(BATON_MOCK);
   await page.addInitScript(() => localStorage.setItem('noaba.drills.settings.v1', JSON.stringify({ mode: 'copy', copyDefault: true })));
