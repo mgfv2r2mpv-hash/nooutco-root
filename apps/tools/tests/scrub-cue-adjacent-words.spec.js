@@ -96,6 +96,46 @@ test.describe('the word after a role cue is not a person just for sitting there'
   });
 });
 
+/* AN ACRONYM AFTER A CUE, reported 2026-09-23: "ABC" for the direct assessment
+   came back in the note as Client--1. The guard above checks only the FIRST
+   letter, and the "i" flag lets the rest of SIMPLE_CAP match capitals, so "with
+   ABC" passed as "with Jacob" would. The comment on detectNames has always said
+   all-caps acronyms are never matched; on this path they were. */
+test.describe('an acronym after a cue is a term, not a person', () => {
+  const ACRONYMS = [
+    'BT collected data for ABC during the direct assessment.',
+    'Staff ran the observation with ABC data sheets.',
+    'Client FCT was reinforced on an FR1 schedule.',
+    'Caregiver DRA was reviewed with PECS and NET in the plan.',
+  ];
+
+  test('no acronym after a cue or preposition is a name candidate', async ({ page }) => {
+    await loggedIn(page);
+    for (const t of ACRONYMS) {
+      const found = await names(page, t);
+      expect(found.filter((n) => /^[A-Z0-9]+$/.test(n)), t).toEqual([]);
+    }
+  });
+
+  test('and none leaves a role token in the signed note', async ({ page }) => {
+    await loggedIn(page);
+    for (const t of ACRONYMS) {
+      const r = await scrubOf(page, t);
+      expect(r.stays, t).toEqual([]);
+    }
+    const r = await scrubOf(page, 'BT collected data for ABC during the direct assessment.');
+    expect(r.scrubbed).toContain('for ABC during');
+  });
+
+  test('a name typed in capitals after a cue is still taken, by the dictionary', async ({ page }) => {
+    await loggedIn(page);
+    // The other side: narrowing the cue pattern to Title case must not let a
+    // real name through just because the technician had caps lock on.
+    const r = await scrubOf(page, 'Client JACOB eloped twice.');
+    expect(r.scrubbed).not.toMatch(/jacob/i);
+  });
+});
+
 test.describe('and the names are still taken', () => {
   test('a capitalised name after a cue still gets a role token that stays', async ({ page }) => {
     await loggedIn(page);
@@ -134,6 +174,7 @@ test.describe('the same flag, the same file, the expert copy', () => {
     // it appears in what the expert is sent.
     expect(await roles(page, 'Mom reports the client slept poorly.')).toEqual({});
     expect(await roles(page, 'Client labeled the cards.')).toEqual({});
+    expect(await roles(page, 'Client FCT was reinforced. Caregiver ABC data was reviewed.')).toEqual({});
   });
 
   test('and still files a real one', async ({ page }) => {
