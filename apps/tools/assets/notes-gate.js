@@ -1552,6 +1552,13 @@
   // preposition). This suppresses false positives from ABA program names like
   // "Tolerating Delays" or "Requesting Breaks" that open sentences.
   var NAME_WORD = "[A-Z][A-Za-z’’\\-]*[a-z]";
+  /* A capital FOLLOWED BY A LOWERCASE LETTER, tested without the "i" flag.
+     The cue patterns below carry "gi", which lets their [A-Z][a-z] match any
+     letter at all. Checking only the first letter stopped "client labeled" and
+     let "with ABC" through, and on 2026-09-23 "ABC" for the direct assessment
+     reached the signed note as Client--1. A name in capitals is still caught
+     by the first-names dictionary pass, which ignores case. */
+  var TITLE_CASE = /^[A-Z][a-z]/;
   function detectNames(text) {
     if (!text) return [];
 
@@ -1612,7 +1619,7 @@
          * still has to match either case. Nothing real is lost: a name typed in
          * lowercase is caught by the first-names dictionary pass below.
          */
-        if (!/^[A-Z]/.test(cname)) continue;
+        if (!TITLE_CASE.test(cname)) continue;
         var cl = cname.toLowerCase();
         if (!excluded[cl] && !STOPWORDS[cl]) contextNames[cl] = cname;
       }
@@ -1828,7 +1835,7 @@
          match a lowercase letter, so "mom reports" filed the verb "reports" as
          a caregiver. buildRoleMap reads this, so the wrong entry renames an
          ordinary word everywhere it appears in what the expert is sent. */
-      if (!/^[A-Z]/.test(m[2])) continue;
+      if (!TITLE_CASE.test(m[2])) continue;
       var who = m[2].toLowerCase();
       if (!found[who]) found[who] = ROLE_LABELS[m[1].toLowerCase()];
     }
