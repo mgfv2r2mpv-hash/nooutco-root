@@ -19,6 +19,8 @@
  *            asks for reduced motion).
  *   calendar each day's badge count becomes --n, so busier days glow warmer.
  *   trophies a trophy unlocked by this drill gets .is-fresh and a shine sweep.
+ *   crest    results[data-levelup], set by drill.js when a round opens a band
+ *            his numbers never reached: the crest drops in with a bigger burst.
  */
 
 const NS = "http://www.w3.org/2000/svg";
@@ -157,8 +159,23 @@ export function flourish(doc = document) {
       results.classList.remove("is-in");
       void results.offsetWidth;
       results.classList.add("is-in");
-      if (glory === "best") requestAnimationFrame(() => burst(hero));
+      if (glory === "best" && !results.dataset.levelup) requestAnimationFrame(() => burst(hero));
     }).observe(stars, { childList: true });
+    // A new band: the crest drops in and the gold goes up, once per band opened.
+    // A copy round shows the read screen first, so the crest there takes the burst.
+    const crests = [doc.querySelector("[data-drill-levelup]"), doc.querySelector("[data-drill-read-levelup]")].filter(Boolean);
+    let shown = "";
+    new MutationObserver(() => {
+      const band = results.dataset.levelup || "";
+      if (!band) { shown = ""; return; }
+      if (band === shown) return;
+      shown = band;
+      for (const c of crests) { c.classList.remove("is-in"); void c.offsetWidth; c.classList.add("is-in"); }
+      requestAnimationFrame(() => {
+        const seen = crests.find((c) => c.getClientRects().length);
+        if (seen) burst(seen, 72);
+      });
+    }).observe(results, { attributes: true, attributeFilter: ["data-levelup"] });
   }
   if (cal) new MutationObserver(() => garnishCalendar(cal)).observe(cal, { childList: true });
   if (cups && unlocked) {

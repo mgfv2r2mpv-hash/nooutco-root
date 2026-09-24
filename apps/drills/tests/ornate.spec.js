@@ -68,3 +68,80 @@ test('busier calendar days glow warmer', async ({ page }) => {
   const glow = await days.evaluateAll((els) => els.map((el) => Number(el.style.getPropertyValue('--n'))));
   expect(glow.sort()).toEqual([0.2, 1]);
 });
+
+/* The bands as a road (web/bands.js): gems on the home screen, and a crest
+   on the results the first time a round reaches a band. */
+const seedAnswered = (page, nwams) => page.addInitScript((list) => {
+  window.__settleMs = 0;
+  localStorage.setItem('noaba.drills.settings.v1', JSON.stringify({ mode: 'answer', copyDefault: true }));
+  const now = Date.now();
+  localStorage.setItem('noaba.drills.v1', JSON.stringify(list.map((nwam, i) => ({
+    at: new Date(now - (list.length - i) * 86400000).toISOString(), minutes: 1, seconds: 60, nwam, gwam: nwam + 2, accuracy: 0.98,
+    words: nwam, mode: 'answer', outline: 'A.1', itemId: 'x', keys: {}, rating: 'Professional',
+  }))));
+}, nwams);
+
+test('the home screen draws the bands as a road, gilded as far as his numbers have reached', async ({ page }) => {
+  await seedAnswered(page, [60, 92, 88]);
+  await page.goto('/index.html');
+  const road = page.locator('[data-drill-road]');
+  await expect(road).toBeVisible();
+  await expect(road.locator('.gem')).toHaveCount(10);
+  await expect(road.locator('.gem.is-reached')).toHaveCount(6); // Amateur up to Expert
+  await expect(road.locator('.gem.is-next')).toHaveAttribute('data-band', 'Elite');
+  await expect(road.locator('.road-line')).toHaveText('Highest band so far: Expert. Next: Elite, at 95 NWAM. (answering)');
+});
+
+test('a first launch has no road yet', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('noaba.drills.settings.v1', JSON.stringify({ mode: 'answer', copyDefault: true })));
+  await page.goto('/index.html');
+  await expect(page.locator('[data-drill-road]')).toBeHidden();
+});
+
+test('a round that reaches a band for the first time drops a crest and throws the gold', async ({ page }) => {
+  await seedAnswered(page, [3, 4, 5]);
+  await page.goto(PAGE);
+  await page.locator('[data-drill-start]').click();
+  await page.locator('[data-drill-box]').pressSequentially('The BCBA modeled the prompt.', { delay: 12 });
+  await state(page, 'done');
+  const crest = page.locator('[data-drill-levelup]');
+  await expect(crest).toBeVisible();
+  await expect(crest.locator('.crest-kicker')).toHaveText('New band');
+  const band = await page.locator('[data-drill-rating]').textContent();
+  await expect(crest.locator('b')).toHaveText(band || '');
+  await expect(crest.locator('.crest-note')).toContainText('Past Amateur');
+  await expect(page.locator('[data-drill-results]')).toHaveAttribute('data-levelup', band || '');
+  await expect(page.locator('[data-confetti]')).toHaveCount(1);
+});
+
+test('a round inside a band already reached gets no crest', async ({ page }) => {
+  await seedAnswered(page, [300, 300, 300]);
+  await page.goto(PAGE);
+  await page.locator('[data-drill-start]').click();
+  await page.locator('[data-drill-box]').pressSequentially('The BCBA modeled the prompt.', { delay: 12 });
+  await state(page, 'done');
+  await expect(page.locator('[data-drill-levelup]')).toBeHidden();
+  expect(await page.locator('[data-drill-results]').getAttribute('data-levelup')).toBeNull();
+});
+
+test('a copy round that opens a band shows the crest on the read screen, where he lands first', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__settleMs = 0;
+    localStorage.setItem('noaba.drills.settings.v1', JSON.stringify({ mode: 'copy', copyDefault: true }));
+    const now = Date.now();
+    localStorage.setItem('noaba.drills.v1', JSON.stringify([2, 3, 4].map((nwam, i) => ({
+      at: new Date(now - (4 - i) * 86400000).toISOString(), minutes: 1, seconds: 60, nwam, gwam: nwam, accuracy: 0.98,
+      words: nwam, mode: 'copy', passage: 'p-x', keys: {},
+    }))));
+  });
+  await page.goto(PAGE);
+  await page.locator('[data-drill-start]').click();
+  const words = ((await page.locator('[data-drill-passage]').textContent()) || '').trim().split(/\s+/);
+  await page.locator('[data-drill-box]').pressSequentially(words.slice(0, 8).join(' ') + ' ', { delay: 10 });
+  await state(page, 'done');
+  await expect(page.locator('[data-drill-read]')).toBeVisible();
+  const crest = page.locator('[data-drill-read-levelup]');
+  await expect(crest).toBeVisible();
+  await expect(crest.locator('.crest-kicker')).toHaveText('New band');
+  await expect(page.locator('[data-confetti]')).toHaveCount(1);
+});

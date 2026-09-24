@@ -25,6 +25,7 @@ import { renderPassage, markPassage } from "./copy.js";
 import { shelve, unshelve, dueEntry, returned, describeShelf, copyRounds } from "./shelf.js";
 import { pickReview, asReview, describeReviews } from "./review.js";
 import { renderRead } from "./read.js";
+import { bandUp, bandRoad } from "./bands.js";
 import { nextSeed, openWithSeed } from "./seeds.js";
 import { researchContext, toneOf } from "./stance.js";
 import { ORACLE_SYSTEM, ORACLE_SCHEMA, oraclePrompt, readOracle, DRAFT_SYSTEM, DRAFT_SCHEMA, draftPrompt, toProposal,
@@ -38,7 +39,7 @@ const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => [...document.querySelectorAll(sel)];
 const root = $("main.drill");
 const els = {
-  setup: $("[data-drill-setup]"), start: $("[data-drill-start]"), mins: $$("[data-drill-minutes]"), pb: $("[data-drill-pb]"),
+  setup: $("[data-drill-setup]"), start: $("[data-drill-start]"), mins: $$("[data-drill-minutes]"), pb: $("[data-drill-pb]"), road: $("[data-drill-road]"), levelUp: $("[data-drill-levelup]"),
   streak: $("[data-stat-streak]"), sitting: $("[data-stat-sitting]"), today: $("[data-stat-today]"), trophyChip: $("[data-stat-trophies]"),
   calendar: $("[data-drill-calendar]"), trophies: $("[data-drill-trophies]"), unlocked: $("[data-drill-unlocked]"), think: $("[data-drill-think]"),
   question: $("[data-drill-question]"), category: $("[data-drill-category]"), q: $("[data-drill-q]"), bullets: $("[data-drill-bullets]"),
@@ -59,7 +60,7 @@ const els = {
   send: $("[data-drill-send]"), expertStatus: $("[data-drill-expert-status]"), expertToken: $("[data-drill-expert-token]"),
   strictShift: $("[data-drill-strict-shift]"),
   read: $("[data-drill-read]"), respond: $("[data-drill-respond]"), shelve: $("[data-drill-shelve]"), numbers: $("[data-drill-numbers]"),
-  readHome: $("[data-drill-read-home]"), readNote: $("[data-drill-read-note]"), readUnlocked: $("[data-drill-read-unlocked]"),
+  readHome: $("[data-drill-read-home]"), readNote: $("[data-drill-read-note]"), readUnlocked: $("[data-drill-read-unlocked]"), readLevelUp: $("[data-drill-read-levelup]"),
   readParts: { score: $("[data-drill-read-score]"), title: $("[data-drill-read-title]"), source: $("[data-drill-read-source]"),
     text: $("[data-drill-read-text]"), sources: $("[data-drill-read-sources]"), question: $("[data-drill-read-question]") },
   shelf: $("[data-drill-shelf]"), dueReviews: $("[data-drill-reviews]"), mapShelf: $("[data-drill-map-shelf]"),
@@ -149,6 +150,26 @@ function setMinutes(m, save = true) {
     ? `Your best ${what} at ${m} minute${m === 1 ? "" : "s"}: ${b.toFixed(1)} NWAM. Beat it.`
     : `No ${what} drill at ${m} minute${m === 1 ? "" : "s"} yet. This one sets the bar.`;
   if (save) { data.settings = { ...data.settings, minutes: m }; store.saveSettings(data.settings); }
+  renderRoad(ofKind(copying ? "copy" : "compose"), what);
+}
+/* The bands as a road on the home screen: gilded where his numbers have been. */
+function renderRoad(history, what) {
+  const road = bandRoad(history);
+  els.road.hidden = !road;
+  if (!road) { els.road.replaceChildren(); return; }
+  const ol = document.createElement("ol");
+  ol.className = "road-gems";
+  ol.append(...road.bands.map((b) => {
+    const n = document.createElement("li");
+    n.className = `gem is-${b.state}`;
+    n.dataset.band = b.name;
+    n.title = `${b.name}: ${b.min} NWAM and up`;
+    const i = document.createElement("i");
+    i.setAttribute("aria-hidden", "true");
+    n.append(i, Object.assign(document.createElement("span"), { textContent: b.name }));
+    return n;
+  }));
+  els.road.replaceChildren(ol, Object.assign(document.createElement("p"), { className: "road-line", textContent: `${road.line} (${what})` }));
 }
 const LEDES = {
   answer: "One clinical question. One to five minutes, as fast and as clean as you can. The garden grows with every word, and warms when you fly.",
@@ -681,6 +702,7 @@ async function finish() {
   // The last passage on the shelf copied again: the shelf is empty after this round.
   if (state.mode === "copy" && state.passage.fromShelf && !unshelve(shelf(), state.passage.id).length) state.record.shelfEmpty = true;
   const st = stars(s, prior.filter((h) => kindOf(h) === roundKind()), state.roundMinutes);
+  state.levelPrior = prior.filter((h) => kindOf(h) === roundKind());
   const before = trophyCase(prior);
   if (!state.answerAt) state.answerAt = state.record.at;
   // A talked round has no keystrokes but it is still a round, and it can be kept.
@@ -718,6 +740,7 @@ function render(s, st, prior) {
   els.accuracy.textContent = Math.round(s.accuracy * 100) + "%";
   els.rating.textContent = s.rating.name;
   els.ratingNote.textContent = s.rating.accuracyGated ? "(one band down: accuracy under 96%)" : s.gwam < 1 ? "(nothing typed)" : "";
+  renderLevelUp(s);
   els.next.textContent = s.gwam < 1 ? "" : ladderText(s.nwam, prior.filter((h) => kindOf(h) === roundKind()), state.roundMinutes);
   els.stars.replaceChildren(
     star(st.best, "Personal best"), star(st.beatLast, "Beat your last"), star(st.clean, "97% clean"),
@@ -815,6 +838,9 @@ function showRead() {
   const won = [...(state.unlocked || []), ...(state.spotted || [])];
   els.readUnlocked.hidden = !won.length;
   els.readUnlocked.replaceChildren(...els.unlocked.cloneNode(true).childNodes);
+  // A copy round that opened a band says so here too: this screen comes first.
+  els.readLevelUp.hidden = els.levelUp.hidden;
+  els.readLevelUp.replaceChildren(...els.levelUp.cloneNode(true).childNodes);
   els.readNote.textContent = state.passage.fromShelf ? "Back from the shelf, in new words. Shelve it again if it still is not the day for it." : "";
   els.results.hidden = true;
   els.read.hidden = false;
@@ -839,6 +865,20 @@ function shelveIt() {
   store.log(`shelved ${p.id}${p.variant ? ` variant ${p.variant}` : ""}`);
   state.baton = 0;
   arm();
+}
+
+/* A band his numbers have never reached before, first time: the crest. A
+   round with nothing typed never opens one. */
+function renderLevelUp(s) {
+  const up = s.gwam >= 1 ? bandUp(s.rating, state.levelPrior || []) : null;
+  els.levelUp.hidden = !up;
+  if (!up) { delete els.results.dataset.levelup; els.levelUp.replaceChildren(); return; }
+  els.levelUp.replaceChildren(
+    Object.assign(document.createElement("span"), { className: "crest-kicker", textContent: "New band" }),
+    Object.assign(document.createElement("b"), { textContent: up.band }),
+    Object.assign(document.createElement("span"), { className: "crest-note", textContent: `Past ${up.from}, the first time over ${up.min} NWAM.` }),
+  );
+  els.results.dataset.levelup = up.band;
 }
 
 /* The band is the field's yardstick; the personal ladder is his own. */
@@ -890,6 +930,8 @@ function renderUnlocked(list, spotted = []) {
   els.unlocked.hidden = !list.length && !spotted.length;
   els.unlocked.replaceChildren(...list.map((t) => row(t, t.kind ? "Nemesis tamed: " : "Trophy: ", "unlocked")),
     ...spotted.map((t) => row(t, "New nemesis: ", "unlocked is-nemesis")));
+  // Revealed one after another, not all at once.
+  [...els.unlocked.children].forEach((n, i) => n.style.setProperty("--i", String(i)));
 }
 
 function star(on, label) { const n = document.createElement("span"); n.className = "star" + (on ? " on" : ""); n.textContent = label; return n; }
@@ -934,6 +976,7 @@ function markKnown(w, row, as) {
   els.errors.textContent = String(s.corrections + (s.uncorrected || 0));
   els.accuracy.textContent = Math.round(s.accuracy * 100) + "%";
   els.rating.textContent = s.rating.name;
+  renderLevelUp(s);
   if (state.record) {
     Object.assign(state.record, { nwam: s.nwam, accuracy: s.accuracy, rating: s.rating.name, uncorrected: s.uncorrected });
     store.saveHistory(data.history);
