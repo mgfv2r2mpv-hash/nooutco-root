@@ -9,7 +9,7 @@ Status is one of: **open**, **fixed** (with the test that failed before the
 fix), **deferred** (with the reason) or **not a bug** (with the evidence).
 
 Baseline before any change: 161 node tests and 122 Playwright tests
-(WebKit and Chromium) pass. After iteration 7: 164 node tests and 164
+(WebKit and Chromium) pass. After iteration 8: 165 node tests and 168
 Playwright tests pass.
 
 Ordered by what matters most to him: his answers first (lost, doubled or
@@ -29,9 +29,9 @@ the mini games, then tidying.
 | A7 | `web/drill.js:440-449` | bug | MED | `batonPass` awaits `keep()` before it marks the app busy, so a double B passes the guard twice: two keeps and two `claude -p` baton calls. | Mark busy before the keep. | **fixed**: `drills.spec.js` "the baton pass run twice at once keeps once and asks the expert once" |
 | A8 | `web/drill.js:1316`, `1327` | weak use case | MED | `PENDING_MAX = 3`: a fourth unkept answer silently pushes the oldest out, text included. Each oracle follow-up left unkept adds one. | Raise the cap and say on the bar when the oldest would drop. | open |
 | A9 | `web/drill.js:1236-1238`, `1349-1355` | weak use case | MED | The bar's Keep and Send report into `.keepnote` and the expert log, both hidden on home, so a failed Keep from the bar shows nothing. | Write the outcome into the pending row. | **fixed**: `drills.spec.js` "a failed Keep from the pending bar says so on the bar and leaves the answer held" |
-| A10 | `web/oracle.js:298-311`, `web/shelf.js:28-31` | unresolved path | MED | The baton passage (the expert's reply that becomes his next copy text) is never checked against his answer, and shelving it writes its text to settings.json. If the reply quotes him, his words reach disk outside Keep. | Drop a baton passage that shares a run of eight words with his answer. | open |
+| A10 | `web/oracle.js:298-311`, `web/shelf.js:28-31` | unresolved path | MED | The baton passage (the expert's reply that becomes his next copy text) is never checked against his answer, and shelving it writes its text to settings.json. If the reply quotes him, his words reach disk outside Keep. | Drop a baton passage that shares a run of eight words with his answer. | **fixed**: `batonQuotes(reply, answer)` in `oracle.js` checks the title, passage, question, stance and every source; `batonPass` drops a quoting reply before it can become a passage or be shelved, and says "The expert's reply quoted your answer, so it was not used. Your answer is kept. Press B to ask again." Tests: `drill-baton.test.mjs` "a baton reply that quotes eight of his words in a row is caught in every field" and `drills.spec.js` "a baton reply that quotes his answer is not used, so his words never reach the shelf" (both failed before) |
 | A11 | `web/drill.js:557`, `566` | weak use case | MED | One Esc mid-round drops a five-minute answer outright. Holding it in memory would write nothing. | Esc during a running round with twenty words or more holds the text on the pending bar, unscored. | open |
-| A12 | `web/drill.js:363-368` | weak use case | MED | While talking, each partial result sets `box.value = micBase + text`, so anything typed during the mic is erased while its keystrokes stay in the score. | Refresh `micBase` on every typed input while listening. | open |
+| A12 | `web/drill.js:363-368` | weak use case | MED | While talking, each partial result sets `box.value = micBase + text`, so anything typed during the mic is erased while its keystrokes stay in the score. | Refresh `micBase` on every typed input while listening. | **fixed**: a typed input while listening fixes the box into `micBase` and counts the words already heard (`micSkip`), so the next cumulative partial adds only its new words; a final result resets both. Test: `drills.spec.js` "words typed while talking stay in the box when the next spoken words arrive" (failed before: "(typed)" was erased) |
 
 ## 2. His rulings
 
