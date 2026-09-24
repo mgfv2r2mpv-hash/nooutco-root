@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 
 import {
   carryOver, looksLikeData, mergeByAt, mergeEarned, mergeGames, mergeQueue,
-  mergeSettings, mergeShelf, mergeWords, newestAt,
+  mergeSettings, mergeShelf, mergeWords, newestAt, parseArgs,
 } from "../app/carry-over.mjs";
 import { HISTORY_MAX } from "../web/store.js";
 import { RUNS_KEPT } from "../web/minigames.js";
@@ -108,6 +108,19 @@ test("the expert queue dedupes and runs oldest first", () => {
   assert.deepEqual(mergeQueue([b, a], [a]), [a, b]);
 });
 
+test("the arguments read the same with and without --into", () => {
+  assert.deepEqual(parseArgs(["/from"]).from, "/from");
+  assert.equal(parseArgs(["/from"]).dry, false);
+  assert.deepEqual(parseArgs(["/from", "--dry"]).from, "/from");
+  assert.equal(parseArgs(["/from", "--dry"]).dry, true);
+  const withInto = parseArgs(["--into", "/dest", "/from", "--dry"]);
+  assert.equal(withInto.from, "/from");
+  assert.equal(withInto.into, "/dest");
+  assert.equal(parseArgs(["/from", "--into", "/dest"]).from, "/from");
+  assert.equal(parseArgs(["/from", "--into", "/dest"]).into, "/dest");
+  assert.equal(parseArgs(["--dry"]).from, undefined);
+});
+
 test("a folder that is not the app's data is refused", () => {
   assert.equal(looksLikeData(dir()), false);
   assert.throws(() => carryOver(dir(), dir()), /does not hold/);
@@ -143,6 +156,21 @@ test("a whole carry over merges the files, copies new answers and never overwrit
   assert.equal(r.kept.copied, 1);
   assert.ok(existsSync(r.backup), "the destination was backed up first");
   assert.deepEqual(JSON.parse(readFileSync(join(r.backup, "history.json"), "utf8")).map((x) => x.at), ["2026-09-24T12:00:00.000Z"]);
+});
+
+test("an answer already proposed to the expert is never proposed again from the other Mac", () => {
+  const from = folder({
+    history: [round("2026-09-23T09:00:00.000Z")],
+    queue: [JSON.stringify({ at: "2026-09-23T09:00:00.000Z", answer: "theirs" })],
+  });
+  writeFileSync(join(from, "expert-sent.json"), JSON.stringify(["2026-09-23T09:00:00.000Z", "2026-09-22T08:00:00.000Z"]));
+  const into = folder({ history: [round("2026-09-24T12:00:00.000Z")] });
+  writeFileSync(join(into, "expert-sent.json"), JSON.stringify(["2026-09-22T08:00:00.000Z"]));
+
+  const r = carryOver(from, into);
+  const sent = JSON.parse(readFileSync(join(into, "expert-sent.json"), "utf8"));
+  assert.deepEqual(sent, ["2026-09-22T08:00:00.000Z", "2026-09-23T09:00:00.000Z"]);
+  assert.equal(r.sent.after, 2);
 });
 
 test("a dry run writes nothing at all", () => {

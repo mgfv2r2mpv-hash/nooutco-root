@@ -19,6 +19,11 @@
  *   kept/               the answers themselves: a file that is already there is
  *                       never overwritten, because the name carries its timestamp
  *   expert-queue.jsonl  a set of lines, in timestamp order
+ *   expert-sent.json    the stamps already proposed to the expert, a set: miss
+ *                       this and the other Mac's app proposes them all again
+ *
+ * oracle/ is not carried: it is an empty folder the CLI is run in, so that no
+ * project's CLAUDE.md is read, and it holds nothing of his.
  *
  * app.log is left alone: each Mac keeps its own.
  *
@@ -37,7 +42,7 @@ import { TAME_LOG_MAX } from "../web/tame.js";
 export const DEFAULT_SUPPORT = join(homedir(), "Library", "Application Support", "ClickClackOracle");
 
 /* The files the app owns. A folder with none of them is not a data folder. */
-const FILES = ["history.json", "lexicon.json", "settings.json", "expert-queue.jsonl"];
+const FILES = ["history.json", "lexicon.json", "settings.json", "expert-queue.jsonl", "expert-sent.json"];
 
 /* Preferences that are one choice, not a list: they come from one side whole. */
 const SCALAR_KEYS = ["mode", "minutes", "strictShift", "copyDefault", "bandsNoted", "v"];
@@ -201,12 +206,14 @@ export function carryOver(from, into, { dry = false } = {}) {
     lexicon: readJSON(join(into, "lexicon.json"), []),
     settings: readJSON(join(into, "settings.json"), {}),
     queue: readLines(join(into, "expert-queue.jsonl")),
+    sent: readJSON(join(into, "expert-sent.json"), []),
   };
   const theirs = {
     history: readJSON(join(from, "history.json"), []),
     lexicon: readJSON(join(from, "lexicon.json"), []),
     settings: readJSON(join(from, "settings.json"), {}),
     queue: readLines(join(from, "expert-queue.jsonl")),
+    sent: readJSON(join(from, "expert-sent.json"), []),
   };
 
   const history = mergeByAt(mine.history, theirs.history, HISTORY_MAX);
@@ -215,6 +222,9 @@ export function carryOver(from, into, { dry = false } = {}) {
     mineNewer: newestAt(mine.history) >= newestAt(theirs.history),
   });
   const queue = mergeQueue(mine.queue, theirs.queue);
+  // The same set merge as the words: these are `at` stamps, and an answer both
+  // Macs have already proposed must never be proposed a second time.
+  const sent = mergeWords(mine.sent, theirs.sent);
 
   const theirKept = existsSync(join(from, "kept")) ? readdirSync(join(from, "kept")) : [];
   const copied = theirKept.filter((f) => !f.startsWith(".") && !existsSync(join(into, "kept", f)));
@@ -226,6 +236,7 @@ export function carryOver(from, into, { dry = false } = {}) {
     words: { mine: mine.lexicon.length, theirs: theirs.lexicon.length, after: lexicon.length },
     kept: { theirs: theirKept.length, copied: copied.length },
     queue: { mine: mine.queue.length, theirs: theirs.queue.length, after: queue.length },
+    sent: { mine: mine.sent.length, theirs: theirs.sent.length, after: sent.length },
     usedPreferencesFrom: newestAt(mine.history) >= newestAt(theirs.history) ? "this Mac" : "the other Mac",
   };
   if (dry) return report;
@@ -239,6 +250,7 @@ export function carryOver(from, into, { dry = false } = {}) {
   writeJSON(join(into, "lexicon.json"), lexicon);
   writeJSON(join(into, "settings.json"), settings);
   writeLines(join(into, "expert-queue.jsonl"), queue);
+  if (sent.length) writeJSON(join(into, "expert-sent.json"), sent);
   mkdirSync(join(into, "kept"), { recursive: true });
   for (const f of copied) copyFileSync(join(from, "kept", f), join(into, "kept", f));
   return report;
@@ -246,12 +258,19 @@ export function carryOver(from, into, { dry = false } = {}) {
 
 // ------------------------------------------------------------------ the shell
 
-function main(argv) {
-  const args = argv.slice(2);
+/** The arguments, read: which folder comes in, which it goes into, and dry or not. */
+export function parseArgs(args) {
   const dry = args.includes("--dry");
   const intoAt = args.indexOf("--into");
   const into = intoAt >= 0 ? args[intoAt + 1] : DEFAULT_SUPPORT;
-  const from = args.filter((a, i) => !a.startsWith("--") && i !== intoAt + 1)[0];
+  // Only skip the word after --into, never index 0 when there is no --into.
+  const taken = intoAt >= 0 ? intoAt + 1 : -1;
+  const from = args.filter((a, i) => !a.startsWith("--") && i !== taken)[0];
+  return { from, into, dry };
+}
+
+function main(argv) {
+  const { from, into, dry } = parseArgs(argv.slice(2));
   if (!from) {
     console.error("usage: node app/carry-over.mjs <the other Mac's folder> [--into <folder>] [--dry]");
     process.exit(2);
@@ -267,6 +286,7 @@ function main(argv) {
     `  words      ${r.words.mine} here + ${r.words.theirs} there -> ${r.words.after}`,
     `  kept       ${r.kept.copied} of their ${r.kept.theirs} answers came over`,
     `  queue      ${r.queue.mine} here + ${r.queue.theirs} there -> ${r.queue.after}`,
+    `  proposed   ${r.sent.mine} here + ${r.sent.theirs} there -> ${r.sent.after} already with the expert`,
     `  preferences from ${r.usedPreferencesFrom}`,
   ];
   if (r.backup) lines.push(`  backup     ${r.backup}`);
