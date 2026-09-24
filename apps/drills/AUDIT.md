@@ -12,7 +12,8 @@ Baseline before any change: 161 node tests and 122 Playwright tests
 (WebKit and Chromium) pass. After iteration 8: 165 node tests and 168
 Playwright tests pass. After A8 and A11: 165 node tests and 174
 Playwright tests pass. After S6 and G8: 167 node tests and 176 Playwright
-tests pass.
+tests pass. After S13, S14 and R4: 168 node tests and 178 Playwright tests
+pass.
 
 Ordered by what matters most to him: his answers first (lost, doubled or
 written without a Keep), then his rulings, then the everyday screens, then
@@ -42,7 +43,7 @@ the mini games, then tidying.
 | R1 | `web/oracle.js:154-156` | bug | HIGH | The eight-word guard in `toProposal` checked title, rule, applies and rationale only. A topic slug made from his words (`i-always-fade-the-prompt-within-three-sessions-when-the`) or keywords that together quote him went through to the expert. | Guard the slug (dashes read as spaces) and the keywords (joined in order) as well. | **fixed**: `drill-oracle.test.mjs` "the eight-word guard covers the topic slug and the keywords too" |
 | R2 | `web/drill.js:1233`, `web/stance.js:59-72`, `web/oracle.js:108-111` | bug | MED | The stance label ignored the review lens: a steelman or "what would change your mind" answer read as "pushes back", and the drafting prompt carried that beside the lens line, inviting a false dissent record. | `toneOf(text, lens)` reads the stance as "not read (lens)" for those two lenses, counts kept; the draft prompt leaves the stance line out. | **fixed**: `drill-stance.test.mjs` "a steelman or change-your-mind answer is not read as pushing back" |
 | R3 | `web/oracle.js:22`, `web/stance.js:85-108` | incomplete | LOW | The oracle can ask him to steelman on its own, and an oracle item carries no lens, so R2's fix does not reach those answers. | Deferred unless the oracle gains a lens field; the drafting model sees the oracle's own question. | open |
-| R4 | `web/stance.js:36-37` | weak use case | LOW | Markers ignore negation: "I dont agree" counts as agreement. | Skip a marker right after not / don't / dont / nothing. | open |
+| R4 | `web/stance.js:36-37` | weak use case | LOW | Markers ignore negation: "I dont agree" counts as agreement. | Skip a marker right after not / don't / dont / nothing. | **fixed**: `drill-stance.test.mjs` "a negated marker is not counted: I dont agree is not agreement" (`count` in `web/stance.js` skips an agree or pushback marker right after not, don't, dont, doesn't, didn't or nothing; skipped, never flipped) |
 
 ## 3. The everyday screens
 
@@ -60,8 +61,8 @@ the mini games, then tidying.
 | S10 | `web/drill.js:1093-1104` | incomplete | LOW | After "clinical"/"a word" re-scores the round, the rating note, stars, basis and ladder lines keep the old score. | Re-run those parts of `render()`. | open |
 | S11 | `web/drill.js:1109-1113`, `1150-1160` | weak use case | LOW | The progress chart and "Lately" trend mix copy and compose rounds, which line 122 says must never mix. | Plot and trend compose rounds only. | open |
 | S12 | home (`index.html`, road, shelf, review, nemesis lines) | weak use case | LOW | OVERNIGHT.md: on a day all four lines show, Start sits further down the card. | Measure the card with all four showing; fold to one status line if Start falls below the fold. | open |
-| S13 | `app/Sources/Speech.swift:49-51` *(uncertain)* | bug | MED | If the audio engine fails to start the tap stays installed; the next Talk installs a second tap, which raises and would crash. | Remove the tap when `engine.start()` throws and always in `stopAudio`. | open |
-| S14 | `app/Sources/Speech.swift:51-53` *(uncertain)* | unresolved path | LOW | On a final result or error Swift stops the audio but never tells the page, which still shows "Stop talking". | Post a stopped message and reset the button. | open |
+| S13 | `app/Sources/Speech.swift:49-51` *(uncertain)* | bug | MED | If the audio engine fails to start the tap stays installed; the next Talk installs a second tap, which raises and would crash. | Remove the tap when `engine.start()` throws and always in `stopAudio`. | **fixed** (verified by reading first): the bug was real. `stopAudio` removed the tap only inside `if engine.isRunning`, so after a failed `engine.start()` the tap stayed on a stopped engine, and the next Talk's `installTap` on bus 0 would raise. `Listener` now tracks `hasTap`, `stopAudio` removes the tap whenever one is on, and a failed start calls `stop()` before replying. No Swift test harness exists; `app/build.sh` compiles it |
+| S14 | `app/Sources/Speech.swift:51-53` *(uncertain)* | unresolved path | LOW | On a final result or error Swift stops the audio but never tells the page, which still shows "Stop talking". | Post a stopped message and reset the button. | **fixed**: `drills.spec.js` "when the Mac stops listening on its own, the Talk button resets and the words heard stay" (page: `window.ClickClack.speechEnded()` resets the button to Talk and says so in the hint. Swift: on a final result or an error, the recognition callback runs on main, sends the last words, stops, then calls `speechEnded`; a `generation` count drops callbacks from a task already stopped, so a late one can neither add words nor end the next Talk) |
 | S15 | `app/Sources/main.swift:386`, `web/drill.js:566` *(uncertain)* | bug | LOW | Cmd-Z from the Edit menu can change the box with no key events, so text and score disagree. | Refuse Cmd-Z in the box as Cmd-V already is. | open |
 | S16 | `index.html:136-144` | incomplete | LOW | Tabs have `role="tab"` but no `aria-selected` and no arrow keys. | Set `aria-selected` in `showTab`. | open |
 

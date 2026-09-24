@@ -39,11 +39,15 @@ const AGREE = ["agree", "exactly", "that's right", "thats right", "that matches"
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 /* One alternation, longest phrase first, so "it depends on" counts once and
    never again as "depends on". */
-function count(text, phrases) {
+function count(text, phrases, { negatable = false } = {}) {
   const alt = [...phrases].sort((a, b) => b.length - a.length)
     .map((p) => `${/^\w/.test(p) ? "\\b" : ""}${esc(p)}${/\w$/.test(p) ? "\\b" : ""}`).join("|");
-  return (text.match(new RegExp(alt, "g")) || []).length;
+  const hits = [...text.matchAll(new RegExp(alt, "g"))];
+  return negatable ? hits.filter((m) => !NEGATED.test(text.slice(0, m.index))).length : hits.length;
 }
+/* A stance marker right after one of these is not his stance: "I dont agree"
+   is not agreement (AUDIT R4). The marker is skipped, never flipped. */
+const NEGATED = /\b(?:not|don't|dont|doesn't|doesnt|didn't|didnt|nothing)\s+$/;
 
 /** Stance toward what was in front of him, from marker counts alone. */
 export function stanceFrom(pushback, agree) {
@@ -66,8 +70,8 @@ export function toneOf(text, lens) {
   const t = String(text || "").toLowerCase().replace(/[\u2018\u2019]/g, "'");
   const words = (t.match(/[a-z0-9']+/g) || []).length;
   const sentences = (String(text || "").replace(/\(\?\)/g, "").match(/[^.!?]+[.!?]+|[^.!?]+$/g) || []).filter((s) => s.trim()).length;
-  const pushback = count(t, PUSHBACK);
-  const agree = count(t, AGREE);
+  const pushback = count(t, PUSHBACK, { negatable: true });
+  const agree = count(t, AGREE, { negatable: true });
   return {
     words, sentences,
     hedges: count(t, HEDGES), boosters: count(t, BOOSTERS),

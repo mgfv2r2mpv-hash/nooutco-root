@@ -122,3 +122,15 @@ test("a steelman or change-your-mind answer is not read as pushing back: the len
   }
   assert.equal(toneOf(text, "kneejerk").stance, "pushes back", "other lenses are read as usual");
 });
+
+test("a negated marker is not counted: I dont agree is not agreement (AUDIT R4)", () => {
+  assert.equal(toneOf("I dont agree with that.").agree, 0);
+  assert.equal(toneOf("I don\u2019t agree with that.").agree, 0, "a curly apostrophe reads like a straight one");
+  assert.equal(toneOf("I do not agree.").agree, 0);
+  assert.equal(toneOf("Nothing wrong with the plan.").pushback, 0);
+  assert.equal(toneOf("I dont agree with that.").stance, "unclear");
+  assert.equal(toneOf("I don't disagree.").pushback, 0);
+  // The pushback phrases that begin with not still count, once each.
+  assert.equal(toneOf("That is not always so, and I'm not convinced.").pushback, 2);
+  assert.equal(toneOf("I agree.").agree, 1);
+});
