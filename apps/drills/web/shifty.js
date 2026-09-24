@@ -12,6 +12,8 @@
  * buildShifty is pure and exported for the node tests.
  */
 
+import { closeGames } from "./gamebox.js";
+
 export const SHIFTY_WORDS = 20;
 export const SHIFTY_CAPS = 13;
 
@@ -126,7 +128,7 @@ function tach() {
  * drill's own Shift rule.
  */
 export function openShifty(host, { built, runs = [], judge, handOf, progressLine = () => "", onResult = () => {}, onClose = () => {} }) {
-  host.querySelector("[data-shifty]")?.remove();
+  closeGames(host);
   const box = el("div", "pairgame shifty");
   box.dataset.shifty = "1";
   box.setAttribute("role", "dialog");
@@ -226,8 +228,9 @@ export function openShifty(host, { built, runs = [], judge, handOf, progressLine
     box.dataset.done = "1";
     close.focus({ preventScroll: true });
   }
-  const shut = () => { box.remove(); onClose(); };
-  close.addEventListener("click", shut);
+  const shut = (handBack = true) => { box.remove(); if (handBack) onClose(); };
+  box.shut = () => shut(false);
+  close.addEventListener("click", () => shut());
   input.focus({ preventScroll: true });
   return box;
 }
