@@ -6,7 +6,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  scoreDrill, countRuns, unknownWords, isKnown, rate, trickyKeys, timingProfile, formTips,
+  scoreDrill, deleteRuns, unknownWords, isKnown, rate, trickyKeys, timingProfile, formTips,
   BANDS, ACCURACY_GATE,
 } from "../web/score.js";
 
@@ -40,7 +40,7 @@ test("GWAM is placed keystrokes over five over minutes, and Backspace places not
 
 test("a run of Backspaces is one correction, however many characters it eats", () => {
   const { events } = typed("abc<<<def<g");
-  assert.equal(countRuns(events, "backspace"), 2);
+  assert.equal(deleteRuns(events).corrections, 2);
 });
 
 test("without a lexicon NWAM subtracts corrections per minute and says so; with one it subtracts unknown words", () => {
