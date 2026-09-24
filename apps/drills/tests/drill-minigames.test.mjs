@@ -85,3 +85,17 @@ test("River Rhythm reads the last eight gaps: an even beat is calm water, an une
   assert.equal(won["g-rapids"], "2026-09-24T10:00:00Z");
   assert.equal(won["g-paddler"], null);
 });
+
+test("Shifty's words come from his field, never from the top of an alphabetical dictionary", async () => {
+  const { PASSAGES } = await import("../web/passages.js");
+  const { shiftyPool } = await import("../web/shifty.js");
+  // The Mac's word list is sorted, so its first 4000 words all start with "a".
+  const dictionary = Array.from({ length: 4000 }, (_, i) => `aa${String.fromCharCode(97 + (i % 26))}lii${i}`);
+  const pool = shiftyPool(PASSAGES, dictionary);
+  const field = new Set(PASSAGES.flatMap((p) => p.text.toLowerCase().match(/[a-z]+/g) || []));
+  assert.ok(pool.length >= SHIFTY_WORDS * 2, `pool ${pool.length}`);
+  for (const w of pool) assert.ok(field.has(w.toLowerCase()), `${w} is not a passage word`);
+  const initials = new Set(pool.map((w) => w[0].toLowerCase()));
+  assert.ok(initials.size >= 15, `only ${initials.size} first letters`);
+  assert.ok(buildShifty(pool));
+});

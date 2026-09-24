@@ -8,7 +8,7 @@ test("the oracle's instructions forbid invented citations, em dashes and client 
   assert.match(ORACLE_SYSTEM, /general practice knowledge/);
   assert.match(ORACLE_SYSTEM, /No em dashes/);
   assert.match(ORACLE_SYSTEM, /No client names/);
-  assert.ok(!/—/.test(ORACLE_SYSTEM + DRAFT_SYSTEM), "no em dash in the prompts themselves");
+  assert.ok(!/\u2014/.test(ORACLE_SYSTEM + DRAFT_SYSTEM), "no em dash in the prompts themselves");
   assert.match(DRAFT_SYSTEM, /Never quote his answer/);
 });
 
@@ -63,4 +63,14 @@ test("the store's own limits are checked here: title, rule, applies and a slug t
   assert.match(toProposal({ ...ok, applies: "" }, {}).error, /applies/);
   assert.match(toProposal({ ...ok, topic: "!!!" }, {}).error, /slug/);
   assert.equal(slugify("  Prompt Fading: most-to-least "), "prompt-fading-most-to-least");
+});
+
+test("the eight-word guard covers the topic slug and the keywords too, not only the prose fields", () => {
+  const answer = "I always fade the prompt within three sessions when the learner responds independently";
+  const ok = { title: "Prompt fading", rule: "Fade on a schedule set in advance.", applies: "when prompts are faded" };
+  const viaTopic = toProposal({ ...ok, topic: "i always fade the prompt within three sessions when the" }, { answer });
+  assert.equal(viaTopic.error, "quotes the answer (a run of eight words or more)");
+  const viaKeywords = toProposal({ ...ok, topic: "prompt-fading", keywords: ["i always fade the prompt", "within three sessions when"] }, { answer });
+  assert.equal(viaKeywords.error, "quotes the answer (a run of eight words or more)");
+  assert.ok(toProposal({ ...ok, topic: "prompt-fading", keywords: ["prompt fading", "schedule"] }, { answer }).record);
 });

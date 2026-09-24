@@ -72,6 +72,16 @@ export function buildShifty(pool, rand = Math.random) {
   return { words: out, caps };
 }
 
+/**
+ * The words Shifty draws from: the passages' own words, so the capitals land
+ * on words from his field. The dictionary is left out on purpose: the Mac's
+ * list is sorted, so any slice from its top is all "a" words ("aalii").
+ */
+export function shiftyPool(passages) {
+  // Split at every non-letter, so "self-injury" gives two words, never "selfinjury".
+  return (passages || []).flatMap((p) => String(p.text || "").match(/[A-Za-z]+/g) || []);
+}
+
 /** Revs for one shift, from its three times added up: quick and clean runs high. */
 export function rpmOf(totalMs, wrong = false) {
   if (wrong || !Number.isFinite(totalMs)) return 800;

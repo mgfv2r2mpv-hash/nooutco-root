@@ -52,11 +52,17 @@ export function stanceFrom(pushback, agree) {
   return pushback ? "pushes back" : "agrees";
 }
 
+/* Review lenses that ask him to argue the other side (review.js LENSES). His
+   "however" there is the assignment, not his view, so the label is not read. */
+export const OTHER_SIDE_LENSES = Object.freeze(["steelman", "mind"]);
+export const STANCE_NOT_READ = "not read (lens)";
+
 /**
  * Tone and stance, counted locally. Straight and curly apostrophes read alike.
  * @param {string} text
+ * @param {string} [lens] the review lens id the question carried
  */
-export function toneOf(text) {
+export function toneOf(text, lens) {
   const t = String(text || "").toLowerCase().replace(/[\u2018\u2019]/g, "'");
   const words = (t.match(/[a-z0-9']+/g) || []).length;
   const sentences = (String(text || "").replace(/\(\?\)/g, "").match(/[^.!?]+[.!?]+|[^.!?]+$/g) || []).filter((s) => s.trim()).length;
@@ -67,7 +73,7 @@ export function toneOf(text) {
     hedges: count(t, HEDGES), boosters: count(t, BOOSTERS),
     firstPerson: (t.match(/\b(i|i'm|i've|i'd|me|my|mine)\b/g) || []).length,
     questions: (t.match(/\?/g) || []).length - (t.match(/\(\?\)/g) || []).length,
-    pushback, agree, stance: stanceFrom(pushback, agree),
+    pushback, agree, stance: OTHER_SIDE_LENSES.includes(lens) ? STANCE_NOT_READ : stanceFrom(pushback, agree),
   };
 }
 
