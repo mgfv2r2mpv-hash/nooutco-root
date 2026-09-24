@@ -24,7 +24,7 @@ function typed(s, gapMs = 100) {
 
 test("possessives, contractions and hyphenated compounds are words, not typos", () => {
   const lex = new Set(["gambler", "do", "they", "client", "can", "will", "follow", "up", "the", "fallacy"]);
-  for (const w of ["gambler's", "gambler’s", "clients'", "don't", "they're", "can't", "won't", "follow-up"]) assert.ok(isKnown(w, lex), w);
+  for (const w of ["gambler's", "gambler\u2019s", "clients'", "don't", "they're", "can't", "won't", "follow-up"]) assert.ok(isKnown(w, lex), w);
   for (const w of ["dont", "xqz's", "follow-upp"]) assert.ok(!isKnown(w, lex), w);
   assert.deepEqual(unknownWords("the gambler's fallacy, don't follow-up", lex), []);
 });
