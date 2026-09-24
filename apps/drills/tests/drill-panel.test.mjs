@@ -28,7 +28,10 @@ test("a sitting is drills no more than twenty minutes apart, counted back from n
 
 test("the ladder names the band, the next one, and the distance", () => {
   assert.deepEqual(ladder(52), { here: "Intermediate", next: "Fluent", toNext: 8 });
-  assert.deepEqual(ladder(80), { here: "Professional", next: null, toNext: 0 });
+  // 2026-09-23: Professional is no longer the top, so 80 has a next band.
+  assert.deepEqual(ladder(80), { here: "Professional", next: "Expert", toNext: 5 });
+  assert.deepEqual(ladder(89), { here: "Expert", next: "Elite", toNext: 6 });
+  assert.deepEqual(ladder(130), { here: "Stenographer", next: null, toNext: 0 });
   assert.deepEqual(ladder(10), { here: "Amateur", next: "Average", toNext: 25 });
 });
 

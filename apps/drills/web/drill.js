@@ -15,7 +15,7 @@ import { emptiestCell, render as renderMap } from "./map.js";
 import { itemById, ITEMS } from "./outline.js";
 import * as store from "./store.js";
 import { createGarden, createHeat } from "./ornament.js";
-import { bests, streak, sitting, ladder, stars, keyTrends, keyboardRates, lineChart, sparkline, keyboard, dayOf } from "./panel.js";
+import { bests, streak, sitting, ladder, personalLadder, stars, keyTrends, keyboardRates, lineChart, sparkline, keyboard, dayOf } from "./panel.js";
 import { trophyCase, newlyUnlocked } from "./trophies.js";
 import { createCalendar, renderTrophies } from "./calendar.js";
 import { handOf, judge, createShiftTracker, createShiftFx } from "./shift.js";
@@ -614,7 +614,7 @@ async function finish() {
     mode: state.mode, ...(state.passage && state.mode !== "answer" ? { passage: state.passage.id } : {}), ...(state.cont ? { cont: state.cont } : {}),
     seconds: secondsFor(), gwam: s.gwam, nwam: s.nwam, accuracy: s.accuracy, rating: s.rating.name,
     corrections: s.corrections, uncorrected: s.uncorrected, words: s.grossWords, bestCombo: state.bestCombo,
-    keys: s.keys, kept: false, revisions: s.revisions,
+    keys: s.keys, kept: false, revisions: s.revisions, revisedKeys: s.revisedKeys, keptWords: s.kept.words,
     habits: { wordByHand: s.habits.wordByHand, wordDeletes: s.habits.wordDeletes, lineDeletes: s.habits.lineDeletes },
     shift: s.shift,
     think: { ms: s.think.ms, count: s.think.count, sentence: s.think.sentence, clause: s.think.clause, word: s.think.word, mid: s.think.mid, flowWpm: s.think.flowWpm },
@@ -656,8 +656,7 @@ function render(s, st, prior) {
   els.accuracy.textContent = Math.round(s.accuracy * 100) + "%";
   els.rating.textContent = s.rating.name;
   els.ratingNote.textContent = s.rating.accuracyGated ? "(one band down: accuracy under 96%)" : s.gwam < 1 ? "(nothing typed)" : "";
-  const lad = ladder(s.nwam);
-  els.next.textContent = lad.next ? `${lad.toNext} more NWAM to ${lad.next}.` : "Top band. Now hold it.";
+  els.next.textContent = s.gwam < 1 ? "" : ladderText(s.nwam, prior.filter((h) => kindOf(h) === roundKind()), state.roundMinutes);
   els.stars.replaceChildren(
     star(st.best, "Personal best"), star(st.beatLast, "Beat your last"), star(st.clean, "97% clean"),
     ...(state.bestCombo >= 15 ? [star(true, `${state.bestCombo} clean in a row`)] : []),
@@ -666,7 +665,8 @@ function render(s, st, prior) {
     ? `A copy round: NWAM subtracts the ${s.uncorrected} word${s.uncorrected === 1 ? "" : "s"} that did not match the passage (capitals and punctuation count), over ${Math.round(state.scoredMinutes * 60)} seconds.`
     : s.netBasis === "corrections"
     ? `NWAM counts your ${s.corrections} corrections as the errors, because the word list has not loaded; uncorrected typos are not scored.`
-    : `NWAM subtracts ${s.uncorrected} unknown word${s.uncorrected === 1 ? "" : "s"}; your ${s.corrections} correction${s.corrections === 1 ? "" : "s"} cost you time, not words. Mark a term clinical below and it comes out of the count.`;
+    : `NWAM subtracts ${s.uncorrected} unknown word${s.uncorrected === 1 ? "" : "s"}; your ${s.corrections} correction${s.corrections === 1 ? "" : "s"} cost you time, not words. Mark a term clinical below and it comes out of the count.`
+      + (s.revisions ? ` ${revisionText(s)}` : "");
   const pb = bests(prior.filter((h) => kindOf(h) === roundKind()))[String(state.roundMinutes)];
   els.pace.replaceChildren(lineChart([{ values: s.pace, dots: false }], { guide: pb ?? null, guideLabel: pb != null ? `best ${pb.toFixed(0)}` : "", height: 120, min: 0 }));
   els.tricky.replaceChildren(...(s.tricky.keys.length ? s.tricky.keys.map((k) => li(`${keyName(k.key)} hit by mistake ${k.count}×`)) : [li("Nothing corrected. Clean hands.")]));
@@ -678,7 +678,9 @@ function render(s, st, prior) {
   if (s.timing.pauses) tm.push(`${s.timing.pauses} pause${s.timing.pauses === 1 ? "" : "s"} over two seconds`);
   for (const p of s.timing.slowPairs) tm.push(`${p.pair} runs slow: ${p.ms} ms`);
   if (s.shift.ok + s.shift.same) tm.push(`${s.shift.ok} of ${s.shift.ok + s.shift.same} capitals with the opposite Shift`);
-  if (s.revisions) tm.push(`${s.revisions} revision${s.revisions === 1 ? "" : "s"} with Option or Command+Backspace`);
+  if (s.revisions) tm.push(state.mode === "copy"
+    ? `${s.revisions} revision${s.revisions === 1 ? "" : "s"} with Option or Command+Backspace`
+    : `${s.revisions} revision${s.revisions === 1 ? "" : "s"} (a changed mind, never an error), ${s.kept.words} word${s.kept.words === 1 ? "" : "s"} kept`);
   els.timing.replaceChildren(...(tm.length ? tm.map(li) : [li("Not enough keys to read a rhythm.")]));
   els.tips.replaceChildren(...(s.tips.length ? s.tips.map((t) => {
     const n = document.createElement("li");
@@ -713,6 +715,23 @@ function render(s, st, prior) {
   window.scrollTo({ top: 0, behavior: "smooth" });
   renderChips();
   els.again.focus();
+}
+/* The band is the field's yardstick; the personal ladder is his own. */
+function ladderText(nwam, history, minutes) {
+  const lad = ladder(nwam);
+  const me = personalLadder(nwam, history, minutes);
+  const band = lad.next ? `${lad.toNext} more NWAM to ${lad.next}.` : "Top band.";
+  const mine = [
+    me.usual != null ? `your usual ${me.usual}` : null,
+    me.best != null ? `your best ${me.best.toFixed(0)}` : null,
+    `next milestone ${me.milestone}`,
+  ].filter(Boolean).join(", ");
+  return `${band} At ${minutes} min: ${mine}.`;
+}
+/* Thinking is never punished; only typos are. Say so where the numbers are. */
+function revisionText(s) {
+  const n = s.revisions;
+  return `${n} revision${n === 1 ? "" : "s"} took out ${s.revisedKeys} key${s.revisedKeys === 1 ? "" : "s"}: counted in your speed, never as errors. ${s.kept.words} word${s.kept.words === 1 ? "" : "s"} kept, and only those are kept.`;
 }
 /* The thinking, read apart from the typing. NWAM keeps the thinking in, as a
    real note's fifteen minutes do; flow speed is the fingers alone. */
