@@ -441,12 +441,15 @@ async function batonPass() {
   if (state.busy || state.phase !== "done" || state.mode !== "respond" || !state.passage) return;
   const answer = els.box.value.trim();
   if (!answer) return;
+  // Busy first, so a second B while the Keep is on its way does nothing.
+  const reading = "The expert is reading your answer and the research. This usually takes under a minute.";
+  busy(reading);
   // 1. Keep it, so it is in the voice corpus and the expert queue.
   if (!state.kept) await keep();
   // 2. The ingestion runs on its own; the reply below does not wait for it.
   if (state.kept) ingestInBackground(state.record.at);
   // 3. The expert reads, and answers with the next passage.
-  busy("The expert is reading your answer and the research. This usually takes under a minute.");
+  busy(reading);
   const st = await store.expertStatus().catch(() => ({ connected: false }));
   const listed = st.connected ? await store.expertRecords().catch(() => ({ ok: false })) : { ok: false };
   const records = listed.ok ? relevantRecords(listed.records, `${state.passage.text} ${answer}`) : [];
@@ -1203,16 +1206,27 @@ function openBoard(tab) {
   showTab(tab);
 }
 
+/* Records whose Keep is on its way. K twice, a double click on the pending
+   bar, or B twice would otherwise keep one answer twice: two queue lines and
+   two drafts for him to reject. */
+const keeping = new Set();
 async function keep(held = null) {
   // held: an answer left without a Keep (renderPending); otherwise the one on screen.
   const live = !held || held instanceof Event;
   if (live) {
     const hasWords = state.score && (state.score.gwam > 0 || (state.spoken && roundText().trim()));
     if (!state.score || state.kept || copyLike() || !hasWords) return;
+  }
+  const snap = live ? snapshot() : held;
+  if (!snap.record || snap.record.kept || keeping.has(snap.record)) return;
+  keeping.add(snap.record);
+  try { return await keepSnap(snap, live); } finally { keeping.delete(snap.record); }
+}
+async function keepSnap(snap, live) {
+  if (live) {
     els.keep.disabled = true;
     els.keepnote.textContent = "Keeping...";
   }
-  const snap = live ? snapshot() : held;
   // The whole answer, every Keep going round of it; if an earlier round was
   // already kept, only what came after, marked as continuing that one.
   const from = snap.from;
@@ -1234,7 +1248,13 @@ async function keep(held = null) {
     ...(snap.mode === "oracle" && snap.oracle ? { oracle: { topic: snap.oracle.topic, question: snap.oracle.reply.question, thoughts: snap.oracle.reply.thoughts } } : {}),
   }).catch((e) => ({ ok: false, note: String(e) }));
   if (!live) {
-    if (r && r.ok) { snap.record.kept = true; store.saveHistory(data.history); renderExpert(); }
+    if (r && r.ok) {
+      snap.record.kept = true;
+      // Held from the round still in state (Home, then Keep it): the round
+      // is kept too, so a later Home does not hold it again.
+      if (snap.record === state.record) { state.kept = true; state.keptUpTo = snap.text.length; }
+      store.saveHistory(data.history); renderExpert();
+    }
     els.keepnote.textContent = r && r.ok ? ([r.corpus, r.expert].filter(Boolean).join(" ") || "Kept.") : ((r && r.note) || "Could not keep it.");
     return r;
   }
@@ -1322,7 +1342,7 @@ function snapshot() {
 }
 function holdIfUnkept() {
   const hasWords = state.score && (state.score.gwam > 0 || (state.spoken && roundText().trim()));
-  if (!["done", "board"].includes(state.phase) || state.kept || copyLike() || !hasWords) return;
+  if (!["done", "board"].includes(state.phase) || state.kept || (state.record && state.record.kept) || copyLike() || !hasWords) return;
   state.pending = [snapshot(), ...(state.pending || []).filter((p) => p.record !== state.record)].slice(0, PENDING_MAX);
   renderPending();
 }
@@ -1339,19 +1359,28 @@ function renderPending() {
     k.dataset.pendingKeep = String(i);
     const send = Object.assign(document.createElement("button"), { type: "button", className: "soft", textContent: "Send to the expert" });
     send.dataset.pendingSend = String(i);
-    k.addEventListener("click", () => keepPending(snap, false));
-    send.addEventListener("click", () => keepPending(snap, true));
-    row.append(t, k, send);
+    const note = Object.assign(document.createElement("span"), { className: "pending-note" });
+    note.dataset.pendingNote = String(i);
+    k.addEventListener("click", () => keepPending(snap, false, [k, send], note));
+    send.addEventListener("click", () => keepPending(snap, true, [k, send], note));
+    row.append(t, k, send, note);
     return row;
   }));
 }
-async function keepPending(snap, thenSend) {
+/* The row is disabled while it saves, and the outcome is written into the
+   row itself: the results note and the expert log are hidden on home. */
+async function keepPending(snap, thenSend, buttons = [], note = null) {
+  for (const b of buttons) b.disabled = true;
+  if (note) note.textContent = "Keeping...";
   const r = await keep(snap);
   if (r && r.ok) {
     state.pending = (state.pending || []).filter((p) => p !== snap);
     renderPending();
     if (thenSend) await sendToExpert();
+    return;
   }
+  for (const b of buttons) b.disabled = false;
+  if (note) note.textContent = r ? (r.note || "Could not keep it.") : "";
 }
 
 /* ---- wire ---------------------------------------------------------------- */
@@ -1417,7 +1446,7 @@ document.addEventListener("keydown", (e) => {
 }, true);
 document.addEventListener("keydown", (e) => {
   if (e.target === els.box || e.metaKey || e.ctrlKey || e.altKey) return;
-  if (e.target && e.target.closest && e.target.closest("[data-pairgame]")) return;
+  if (e.target && e.target.closest && e.target.closest("[data-minigame]")) return;
   const inButton = e.target && e.target.tagName === "BUTTON";
   if (e.target === els.oracleTopic) { if (e.key === "Enter") { e.preventDefault(); arm(); } return; }
   if (state.phase === "idle") {
