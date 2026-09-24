@@ -89,6 +89,41 @@ export function stars(score, history, minutes) {
 }
 
 /**
+ * Strict Shift over two weeks: capitals refused in the last seven days and in
+ * the seven before. Only rounds that carry a `refused` count (strict was on)
+ * are counted, so an old record never reads as a clean week.
+ */
+export function refusedWeeks(history, now = Date.now()) {
+  const WEEK = 7 * 86400000;
+  const out = { thisWeek: 0, lastWeek: 0, roundsThis: 0, roundsLast: 0 };
+  for (const h of history || []) {
+    if (!h || !Number.isFinite(h.refused)) continue;
+    const age = now - Date.parse(h.at);
+    if (!Number.isFinite(age) || age < 0) continue;
+    if (age < WEEK) { out.thisWeek += h.refused; out.roundsThis += 1; }
+    else if (age < 2 * WEEK) { out.lastWeek += h.refused; out.roundsLast += 1; }
+  }
+  return out;
+}
+
+/** The results line for Strict Shift, or "" when there is nothing to say. */
+export function refusedText(round, weeks, strict) {
+  const n = round ? round.count : 0;
+  const plural = (k) => (k ? `${k} capital${k === 1 ? "" : "s"}` : "No capitals");
+  let line = n
+    ? `${plural(n)} refused for a same-side Shift (${round.keys.map((k) => k.count > 1 ? `${k.key} ${k.count}\u00d7` : k.key).join(", ")})`
+    : "";
+  if (!strict && !n) return "";
+  if (weeks && weeks.roundsLast) {
+    const trend = weeks.thisWeek < weeks.lastWeek ? "down from" : weeks.thisWeek > weeks.lastWeek ? "up from" : "level with";
+    line += `${line ? "; " : ""}${plural(weeks.thisWeek)} refused this week, ${trend} ${weeks.lastWeek} last week`;
+  } else if (weeks && weeks.roundsThis) {
+    line += `${line ? "; " : ""}${plural(weeks.thisWeek)} refused this week`;
+  }
+  return line;
+}
+
+/**
  * Tricky keys over time: for each letter, the miss rate per drill (misses per
  * press), over the drills where it was pressed at least `minPresses` times.
  * Sorted by how tricky it is lately.

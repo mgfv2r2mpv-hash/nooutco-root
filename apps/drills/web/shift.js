@@ -69,6 +69,8 @@ export function createShiftTracker() {
       const l = down.has("ShiftLeft"), r = down.has("ShiftRight");
       return l && r ? "B" : l ? "L" : r ? "R" : null;
     },
+    /** Strict Shift refused this capital: the next capital of the SAME press is judged again, so holding the wrong Shift cannot sneak the retry through. */
+    rejudge() { judged = -1; },
     clear() { down.clear(); judged = hold; },
   };
 }
@@ -144,6 +146,14 @@ export function createShiftFx(layer) {
       wrong.appendChild(cap);
       later(cap);
       layer.dataset.lastShift = "same";
+    },
+    /** Strict Shift: the same-side capital was refused. The same paint, and the key he hit struck through and shaken on its own side. */
+    refuse(hand, key) {
+      this.same(hand, key);
+      const wrong = sides[hand];
+      const cap = wrong && wrong.lastElementChild;
+      if (cap && cap.classList.contains("fx-key")) cap.classList.add("is-refused");
+      layer.dataset.lastShift = "refused";
     },
     /** An opposite-side capital: a small cheer on the side of the Shift he used. */
     ok(shift) {

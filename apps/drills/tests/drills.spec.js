@@ -188,6 +188,9 @@ test('possessives and contractions are not flagged at the space', async ({ page 
 });
 
 test('a same-side Shift paints the correct side and flashes the key on its own side; an opposite Shift cheers', async ({ page }) => {
+  // Strict Shift off: the lenient trainer, which lets the capital through. Strict
+  // (the default since 2026-09-23) has its own tests below.
+  await page.addInitScript(() => localStorage.setItem('noaba.drills.settings.v1', JSON.stringify({ mode: 'answer', copyDefault: true, strictShift: false })));
   await page.goto('/index.html?clock=4');
   await page.locator('[data-drill-start]').click();
   const box = page.locator('[data-drill-box]');
@@ -208,6 +211,75 @@ test('a same-side Shift paints the correct side and flashes the key on its own s
   await expect(page.locator('[data-side="R"] svg.fx-glyph')).toHaveCount(1);
   await done(page);
   await expect(page.locator('[data-drill-timing]')).toContainText('1 of 2 capitals with the opposite Shift');
+});
+
+/* ---- Strict Shift (default on): a same-side capital is refused --------- */
+
+test('strict Shift, on by default: a same-side capital is refused and flashed, the right Shift types it, and the round reports it', async ({ page }) => {
+  await page.goto('/index.html?clock=4');
+  await expect(page.locator('[data-drill-strict-shift]')).toBeChecked();
+  await page.locator('[data-drill-start]').click();
+  const box = page.locator('[data-drill-box]');
+  await box.focus();
+  // T is a left-hand key: the left Shift is refused, twice on one held press.
+  await page.keyboard.down('ShiftLeft');
+  await page.keyboard.press('KeyT');
+  await expect(page.locator('[data-sidefx]')).toHaveAttribute('data-last-shift', 'refused');
+  await expect(page.locator('[data-side="L"] .fx-key.is-refused')).toHaveText('T');
+  await expect(page.locator('[data-side="R"] svg.wc-shift')).toHaveCount(1);
+  await page.keyboard.press('KeyT');
+  await page.keyboard.up('ShiftLeft');
+  await expect(box).toHaveValue('');
+  await page.keyboard.down('ShiftRight');
+  await page.keyboard.press('KeyT');
+  await page.keyboard.up('ShiftRight');
+  await box.pressSequentially('he cat ', { delay: 10 });
+  await expect(box).toHaveValue('The cat ');
+  await done(page);
+  await expect(page.locator('[data-drill-timing]')).toContainText('2 capitals refused for a same-side Shift (T 2\u00d7)');
+  await expect(page.locator('[data-drill-timing]')).toContainText('1 of 1 capitals with the opposite Shift');
+  // Refusals are not errors, and the record carries the count, never text.
+  await expect(page.locator('[data-drill-errors]')).toHaveText('0');
+  const rec = await page.evaluate(() => window.NoteDrill.data.history.at(-1));
+  expect(rec.refused).toBe(2);
+  expect(rec.refusedKeys).toEqual(['T']);
+});
+
+test('strict Shift refuses in a copy round too, and the passage still marks clean', async ({ page }) => {
+  await page.goto('/index.html?clock=120');
+  await page.locator('[data-drill-mode="copy"]').click();
+  await page.locator('[data-drill-start]').click();
+  const text = (await page.locator('[data-drill-passage]').textContent()).trim().replace(/\s+/g, ' ');
+  const first = text[0];
+  expect(first).toMatch(/[A-Z]/);
+  const code = 'Key' + first;
+  const box = page.locator('[data-drill-box]');
+  await box.focus();
+  // The wrong Shift for this letter is the one on its own hand.
+  const ownSide = await page.evaluate((c) => window.NoteDrill.handOf(c), code);
+  const wrong = ownSide === 'L' ? 'ShiftLeft' : 'ShiftRight', right = ownSide === 'L' ? 'ShiftRight' : 'ShiftLeft';
+  await page.keyboard.down(wrong); await page.keyboard.press(code); await page.keyboard.up(wrong);
+  await expect(box).toHaveValue('');
+  await page.keyboard.down(right); await page.keyboard.press(code); await page.keyboard.up(right);
+  await expect(box).toHaveValue(first);
+  await box.pressSequentially(text.slice(1), { delay: 0 });
+  await done(page);
+  await expect(page.locator('[data-drill-errors]')).toHaveText('0');
+  await expect(page.locator('[data-drill-timing]')).toContainText('1 capital refused for a same-side Shift');
+});
+
+test('strict Shift can be turned off in settings, and the choice is saved', async ({ page }) => {
+  await page.goto('/index.html?clock=3');
+  await page.locator('[data-drill-strict-shift]').uncheck();
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('noaba.drills.settings.v1')));
+  expect(saved.strictShift).toBe(false);
+  await page.reload();
+  await expect(page.locator('[data-drill-strict-shift]')).not.toBeChecked();
+  await page.locator('[data-drill-start]').click();
+  await page.locator('[data-drill-box]').focus();
+  await page.keyboard.down('ShiftLeft'); await page.keyboard.press('KeyT'); await page.keyboard.up('ShiftLeft');
+  await expect(page.locator('[data-drill-box]')).toHaveValue('T');
+  await expect(page.locator('[data-sidefx]')).toHaveAttribute('data-last-shift', 'same');
 });
 
 test('Option+Backspace is logged as a revision, not an error', async ({ page }) => {
