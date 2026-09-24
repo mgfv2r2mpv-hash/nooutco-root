@@ -1165,3 +1165,129 @@ test('the uneven-timing tip offers River Rhythm: an even beat keeps the kayak mi
   const run = await page.evaluate(() => window.NoteDrill.data.settings.games.river[0]);
   expect(run.secs).toBeGreaterThan(0);
 });
+
+/* ---- one answer, one Keep (AUDIT A2, A5, A6, A7) ------------------------- */
+const SLOW_KEEP = () => {
+  window.__kept = [];
+  window.ClickClackMock = {
+    keep: async (r) => { window.__kept.push(r); await new Promise((ok) => setTimeout(ok, 300)); return { ok: true, corpus: 'Kept.', expert: 'Queued.' }; },
+    expertStatus: async () => ({ connected: false, queued: window.__kept.length, note: 'Not connected.' }),
+    expertQueue: async () => ({ items: [] }),
+  };
+};
+
+test('K pressed twice while the Keep is on its way keeps the answer once', async ({ page }) => {
+  await page.addInitScript(SLOW_KEEP);
+  await page.goto(PAGE);
+  await wordsReady(page);
+  await page.locator('[data-drill-start]').click();
+  await page.locator('[data-drill-box]').pressSequentially('function comes first ', { delay: 10 });
+  await done(page);
+  await page.keyboard.press('k');
+  await page.keyboard.press('k');
+  await expect(page.locator('[data-drill-keep]')).toHaveText('Kept');
+  expect(await page.evaluate(() => window.__kept.length)).toBe(1);
+});
+
+test('an answer kept from the pending bar is not held again after Progress and Home, and a double click keeps it once', async ({ page }) => {
+  await page.addInitScript(SLOW_KEEP);
+  await page.goto(PAGE);
+  await wordsReady(page);
+  await page.locator('[data-drill-start]').click();
+  await page.locator('[data-drill-box]').pressSequentially('function comes first ', { delay: 10 });
+  await done(page);
+  await page.keyboard.press('Escape');
+  const bar = page.locator('[data-drill-pending]');
+  await expect(bar).toBeVisible();
+  await page.locator('[data-pending-keep="0"]').dblclick();
+  await expect(bar).toBeHidden();
+  expect(await page.evaluate(() => window.__kept.length)).toBe(1);
+  await page.locator('.row [data-drill-open="trophies"]').click();
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'board');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'idle');
+  await expect(bar).toBeHidden();
+  expect(await page.evaluate(() => window.__kept.length)).toBe(1);
+});
+
+test('a failed Keep from the pending bar says so on the bar and leaves the answer held', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.ClickClackMock = {
+      keep: async () => ({ ok: false, note: 'The disk said no.' }),
+      expertStatus: async () => ({ connected: false, queued: 0, note: 'Not connected.' }),
+      expertQueue: async () => ({ items: [] }),
+    };
+  });
+  await page.goto(PAGE);
+  await wordsReady(page);
+  await page.locator('[data-drill-start]').click();
+  await page.locator('[data-drill-box]').pressSequentially('function comes first ', { delay: 10 });
+  await done(page);
+  await page.keyboard.press('Escape');
+  await page.locator('[data-pending-keep="0"]').click();
+  const bar = page.locator('[data-drill-pending]');
+  await expect(bar).toContainText('The disk said no.');
+  await expect(bar).toContainText('is not kept');
+  await expect(page.locator('[data-pending-keep="0"]')).toBeEnabled();
+});
+
+test('the baton pass run twice at once keeps once and asks the expert once', async ({ page }) => {
+  await page.addInitScript(BATON_MOCK);
+  await page.addInitScript(() => localStorage.setItem('noaba.drills.settings.v1', JSON.stringify({ mode: 'copy', copyDefault: true })));
+  await page.goto(PAGE);
+  await wordsReady(page);
+  await page.locator('[data-drill-start]').click();
+  const box = page.locator('[data-drill-box]');
+  await box.pressSequentially('The ', { delay: 10 });
+  await done(page);
+  await page.keyboard.press('Enter');
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-mode', 'respond');
+  await box.pressSequentially('high p runs build momentum ', { delay: 10 });
+  await done(page);
+  await page.evaluate(() => Promise.all([window.NoteDrill.batonPass(), window.NoteDrill.batonPass()]));
+  const out = await page.evaluate(() => ({ kept: window.__kept.length, baton: window.__calls.filter((c) => c.schema.properties.passage).length }));
+  expect(out).toEqual({ kept: 1, baton: 1 });
+});
+
+/* ---- keys inside a mini game stay in the game (AUDIT G1, G2) ------------- */
+test('on a finished or open game, K and C on Close do nothing to the round, and Esc closes the game, not the results', async ({ page }) => {
+  await page.addInitScript(SLOW_KEEP);
+  await page.goto('/index.html?clock=4');
+  await wordsReady(page);
+  await page.locator('[data-drill-start]').click();
+  await page.locator('[data-drill-box]').focus();
+  await page.keyboard.down('ShiftLeft'); await page.keyboard.press('KeyT'); await page.keyboard.up('ShiftLeft');
+  await page.locator('[data-drill-box]').pressSequentially('then more words ', { delay: 10 });
+  await done(page);
+  await page.locator('[data-shifty-offer] [data-shifty-go]').click();
+  const game = page.locator('[data-shifty]');
+  await game.locator('.pg-close').focus();
+  for (const k of ['k', 'c', 'd', 's']) await page.keyboard.press(k);
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'done');
+  expect(await page.evaluate(() => window.__kept.length)).toBe(0);
+  await page.keyboard.press('Escape');
+  await expect(game).toHaveCount(0);
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'done');
+});
+
+test('Esc on the pair race\'s Close, after the race, closes it and leaves the results', async ({ page }) => {
+  await page.goto(PAGE);
+  await wordsReady(page);
+  await page.locator('[data-drill-start]').click();
+  await page.locator('[data-drill-box]').focus();
+  const box = page.locator('[data-drill-box]');
+  for (const w of ['brisk', 'bread', 'brown', 'brick']) {
+    await page.keyboard.press('KeyB'); await page.waitForTimeout(400);
+    await box.pressSequentially(w.slice(1) + ' ', { delay: 15 });
+  }
+  await done(page);
+  await page.locator('.pair-go[data-pair="br"]').first().click();
+  const game = page.locator('[data-pairgame="br"]');
+  const words = await game.locator('.pg-word').allTextContents();
+  await game.locator('.pg-input').pressSequentially(words.join(' ') + ' ', { delay: 5 });
+  await expect(game).toHaveAttribute('data-done', '1');
+  await expect(game.locator('.pg-close')).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(game).toHaveCount(0);
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'done');
+});

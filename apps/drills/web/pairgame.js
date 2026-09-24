@@ -112,6 +112,13 @@ export function openPairGame(host, { pair, words, roundMs = null, runs = [], pro
   box.className = "pairgame";
   box.dataset.pairgame = pair;
   box.setAttribute("role", "dialog");
+  box.dataset.minigame = "pair";
+  // Keys aimed anywhere in the game (its Close too) stay in the game, where
+  // the page's shortcuts never see them, and Escape closes it from anywhere.
+  box.addEventListener("keydown", (e) => {
+    e.stopPropagation();
+    if (e.key === "Escape") { e.preventDefault(); shut(); }
+  });
   box.setAttribute("aria-label", `Pair race: ${pair}`);
   const title = document.createElement("h3");
   title.textContent = `The tortoise and the hare: "${pair}"`;
@@ -159,8 +166,6 @@ export function openPairGame(host, { pair, words, roundMs = null, runs = [], pro
     close.focus({ preventScroll: true });
   };
   input.addEventListener("keydown", (e) => {
-    e.stopPropagation();
-    if (e.key === "Escape") { shut(); return; }
     if (done) return;
     if (!t0 && e.key.length === 1) { t0 = performance.now(); track.go(); }
     if (e.key.length === 1) events.push({ t: performance.now(), kind: "char", key: e.key });
