@@ -78,7 +78,8 @@ const secret = (id, name, condition, hint, measure) => ({ ...one("Secrets", id, 
 /* The ids are the ones the case has always used, so a trophy renamed here
    keeps the unlock date it already had. New ones only ever add ids. */
 const CLOCK_NAMES = { 1: "Sprinter", 2: "Runner", 3: "Pacer", 4: "Distance Runner", 5: "Marathoner" };
-const BAND_NAMES = { Average: "Cruising", Intermediate: "Picking Up Speed", Fluent: "Fluent Fingers", Professional: "Pro Typist" };
+const BAND_NAMES = { Average: "Cruising", Intermediate: "Picking Up Speed", Fluent: "Fluent Fingers", Professional: "Pro Typist",
+  Expert: "Expert Hands", Elite: "Elite Fingers", Master: "Keyboard Master", Virtuoso: "Virtuoso", Stenographer: "Court Reporter" };
 
 /** His weak keys as of 2026-09-23, the ones the copy passages aim at. */
 export const WEAK_KEYS = Object.freeze(["w", "m", "b", "u", "c"]);

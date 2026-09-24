@@ -8,11 +8,23 @@
  *   GWAM        keystrokes that put a character in the box / 5 / minutes
  *   corrections runs of Backspace, one run = one correction. A run that used
  *               Option+Backspace or Command+Backspace is a REVISION instead:
- *               a change of mind, counted apart and never as an error
+ *               a change of mind, counted apart and never as an error. In a
+ *               composed round (no reference passage) a plain Backspace run
+ *               that takes out a whole word, or reaches back over a space, is
+ *               a revision too: only a fix inside the word he is typing is a
+ *               typo correction
  *   uncorrected tokens of the final text the lexicon does not know
  *   NWAM        GWAM minus errors per minute (uncorrected when a lexicon is
  *               given; corrections stand in until one is, and the result says so)
  *   accuracy    1 - (corrections + uncorrected) / gross words
+ *
+ * The principle, for composed rounds: thinking is never punished; only typos
+ * are. GWAM counts every character he produced, including text a revision
+ * later took out, so deleting a thought he does not want the expert to see
+ * never costs speed, accuracy, the band or the star. Uncorrected unknown words
+ * in the final text still cost NWAM. `kept` reports the final text apart, and
+ * the final text is all that is ever kept. A copy round keeps strict reference
+ * scoring: transcription accuracy is the point there.
  *
  * Pure. No DOM, no clock of its own: the page hands it the events it saw.
  * Loaded as an ES module by the page and by node --test.
@@ -25,8 +37,16 @@ export const ACCURACY_GATE = 0.96;
 export const PAUSE_MS = 2000;
 export const SLOW_FACTOR = 2;
 
-/** Rating bands on NWAM. Accuracy under the gate drops one band. */
+/** Rating bands on NWAM. Accuracy under the gate drops one band. The bands
+ *  above Professional were added 2026-09-23 from his own numbers (median 89
+ *  NWAM over 31 drills, best 100), so there is always a next band to climb.
+ *  Old records keep the band name they were given. */
 export const BANDS = Object.freeze([
+  { min: 125, name: "Stenographer" },
+  { min: 115, name: "Virtuoso" },
+  { min: 105, name: "Master" },
+  { min: 95, name: "Elite" },
+  { min: 85, name: "Expert" },
   { min: 75, name: "Professional" },
   { min: 60, name: "Fluent" },
   { min: 45, name: "Intermediate" },
@@ -60,7 +80,8 @@ export function scoreDrill({ events, text, minutes, lexicon, reference } = {}) {
   const grossWords = placed / WORD_KEYSTROKES;
   const gwam = grossWords / mins;
 
-  const { corrections, revisions } = deleteRuns(evs);
+  const compose = !reference;
+  const { corrections, revisions, revisedKeys } = deleteRuns(evs, { compose });
   const copied = reference ? copyErrors(text || "", reference) : null;
   const unknown = copied ? [] : lexicon ? unknownWords(text || "", lexicon) : null;
   const uncorrected = copied ? copied.errors : unknown ? unknown.length : null;
@@ -70,7 +91,7 @@ export function scoreDrill({ events, text, minutes, lexicon, reference } = {}) {
   const accuracy = grossWords > 0 ? clamp01(1 - errorsAll / grossWords) : 0;
 
   const rating = rate(nwam, accuracy);
-  const tricky = trickyKeys(evs);
+  const tricky = trickyKeys(evs, { compose });
   const timing = timingProfile(evs);
   const habits = deleteHabits(evs);
   const shift = shiftStats(evs);
@@ -86,6 +107,8 @@ export function scoreDrill({ events, text, minutes, lexicon, reference } = {}) {
     gwam: round(gwam, 1),
     corrections,
     revisions,
+    revisedKeys,
+    kept: keptOf(text),
     uncorrected,
     unknownWords: unknown || [],
     netBasis: copied ? "reference" : uncorrected === null ? "corrections" : "uncorrected",
@@ -141,18 +164,90 @@ export function paceSeries(events, minutes) {
 /**
  * Backspace runs, split in two. A run with any Option or Command delete in it
  * is a revision (he changed his mind on a word or a line); every other run is
- * a correction. The keystroke cost is the same; only corrections are errors.
+ * a correction. With `compose`, a plain run is a revision as well when it took
+ * out more than one word, or took out one whole word (three letters or more,
+ * back to a space or the start) and what he typed next is a different word.
+ * "teh " taken back and retyped "the" is a typo fixed; "wrong" taken back and
+ * retyped "right" is a changed mind. The keystroke cost is the same; only
+ * corrections are errors. revisedKeys counts the characters the revisions
+ * removed: typed, counted in GWAM, not kept.
  */
-export function deleteRuns(events) {
-  let corrections = 0, revisions = 0;
-  let run = null;
-  const close = () => { if (run) { if (run.via) revisions += 1; else corrections += 1; } run = null; };
+export function deleteRuns(events, { compose = false } = {}) {
+  let corrections = 0, revisions = 0, revisedKeys = 0;
+  for (const run of runKinds(events, { compose })) {
+    if (run.revised) { revisions += 1; revisedKeys += run.removed.length; } else corrections += 1;
+  }
+  return { corrections, revisions, revisedKeys };
+}
+
+/** Every Backspace run in order: what it removed, and whether it was a revision. */
+export function runKinds(events, { compose = false } = {}) {
+  const out = [];
+  const buf = [];
+  let run = null; // { via, removed: [], atBoundary, next: [] }
+  let pending = null; // the last closed run, still reading the word typed after it
+  const decide = (r) => {
+    const removed = r.removed.join("");
+    const body = removed.replace(/\s+$/, "");
+    let revised = !!r.via;
+    if (!revised && compose && body) {
+      if (/\s/.test(body)) revised = true;
+      else if (r.atBoundary && /^[A-Za-z]/.test(body) && body.replace(/[^A-Za-z]/g, "").length >= 3) {
+        const retyped = r.next.join("").trim();
+        revised = !retyped || !nearWord(body.toLowerCase(), retyped.toLowerCase());
+      }
+    }
+    out.push({ removed, revised, via: r.via });
+  };
+  const close = () => {
+    if (!run) return;
+    run.atBoundary = buf.length === 0 || /\s/.test(buf[buf.length - 1]);
+    pending = run;
+    run = null;
+  };
   for (const e of events) {
-    if (e.kind === "backspace") { if (!run) run = { via: false }; if (e.via) run.via = true; }
-    else close();
+    if (e.kind === "backspace") {
+      if (pending) { decide(pending); pending = null; }
+      if (!run) run = { via: false, removed: [], next: [] };
+      if (e.via) run.via = true;
+      const ch = buf.pop();
+      if (ch !== undefined) run.removed.unshift(ch);
+      continue;
+    }
+    close();
+    const ch = e.kind === "enter" ? "\n" : String(e.key || "");
+    buf.push(ch);
+    if (pending) {
+      if (/\s/.test(ch) && pending.next.join("").trim()) { decide(pending); pending = null; }
+      else pending.next.push(ch);
+    }
   }
   close();
-  return { corrections, revisions };
+  if (pending) decide(pending);
+  return out;
+}
+
+/** Two spellings of the same word: a slip apart, a transposition counting once. */
+export function nearWord(a, b) {
+  const limit = Math.max(a.length, b.length) <= 4 ? 1 : 2;
+  if (Math.abs(a.length - b.length) > limit) return false;
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...new Array(b.length).fill(0)]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost);
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+    }
+  }
+  return d[a.length][b.length] <= limit;
+}
+
+/** The final text, the part that is kept: its words and characters. */
+export function keptOf(text) {
+  const t = String(text || "");
+  const words = t.trim() ? t.trim().split(/\s+/).length : 0;
+  return { words, chars: t.length };
 }
 
 /**
@@ -342,13 +437,17 @@ export function rate(nwam, accuracy) {
  * "wprd" corrected to "word" as p for o, where "last removed versus first
  * typed" would call both wrong.
  */
-export function trickyKeys(events) {
+export function trickyKeys(events, { compose = false } = {}) {
+  // Under compose, a run the classifier calls a changed mind is not a miss either.
+  const kinds = compose ? runKinds(events, { compose }) : null;
+  let runIdx = -1;
   const buffer = [];
   const hits = new Map();   // hit char -> count
   const pairs = new Map();  // "hit>meant" -> count
   let removed = null;       // the run being removed, in typed order
   let replacement = null;   // what has been typed since the run ended
   let revising = false;     // the run used Option or Command: a change of mind, not a miss
+  let inRun = false;
   const settle = () => {
     if (!removed || !replacement || revising) { removed = null; replacement = null; revising = false; return; }
     const n = Math.min(removed.length, replacement.length);
@@ -366,11 +465,13 @@ export function trickyKeys(events) {
   for (const e of events) {
     if (e.kind === "backspace") {
       if (replacement) settle();              // a new run starts: close the last one
+      if (!inRun) { runIdx += 1; inRun = true; if (kinds && kinds[runIdx] && kinds[runIdx].revised) revising = true; }
       if (e.via) revising = true;
       const ch = buffer.pop();
       if (ch !== undefined) removed = [ch].concat(removed || []);
       continue;
     }
+    inRun = false;
     const ch = e.kind === "enter" ? "\n" : String(e.key || "");
     if (!ch) continue;
     if (removed) {
@@ -469,7 +570,7 @@ export function formTips({ grossWords, corrections, tricky, timing, habits, shif
   }
   if (habits && habits.wordByHand >= 2) {
     tips.push({ id: "optionDelete", why: `${habits.wordByHand} words backspaced letter by letter, ${habits.keysSpent} keys`,
-      tip: "Changed your mind on a word? Option+Backspace takes the whole word in one stroke, and Command+Backspace takes the line. The drill counts those as revisions, not errors." });
+      tip: "Changed your mind on a word? Option+Backspace takes the whole word in one stroke, and Command+Backspace takes the line. A changed mind is a revision either way, never an error; the shortcut saves the keys." });
   }
   // Cadence reads the fingers only: letter to letter inside words. The gaps
   // between words and sentences are thinking, and the drill wants the thinking.

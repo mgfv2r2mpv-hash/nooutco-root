@@ -58,6 +58,24 @@ export function ladder(nwam) {
   return { here: here.name, next: next ? next.name : null, toNext: next ? Math.max(0, Math.ceil(next.min - nwam)) : 0 };
 }
 
+/**
+ * His own ladder at one clock: his usual (the median of his last ten drills
+ * there, once he has three), his best before this drill, and the next
+ * milestone, the next multiple of five above both. The bands are the field's
+ * yardstick; this one is his, so there is always a next rung.
+ * `history` is the prior drills of this kind; nothing here is written back.
+ */
+export function personalLadder(nwam, history, minutes) {
+  const same = (history || []).filter((h) => h && h.minutes === minutes && Number.isFinite(h.nwam));
+  const recent = same.slice(-10).map((h) => h.nwam).sort((a, b) => a - b);
+  const mid = recent.length >> 1;
+  const usual = recent.length >= 3 ? Math.round(recent.length % 2 ? recent[mid] : (recent[mid - 1] + recent[mid]) / 2) : null;
+  const best = same.length ? Math.max(...same.map((h) => h.nwam)) : null;
+  const top = Math.max(Number.isFinite(nwam) ? nwam : 0, best || 0);
+  const milestone = (Math.floor(top / 5) + 1) * 5;
+  return { usual, best, milestone, toMilestone: Math.max(0, Math.ceil(milestone - (Number.isFinite(nwam) ? nwam : 0))), n: same.length };
+}
+
 /** Stars for a drill: beat your last at this clock, 97%+ accuracy, a personal best. */
 export function stars(score, history, minutes) {
   const same = (history || []).filter((h) => h && h.minutes === minutes);

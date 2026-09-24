@@ -97,7 +97,13 @@ test("the rating reads NWAM against the bands, and accuracy under the gate drops
   assert.equal(rate(80, ACCURACY_GATE - 0.01).accuracyGated, true);
   // The bottom band cannot drop further.
   assert.equal(rate(10, 0.5).name, "Amateur");
-  assert.deepEqual(BANDS.map((b) => b.name), ["Professional", "Fluent", "Intermediate", "Average", "Amateur"]);
+  // 2026-09-23: five bands above Professional, set from his own numbers
+  // (median 89 NWAM, best 100), so a typical drill is no longer the top band.
+  assert.deepEqual(BANDS.map((b) => b.name), ["Stenographer", "Virtuoso", "Master", "Elite", "Expert", "Professional", "Fluent", "Intermediate", "Average", "Amateur"]);
+  assert.equal(rate(89, 1).name, "Expert");
+  assert.equal(rate(100, 1).name, "Elite");
+  assert.equal(rate(100, ACCURACY_GATE - 0.01).name, "Expert");
+  assert.equal(rate(130, 1).name, "Stenographer");
 });
 
 test("tricky keys record what was hit and what was meant, once per correction run", () => {

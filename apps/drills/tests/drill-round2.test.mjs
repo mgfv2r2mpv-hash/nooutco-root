@@ -32,11 +32,11 @@ test("possessives, contractions and hyphenated compounds are words, not typos", 
 test("an Option+Backspace run is a revision: not a correction, not a tricky key", () => {
   // "cat" then a word delete of 3, then "dog": one revision, no corrections.
   const ev = typed("cat{{{dog");
-  assert.deepEqual(deleteRuns(ev), { corrections: 0, revisions: 1 });
+  assert.deepEqual(deleteRuns(ev), { corrections: 0, revisions: 1, revisedKeys: 3 });
   assert.deepEqual(trickyKeys(ev).all, {});
   // The same with plain Backspace is a correction, and c for d is read as a miss.
   const plain = typed("cat<<<dog");
-  assert.deepEqual(deleteRuns(plain), { corrections: 1, revisions: 0 });
+  assert.deepEqual(deleteRuns(plain), { corrections: 1, revisions: 0, revisedKeys: 0 });
   assert.deepEqual(trickyKeys(plain).all, { c: 1 });
   const s = scoreDrill({ events: ev, text: "dog", minutes: 1 });
   assert.equal(s.revisions, 1);

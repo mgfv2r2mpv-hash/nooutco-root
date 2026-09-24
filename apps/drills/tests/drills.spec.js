@@ -225,10 +225,31 @@ test('Option+Backspace is logged as a revision, not an error', async ({ page }) 
   await box.pressSequentially('walked', { delay: 12 });
   await done(page);
   await expect(page.locator('[data-drill-errors]')).toHaveText('0');
-  await expect(page.locator('[data-drill-timing]')).toContainText('1 revision with Option or Command+Backspace');
+  // 2026-09-23: a composed round names a revision as a changed mind and reports the kept words.
+  await expect(page.locator('[data-drill-timing]')).toContainText('1 revision (a changed mind, never an error), 3 words kept');
   const rec = await page.evaluate(() => window.NoteDrill.data.history.at(-1));
   expect(rec.revisions).toBe(1);
   expect(rec.habits.wordDeletes).toBe(1);
+});
+
+test('a thought taken back with plain Backspace costs no error, no accuracy, and the ladder always has a next rung', async ({ page }) => {
+  await page.goto('/index.html?clock=4');
+  await wordsReady(page);
+  await page.locator('[data-drill-start]').click();
+  const box = page.locator('[data-drill-box]');
+  await box.pressSequentially('the child ran home', { delay: 12 });
+  for (let i = 0; i < 'home'.length; i++) await box.press('Backspace');
+  await box.pressSequentially('away', { delay: 12 });
+  await done(page);
+  await expect(page.locator('[data-drill-errors]')).toHaveText('0');
+  await expect(page.locator('[data-drill-accuracy]')).toHaveText('100%');
+  await expect(page.locator('[data-drill-basis]')).toContainText('counted in your speed, never as errors');
+  await expect(page.locator('[data-drill-next]')).toContainText('next milestone');
+  const rec = await page.evaluate(() => window.NoteDrill.data.history.at(-1));
+  expect(rec.corrections).toBe(0);
+  expect(rec.revisions).toBe(1);
+  expect(rec.revisedKeys).toBe(4);
+  expect(rec.keptWords).toBe(4);
 });
 
 test('the calendar shows each day with its numbers, badge and streak banner; trophies show dates and conditions', async ({ page }) => {
