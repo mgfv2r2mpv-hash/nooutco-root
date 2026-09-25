@@ -16,6 +16,9 @@ APP="$OUT/$APP_NAME.app"
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/web"
+# Spotlight skips a folder holding this file, so the build copy never shows up
+# in Launchpad or Spotlight beside the installed one in /Applications.
+touch "$OUT/.metadata_never_index"
 
 echo "compiling the shell"
 swiftc -swift-version 5 -O \
