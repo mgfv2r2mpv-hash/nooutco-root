@@ -2027,3 +2027,63 @@ test('G11: in dark mode the ok and bad words read at 4.5:1 and the tachometer hu
   });
   expect(r).toEqual({ ok: true, bad: true, hub: true, tick: true });
 });
+
+/* ---- Settings (Command-comma) and the review queue ------------------------- */
+
+const REVIEW_MOCK = () => {
+  window.__decided = [];
+  window.ClickClackMock = {
+    expertStatus: async () => ({ connected: true, queued: 0, note: 'Connected to the expert.' }),
+    expertProposals: async () => ({ ok: true, proposals: [
+      { proposalId: 'pr_one', title: 'Rate builds persistence', rule: 'Reinforcement rate during the run sets persistence.', applies: 'when a note describes high-p requests', rationale: 'Nevin and Grace.', topic: 'behavioral-momentum', tier: 'topic', provenance: { sources: ['Nevin (1992)'] } },
+      { proposalId: 'pr_two', title: '<b>not markup</b>', rule: 'Plain text only.', topic: 't', tier: 'topic' },
+    ] }),
+    expertDecide: async (id, decision) => { window.__decided.push([id, decision]); return { ok: true }; },
+  };
+};
+
+test('Command-comma opens Settings with the review queue; a proposal needs a second click; Esc closes', async ({ page }) => {
+  await page.addInitScript(REVIEW_MOCK);
+  await page.goto(PAGE);
+  await page.keyboard.press('Meta+Comma');
+  const settings = page.locator('[data-drill-settings]');
+  await expect(settings).toBeVisible();
+  const cards = settings.locator('.proposal');
+  await expect(cards).toHaveCount(2);
+  await expect(cards.first()).toContainText('Rate builds persistence');
+  await expect(cards.first()).toContainText('Sources: Nevin (1992)');
+  // A title is text, never markup.
+  await expect(cards.nth(1).locator('b').first()).toHaveText('<b>not markup</b>');
+  const commit = cards.first().getByRole('button', { name: 'Accept' });
+  await commit.click();
+  await expect(cards.first().getByRole('button', { name: 'Confirm accept' })).toBeVisible();
+  expect(await page.evaluate(() => window.__decided)).toEqual([]);
+  await cards.first().getByRole('button', { name: 'Confirm accept' }).click();
+  await expect.poll(() => page.evaluate(() => window.__decided)).toEqual([['pr_one', 'commit']]);
+  await expect(settings.locator('.proposal')).toHaveCount(1, { timeout: 3000 });
+  const reject = settings.locator('.proposal').first().getByRole('button', { name: 'Reject' });
+  await reject.click();
+  await settings.locator('.proposal').first().getByRole('button', { name: 'Confirm reject' }).click();
+  await expect.poll(() => page.evaluate(() => window.__decided.length)).toBe(2);
+  expect(await page.evaluate(() => window.__decided[1])).toEqual(['pr_two', 'reject']);
+  await page.keyboard.press('Escape');
+  await expect(settings).toBeHidden();
+  await expect(page.locator('[data-drill-setup]')).toBeVisible();
+});
+
+test('Settings never opens over a round, and its Strict Shift box is the home one', async ({ page }) => {
+  await page.addInitScript(REVIEW_MOCK);
+  await page.goto('/index.html?clock=4');
+  await page.locator('[data-drill-settings-open]').click();
+  const strict = page.locator('[data-drill-settings-strict]');
+  await expect(strict).toBeChecked();
+  await strict.uncheck();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('[data-drill-strict-shift]')).not.toBeChecked();
+  expect(await page.evaluate(() => window.NoteDrill.data.settings.strictShift)).toBe(false);
+  await page.locator('[data-drill-start]').click();
+  await page.locator('[data-drill-box]').focus();
+  await page.keyboard.press('Meta+Comma');
+  await expect(page.locator('[data-drill-settings]')).toBeHidden();
+  await expect(page.locator('main.drill')).toHaveAttribute('data-drill-state', 'armed');
+});

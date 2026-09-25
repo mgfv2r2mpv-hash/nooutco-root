@@ -163,3 +163,17 @@ export async function expertRecords() {
   if (m && m.expertRecords) return m.expertRecords();
   return { ok: false, note: "Reading the expert works in the Mac app." };
 }
+/** Proposals waiting for his word: { ok, proposals } or { ok: false, note }. */
+export async function expertProposals() {
+  if (inApp) return call("expertProposals");
+  const m = mock();
+  if (m && m.expertProposals) return m.expertProposals();
+  return { ok: false, note: "Reviewing the expert's proposals works in the Mac app." };
+}
+/** His decision on one proposal: "commit" or "reject". */
+export async function expertDecide(proposalId, decision) {
+  if (inApp) return call("expertDecide", { proposalId, decision });
+  const m = mock();
+  if (m && m.expertDecide) return m.expertDecide(proposalId, decision);
+  return { ok: false, note: "Reviewing works in the Mac app." };
+}

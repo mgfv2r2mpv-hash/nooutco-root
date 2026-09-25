@@ -63,6 +63,7 @@
         <button type="button" class="soft" data-drill-open="trophies">Trophies</button>
         <button type="button" class="soft" data-drill-open="map">Map</button>
         <button type="button" class="soft" data-drill-open="expert">Expert</button>
+        <button type="button" class="soft" data-drill-settings-open title="Settings, and the expert's review queue">Settings <kbd>&#8984;,</kbd></button>
       </div>
     </section>
 
@@ -115,6 +116,34 @@
         <button type="button" class="soft" data-drill-read-home>Home</button>
         <span class="keepnote" data-drill-read-note></span>
       </div>
+    </section>
+
+    <section class="settings" data-drill-settings hidden aria-label="Settings">
+      <div class="settings-head">
+        <h2>Settings</h2>
+        <button type="button" class="soft" data-drill-settings-close>Close <kbd>esc</kbd></button>
+      </div>
+      <h3>Pending proposals</h3>
+      <p class="basis notes">Proposals from Send to the expert are pending until accepted.<br>A pending rule is not used by the expert.<br>A rejected proposal cannot be restored.</p>
+      <p class="keepnote" data-drill-queue-note></p>
+      <div class="queue-list" data-drill-queue-list></div>
+      <h3>The expert</h3>
+      <p class="trend" data-drill-settings-expert-status></p>
+      <div class="row expert-row">
+        <input type="password" class="token" data-drill-settings-token placeholder="Paste a fresh admin token" autocomplete="off">
+        <button type="button" class="soft" data-drill-settings-connect>Connect</button>
+        <button type="button" class="soft" data-drill-settings-send>Send to the expert</button>
+      </div>
+      <p class="basis notes">Token source: tools.nooutco.me/admin, browser console: <code>copy(localStorage.getItem("notes_auth_token"))</code><br>Stored in this Mac's keychain. Valid 30 days.</p>
+      <h3>Typing</h3>
+      <label class="check"><input type="checkbox" data-drill-settings-strict> Strict Shift: a same-side Shift refuses the capital</label>
+      <label class="check">Opens on
+        <select data-drill-settings-mode>
+          <option value="copy">Copy, then respond</option>
+          <option value="answer">Answer a question</option>
+          <option value="oracle">Oracle</option>
+        </select>
+      </label>
     </section>
 
     <section class="results" data-drill-results data-mode="drill" hidden>
@@ -202,7 +231,7 @@
       <div class="pane" data-pane="expert" hidden>
         <h3>The expert on the website</h3>
         <p class="trend" data-drill-expert-status></p>
-        <p class="basis">Keep queues each answer here. Send drafts knowledge records from them, in the drafter's own words (never quoting you), and proposes them to the expert store. Nothing is in force until you commit it in the admin page, Knowledge tab.</p>
+        <p class="basis">Keep queues each answer here. Send drafts knowledge records from them, in the drafter's own words (never quoting you), and proposes them to the expert store. Nothing is in force until you put it there, in Settings (&#8984;,) or on the admin page's Knowledge tab.</p>
         <div class="row expert-row">
           <button type="button" class="go" data-drill-expert-send>Send to the expert</button>
           <span class="keepnote" data-drill-expert-log></span>

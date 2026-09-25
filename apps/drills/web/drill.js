@@ -22,6 +22,7 @@ import { createCalendar, renderTrophies } from "./calendar.js";
 import { handOf, judge, createShiftTracker, createShiftFx } from "./shift.js";
 import { nextPassage, trickyProfile, describeProfile, PASSAGES } from "./passages.js";
 import { pickWords, openPairGame } from "./pairgame.js";
+import { renderProposals } from "./settings.js";
 import { buildShifty, openShifty, shiftyPool } from "./shifty.js";
 import { openRiver } from "./river.js";
 import { closeGames } from "./gamebox.js";
@@ -64,6 +65,11 @@ const els = {
   cont: $("[data-drill-continue]"), working: $("[data-drill-working]"),
   oracleTopic: $("[data-drill-oracle-topic]"), oracleOnly: $$("[data-oracle-only]"), mic: $("[data-drill-mic]"), baton: $("[data-drill-baton]"), pending: $("[data-drill-pending]"),
   send: $("[data-drill-send]"), expertStatus: $("[data-drill-expert-status]"), expertToken: $("[data-drill-expert-token]"),
+  settings: $("[data-drill-settings]"), settingsOpen: $("[data-drill-settings-open]"), settingsClose: $("[data-drill-settings-close]"),
+  queueList: $("[data-drill-queue-list]"), queueNote: $("[data-drill-queue-note]"),
+  settingsExpert: $("[data-drill-settings-expert-status]"), settingsToken: $("[data-drill-settings-token]"),
+  settingsConnect: $("[data-drill-settings-connect]"), settingsSend: $("[data-drill-settings-send]"),
+  settingsStrict: $("[data-drill-settings-strict]"), settingsMode: $("[data-drill-settings-mode]"),
   strictShift: $("[data-drill-strict-shift]"), tame: $("[data-drill-tame]"), tameHome: $("[data-drill-tame-home]"),
   read: $("[data-drill-read]"), respond: $("[data-drill-respond]"), shelve: $("[data-drill-shelve]"), numbers: $("[data-drill-numbers]"),
   readHome: $("[data-drill-read-home]"), readNote: $("[data-drill-read-note]"), readUnlocked: $("[data-drill-read-unlocked]"), readLevelUp: $("[data-drill-read-levelup]"),
@@ -471,7 +477,7 @@ async function draftAndPropose(items, progress = () => {}) {
 }
 function expertReport({ read, staged, dropped }) {
   return `${read} answer${read === 1 ? "" : "s"} read, ${staged} proposal${staged === 1 ? "" : "s"} staged.`
-    + (staged ? " Commit or reject them in the admin page, Knowledge tab." : "")
+    + (staged ? " Review them in Settings (Command-comma), or on the admin page's Knowledge tab." : "")
     + (dropped.length ? ` Held back: ${[...new Set(dropped)].join("; ")}.` : "");
 }
 async function sendToExpert() {
@@ -1624,6 +1630,12 @@ document.addEventListener("keydown", (e) => {
   if (Date.now() < settleUntil) { e.preventDefault(); e.stopImmediatePropagation(); }
 }, true);
 document.addEventListener("keydown", (e) => {
+  // Command-comma opens Settings (the app menu sends the same); Esc closes it.
+  if (e.metaKey && e.key === ",") { e.preventDefault(); openSettings(); return; }
+  if (!els.settings.hidden) {
+    if (e.key === "Escape") { e.preventDefault(); closeSettings(); }
+    return;
+  }
   if (e.target === els.box || e.metaKey || e.ctrlKey || e.altKey) return;
   if (e.target && e.target.closest && e.target.closest("[data-minigame]")) return;
   const inButton = e.target && e.target.tagName === "BUTTON";
@@ -1671,3 +1683,59 @@ init();
 
 // For tests and a look under the hood; never for the page's own flow.
 window.NoteDrill = { handOf, state, data, BANK, scoreDrill, finish, known: () => knownNow(), garden, drawMap, renderBoard, openBoard, sendToExpert, batonPass, unkeptCount, ingestInBackground };
+
+/* ---- Settings (Command-comma) and the expert's review queue ---------------
+   His ask of 2026-09-25: review proposals in the app, not only on the admin
+   page, and a settings area on Command-comma. Never over a round in progress:
+   typing is never interrupted. */
+function openSettings() {
+  if (["armed", "running"].includes(state.phase)) return;
+  els.settings.hidden = false;
+  root.dataset.settings = "1";
+  els.settingsStrict.checked = strictShift();
+  els.settingsMode.value = data.settings.mode || "copy";
+  window.scrollTo(0, 0);
+  renderSettingsExpert();
+  loadReview();
+  els.settingsClose.focus({ preventScroll: true });
+}
+function closeSettings() {
+  els.settings.hidden = true;
+  delete root.dataset.settings;
+  renderExpert();
+}
+async function renderSettingsExpert() {
+  const st = await store.expertStatus().catch(() => ({ connected: false, queued: 0 }));
+  els.settingsExpert.textContent = `${st.note || ""} ${st.queued ? `${st.queued} kept answer${st.queued === 1 ? "" : "s"} waiting to go.` : "Nothing waiting to send."}`.trim();
+  els.settingsSend.disabled = !st.connected || !st.queued;
+}
+async function loadReview() {
+  els.queueNote.textContent = "Loading.";
+  const r = await store.expertProposals().catch((e) => ({ ok: false, note: String(e) }));
+  if (!r || !r.ok) {
+    els.queueNote.textContent = (r && r.note) || "Not loaded.";
+    els.queueList.replaceChildren();
+    return;
+  }
+  const n = (r.proposals || []).length;
+  els.queueNote.textContent = n ? `${n} pending.` : "";
+  renderProposals(els.queueList, r.proposals, (id, decision) =>
+    store.expertDecide(id, decision).catch((e) => ({ ok: false, note: String(e) })));
+}
+els.settingsOpen.addEventListener("click", openSettings);
+els.settingsClose.addEventListener("click", closeSettings);
+els.settingsConnect.addEventListener("click", async () => {
+  const t = els.settingsToken.value.trim();
+  if (!t) return;
+  await store.expertToken(t);
+  els.settingsToken.value = "";
+  renderSettingsExpert();
+  loadReview();
+});
+els.settingsSend.addEventListener("click", async () => { await keepThenSend(); renderSettingsExpert(); loadReview(); });
+els.settingsStrict.addEventListener("change", () => {
+  els.strictShift.checked = els.settingsStrict.checked;
+  els.strictShift.dispatchEvent(new Event("change"));
+});
+els.settingsMode.addEventListener("change", () => setMode(els.settingsMode.value));
+window.ClickClack.openSettings = openSettings;
