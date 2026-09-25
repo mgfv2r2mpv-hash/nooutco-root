@@ -2098,7 +2098,27 @@ function validateConversation(system, messages) {
 // than silently generating an unconstrained note.
 const MAX_SCHEMA_CHARS = 20000;
 
-function sanitizeOutputConfig(cfg) {
+/* Keywords the Messages API refuses in a structured-output schema. A page
+   running an old cached copy of a tool sent readiness as an integer with
+   minimum and maximum, and every call from it failed with a 400
+   ("For 'integer' type, properties maximum, minimum are not supported").
+   The bound is advice to the model, and the page checks the value it gets
+   back, so the Worker drops these keywords on the way through rather than
+   failing the call. Walks the whole schema; returns a new object. */
+const UNSUPPORTED_SCHEMA_KEYS = new Set(["minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf"]);
+export function stripUnsupportedSchemaKeys(node) {
+  if (Array.isArray(node)) return node.map(stripUnsupportedSchemaKeys);
+  if (!node || typeof node !== "object") return node;
+  const out = {};
+  for (const [k, v] of Object.entries(node)) {
+    // Only as schema keywords: a property named "minimum" under properties stays.
+    if (UNSUPPORTED_SCHEMA_KEYS.has(k) && typeof v === "number") continue;
+    out[k] = stripUnsupportedSchemaKeys(v);
+  }
+  return out;
+}
+
+export function sanitizeOutputConfig(cfg) {
   if (!cfg || typeof cfg !== "object" || Array.isArray(cfg)) return null;
   const format = cfg.format;
   if (!format || typeof format !== "object" || Array.isArray(format)) return null;
@@ -2107,7 +2127,7 @@ function sanitizeOutputConfig(cfg) {
   if (!schema || typeof schema !== "object" || Array.isArray(schema)) return null;
   // Bounded so an oversized schema fails here rather than at the upstream API.
   if (JSON.stringify(schema).length > MAX_SCHEMA_CHARS) return null;
-  return { format: { type: "json_schema", schema } };
+  return { format: { type: "json_schema", schema: stripUnsupportedSchemaKeys(schema) } };
 }
 
 // Multi-turn call with prompt caching. Two cache_control breakpoints: the system
