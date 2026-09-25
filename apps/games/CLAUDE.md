@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-ABA therapy game platform hosted at **games.nooutco.me**. Static HTML game files served from GitHub via Cloudflare Pages/Worker, with a Cloudflare Worker API for image management and admin tooling.
+ABA therapy game platform hosted at **games.nooutco.me**. Static HTML game files deployed by CI (`.github/workflows/deploy-pages.yml`, direct upload to Cloudflare Pages), with a Cloudflare Worker API for image management and admin tooling.
 
 **Games:** IDMatchGame, NameIDGame, RedCarpetConvos, FFCGame, IntraverbalGame, SequencesGame, ThinkOrSayGame, HickoryDickoryDockGame, PatternPackCo, MatchingMarket
 
@@ -72,16 +72,15 @@ ABA therapy game platform hosted at **games.nooutco.me**. Static HTML game files
 
 ## Collaboration Protocol
 
-- **After completing any set of changes:** ask "Anything else, or should I open a PR / merge to dev?"
+- **After completing any set of changes:** commit on a feature branch and open a PR into `dev`. When Kaleb names a destination ("to dev", "put on main"), merge onto every branch he named in that turn, then stop: the pipeline deploys, and `.github/workflows/incident.yml` opens an incident session and emails him if anything fails. Do not watch CI or check the live site unless he asks. Unasked, open the PR and say so; do not merge.
 - **Before implementing a feature:** ask clarifying questions until 95% confident of intent and constraints. Do not write code until that bar is met.
 
 
 ## 4. Git Workflow
 
-1. Develop on `dev` branch
-2. `git push origin dev`
-3. `gh pr create` → `gh pr merge --rebase --delete-branch=false`
-4. `git fetch origin main` locally after merge
+1. Branch off `dev`, commit, open a PR into `dev`: `gh pr create --base dev`. Merge with `gh pr merge --rebase` when he asks for dev or main.
+2. "Put on main" means the change lands on `dev` AND on `main`, with `dev` a direct ancestor of `main`. After the feature PR is on `dev`, open `gh pr create --base main --head dev` for the record, then fast-forward: `git fetch origin && git push origin origin/dev:main`. GitHub marks that PR merged. Never use the rebase button for dev into main: it rewrites the commits, and `dev` stops being an ancestor.
+3. If the fast-forward is refused, something landed on `main` directly: merge `origin/main` into `dev` (one merge commit, normal push), then fast-forward. Never reset or force-push `dev`, and never delete it (`--delete-branch=false` on any `dev` head).
 
 ## 5. Clinical Boundary
 
