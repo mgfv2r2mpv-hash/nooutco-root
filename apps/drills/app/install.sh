@@ -2,7 +2,7 @@
 # Install ClickClackOracle into /Applications.
 #
 #   ./app/install.sh              build, then install
-#   ./app/install.sh --no-build   install what is already in app/build
+#   ./app/install.sh --no-build   install what is already in app/build.noindex
 #   ./app/install.sh --launch     open it afterwards
 #
 # If the app is open it is asked to quit first (your drills are saved after
@@ -13,7 +13,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 NAME="ClickClackOracle.app"
 OLD="/Applications/Clinical Typing Drills.app"
-SRC="app/build/$NAME"
+SRC="app/build.noindex/$NAME"
 DEST="/Applications/$NAME"
 BUILD=1; LAUNCH=0
 for arg in "$@"; do

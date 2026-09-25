@@ -1,4 +1,5 @@
 node_modules/
 app/build/
+app/build.noindex/
 test-results/
 playwright-report/

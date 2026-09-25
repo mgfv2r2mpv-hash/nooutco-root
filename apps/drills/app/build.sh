@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build ClickClackOracle.app into app/build.
+# Build ClickClackOracle.app into app/build.noindex.
 #
 #   ./app/build.sh           compile the shell, copy the page, build the word list and icon
 #
@@ -11,14 +11,14 @@ cd "$(dirname "$0")/.."
 APP_NAME="ClickClackOracle"
 BUNDLE_ID="dev.kaleb.clickclackoracle"
 VERSION="1.0.0"
-OUT="app/build"
+# The .noindex suffix keeps Spotlight and Launchpad from listing the build copy
+# beside the installed one in /Applications (a .metadata_never_index file is
+# ignored by current macOS; the suffix is honoured).
+OUT="app/build.noindex"
 APP="$OUT/$APP_NAME.app"
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/web"
-# Spotlight skips a folder holding this file, so the build copy never shows up
-# in Launchpad or Spotlight beside the installed one in /Applications.
-touch "$OUT/.metadata_never_index"
 
 echo "compiling the shell"
 swiftc -swift-version 5 -O \
