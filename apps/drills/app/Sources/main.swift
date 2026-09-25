@@ -1,4 +1,4 @@
-// Clinical Typing Drills - the macOS shell.
+// ClickClackOracle (was Clinical Typing Drills) - the macOS shell.
 //
 // A Swift window over a WKWebView, the same shape as Sass C. Assistant. The page
 // is the drill in apps/drills/web, copied into the bundle verbatim, so the code
@@ -26,7 +26,9 @@ import UniformTypeIdentifiers
 
 let SCHEME = "drill"
 let ORIGIN = "drill://app"
-let APP_NAME = "Clinical Typing Drills"
+let APP_NAME = "ClickClackOracle"
+/// The name before 2026-09-23. Its data folder is moved to the new name once.
+let OLD_NAME = "Clinical Typing Drills"
 
 // ------------------------------------------------------------------ files
 
@@ -34,6 +36,12 @@ enum Paths {
     static let support: URL = {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         let dir = base.appendingPathComponent(APP_NAME, isDirectory: true)
+        let old = base.appendingPathComponent(OLD_NAME, isDirectory: true)
+        // The rename: bring the drill history, lexicon and kept answers along,
+        // once. A move, never a copy, so there is one history and not two.
+        if !FileManager.default.fileExists(atPath: dir.path), FileManager.default.fileExists(atPath: old.path) {
+            try? FileManager.default.moveItem(at: old, to: dir)
+        }
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir
     }()
@@ -110,10 +118,10 @@ func run(_ exe: String, _ args: [String], timeout: TimeInterval = 60) -> RunResu
 /// writes the safe tier and updates the manifest; it prints counts, never text.
 /// The register is `drill`: typed at speed, for himself, on a clock, so it is
 /// its own register and never joins the note bands by accident.
-func ingest(file: URL, doc: String, dry: Bool) -> RunResult {
+func ingest(file: URL, doc: String, dry: Bool, register: String = "drill") -> RunResult {
     guard let node = findNode() else { return RunResult(status: -3, out: "node was not found") }
     guard FileManager.default.fileExists(atPath: Paths.ingest.path) else { return RunResult(status: -4, out: "ingest.mjs was not found at ~/.claude/voice/tools") }
-    var args = [Paths.ingest.path, file.path, "--register", "drill", "--tier", "safe", "--doc", doc]
+    var args = [Paths.ingest.path, file.path, "--register", register, "--tier", "safe", "--doc", doc]
     if dry { args.append("--dry") }
     return run(node, args)
 }
@@ -172,6 +180,44 @@ final class Bridge: NSObject, WKScriptMessageHandlerWithReply {
                 let out = keep(r)
                 DispatchQueue.main.async { replyHandler(out, nil) }
             }
+        case "askClaude":
+            // The oracle's question and thoughts, or a drafted proposal. Off the main thread: it takes seconds.
+            guard let system = body["system"] as? String, let prompt = body["prompt"] as? String, let schema = body["schema"] as? String else { replyHandler(nil, "missing system, prompt or schema"); return }
+            let web = (body["webSearch"] as? Bool) ?? false
+            DispatchQueue.global(qos: .userInitiated).async {
+                let out = askClaude(system: system, prompt: prompt, schema: schema, webSearch: web)
+                DispatchQueue.main.async { replyHandler(out, nil) }
+            }
+        case "micStart":
+            Listener.shared.start { replyHandler($0, nil) }
+        case "micStop":
+            Listener.shared.stop()
+            replyHandler(["ok": true], nil)
+        case "expertStatus":
+            var s = tokenStatus(); s["queued"] = unsentQueue().count
+            replyHandler(s, nil)
+        case "expertToken":
+            // Pasted once from the admin page; kept in the keychain, never in a file or the log.
+            let t = ((body["token"] as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            Keychain.write(t)
+            var s = tokenStatus(); s["queued"] = unsentQueue().count
+            replyHandler(s, nil)
+        case "expertQueue":
+            replyHandler(["items": unsentQueue()], nil)
+        case "expertPropose":
+            guard let rec = body["record"] as? [String: Any] else { replyHandler(nil, "no record"); return }
+            DispatchQueue.global(qos: .userInitiated).async {
+                let out = propose(rec)
+                DispatchQueue.main.async { replyHandler(out, nil) }
+            }
+        case "expertRecords":
+            DispatchQueue.global(qos: .userInitiated).async {
+                let out = listRecords()
+                DispatchQueue.main.async { replyHandler(out, nil) }
+            }
+        case "expertSent":
+            markSent((body["stamps"] as? [String]) ?? [])
+            replyHandler(["ok": true, "queued": unsentQueue().count], nil)
         case "log":
             log("page: \((body["line"] as? String) ?? "")")
             replyHandler(["ok": true], nil)
@@ -199,6 +245,9 @@ func keep(_ r: [String: Any]) -> [String: Any] {
     }
     let at = (r["at"] as? String) ?? ISO8601DateFormatter().string(from: Date())
     let outline = (r["outline"] as? String) ?? "x"
+    // Typed answers are `drill`; answers he TALKED are `spoken` (his ruling 3A),
+    // so speech never mixes with the writing bands. Nothing else is accepted.
+    let register = (r["register"] as? String) == "spoken" ? "spoken" : "drill"
     let stamp = at.replacingOccurrences(of: ":", with: "").replacingOccurrences(of: ".", with: "").prefix(17)
     let file = Paths.kept.appendingPathComponent("\(stamp)-\(outline).txt")
     do { try text.write(to: file, atomically: true, encoding: .utf8) } catch {
@@ -208,13 +257,21 @@ func keep(_ r: [String: Any]) -> [String: Any] {
     let meta: [String: Any] = [
         "at": at, "outline": outline, "itemId": r["itemId"] ?? "", "question": r["question"] ?? "",
         "minutes": r["minutes"] ?? 0, "seconds": r["seconds"] ?? 0, "nwam": r["nwam"] ?? 0, "accuracy": r["accuracy"] ?? 0,
-        "register": "drill", "audience": "self", "timed": true,
+        // Left mid-round with Esc and kept from the bar: no score, so nwam 0 means nothing.
+        "unscored": r["unscored"] ?? false,
+        "register": register, "audience": "self", "timed": true, "mode": r["mode"] ?? "answer",
+        "oracle": r["oracle"] ?? [:],
         // Where he stopped to think (character offset, ms, kind) and how many
         // times he changed his mind with Option or Command+Backspace.
         "pauses": r["pauses"] ?? [], "revisions": r["revisions"] ?? 0,
         // A respond round names the passage it answered; a Keep going round
         // kept after an earlier Keep names the answer it continues.
         "passage": r["passage"] ?? "", "passageSource": r["passageSource"] ?? "", "continues": r["continues"] ?? "",
+        // What was in front of him (claims and sources, never his text), the
+        // lens or seed it came through, and tone counted on this Mac (stance.js).
+        // The drafting step reads research and the stance label; the counts
+        // stay here.
+        "research": r["research"] ?? [:], "tone": r["tone"] ?? [:], "lens": r["lens"] ?? "", "seed": r["seed"] ?? "",
     ]
     try? writeJSON(file.deletingPathExtension().appendingPathExtension("json"), meta)
 
@@ -227,11 +284,11 @@ func keep(_ r: [String: Any]) -> [String: Any] {
     }
 
     let doc = "Drill \(at.prefix(10)) \(outline)"
-    let res = ingest(file: file, doc: doc, dry: false)
+    let res = ingest(file: file, doc: doc, dry: false, register: register)
     log("keep \(outline) ingest status \(res.status)")
     let corpus: String
     if res.status == 0 {
-        corpus = "In your voice corpus (drill register)."
+        corpus = "In your voice corpus (\(register) register)."
     } else {
         let first = res.out.split(separator: "\n").first.map(String.init) ?? "no output"
         corpus = "Saved on this Mac; the corpus intake said: \(first.prefix(140))"
@@ -241,11 +298,12 @@ func keep(_ r: [String: Any]) -> [String: Any] {
 
 // ------------------------------------------------------------------ the window
 
-final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNavigationDelegate {
     var window: NSWindow!
     var web: WKWebView!
     let bridge = Bridge()
     let selftest = CommandLine.arguments.contains("--selftest")
+    var askingToQuit = false
 
     func applicationDidFinishLaunching(_ note: Notification) {
         buildMenu()
@@ -254,6 +312,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
         cfg.userContentController.addScriptMessageHandler(bridge, contentWorld: .page, name: "drill")
         cfg.preferences.isTextInteractionEnabled = true
         web = WKWebView(frame: .zero, configuration: cfg)
+        Listener.shared.web = web
         web.navigationDelegate = self
         web.setValue(false, forKey: "drawsBackground")
         if #available(macOS 13.3, *) { web.isInspectable = true }
@@ -266,6 +325,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
         window.titleVisibility = .hidden
         window.backgroundColor = NSColor(calibratedRed: 243/255, green: 245/255, blue: 248/255, alpha: 1)
         window.minSize = NSSize(width: 720, height: 600)
+        window.delegate = self
         window.contentView = web
         window.setFrameAutosaveName("DrillWindow")
         if !window.setFrameUsingName("DrillWindow") { window.center() }
@@ -276,6 +336,66 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ app: NSApplication) -> Bool { true }
+
+    // A1: an answer without a Keep lives only in the page, so a quit would
+    // lose it. The page counts them (window.NoteDrill.unkeptCount) and the
+    // quit waits on a warning. Nothing is written here: his ruling is that
+    // text reaches disk only through Keep.
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        if selftest || web == nil || window == nil { return .terminateNow }
+        if askingToQuit { return .terminateCancel }
+        askingToQuit = true
+        let ask = "window.NoteDrill && window.NoteDrill.unkeptCount ? window.NoteDrill.unkeptCount() : 0"
+        // A page that never answers must not make the app unquittable: after
+        // two seconds the quit falls back to the "could not check" warning.
+        var answered = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+            guard let self, !answered else { return }
+            answered = true
+            log("unkept count timed out")
+            self.warnUnkept(count: nil) { quit in
+                self.askingToQuit = false
+                sender.reply(toApplicationShouldTerminate: quit)
+            }
+        }
+        web.evaluateJavaScript(ask) { [weak self] result, error in
+            guard !answered else { return }
+            answered = true
+            guard let self else { sender.reply(toApplicationShouldTerminate: true); return }
+            let count = (result as? NSNumber)?.intValue ?? 0
+            if error == nil && count == 0 {
+                self.askingToQuit = false
+                sender.reply(toApplicationShouldTerminate: true)
+                return
+            }
+            if let error { log("unkept count failed: \(error.localizedDescription)") }
+            self.warnUnkept(count: error == nil ? count : nil) { quit in
+                self.askingToQuit = false
+                sender.reply(toApplicationShouldTerminate: quit)
+            }
+        }
+        return .terminateLater
+    }
+
+    func warnUnkept(count: Int?, then reply: @escaping (Bool) -> Void) {
+        let alert = NSAlert()
+        switch count {
+        case .some(1): alert.messageText = "An answer is not kept"
+        case .some(let n): alert.messageText = "\(n) answers are not kept"
+        case .none: alert.messageText = "The app could not check for unkept answers"
+        }
+        alert.informativeText = "Quitting now loses what is not kept, and nothing is saved. Press Cancel, then Keep it on the results screen or the bar at home."
+        alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: "Quit Anyway")
+        window.makeKeyAndOrderFront(nil)
+        alert.beginSheetModal(for: window) { reply($0 == .alertSecondButtonReturn) }
+    }
+
+    // Closing the window quits the app, so Cmd-W goes through the same check.
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        NSApp.terminate(nil)
+        return false
+    }
 
     // Links out of the page open in the browser, never in the drill window.
     func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {

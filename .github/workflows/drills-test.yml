@@ -1,6 +1,6 @@
 name: Drills Tests
 
-# Clinical Typing Drills (apps/drills). The arithmetic runs under node --test;
+# ClickClackOracle (apps/drills). The arithmetic runs under node --test;
 # the page runs in WebKit, the engine the Mac app ships in, and Chromium. The
 # Swift shell is built and self-tested on the Mac it is installed on, not here.
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build Clinical Typing Drills.app into app/build.
+# Build ClickClackOracle.app into app/build.
 #
 #   ./app/build.sh           compile the shell, copy the page, build the word list and icon
 #
@@ -8,8 +8,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-APP_NAME="Clinical Typing Drills"
-BUNDLE_ID="dev.kaleb.clinical-typing-drills"
+APP_NAME="ClickClackOracle"
+BUNDLE_ID="dev.kaleb.clickclackoracle"
 VERSION="1.0.0"
 OUT="app/build"
 APP="$OUT/$APP_NAME.app"
@@ -20,8 +20,8 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/web"
 echo "compiling the shell"
 swiftc -swift-version 5 -O \
   -target "$(uname -m)-apple-macosx13.0" \
-  -o "$APP/Contents/MacOS/ClinicalTypingDrills" \
-  app/Sources/main.swift
+  -o "$APP/Contents/MacOS/ClickClackOracle" \
+  app/Sources/*.swift
 
 echo "copying the page"
 cp web/*.html web/*.js web/*.css "$APP/Contents/Resources/web/"
@@ -54,17 +54,28 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleIdentifier</key><string>$BUNDLE_ID</string>
   <key>CFBundleVersion</key><string>$VERSION</string>
   <key>CFBundleShortVersionString</key><string>$VERSION</string>
-  <key>CFBundleExecutable</key><string>ClinicalTypingDrills</string>
+  <key>CFBundleExecutable</key><string>ClickClackOracle</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>LSMinimumSystemVersion</key><string>13.0</string>
   <key>LSApplicationCategoryType</key><string>public.app-category.education</string>
   <key>NSHighResolutionCapable</key><true/>
   <key>NSHumanReadableCopyright</key><string>Built for one clinician's own practice.</string>
+  <key>NSMicrophoneUsageDescription</key><string>ClickClackOracle listens when you choose to talk an answer instead of typing it. The audio stays on this Mac and is never saved.</string>
+  <key>NSSpeechRecognitionUsageDescription</key><string>ClickClackOracle turns what you say into text on this Mac only, so a spoken answer can be kept like a typed one.</string>
 </dict>
 </plist>
 PLIST
 
-echo "signing (ad hoc, this Mac only)"
-codesign --force --deep --sign - "$APP" >/dev/null 2>&1
+# Sign with his Apple Development identity when this Mac has one: the
+# keychain trusts an app by its signature, and an ad hoc signature is the hash
+# of this one build, so every rebuild asked for his password again. A real
+# identity keeps one "Always Allow" good across rebuilds. Ad hoc otherwise.
+IDENTITY="$(security find-identity -v -p codesigning 2>/dev/null | sed -n 's/.*"\(Apple Development: [^"]*\)".*/\1/p' | head -1)"
+if [ -n "$IDENTITY" ] && codesign --force --deep --sign "$IDENTITY" "$APP" >/dev/null 2>&1; then
+  echo "signing ($IDENTITY)"
+else
+  echo "signing (ad hoc, this Mac only)"
+  codesign --force --deep --sign - "$APP" >/dev/null 2>&1
+fi
 echo "built $APP"

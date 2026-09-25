@@ -73,10 +73,10 @@ test("the tricky profile is read from the recent drills, so an old problem ages 
   // Ten more clean drills and every one of those ages out.
   const later = h.concat(Array.from({ length: 10 }, () => drill({ slowPairs: [], shift: { ok: 5, same: 0 } })));
   assert.deepEqual(trickyProfile(later, {}), { keys: [], pairs: [], capitals: false, punctuation: false });
-  assert.equal(describeProfile(p), "pairs zq, br, ck · capitals · punctuation");
+  assert.equal(describeProfile(p), "pairs zq, br, ck \u00b7 capitals \u00b7 punctuation");
 });
 
-test("the picker takes the passage that works the profile hardest, skipping the last three copied", () => {
+test("the picker takes the passage that works the profile hardest, skipping the ones copied lately", () => {
   const p = { keys: ["w", "m", "b", "u", "c"], pairs: [], capitals: false, punctuation: false };
   const best = nextPassage([], p);
   for (const x of PASSAGES) assert.ok(passageLoad(best.text, p) >= passageLoad(x.text, p), x.id);

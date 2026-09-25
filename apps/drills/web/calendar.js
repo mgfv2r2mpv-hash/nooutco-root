@@ -31,8 +31,8 @@ export function createCalendar(root) {
     const byDay = new Map(stats.map((d) => [d.day, d]));
     const st = streakRuns(stats.map((d) => d.day), today);
     const head = h("div", "cal-head");
-    const prev = h("button", "soft cal-nav", "‹"); prev.type = "button"; prev.title = "Earlier month"; prev.dataset.calPrev = "";
-    const next = h("button", "soft cal-nav", "›"); next.type = "button"; next.title = "Later month"; next.dataset.calNext = "";
+    const prev = h("button", "soft cal-nav", "\u2039"); prev.type = "button"; prev.title = "Earlier month"; prev.dataset.calPrev = "";
+    const next = h("button", "soft cal-nav", "\u203a"); next.type = "button"; next.title = "Later month"; next.dataset.calNext = "";
     next.disabled = offset === 0;
     prev.addEventListener("click", () => { offset += 1; draw(); });
     next.addEventListener("click", () => { offset = Math.max(0, offset - 1); draw(); });
@@ -44,7 +44,7 @@ export function createCalendar(root) {
       st.current ? `${plural(st.current, "day")} in a row${st.alive ? "" : ", alive until midnight"}` : "No streak running",
       `longest ${plural(st.longest, "day")}`,
       `${plural(todayCount, "drill")} today`,
-    ].join(" · ");
+    ].join(" \u00b7 ");
     const grid = h("div", "cal-grid");
     const wk = h("div", "cal-weekdays");
     for (const d of WEEKDAYS) wk.appendChild(h("span", null, d));
@@ -92,40 +92,53 @@ export function createCalendar(root) {
  * toggle shows every trophy.
  */
 let showAll = false;
-export function renderTrophies(root, history) {
-  const everything = trophyCase(history);
+export function renderTrophies(root, history, tame = [], extra = []) {
+  // extra: trophies kept outside history, the mini games' (minigames.js).
+  const everything = [...trophyCase(history, tame), ...extra];
   const won = everything.filter((t) => t.unlocked).length;
   const nextOf = new Set();
-  for (const t of everything) if (!t.unlocked && ![...nextOf].some((id) => everything.find((x) => x.id === id).family === t.family)) nextOf.add(t.id);
+  // The next one in each family; a secret is never "next", it waits to be found.
+  for (const t of everything) if (!t.unlocked && !t.secret && ![...nextOf].some((id) => everything.find((x) => x.id === id).family === t.family)) nextOf.add(t.id);
   const all = showAll ? everything : everything.filter((t) => t.unlocked || nextOf.has(t.id));
   const top = h("div", "trophy-top");
   const sum = h("p", "trophy-sum", `${won} of ${everything.length} unlocked`);
   sum.dataset.trophySummary = "";
   const toggle = h("button", "soft trophy-toggle", showAll ? "Show won and next" : "Show every trophy");
   toggle.type = "button"; toggle.dataset.trophyToggle = "";
-  toggle.addEventListener("click", () => { showAll = !showAll; renderTrophies(root, history); });
+  toggle.addEventListener("click", () => { showAll = !showAll; renderTrophies(root, history, tame, extra); });
   top.append(sum, toggle);
   const groups = [...new Set(all.map((t) => t.group))];
   const out = [top];
   for (const g of groups) {
     const sec = h("section", "trophy-group");
     sec.appendChild(h("h3", null, g));
+    if (g === "Your nemeses") {
+      sec.classList.add("is-nemeses");
+      sec.appendChild(h("p", "trophy-intro", "Written from your own drills: each appeared the day the app spotted it, and is earned when you beat the number it was spotted at."));
+    }
     const ul = h("ul", "trophies");
     const mine = all.filter((t) => t.group === g);
     // Unlocked first, newest last; then locked, nearest to done first.
     mine.sort((a, b) => (!!b.unlocked - !!a.unlocked)
       || (a.unlocked && b.unlocked ? a.unlocked.localeCompare(b.unlocked) : b.have / b.need - a.have / a.need));
     for (const t of mine) {
-      const li = h("li", "trophy" + (t.unlocked ? " is-won" : ""));
+      const hidden = t.secret && !t.unlocked;
+      const li = h("li", "trophy" + (t.unlocked ? " is-won" : "") + (t.secret ? " is-secret" : ""));
       li.dataset.trophy = t.id;
       if (!t.unlocked && nextOf.has(t.id)) li.classList.add("is-next");
       li.appendChild(cup(!!t.unlocked));
       const body = h("div", "trophy-body");
-      body.appendChild(h("b", null, t.name));
-      body.appendChild(h("span", "trophy-cond", t.condition));
+      // A secret keeps its name and condition to itself until it is earned; the hint is all it gives.
+      body.appendChild(h("b", null, hidden ? "Secret" : t.name));
+      body.appendChild(h("span", "trophy-cond", hidden ? t.hint : t.condition));
+      if (t.spotted) body.appendChild(h("span", "trophy-date", `Spotted ${day(t.spotted)}`));
       if (t.unlocked) {
-        const when = new Date(t.unlocked);
-        body.appendChild(h("span", "trophy-date", `Unlocked ${when.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`));
+        body.appendChild(h("span", "trophy-date", `${t.spotted ? "Tamed" : "Unlocked"} ${day(t.unlocked)}`));
+      } else if (hidden) {
+        body.appendChild(h("span", "trophy-date", "Not found yet"));
+      } else if (t.need === 1) {
+        // A yes-or-no achievement has no halfway to show.
+        body.appendChild(h("span", "trophy-date", "Not yet"));
       } else {
         const bar = h("span", "trophy-bar");
         bar.style.setProperty("--p", String(Math.min(1, t.have / t.need)));
@@ -142,6 +155,7 @@ export function renderTrophies(root, history) {
   return { won, total: all.length };
 }
 const fmt = (n) => Math.floor(n).toLocaleString("en-US");
+const day = (iso) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
 const NS = "http://www.w3.org/2000/svg";
 function cup(won) {

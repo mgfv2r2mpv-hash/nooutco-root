@@ -3,10 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Clinical Typing Drills</title>
+  <meta name="color-scheme" content="light dark">
+  <title>ClickClackOracle</title>
   <link rel="stylesheet" href="drill.css">
 </head>
 <body>
+  <div class="wash" data-wash aria-hidden="true"><i class="w1"></i><i class="w2"></i><i class="w3"></i><i class="w4"></i><i class="grain"></i></div>
   <svg class="garden" data-garden aria-hidden="true"></svg>
   <div class="sidefx" data-sidefx aria-hidden="true"><div class="fx-side left" data-side="L"></div><div class="fx-side right" data-side="R"></div></div>
 
@@ -14,7 +16,7 @@
     <header class="bar">
       <div class="brand">
         <svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="7" width="26" height="20" rx="6" class="mark-cap"/><rect x="6" y="9" width="20" height="13" rx="4" class="mark-top"/><path d="M16 4 C 13 1, 9 2, 9 5 C 12 6, 14 6, 16 4 Z M16 4 C 19 1, 23 2, 23 5 C 20 6, 18 6, 16 4 Z" class="mark-leaf"/></svg>
-        <b>Clinical Typing Drills</b>
+        <b>ClickClackOracle</b>
       </div>
       <div class="chips">
         <span class="chip warm" data-stat-streak></span>
@@ -23,12 +25,15 @@
         <button type="button" class="chip trophy-chip" data-stat-trophies data-drill-open="trophies" hidden></button>
       </div>
     </header>
+    <p class="savenote" data-drill-savenote role="status" hidden></p>
 
+    <div class="pending" data-drill-pending hidden></div>
     <section class="setup" data-drill-setup>
       <h1>Type the field.</h1>
       <div class="modes" role="group" aria-label="Kind of drill">
-        <button type="button" class="mode" data-drill-mode="answer">Answer a question</button>
         <button type="button" class="mode" data-drill-mode="copy">Copy, then respond</button>
+        <button type="button" class="mode" data-drill-mode="answer">Answer a question</button>
+        <button type="button" class="mode" data-drill-mode="oracle">Oracle</button>
       </div>
       <p class="lede" data-drill-lede>One clinical question. One to five minutes, as fast and as clean as you can. The garden grows with every word, and warms when you fly.</p>
       <div class="picker" role="group" aria-label="Minutes">
@@ -38,14 +43,26 @@
         <button type="button" class="min" data-drill-minutes="4">4<small>min</small></button>
         <button type="button" class="min" data-drill-minutes="5">5<small>min</small></button>
       </div>
+      <label class="oracle-topic" data-oracle-only hidden>
+        <span>Topic (optional)</span>
+        <input type="text" data-drill-oracle-topic placeholder="Leave blank: a live question for your view, or the thinnest part of your map, in turn" autocomplete="off" spellcheck="false">
+      </label>
+      <label class="strict-shift" title="A capital taken with the Shift on its own side is refused, so only the opposite hand's Shift types it">
+        <input type="checkbox" data-drill-strict-shift checked> Strict Shift: a same-side Shift refuses the capital
+      </label>
       <p class="pb" data-drill-pb></p>
+      <div class="road" data-drill-road hidden></div>
+      <div class="shelf" data-drill-shelf hidden></div>
+      <div class="shelf due-reviews" data-drill-reviews hidden></div>
+      <div class="shelf tame-offer" data-drill-tame-home hidden></div>
       <div class="row">
         <button type="button" class="go" data-drill-start>Start <kbd>return</kbd></button>
         <button type="button" class="soft" data-drill-open="progress">Progress</button>
         <button type="button" class="soft" data-drill-open="keys">Keys</button>
         <button type="button" class="soft" data-drill-open="calendar">Calendar</button>
         <button type="button" class="soft" data-drill-open="trophies">Trophies</button>
-        <button type="button" class="soft" data-drill-map-toggle data-drill-open="map">Map</button>
+        <button type="button" class="soft" data-drill-open="map">Map</button>
+        <button type="button" class="soft" data-drill-open="expert">Expert</button>
       </div>
     </section>
 
@@ -57,7 +74,7 @@
         <span class="wpm"><b data-drill-wpm>0</b> wpm</span>
         <span class="clock" data-drill-clock>1:00</span>
       </div>
-      <div class="race" data-drill-race title="You against your best pace at this clock">
+      <div class="race" title="You against your best pace at this clock">
         <i class="lane"></i><i class="ghost" data-race-ghost></i><i class="you" data-race-you></i>
         <span class="race-note" data-race-note></span>
       </div>
@@ -69,18 +86,46 @@
         spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"
         placeholder="Start typing. The clock starts on your first key."></textarea>
       <div class="under">
+        <button type="button" class="mic" data-drill-mic title="Talk instead of type. On this Mac only; the audio is never saved.">Talk</button>
         <span class="hint" data-drill-hint>The clock starts on your first keystroke. <kbd>esc</kbd> leaves without scoring.</span>
         <span class="live" data-drill-live aria-live="polite"></span>
       </div>
     </section>
 
+    <section class="read" data-drill-read hidden>
+      <div class="crest" data-drill-read-levelup hidden></div>
+      <p class="read-score" data-drill-read-score></p>
+      <p class="note" data-drill-read-bandsnote hidden></p>
+      <div class="unlocks" data-drill-read-unlocked hidden></div>
+      <article class="folio">
+        <p class="read-kicker">Read it now. The clock is off.</p>
+        <h2 class="read-title" data-drill-read-title></h2>
+        <p class="read-source" data-drill-read-source></p>
+        <div class="read-text" data-drill-read-text></div>
+        <ul class="read-sources" data-drill-read-sources hidden></ul>
+        <div class="read-ask">
+          <span>Then answer this</span>
+          <p data-drill-read-question></p>
+        </div>
+      </article>
+      <div class="actions">
+        <button type="button" class="go" data-drill-respond>Respond · 1 min <kbd>return</kbd></button>
+        <button type="button" class="soft" data-drill-shelve title="Not ready to answer this one. It comes back after three copy rounds or tomorrow, with new words to type.">Shelve it <kbd>S</kbd></button>
+        <button type="button" class="soft" data-drill-numbers>The numbers <kbd>N</kbd></button>
+        <button type="button" class="soft" data-drill-read-home>Home</button>
+        <span class="keepnote" data-drill-read-note></span>
+      </div>
+    </section>
+
     <section class="results" data-drill-results data-mode="drill" hidden>
+      <div class="crest" data-drill-levelup hidden></div>
       <div class="hero" data-drill-hero>
         <div class="big"><span data-drill-nwam></span><small>net words a minute</small></div>
         <div class="rank">
           <b data-drill-rating></b> <span class="note" data-drill-rating-note></span>
           <div class="stars" data-drill-stars></div>
           <div class="next" data-drill-next></div>
+          <p class="note" data-drill-bandsnote hidden></p>
         </div>
         <div class="minis">
           <div><b data-drill-gwam></b><span>GWAM</span></div>
@@ -98,6 +143,7 @@
         <button type="button" role="tab" data-tab="trophies">Trophies</button>
         <button type="button" role="tab" data-tab="keys">Keys</button>
         <button type="button" role="tab" data-tab="map">Map</button>
+        <button type="button" role="tab" data-tab="expert">Expert</button>
       </nav>
 
       <div class="pane" data-pane="drill">
@@ -107,21 +153,21 @@
           <div><h3>Tricky keys</h3><ul class="list" data-drill-tricky></ul></div>
           <div><h3>Rhythm</h3><ul class="list" data-drill-timing></ul></div>
         </div>
-        <h3>Thinking</h3>
+        <h3>Pauses</h3>
         <p class="trend" data-drill-think></p>
         <h3>Form</h3>
         <ul class="tips" data-drill-tips></ul>
         <div class="review" data-drill-review hidden>
           <h3>Unknown terms</h3>
-          <p class="basis">Each one counts as an error until you mark it clinical. Clinical goes into your lexicon for good.</p>
+          <p class="basis">Each one counts as an error until you mark it. Clinical goes into your lexicon for good; a word (real, just not clinical, like jackpot) is never flagged again either; typo stays an error.</p>
           <ul class="review-list" data-drill-review-list></ul>
         </div>
       </div>
 
       <div class="pane" data-pane="progress" hidden>
-        <h3>Net words a minute</h3>
+        <h3>Net words a minute (answering)</h3>
         <div class="chartbox" data-chart-nwam></div>
-        <h3>Accuracy</h3>
+        <h3>Accuracy (answering)</h3>
         <div class="chartbox" data-chart-accuracy></div>
         <div class="two">
           <div><h3>Bests</h3><table class="bests" data-drill-bests></table></div>
@@ -146,15 +192,36 @@
         <ul class="keytrends" data-drill-keytrends></ul>
       </div>
 
-      <div class="pane drill-map" data-pane="map" data-drill-map hidden>
+      <div class="pane" data-pane="map" hidden>
         <p class="basis">The BACB outline: nine domains, 104 items. A cell darkens as you answer questions filed under it. The next question comes from the emptiest cell the bank can ask about; outlined cells have a question ready.</p>
         <div class="map-grid" data-drill-map-grid></div>
+        <h3>On the shelf</h3>
+        <ul class="list" data-drill-map-shelf></ul>
+      </div>
+
+      <div class="pane" data-pane="expert" hidden>
+        <h3>The expert on the website</h3>
+        <p class="trend" data-drill-expert-status></p>
+        <p class="basis">Keep queues each answer here. Send drafts knowledge records from them, in the drafter's own words (never quoting you), and proposes them to the expert store. Nothing is in force until you commit it in the admin page, Knowledge tab.</p>
+        <div class="row expert-row">
+          <button type="button" class="go" data-drill-expert-send>Send to the expert</button>
+          <span class="keepnote" data-drill-expert-log></span>
+        </div>
+        <h3>Connect</h3>
+        <p class="basis">The app cannot log in by itself (the login is behind Turnstile). Log in to tools.nooutco.me/admin, open the browser console (Option+Command+J in Chrome), run <code>copy(localStorage.getItem("notes_auth_token"))</code>, and paste here. It is kept in this Mac's keychain and lasts 30 days.</p>
+        <div class="row expert-row">
+          <input type="password" class="token" data-drill-expert-token placeholder="Paste the admin token" autocomplete="off">
+          <button type="button" class="soft" data-drill-expert-connect>Connect</button>
+        </div>
       </div>
 
       <div class="actions">
         <button type="button" class="go" data-drill-again>Again <kbd>return</kbd></button>
         <button type="button" class="soft" data-drill-continue title="Same question, same answer, a fresh clock">Keep going <kbd>C</kbd></button>
+        <button type="button" class="soft baton" data-drill-baton hidden title="Hand this answer to the expert. It reads the research and answers you with the next passage to copy.">Baton pass <kbd>B</kbd></button>
+        <button type="button" class="soft tame" data-drill-tame hidden>Drill <kbd>D</kbd></button>
         <button type="button" class="keep" data-drill-keep>Keep it <kbd>K</kbd></button>
+        <button type="button" class="soft" data-drill-send hidden title="Draft proposals from your kept answers and send them to the expert store">Send to the expert</button>
         <button type="button" class="soft" data-drill-home>Home</button>
         <span class="keepnote" data-drill-keepnote></span>
       </div>
@@ -162,5 +229,6 @@
   </main>
 
   <script type="module" src="drill.js"></script>
+  <script type="module" src="flourish.js"></script>
 </body>
 </html>

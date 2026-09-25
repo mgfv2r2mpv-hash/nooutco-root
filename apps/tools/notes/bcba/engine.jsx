@@ -1802,6 +1802,35 @@ function App() {
     return review;
   };
 
+  /* THE CORRECTIONS PASS SPEAKS TOKENS BOTH WAYS, like every other model turn.
+
+     What he read on 2026-09-23: "Minimal Redirect (Request [[T6]])" in a
+     parent-training note, where he had typed "Request Attn". finalize() had put
+     Attn back into the draft. The pass was then handed that restored draft
+     beside the SCRUBBED intake, copied [[T6]] out of the intake, and its answer
+     went into S.output with nothing restoring it. It was the one writer of the
+     note that skipped the restore, and it also sent every word the scrubber had
+     held back from the drafting call out in clear.
+
+     So the note goes out under the note's map and the answer comes back through
+     restoreOutput, whole: `why` and each reason's `quote` too, because
+     corrections.js finds a mark by its quote in the restored text. */
+  const correctionsRound = async (opts) => {
+    const map = scrubMapRef.current || [];
+    const out = (text) => NotesScrub.applyMap(String(text || ""), map);
+    const pass = await NotesGate.correctionsPass({
+      ...opts,
+      draft: (opts.draft || []).map((d) => ({ ...d, text: out(d.text) })),
+      heldOut: (opts.heldOut || []).map((h) => ({ ...h, text: out(h.text) })),
+      // `about` quotes the note, so it goes out under the map with the note.
+      // `text` is what they typed. sendAsks has already run it through the
+      // scrub gate, so any new name in it is in the map by now.
+      asks: (opts.asks || []).map((a) => ({ ...a, about: out(a.about), text: out(a.text) })),
+    });
+    if (!pass) return pass;
+    return { ...pass, corrections: NotesScrub.restoreOutput(pass.corrections, scrubMapRef.current || []) };
+  };
+
   // One-way, and the banner says so. Certifying stops the NEXT scrub taking the
   // word; it does not reach back into the draft that was just generated from a
   // prompt containing the token.
@@ -2738,7 +2767,7 @@ function App() {
           passIntakeRef.current = intakeBody(scrubbedValues) +
             (extra && extra.trim() ? "\n\n[ANSWERED FOLLOW-UP QUESTIONS]\n" + extra.trim() : "");
           const pass = draftSections.length
-            ? await NotesGate.correctionsPass({
+            ? await correctionsRound({
                 tool: tool.id,
                 intake: passIntakeRef.current,
                 draft: draftSections,
@@ -4023,10 +4052,17 @@ function App() {
       .filter((d) => d.text.trim());
     if (!draftSections.length) return;
 
+    /* What they typed into each ask is free text like any composer message,
+       so it passes the same gate the panel's own Send does before it leaves.
+       A name typed here for the first time is detected and joins the note's
+       map; cancelling the review sends nothing and keeps the queue. */
+    const typed = asks.map((a) => String(a.text || "")).filter((t) => t.trim());
+    if (typed.length && !(await scrubGate(typed.join("\n"), { carryOver: true }))) return;
+
     const held = heldOutNow();
     setLoading(true);
     try {
-      const pass = await NotesGate.correctionsPass({
+      const pass = await correctionsRound({
         tool: tool.id,
         intake: passIntakeRef.current || "",
         draft: draftSections,
@@ -4590,13 +4626,16 @@ function App() {
     return (
       <div style={{ marginTop: 10 }}>
         {change.kind === "narrative" ? (
-          <div className="diff-view">
-            {NoteDiff.words(change.prev || "", change.value || "").map((op, i) =>
-              op.type === "same"
-                ? <span key={i}>{op.text}</span>
-                : <span key={i} className={op.type === "ins" ? "diff-ins" : "diff-del"}>{op.text}</span>
-            )}
-          </div>
+          <window.PendingDiff
+            before={change.prev}
+            after={change.value}
+            onAsk={(hunk) => targetSection({
+              kind: "span",
+              id: change.id,
+              heading: correctionHeadings[change.id] || "",
+              text: hunk.text.trim(),
+            })}
+          />
         ) : (
           <div className="diff-view">
             {change.kind === "table"
@@ -4610,7 +4649,7 @@ function App() {
           </button>
           <button type="button" className="diff-discard" onClick={discardProposal}>Discard</button>
           <p className="diff-note">
-            {count > 1 ? `${count} sections changed - accepting applies them together.` : "Green is added, struck-through is removed."}
+            {count > 1 ? `${count} sections changed - accepting applies them together.` : "Green is added, striped is reworded, a red mark is removed. Tap one to see what it was."}
           </p>
         </div>
       </div>

@@ -330,7 +330,7 @@ export const OUTLINE = Object.freeze([
       },
       {
         "id": "F.8",
-        "text": "Interpret assessment data to identify and prioritize socially significant, client-informed, and culturally responsive behavior-change procedures and goals. Behavior Analyst Certification Board | BCBA Test Content Outline (6th ed.) | 3Updated 09/2024, Copyright © 2022, BACB® | All rights reserved."
+        "text": "Interpret assessment data to identify and prioritize socially significant, client-informed, and culturally responsive behavior-change procedures and goals. Behavior Analyst Certification Board | BCBA Test Content Outline (6th ed.) | 3Updated 09/2024, Copyright \u00a9 2022, BACB\u00ae | All rights reserved."
       }
     ],
     "questions": 23,
@@ -478,7 +478,7 @@ export const OUTLINE = Object.freeze([
       },
       {
         "id": "I.4",
-        "text": "Select supervision goals based on an assessment of the supervisee’s skills, cultural variables, and the environment."
+        "text": "Select supervision goals based on an assessment of the supervisee\u2019s skills, cultural variables, and the environment."
       },
       {
         "id": "I.5",

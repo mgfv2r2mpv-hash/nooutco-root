@@ -3,7 +3,7 @@
  * In the Mac app the page talks to the Swift shell through one message handler,
  * `drill`, which answers with a promise (WKScriptMessageHandlerWithReply). The
  * shell keeps history, lexicon and settings as JSON files under
- * ~/Library/Application Support/Clinical Typing Drills, and Keep writes the
+ * ~/Library/Application Support/ClickClackOracle, and Keep writes the
  * answer's text into the voice corpus (drill register) and the expert queue.
  *
  * In a plain browser (the tests, a quick look) there is no shell: history,
@@ -26,9 +26,11 @@ const HISTORY_MAX = 2000;
 function lsGet(key, fallback) {
   try { const v = JSON.parse(localStorage.getItem(key)); return v == null ? fallback : v; } catch (e) { return fallback; }
 }
+/** false when the browser refuses the write (private mode, a full quota); the drill still works. */
 function lsSet(key, value) {
-  try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* private mode: the drill still works */ }
+  try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch (e) { return false; }
 }
+const saved = (ok) => (ok ? { ok: true } : { ok: false, note: "the browser refused the write" });
 
 async function call(op, payload) {
   return bridge.postMessage({ op, ...(payload || {}) });
@@ -61,20 +63,17 @@ export async function load() {
 export async function saveHistory(list) {
   const trimmed = list.slice(-HISTORY_MAX);
   if (inApp) return call("saveHistory", { history: trimmed });
-  lsSet(LS.history, trimmed);
-  return { ok: true };
+  return saved(lsSet(LS.history, trimmed));
 }
 
 export async function saveLexicon(list) {
   if (inApp) return call("saveLexicon", { lexicon: list });
-  lsSet(LS.lexicon, list);
-  return { ok: true };
+  return saved(lsSet(LS.lexicon, list));
 }
 
 export async function saveSettings(obj) {
   if (inApp) return call("saveSettings", { settings: obj });
-  lsSet(LS.settings, obj);
-  return { ok: true };
+  return saved(lsSet(LS.settings, obj));
 }
 
 /**
@@ -85,6 +84,8 @@ export async function saveSettings(obj) {
  */
 export async function keep(record) {
   if (inApp) return call("keep", { record });
+  const m = typeof window !== "undefined" && window.ClickClackMock;
+  if (m && m.keep) return m.keep(record);
   return { ok: false, note: "Keeping text works in the Mac app; this browser page keeps numbers only." };
 }
 
@@ -96,4 +97,69 @@ export function log(line) {
 /** The self-test hook: the shell's --selftest waits for this. */
 export function ready(report) {
   if (inApp) { call("ready", { report }).catch(() => {}); }
+}
+
+/* ---- the oracle, the microphone and the expert (Mac app only) ----------
+ * In a plain browser these say so, honestly. Tests put canned replies on
+ * window.ClickClackMock; nothing in the page's own flow sets it. */
+const mock = () => (typeof window !== "undefined" && window.ClickClackMock) || null;
+const notInApp = (what) => ({ ok: false, note: `${what} works in the Mac app.` });
+
+/** One call to his Claude Code: { ok, output } or { ok: false, note }. */
+export async function askClaude({ system, prompt, schema, webSearch = false }) {
+  if (inApp) return call("askClaude", { system, prompt, schema: JSON.stringify(schema), webSearch });
+  const m = mock();
+  if (m && m.askClaude) return m.askClaude({ system, prompt, schema, webSearch });
+  return notInApp("The oracle");
+}
+
+export async function micStart() {
+  if (inApp) return call("micStart");
+  const m = mock();
+  if (m && m.micStart) return m.micStart();
+  return notInApp("Talking");
+}
+export async function micStop() {
+  if (inApp) return call("micStop");
+  const m = mock();
+  if (m && m.micStop) return m.micStop();
+  return { ok: true };
+}
+
+export async function expertStatus() {
+  if (inApp) return call("expertStatus");
+  const m = mock();
+  if (m && m.expertStatus) return m.expertStatus();
+  return { connected: false, queued: 0, note: "Sending to the expert works in the Mac app." };
+}
+export async function expertToken(token) {
+  if (inApp) return call("expertToken", { token });
+  const m = mock();
+  if (m && m.expertToken) return m.expertToken(token);
+  return { connected: false, queued: 0, note: "Sending to the expert works in the Mac app." };
+}
+export async function expertQueue() {
+  if (inApp) return call("expertQueue");
+  const m = mock();
+  if (m && m.expertQueue) return m.expertQueue();
+  return { items: [] };
+}
+export async function expertPropose(record) {
+  if (inApp) return call("expertPropose", { record });
+  const m = mock();
+  if (m && m.expertPropose) return m.expertPropose(record);
+  return notInApp("Proposing");
+}
+export async function expertSent(stamps) {
+  if (inApp) return call("expertSent", { stamps });
+  const m = mock();
+  if (m && m.expertSent) return m.expertSent(stamps);
+  return { ok: true, queued: 0 };
+}
+/** The expert's records in force: { ok, records } or { ok: false, note }. */
+export async function expertRecords() {
+  if (inApp) return call("expertRecords");
+  const m = mock();
+  if (m && m.expertRecords) return m.expertRecords();
+  return { ok: false, note: "Reading the expert works in the Mac app." };
 }

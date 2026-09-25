@@ -29,11 +29,12 @@ test("density counts kept drills under their cell and expert records beside them
 
 test("the emptiest cell is the least said-about askable item, ties to the heaviest domain, skipping the last five", () => {
   // Nothing kept: every askable cell is at 0; the tie breaks to the heaviest
-  // domain (B and G, 14% each), then outline order: B.4 is the first B item
-  // the bank can ask about.
-  assert.equal(emptiestCell({ bank: BANK, history: [] }), "B.4");
-  // B.4 asked last: skipped, so the next askable B item wins.
-  assert.equal(emptiestCell({ bank: BANK, history: [{ outline: "B.4" }] }), "B.6");
+  // domain (B and G, 14% each), then outline order. Since bank-more.js the
+  // bank asks about every outline item, so the first B item, B.1, wins (it
+  // was B.4 while B.1 to B.3 had no question).
+  assert.equal(emptiestCell({ bank: BANK, history: [] }), "B.1");
+  // B.1 asked last: skipped, so the next askable B item wins.
+  assert.equal(emptiestCell({ bank: BANK, history: [{ outline: "B.1" }] }), "B.2");
   // Everything askable has been kept once except A.5: it is the gap.
   const all = BANK.map((b) => ({ outline: b.outline })).filter((h) => h.outline !== "A.5");
   assert.equal(emptiestCell({ bank: BANK, history: all, recent: 0 }), "A.5");

@@ -24,7 +24,7 @@ function typed(s, gapMs = 100) {
 
 test("possessives, contractions and hyphenated compounds are words, not typos", () => {
   const lex = new Set(["gambler", "do", "they", "client", "can", "will", "follow", "up", "the", "fallacy"]);
-  for (const w of ["gambler's", "gambler’s", "clients'", "don't", "they're", "can't", "won't", "follow-up"]) assert.ok(isKnown(w, lex), w);
+  for (const w of ["gambler's", "gambler\u2019s", "clients'", "don't", "they're", "can't", "won't", "follow-up"]) assert.ok(isKnown(w, lex), w);
   for (const w of ["dont", "xqz's", "follow-upp"]) assert.ok(!isKnown(w, lex), w);
   assert.deepEqual(unknownWords("the gambler's fallacy, don't follow-up", lex), []);
 });
@@ -32,11 +32,11 @@ test("possessives, contractions and hyphenated compounds are words, not typos", 
 test("an Option+Backspace run is a revision: not a correction, not a tricky key", () => {
   // "cat" then a word delete of 3, then "dog": one revision, no corrections.
   const ev = typed("cat{{{dog");
-  assert.deepEqual(deleteRuns(ev), { corrections: 0, revisions: 1 });
+  assert.deepEqual(deleteRuns(ev), { corrections: 0, revisions: 1, revisedKeys: 3 });
   assert.deepEqual(trickyKeys(ev).all, {});
   // The same with plain Backspace is a correction, and c for d is read as a miss.
   const plain = typed("cat<<<dog");
-  assert.deepEqual(deleteRuns(plain), { corrections: 1, revisions: 0 });
+  assert.deepEqual(deleteRuns(plain), { corrections: 1, revisions: 0, revisedKeys: 0 });
   assert.deepEqual(trickyKeys(plain).all, { c: 1 });
   const s = scoreDrill({ events: ev, text: "dog", minutes: 1 });
   assert.equal(s.revisions, 1);
@@ -151,8 +151,9 @@ test("trophies unlock on the drill that first met the condition, and never twice
   assert.equal(got("streak-3").unlocked, at(3, 9));
   assert.equal(got("sessions-1").unlocked, at(1, 9));
   assert.equal(got("clean-97").unlocked, at(1, 9));
-  assert.equal(got("band-average").unlocked, at(1, 9, 10)); // 41 NWAM
-  assert.equal(got("band-intermediate").unlocked, null);    // best is 43
+  // 41 to 43 NWAM at 90% accuracy is under the gate, so those rounds earn Amateur, as the road reads them (S9).
+  assert.equal(got("band-average").unlocked, null);
+  assert.equal(got("band-intermediate").unlocked, null);
   // Bests at 1 min: 31, 41 (pb), 32, 42 (pb), 33, 43 (pb) = 3 personal bests.
   assert.equal(got("pb-5").have, 3);
   // Kept words: the three kept drills of 50.
@@ -161,6 +162,23 @@ test("trophies unlock on the drill that first met the condition, and never twice
   assert.equal(got("len1-10").have, 6);
   // Adding a drill unlocks only what that drill earned.
   const next = h.concat([{ at: at(4, 9), minutes: 2, nwam: 50, gwam: 52, words: 104, accuracy: 0.99 }]);
-  assert.deepEqual(newlyUnlocked(c, trophyCase(next)).map((t) => t.id).sort(), ["band-intermediate"].sort());
+  assert.deepEqual(newlyUnlocked(c, trophyCase(next)).map((t) => t.id).sort(), ["band-average", "band-intermediate"].sort());
   assert.equal(new Set(TROPHIES.map((t) => t.id)).size, TROPHIES.length, "ids are unique");
+});
+
+test("an acronym typed on one held Shift is judged once, on its first capital", async () => {
+  const { createShiftTracker } = await import("../web/shift.js");
+  const t = createShiftTracker();
+  const ev = (type, code, extra = {}) => ({ type, code, shiftKey: true, ...extra });
+  // EHR: right Shift down (E is a left-hand key: correct), held through H and R, with key repeats.
+  t.key(ev("keydown", "ShiftRight"));
+  assert.equal(t.side(ev("keydown", "KeyE")), "R");
+  assert.equal(t.firstInHold(), true);   // E is judged
+  t.key(ev("keydown", "ShiftRight", { repeat: true }));
+  assert.equal(t.firstInHold(), false);  // H rides the same hold
+  assert.equal(t.firstInHold(), false);  // and so does R
+  t.key(ev("keyup", "ShiftRight", { shiftKey: false }));
+  // A new press is a new hold: judged again.
+  t.key(ev("keydown", "ShiftLeft"));
+  assert.equal(t.firstInHold(), true);
 });

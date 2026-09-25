@@ -16,12 +16,14 @@
  * chapter TITLE rather than number, so a citation cannot be off by a chapter.
  */
 
+import { BANK_MORE } from "./bank-more.js";
+
 const CHH = "Cooper, Heron & Heward (2020), Applied Behavior Analysis, 3rd ed.";
 
 export const TAGS = Object.freeze(["vignette", "explain", "design", "parent", "ethics", "supervise"]);
 
-export const BANK = Object.freeze([
-  /* ── A. Philosophy ─────────────────────────────────────────────────── */
+const CORE = [
+  /* -- A. Philosophy --------------------------------------------------- */
   { id: "a-01", outline: "A.1", tag: "parent",
     question: "A dad asks why you keep counting things instead of asking his son how he feels. Tell him what the counting is for.",
     bullets: [
@@ -47,7 +49,7 @@ export const BANK = Object.freeze([
       { text: "A label is a description of behavior, not a cause of it.", source: CHH + ", ch. Basic Concepts and Principles" },
     ] },
 
-  /* ── B. Concepts and principles ────────────────────────────────────── */
+  /* -- B. Concepts and principles -------------------------------------- */
   { id: "b-01", outline: "B.17", tag: "vignette",
     question: "A learner mands for a break forty times a session and takes it every time. The team says he is 'checking the box'. What is going on?",
     bullets: [
@@ -121,7 +123,7 @@ export const BANK = Object.freeze([
       { text: "Generalization is programmed, not hoped for.", source: "Stokes & Baer (1977), JABA" },
     ] },
 
-  /* ── C. Measurement ────────────────────────────────────────────────── */
+  /* -- C. Measurement -------------------------------------------------- */
   { id: "c-01", outline: "C.9", tag: "vignette",
     question: "The team counts tantrums. One lasted four seconds, one lasted forty minutes. What is the count hiding?",
     bullets: [
@@ -159,7 +161,7 @@ export const BANK = Object.freeze([
       { text: "A change that coincides with another event is not yet a functional relation.", source: CHH + ", ch. Analyzing Behavior Change: Basic Assumptions and Strategies" },
     ] },
 
-  /* ── D. Experimental design ────────────────────────────────────────── */
+  /* -- D. Experimental design ------------------------------------------ */
   { id: "d-01", outline: "D.7", tag: "design",
     question: "You taught him to request help and would never take it away to prove it worked. Which design shows the effect anyway?",
     bullets: [
@@ -179,7 +181,7 @@ export const BANK = Object.freeze([
       { text: "Replication is how single-case designs answer them.", source: "Horner et al. (2005), Exceptional Children" },
     ] },
 
-  /* ── E. Ethics ─────────────────────────────────────────────────────── */
+  /* -- E. Ethics ------------------------------------------------------- */
   { id: "e-01", outline: "E.3", tag: "ethics",
     question: "A family asks you to add feeding therapy. You have read about it and never done it. What do you do this week, and what do you not do?",
     bullets: [
@@ -217,7 +219,7 @@ export const BANK = Object.freeze([
       { text: "When in doubt, get it in writing first.", source: "Bailey & Burch (2022), Ethics for Behavior Analysts, 4th ed." },
     ] },
 
-  /* ── F. Assessment ─────────────────────────────────────────────────── */
+  /* -- F. Assessment --------------------------------------------------- */
   { id: "f-01", outline: "F.5", tag: "vignette",
     question: "Elopement from class started the week a substitute took over. Where do you start, and what do you rule out first?",
     bullets: [
@@ -255,7 +257,7 @@ export const BANK = Object.freeze([
       { text: "Applied means important to the person and those around them.", source: "Baer, Wolf & Risley (1968), JABA" },
     ] },
 
-  /* ── G. Behavior-change procedures ─────────────────────────────────── */
+  /* -- G. Behavior-change procedures ----------------------------------- */
   { id: "g-01", outline: "G.2", tag: "vignette",
     question: "Your DRO resets on every swear, and he swears at minute 4:59 of every five-minute interval. What is he learning, and what do you change?",
     bullets: [
@@ -317,7 +319,7 @@ export const BANK = Object.freeze([
       { text: "Least-to-most gives more independent chances but more errors.", source: CHH + ", ch. Stimulus Control" },
     ] },
 
-  /* ── H. Selecting and implementing interventions ───────────────────── */
+  /* -- H. Selecting and implementing interventions --------------------- */
   { id: "h-01", outline: "H.8", tag: "parent",
     question: "A parent says the plan works for you and not at home. How do you structure the next three parent sessions?",
     bullets: [
@@ -361,7 +363,7 @@ export const BANK = Object.freeze([
       { text: "Pick the response form that works fastest for this learner now.", source: CHH + ", ch. Verbal Behavior" },
     ] },
 
-  /* ── I. Supervision ────────────────────────────────────────────────── */
+  /* -- I. Supervision -------------------------------------------------- */
   { id: "i-01", outline: "I.6", tag: "supervise",
     question: "A BT's notes say 'had a great session' three days running. What feedback do you give, and what data do you show her?",
     bullets: [
@@ -386,7 +388,10 @@ export const BANK = Object.freeze([
       { text: "BST: instructions, modeling, rehearsal, feedback, to criterion.", source: "Parsons, Rollyson & Reid (2012), Behavior Analysis in Practice" },
       { text: "Check it in the session, not only in role play.", source: "Reid, Parsons & Green (2012), The Supervisor's Guidebook" },
     ] },
-]);
+];
+
+// The core above plus bank-more.js, which fills the rest of the outline.
+export const BANK = Object.freeze([...CORE, ...BANK_MORE]);
 
 /**
  * The next question. With a map (an outline id from map.js emptiestCell), the
@@ -409,7 +414,7 @@ export function nextItem(recentIds, rng = Math.random, cell = null) {
 
 /* Terms the Mac's own dictionary does not carry and a clinician types daily.
  * His lexicon grows on top of this. */
-export const CLINICAL_SEED = Object.freeze([
+const CLINICAL_SEED = Object.freeze([
   "prompting", "mand", "mands", "manding", "manded", "tact", "tacts", "tacting", "tacted", "intraverbal", "intraverbals",
   "echoic", "echoics", "elopement", "elopes", "eloped", "eloping", "dysregulation", "dysregulated", "self-injury",
   "reinforcer", "reinforcers", "reinforcement", "reinforced", "reinforcing", "punisher", "punishers", "redirection",

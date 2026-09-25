@@ -1,8 +1,8 @@
 {
-  "name": "clinical-typing-drills",
+  "name": "clickclackoracle",
   "private": true,
   "type": "module",
-  "description": "Clinical Typing Drills: a Mac app (Swift shell over a WKWebView) for timed clinical typing practice that feeds the voice corpus.",
+  "description": "ClickClackOracle: a Mac app (Swift shell over a WKWebView) for timed clinical typing practice that feeds the voice corpus.",
   "scripts": {
     "test": "node --test tests/*.test.mjs && playwright test",
     "test:unit": "node --test tests/*.test.mjs",

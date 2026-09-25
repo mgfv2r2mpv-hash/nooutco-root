@@ -32,6 +32,11 @@ const WARM = {
   petalA: [244, 186, 140], petalB: [44, 140, 255], accent: [23, 124, 255], glow: [255, 214, 170],
 };
 
+/* Dark mode keeps the garden's own colors and swaps only the ground they sit
+   on: a deep slate cold, a deep warm umber hot. */
+const DARK = { bg: [[28, 32, 40], [40, 32, 26]], bg2: [[18, 21, 27], [28, 22, 18]] };
+const isDark = () => typeof matchMedia === "function" && matchMedia("(prefers-color-scheme: dark)").matches;
+
 const lerp = (a, b, t) => a + (b - a) * t;
 const mix = (a, b, t) => `rgb(${a.map((v, i) => Math.round(lerp(v, b[i], t))).join(",")})`;
 const clamp01 = (x) => Math.max(0, Math.min(1, x));
@@ -224,8 +229,9 @@ export function createGarden(svg, opts = {}) {
     const h = heat;
     const P = {};
     for (const k of Object.keys(COOL)) P[k] = mix(COOL[k], WARM[k], h);
-    root.style.setProperty("--bg", P.bg);
-    root.style.setProperty("--bg2", P.bg2);
+    const dark = isDark();
+    root.style.setProperty("--bg", dark ? mix(DARK.bg[0], DARK.bg[1], h) : P.bg);
+    root.style.setProperty("--bg2", dark ? mix(DARK.bg2[0], DARK.bg2[1], h) : P.bg2);
     root.style.setProperty("--orn-stem", P.stem);
     root.style.setProperty("--orn-leaf", P.leaf);
     root.style.setProperty("--orn-leaf2", P.leaf2);
@@ -242,6 +248,7 @@ export function createGarden(svg, opts = {}) {
   }
 
   build();
+  if (typeof matchMedia === "function") matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", () => apply());
   let resizeTimer = 0;
   window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(build, 120); });
 

@@ -38,13 +38,29 @@ export function judge(shift, hand) {
   return shift === hand ? "same" : "ok";
 }
 
-/** Which Shift keys are down. Feed it every keydown and keyup of the box. */
+/**
+ * Which Shift keys are down, and which PRESS this is. Feed it every keydown
+ * and keyup of the box. Each new Shift press gets a new hold number; a key
+ * repeat does not. His bug report of 2026-09-23: "EHR" typed holding one Shift
+ * flagged the H. Only the FIRST capital of a hold is judged (see firstInHold):
+ * holding one Shift through an acronym is correct form, and changing sides
+ * mid-acronym is the habit NOT to build.
+ */
 export function createShiftTracker() {
   const down = new Set();
+  let hold = 0;
+  let judged = -1;
   return {
     key(e) {
       if (e.code !== "ShiftLeft" && e.code !== "ShiftRight") return false;
-      if (e.type === "keydown") down.add(e.code); else down.delete(e.code);
+      if (e.type === "keydown") { if (!e.repeat && !down.has(e.code)) hold += 1; down.add(e.code); }
+      else down.delete(e.code);
+      return true;
+    },
+    /** True once per Shift press: for the first capital typed while it is held. */
+    firstInHold() {
+      if (judged === hold) return false;
+      judged = hold;
       return true;
     },
     /** "L", "R", "B" (both), or null. Trusts the event's own shiftKey over a stale set. */
@@ -53,7 +69,9 @@ export function createShiftTracker() {
       const l = down.has("ShiftLeft"), r = down.has("ShiftRight");
       return l && r ? "B" : l ? "L" : r ? "R" : null;
     },
-    clear() { down.clear(); },
+    /** Strict Shift refused this capital: the next capital of the SAME press is judged again, so holding the wrong Shift cannot sneak the retry through. */
+    rejudge() { judged = -1; },
+    clear() { down.clear(); judged = hold; },
   };
 }
 
@@ -129,6 +147,29 @@ export function createShiftFx(layer) {
       later(cap);
       layer.dataset.lastShift = "same";
     },
+    /** Strict Shift: the same-side capital was refused. The same paint, and the key he hit struck through and shaken on its own side. */
+    refuse(hand, key) {
+      this.same(hand, key);
+      // The same red and green as the warning, held while the Shift is down.
+      this.cue(hand);
+      const wrong = sides[hand];
+      const cap = wrong && wrong.lastElementChild;
+      if (cap && cap.classList.contains("fx-key")) cap.classList.add("is-refused");
+      layer.dataset.lastShift = "refused";
+    },
+    /** The warning before the key: the Shift he holds is on the letter's own
+        side, so that side glows red and the other side green until he lets go. */
+    cue(wrongSide) {
+      const rightSide = wrongSide === "L" ? "R" : "L";
+      if (!sides[wrongSide] || !sides[rightSide]) return;
+      sides[wrongSide].classList.add("is-cue-bad");
+      sides[rightSide].classList.add("is-cue-good");
+      layer.dataset.cue = wrongSide;
+    },
+    uncue() {
+      for (const s of Object.values(sides)) if (s) s.classList.remove("is-cue-bad", "is-cue-good");
+      delete layer.dataset.cue;
+    },
     /** An opposite-side capital: a small cheer on the side of the Shift he used. */
     ok(shift) {
       const side = sides[shift];
@@ -139,6 +180,6 @@ export function createShiftFx(layer) {
       later(g, 1100);
       layer.dataset.lastShift = "ok";
     },
-    clear() { for (const s of Object.values(sides)) if (s) { s.replaceChildren(); s.classList.remove("is-warn"); } delete layer.dataset.lastShift; },
+    clear() { for (const s of Object.values(sides)) if (s) { s.replaceChildren(); s.classList.remove("is-warn", "is-cue-bad", "is-cue-good"); } delete layer.dataset.lastShift; delete layer.dataset.cue; },
   };
 }
