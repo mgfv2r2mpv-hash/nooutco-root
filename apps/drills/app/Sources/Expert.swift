@@ -132,3 +132,34 @@ func listRecords() -> [String: Any] {
     log("list: \(result["ok"] as? Bool == true ? "\((result["records"] as? [Any])?.count ?? 0) records" : "refused \(result["status"] ?? "")")")
     return result
 }
+
+/// One call to the tools site's expert-knowledge route, the same door the admin
+/// page's Knowledge tab uses. Returns { ok, status, data } or { ok: false, note }.
+/// Only the ops named at the bridge (main.swift) ever reach here.
+func expertRequest(op: String, method: String, query: [String: String] = [:], body: [String: Any]? = nil) -> [String: Any] {
+    guard let token = Keychain.read(), !token.isEmpty else { return ["ok": false, "note": "Not connected to the expert."] }
+    var parts = URLComponents(string: "https://tools.nooutco.me/api/expert-knowledge")!
+    parts.queryItems = [URLQueryItem(name: "op", value: op)] + query.map { URLQueryItem(name: $0.key, value: $0.value) }
+    guard let url = parts.url else { return ["ok": false, "note": "The address could not be built."] }
+    var req = URLRequest(url: url, timeoutInterval: 30)
+    req.httpMethod = method
+    req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+    if let body = body, let data = try? JSONSerialization.data(withJSONObject: body) {
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = data
+    }
+    var result: [String: Any] = ["ok": false, "note": "No answer from the tools site."]
+    let sem = DispatchSemaphore(value: 0)
+    URLSession.shared.dataTask(with: req) { data, resp, error in
+        defer { sem.signal() }
+        if let error = error { result = ["ok": false, "note": "Could not reach the tools site: \(error.localizedDescription)"]; return }
+        let status = (resp as? HTTPURLResponse)?.statusCode ?? 0
+        let obj = data.flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:]
+        if status == 200 { result = ["ok": true, "status": status, "data": obj]; return }
+        let why = (obj["error"] as? String) ?? "status \(status)"
+        result = ["ok": false, "status": status, "note": status == 401 || status == 403 ? "The site refused the token (\(why)). Paste a fresh one in Settings." : "The site said: \(why)"]
+    }.resume()
+    sem.wait()
+    log("expert \(op): \(result["ok"] as? Bool == true ? "ok" : "refused \(result["status"] ?? "")")")
+    return result
+}

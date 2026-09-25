@@ -215,6 +215,28 @@ final class Bridge: NSObject, WKScriptMessageHandlerWithReply {
                 let out = listRecords()
                 DispatchQueue.main.async { replyHandler(out, nil) }
             }
+        case "expertProposals":
+            // The proposals waiting for his word, as the admin page's Knowledge tab lists them.
+            DispatchQueue.global(qos: .userInitiated).async {
+                let r = expertRequest(op: "proposals", method: "GET", query: ["state": "staged"])
+                var out: [String: Any] = ["ok": r["ok"] ?? false]
+                if let data = r["data"] as? [String: Any] { out["proposals"] = data["proposals"] ?? [] }
+                if let note = r["note"] { out["note"] = note }
+                DispatchQueue.main.async { replyHandler(out, nil) }
+            }
+        case "expertDecide":
+            // His decision on one proposal. Only commit or reject, and only a plain id:
+            // the page cannot name any other operation through this door.
+            let id = (body["proposalId"] as? String) ?? ""
+            let decision = (body["decision"] as? String) ?? ""
+            guard ["commit", "reject"].contains(decision),
+                  id.range(of: "^[A-Za-z0-9_-]{1,100}$", options: .regularExpression) != nil else {
+                replyHandler(["ok": false, "note": "That decision is not one the app sends."], nil); return
+            }
+            DispatchQueue.global(qos: .userInitiated).async {
+                let r = expertRequest(op: decision, method: "POST", body: ["proposalId": id])
+                DispatchQueue.main.async { replyHandler(["ok": r["ok"] ?? false, "note": r["note"] ?? ""], nil) }
+            }
         case "expertSent":
             markSent((body["stamps"] as? [String]) ?? [])
             replyHandler(["ok": true, "queued": unsentQueue().count], nil)
@@ -440,6 +462,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         let appMenu = NSMenu()
         appMenu.addItem(withTitle: "About \(APP_NAME)", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
         appMenu.addItem(.separator())
+        appMenu.addItem(withTitle: "Settings\u{2026}", action: #selector(openSettings), keyEquivalent: ",")
         appMenu.addItem(withTitle: "Show Data Folder", action: #selector(showData), keyEquivalent: "")
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: "Hide \(APP_NAME)", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
@@ -467,6 +490,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
     }
 
     @objc func showData() { NSWorkspace.shared.activateFileViewerSelecting([Paths.support]) }
+    /// Command-comma: the page's Settings screen (it refuses mid-round, so typing is never interrupted).
+    @objc func openSettings() {
+        web?.evaluateJavaScript("window.ClickClack && window.ClickClack.openSettings && window.ClickClack.openSettings()", completionHandler: nil)
+    }
 }
 
 let app = NSApplication.shared
