@@ -32,8 +32,8 @@
   var POLL_TRIES = 25; // 5s total
 
   var UNAVAILABLE_MSG =
-    "The verification check could not load. Reload the page, and if it keeps " +
-    "happening check that challenges.cloudflare.com is reachable.";
+    "Verification check did not load.\nReload the page.\n" +
+    "If it repeats, check that challenges.cloudflare.com is reachable.";
 
   function noop() {}
 

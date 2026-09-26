@@ -298,10 +298,8 @@
 
   // Shown in the notice banner after any scrub so clinicians build better habits.
   var SCRUB_GUIDANCE =
-    "Please be careful to avoid using names and identifying information in the future. " +
-    "Refer to the client as “Client,” parent as “Parent,” and staff by role " +
-    "(BT, BCBA, SLP, OT, etc.). Remember that client health information responsibility " +
-    "sits with ALL providers at all times.";
+    "Use roles, not names: e.g., Client, Parent, BT, BCBA, SLP, OT, PT, Teacher, etc.\n" +
+    "All providers are responsible for client information privacy at all times.";
 
   /* Two kinds of replacement, decided by evidence rather than by hope.
    *
@@ -583,14 +581,12 @@
    * again, it goes back here and no call site changes.
    */
   var ACK_NOTICE =
-    "Do not enter Protected Health Information (PHI) or personally identifiable " +
-    "information (PII) - client names, dates, addresses, or any other identifier - " +
-    "into this tool. Submitting PHI to a third-party AI service without a signed " +
-    "Business Associate Agreement can violate HIPAA, the HITECH Act, and other " +
-    "applicable laws. You are solely responsible for ensuring no identifying " +
-    "information is submitted. This tool detects and removes names and identifiers " +
-    "before anything is transmitted as a safeguard, but it does not replace your " +
-    "professional and legal duty to de-identify your input.";
+    "Do not enter PHI or PII: client names, dates, addresses or any other identifier.\n" +
+    "Sending PHI to a third-party AI service without a signed Business Associate " +
+    "Agreement can violate HIPAA, the HITECH Act and other laws.\n" +
+    "The user is solely responsible for de-identifying all input.\n" +
+    "Names and identifiers are detected and removed before sending; this does not " +
+    "replace the user's duty to de-identify.";
 
   function acknowledge() { return Promise.resolve(true); }
 
