@@ -97,7 +97,7 @@ export default function App() {
 
   function promptLoadExcel() {
     const msg = activeAssessment
-      ? 'Loading a new Excel file will open it as a separate assessment. Any data you have not exported may be lost if you navigate away. Continue?'
+      ? 'Opens the file as a separate assessment.\nUnexported data may be lost on navigation.\nContinue?'
       : 'Load an Excel file to import an assessment.';
     if (activeAssessment && !confirm(msg)) return;
     loadFileRef.current?.click();

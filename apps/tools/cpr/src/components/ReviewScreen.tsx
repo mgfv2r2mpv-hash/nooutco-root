@@ -141,15 +141,13 @@ const CELL_COUNT_TOOLTIP = (
 
     <div className="border-t border-gray-100 dark:border-gray-700 pt-2 space-y-1 text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 rounded p-2">
       <p className="font-semibold">⚠ Small cell counts distort conditional probabilities</p>
-      <p>Conditional probability (e.g., P(Bx|C+)) is computed from column totals. When a column total is very
-        small, because the situation rarely occurred during observation. A single instance changes the
-        probability dramatically. For example, if C+ was only delivered 2 times and Bx occurred in 1 of
-        those, P(Bx|C+) = 50% even though the evidence is extremely thin.</p>
-      <p>This can arise from <strong>artificial limits in data collection</strong>: the observer may never have
-        created (or observed) the EO, or the consequence may have been withheld throughout, not because
-        the function is absent, but because there were too few natural opportunities to observe it.</p>
-      <p className="italic">As a practical guideline: treat any column with fewer than ~5 observations with caution,
-        and consider whether more data or a different observation context is needed before concluding.</p>
+      <p>Conditional probability (e.g., P(Bx|C+)) is computed from column totals.</p>
+      <p>With a small column total, a single instance changes the probability sharply. Example: C+ delivered
+        2 times, Bx in 1 of them: P(Bx|C+) = 50%.</p>
+      <p>Small totals can reflect too few opportunities (EO never arranged or observed, consequence withheld),
+        not an absent function.</p>
+      <p className="italic">Columns with fewer than about 5 observations: interpret with caution; more data or a
+        different observation context may be needed.</p>
     </div>
   </div>
 );

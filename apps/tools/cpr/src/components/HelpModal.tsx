@@ -145,10 +145,11 @@ function QuickStartTab() {
           <li>Use <strong>Y / N / C</strong> to cycle toggles (Y = yes, N = no, C = Could Not Score).</li>
           <li>Tap the pencil icon on any row to add an interval note.</li>
           <li>The progress bar fills blue for scored intervals; gray for Could Not Score intervals.</li>
-          <li>A <strong>Saved ✓</strong> flash confirms each interval is persisted to your browser.</li>
+          <li><strong>Saved ✓</strong> marks each interval stored in this browser.</li>
         </ul>
         <Callout>
-          The pace arrow is a guide, not a strict requirement. If you fall behind, stop the timer and catch up before resuming.
+          The pace indicator is a guide, not a requirement.<br />
+          If behind: stop the timer, catch up, then resume.
         </Callout>
       </Section>
 
@@ -156,7 +157,7 @@ function QuickStartTab() {
         <p>Click <strong>Review</strong> to open the review screen. This shows raw cell counts (no probabilities) so you can verify data quality before analysis:</p>
         <ul className="list-disc pl-5 space-y-1">
           <li>Intervals where behavior, EO, <em>and</em> all consequences are Could Not Score are flagged; these contribute nothing to the analysis and may indicate a scoring interruption.</li>
-          <li>Counts only (no probabilities) are shown intentionally, to avoid anchoring your data quality judgment on preliminary results before you decide if more data is needed.</li>
+          <li>Counts only; no probabilities before analysis.</li>
         </ul>
         <p>Click <strong>Proceed to analysis</strong> when satisfied, or <strong>Back</strong> to continue scoring.</p>
       </Section>
@@ -174,7 +175,8 @@ function QuickStartTab() {
         <p><strong>Download Template:</strong> from the home screen, download a blank CPR template and fill it in manually (e.g., from paper scoring). Use Y / N / C in each cell.</p>
         <p><strong>Load Excel:</strong> import a previously exported or manually completed CPR spreadsheet. The tool reconstructs the assessment so you can review or re-analyze. If the Time column contains timestamps, session duration is estimated automatically.</p>
         <Callout>
-          Data is stored in your browser&apos;s localStorage. It is <strong>device-specific</strong>; it does not sync across computers. Always export your Excel file before closing or switching devices.
+          Data is saved in this browser only; it does not sync across devices.<br />
+          Export the Excel file before closing or switching devices.
         </Callout>
       </Section>
 
@@ -202,7 +204,8 @@ function ConceptsTab() {
       </Section>
 
       <Section title="Interview-informed assessment (IISCA rationale)">
-        <p>Rather than starting from a blank hypothesis, this tool supports an <strong>interview-informed</strong> approach (Hanley et al., 2014). Informed by an open-ended functional assessment interview (e.g., IISCA), the assessor identifies the most likely reinforcers <em>before</em> observation begins and flags them as &quot;indicated functions&quot; in the session setup.</p>
+        <p><strong>Interview-informed</strong> approach (Hanley et al., 2014).</p>
+        <p>After an open-ended functional assessment interview (e.g., IISCA), the assessor flags the most likely reinforcers as &quot;indicated functions&quot; in session setup, <em>before</em> observation.</p>
         <p>These indicated consequences appear on the <strong>left</strong> side of each interval row, enabling faster scoring during live observation; they are also reflected in the output so reviewers understand the assessor&apos;s a priori hypothesis.</p>
         <p className="text-xs text-gray-500 dark:text-gray-400">
           Reference: Hanley, G. P., Jin, C. S., Vanselow, N. R., &amp; Hanratty, L. A. (2014). Producing meaningful improvements in problem behavior of children with autism via synthesized analyses and treatments. <em>Journal of Applied Behavior Analysis, 47</em>, 16-36.
@@ -239,7 +242,7 @@ function ConceptsTab() {
           C_effective[n] = C[n] OR C[n+1]
         </code>
         <p>This accounts for natural delays in consequence delivery (e.g., a teacher notices and provides attention one interval after the behavior occurred).</p>
-        <p>In the Excel export, Lag-1 is implemented via hidden helper columns that COUNTIFS references, keeping the visible formulas clean. On the analysis screen, you can toggle each independently.</p>
+        <p>Antecedent and consequence Lag-1 toggle independently on the analysis screen and apply to the Excel export.</p>
         <p className="text-xs text-gray-500 dark:text-gray-400">
           Based on procedures from: Camp, E. M., Iwata, B. A., Hammond, J. L., &amp; Bloom, S. E. (2009). Antecedent versus consequent events as predictors of problem behavior. <em>Journal of Applied Behavior Analysis, 42</em>, 601-616.
         </p>
@@ -330,12 +333,12 @@ function KeyboardTab() {
 
       <Section title="Live scoring tips">
         <ul className="list-disc pl-5 space-y-2">
-          <li>Start the timer <em>before</em> your first interval. The pace indicator shifts automatically so you always know which interval to be completing.</li>
+          <li>Start the timer <em>before</em> the first interval.<br />The pace indicator marks the current interval.</li>
           <li>If you miss an interval, leave it as Could Not Score (default) and keep pace; do not go back and fill it in retrospectively.</li>
           <li>For faster scoring, pre-assign indicated functions during session setup; they appear on the left, closest to your thumb on a touchscreen or to Tab-stop order on a keyboard.</li>
           <li>Use the note button (pencil icon) sparingly during live scoring. Mark the interval and add context notes afterward during the Review screen.</li>
           <li>If you need to pause, stop the timer. The accumulated time persists when you resume.</li>
-          <li>The &quot;Saved ✓&quot; indicator confirms each change is written to localStorage. No manual save is required.</li>
+          <li>&quot;Saved ✓&quot; confirms each change is saved in this browser.<br />No manual save needed.</li>
         </ul>
       </Section>
     </div>

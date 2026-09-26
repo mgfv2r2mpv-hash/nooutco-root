@@ -352,7 +352,8 @@ const ANT_TOOLTIP = (
         <span className="text-gray-500 dark:text-gray-400 pl-3">= P(Bx|A+) − P(Bx|A−)</span></p>
     </div>
     <p className="text-gray-500 dark:text-gray-400 italic pt-1 border-t border-gray-100 dark:border-gray-700">
-      Positive ACV → behavior more likely when EO is present; suggests this EO evokes the behavior. Useful for identifying antecedent control even before consequence analysis is complete.
+      Positive ACV → behavior more likely when EO is present; suggests this EO evokes the behavior.<br />
+      Indicates antecedent control independent of consequence analysis.
     </p>
   </div>
 );
