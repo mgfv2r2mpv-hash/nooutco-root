@@ -131,7 +131,7 @@ test.describe('the section map', () => {
 
     await expect(tile(page, SECTION)).toHaveAttribute('data-state', 'changed');
     await expect(tile(page, SECTION).locator('.section-tile-state')).toHaveText('changed');
-    await expect(page.locator('.section-map-head')).toContainText('changed since you copied it');
+    await expect(page.locator('.section-map-head')).toContainText('changed since copied');
 
     // It persists. A toast would have died here; the strip is still saying it.
     await page.locator(`textarea[data-section-id="lessonProgressNarrative"]`).click();

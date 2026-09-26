@@ -80,7 +80,7 @@ test.describe('the notes pages do not depend on a CDN to render', () => {
 
     // The poll is 25 tries at 200ms, so the message cannot arrive before 5s.
     await expect(page.locator('#notes-login-err'))
-      .toContainText(/verification check could not load/i, { timeout: 20000 });
+      .toContainText(/verification check did not load/i, { timeout: 20000 });
     await expect(page.locator('#notes-login-err')).toBeVisible();
   });
 

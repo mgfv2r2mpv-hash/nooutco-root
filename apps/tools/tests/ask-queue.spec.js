@@ -319,7 +319,7 @@ test.describe('what the technician took out stays out', () => {
 
     const added = page.locator('[data-corrections-section="behaviorPlanNarrative"] [data-correction-type="ins"]').first();
     await added.click();
-    await page.getByRole('button', { name: 'Take it out' }).click();
+    await page.getByRole('button', { name: 'Remove', exact: true }).click();
 
     await askOn(page, 'antecedentNarrative', 'shorter please');
     await page.locator('[data-panel-ask-send]').click();
@@ -344,7 +344,7 @@ test.describe('what the technician took out stays out', () => {
 
     const moved = page.locator('[data-correction-type="move-in"]').first();
     await moved.click();
-    await page.getByRole('button', { name: 'Take it out' }).click();
+    await page.getByRole('button', { name: 'Remove', exact: true }).click();
 
     await askOn(page, 'behaviorPlanNarrative', 'say it in one sentence');
     await page.locator('[data-panel-ask-send]').click();

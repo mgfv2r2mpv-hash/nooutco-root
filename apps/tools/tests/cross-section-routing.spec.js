@@ -205,7 +205,7 @@ test.describe('a revision that reaches past the section that was clicked', () =>
     await page.getByText('Narrative of Behavior Support Plan Goals Progress', { exact: true }).click();
     await page.locator('.revision-input').fill('tighten this');
     await page.locator('.revision-send').click();
-    await expect(page.locator('.revision-panel-body')).toContainText(/No change was needed|Updated/i, { timeout: 20000 });
+    await expect(page.locator('.revision-panel-body')).toContainText(/No change made|Updated/i, { timeout: 20000 });
 
     const last = body.messages[body.messages.length - 1].content;
     expect(last).toContain('crossSection');

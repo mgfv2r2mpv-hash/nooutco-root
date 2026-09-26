@@ -102,7 +102,7 @@ test.describe('he can talk to the expert without pasting an intake', () => {
 
   test('it comes prefilled with the question he actually asked for', async ({ page }) => {
     await openBench(page);
-    await expect(page.locator('#btTopic')).toHaveValue("Let's fine-tune BT session note completion criteria");
+    await expect(page.locator('#btTopic')).toHaveValue("BT session note completion criteria");
   });
 
   test('the tool list is the same one the intake bench offers', async ({ page }) => {
@@ -119,7 +119,7 @@ test.describe('he can talk to the expert without pasting an intake', () => {
     await page.locator('#btSend').click();
     await expect.poll(() => sent.length, { timeout: 10000 }).toBe(1);
 
-    expect(sent[0].topic).toBe("Let's fine-tune BT session note completion criteria");
+    expect(sent[0].topic).toBe("BT session note completion criteria");
     expect(sent[0].tool, 'no tool was sent, so the worker cannot fetch a prompt').toBeTruthy();
     expect(sent[0].intake, 'the topic bench sent an intake it does not have').toBeFalsy();
     expect(sent[0].messages).toHaveLength(1);
@@ -150,14 +150,14 @@ test.describe('he can talk to the expert without pasting an intake', () => {
     }));
     await page.locator('#btAsk').fill('how many notes last month');
     await page.locator('#btSend').click();
-    await expect(page.locator('#btUsage')).toContainText('NO figures', { timeout: 10000 });
+    await expect(page.locator('#btUsage')).toContainText('Answered without figures', { timeout: 10000 });
   });
 
   test('and says when it did have them', async ({ page }) => {
     await openBench(page);
     await page.locator('#btAsk').fill('how many notes last month');
     await page.locator('#btSend').click();
-    await expect(page.locator('#btUsage')).toContainText("store's figures", { timeout: 10000 });
+    await expect(page.locator('#btUsage')).toContainText('Answered with metrics store figures', { timeout: 10000 });
   });
 
   test('an empty message is refused before anything is sent', async ({ page }) => {
@@ -259,7 +259,7 @@ test.describe('grading the examples it writes', () => {
     await page.locator('#btScore').fill('93');
     await expect(page.locator('#btBand')).toHaveText('Great Work!');
     await page.locator('#btScore').fill('69');
-    await expect(page.locator('#btBand')).toHaveText('Keep going, your work is so important.');
+    await expect(page.locator('#btBand')).toHaveText('Keep going.');
   });
 
   test('a grade sends the number and his words, and no message of its own', async ({ page }) => {

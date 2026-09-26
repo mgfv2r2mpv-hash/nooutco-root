@@ -512,7 +512,7 @@ test.describe('path 6, the saved draft after a reload', () => {
     await expect(page.getByRole('textbox', { name: /Skill Acquisition/i })).toHaveValue(/labeled/);
     // The banner is the clinician's instruction sheet for their EHR, and the note
     // it belongs to may already be pasted there.
-    await expect(page.getByText('Removed before this left your device')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Removed before sending.', { exact: true })).toBeVisible({ timeout: 10000 });
     expect(await page.locator('body').innerText()).toContain('Jacob');
   });
 

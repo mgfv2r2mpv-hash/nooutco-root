@@ -168,7 +168,7 @@ test.describe('the question goes to the box', () => {
     await ask(page, ONE_PLACED);
     const q = page.locator('[data-question-inline="fAntecedent"]');
     await expect(q.locator('[data-disposition="0:0"]')).toBeVisible({ timeout: 20000 });
-    await expect(q).toContainText('NoMe added this to your note');
+    await expect(q).toContainText('Added to the note by NoMe');
     await expect(page.locator('[data-suggestion-tick]')).toHaveCount(0);
   });
 });

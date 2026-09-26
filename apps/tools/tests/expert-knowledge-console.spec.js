@@ -89,13 +89,13 @@ test.describe('what is in force, and what is only proposed', () => {
     // has written to yet. Reading the second as the first wastes an afternoon.
     await openConsole(page, { list: { records: [], knowledge: false } });
     await expect(page.locator('#knUnbound')).toBeVisible();
-    await expect(page.locator('#knRecords')).toContainText('No store on this deploy');
+    await expect(page.locator('#knRecords')).toContainText('No knowledge store on this deployment');
   });
 
   test('an empty store says the expert is running on its authored prompt alone', async ({ page }) => {
     await openConsole(page, { list: { records: [], knowledge: true } });
     await expect(page.locator('#knUnbound')).toBeHidden();
-    await expect(page.locator('#knRecords')).toContainText('authored prompt alone');
+    await expect(page.locator('#knRecords')).toContainText('authored prompt only');
   });
 
   test('core and topic are separated, because the difference is what each one costs', async ({ page }) => {
@@ -146,7 +146,7 @@ test.describe('the presses that change what every note reads', () => {
     const seen = await openConsole(page);
     page.once('dialog', (d) => {
       expect(d.message()).toContain('Name what the session produced');
-      expect(d.message()).toContain('Nothing is deleted');
+      expect(d.message()).toContain('Versions are kept');
       d.dismiss();
     });
     await page.locator('#knRecords button.kn-retire').first().click();

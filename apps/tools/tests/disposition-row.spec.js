@@ -130,8 +130,7 @@ test.describe('what the tool added', () => {
     await ask(page, ONE);
     await expect(row(page, '0:0')).toBeVisible({ timeout: 20000 });
     const head = page.locator('.dz-head');
-    await expect(head).toContainText('NoMe added this to your note');
-    await expect(head).toContainText('Already in');
+    await expect(head).toContainText('Added to the note by NoMe');
   });
 
   /* The resting state is agreement, so it says nothing. */

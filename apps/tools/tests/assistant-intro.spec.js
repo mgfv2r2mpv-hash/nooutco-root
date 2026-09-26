@@ -8,7 +8,7 @@ import { test, expect } from '@playwright/test';
  * knowing where it was. */
 
 const PAGES = [
-  { tool: 'sap', path: '/notes/bcba/index.html?tool=sap', says: /treatment goal and any SAP specifications/i, button: 'Generate SAP' },
+  { tool: 'sap', path: '/notes/bcba/index.html?tool=sap', says: /treatment goal and SAP specifications/i, button: 'Generate SAP' },
   { tool: 'sup', path: '/notes/bcba/index.html?tool=sup', says: /clinical observations and staff feedback/i, button: 'Generate Note' },
   { tool: 'assess', path: '/notes/bcba/index.html?tool=assess', says: /assessment/i, button: 'Generate Note' },
   { tool: 'parent', path: '/notes/bcba/index.html?tool=parent', says: /session notes/i, button: 'Generate Note' },

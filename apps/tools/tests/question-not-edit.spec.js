@@ -107,7 +107,7 @@ test.describe('a question is answered, not applied', () => {
     });
     await page.locator('.revision-input').fill('anything');
     await page.locator('.revision-send').click();
-    await expect(page.locator('.revision-panel-body')).toContainText(/No change was needed|Updated|belongs/i, { timeout: 20000 });
+    await expect(page.locator('.revision-panel-body')).toContainText(/No change made|Updated|belongs/i, { timeout: 20000 });
 
     expect(seen).toMatch(/IF THE MESSAGE IS A QUESTION/);
     // The distinction has to be shown, not just asserted, or it gets guessed at.
@@ -125,7 +125,7 @@ test.describe('a move has two halves', () => {
     });
     await page.locator('.revision-input').fill('move the elopement detail to the summary');
     await page.locator('.revision-send').click();
-    await expect(page.locator('.revision-panel-body')).toContainText(/No change was needed|Updated/i, { timeout: 20000 });
+    await expect(page.locator('.revision-panel-body')).toContainText(/No change made|Updated/i, { timeout: 20000 });
 
     expect(seen).toMatch(/A MOVE HAS TWO HALVES AND YOU MUST DO BOTH/);
     expect(seen).toMatch(/Never take content out of a section without putting it somewhere/i);

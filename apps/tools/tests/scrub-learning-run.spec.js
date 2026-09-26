@@ -169,7 +169,7 @@ test.describe('reading the model response', () => {
     expect(out.stopped).toBe('model-response-truncated');
     expect(out.stopReason).toBe('max_tokens');
     // The reason it gives is the budget, not a character offset in a JSON string.
-    expect(out.error).toMatch(/budget/i);
+    expect(out.error).toMatch(/output limit/i);
     expect(out.error).not.toMatch(/position \d+/);
   });
 

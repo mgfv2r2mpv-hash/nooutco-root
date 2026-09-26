@@ -116,7 +116,7 @@ test.describe('the scrub does not ask first', () => {
 test.describe('the notice carries the escape the dialog used to own', () => {
   test('it names what was taken, and what each became', async ({ page }) => {
     await draft(page);
-    const notice = page.locator('text=Removed before this left your device').locator('..');
+    const notice = page.getByText('Removed before sending.', { exact: true }).locator('..');
     // Jacob has no cue attached to him, so he is the Client. Sarah has "Mom"
     // directly in front of her, so she is the Caregiver. A build whose role
     // inference reads the whole sentence rather than the word next to the name
@@ -140,7 +140,7 @@ test.describe('the notice carries the escape the dialog used to own', () => {
 
   test('an identifier is not offered as "not a name"', async ({ page }) => {
     await draft(page);
-    const notice = page.locator('text=Removed before this left your device').locator('..');
+    const notice = page.getByText('Removed before sending.', { exact: true }).locator('..');
     // A phone number is never "not a name" in a way worth remembering, and a
     // button offering to keep one is a button somebody will eventually press.
     await expect(notice).not.toContainText('213-4477');

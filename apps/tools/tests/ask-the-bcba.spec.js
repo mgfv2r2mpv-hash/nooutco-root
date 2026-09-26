@@ -155,7 +155,7 @@ test.describe('it offers to ask the BCBA', () => {
     await page.locator('.revision-send').click();
     await expect(page.locator('.bcba-offer')).toBeVisible({ timeout: 20000 });
 
-    await page.getByRole('button', { name: 'No thanks' }).click();
+    await page.getByRole('button', { name: 'Dismiss' }).click();
     await expect(page.locator('.bcba-offer')).toHaveCount(0);
     await expect(page.locator('textarea[data-section-id="followUpNarrative"]'))
       .toHaveValue(/No new questions or concerns/);
@@ -180,7 +180,7 @@ test.describe('it offers to ask the BCBA', () => {
     });
     await page.locator('.revision-input').fill('anything');
     await page.locator('.revision-send').click();
-    await expect(page.locator('.revision-panel-body')).toContainText(/No change was needed|Updated/i, { timeout: 20000 });
+    await expect(page.locator('.revision-panel-body')).toContainText(/No change made|Updated/i, { timeout: 20000 });
 
     expect(seen).toMatch(/IF THE CLINICIAN SAYS THEY ARE UNSURE/);
     expect(seen).toMatch(/do not guess and do not decide for them/i);

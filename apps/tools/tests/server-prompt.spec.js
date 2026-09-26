@@ -227,7 +227,7 @@ test.describe('the live route', () => {
     expect(res.status()).toBe(503);
     const body = await res.json();
     expect(body.error).toMatch(/not drafted|unavailable/i);
-    expect(body.error).toMatch(/nothing was sent/i);
+    expect(body.error).toMatch(/nothing sent/i);
   });
 
   test('a tool that has not migrated still sends its own prompt', async ({ request }) => {

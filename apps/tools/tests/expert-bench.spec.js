@@ -249,7 +249,7 @@ test.describe('what the bench draws', () => {
     await page.click('#exRun');
     await expect(page.locator('#exRegister')).toContainText('Nothing mentalistic');
     await expect(page.locator('#exTerms')).toContainText('No abbreviations');
-    await expect(page.locator('#exHints')).toContainText('Nothing it would ask about');
+    await expect(page.locator('#exHints')).toContainText('No hints proposed');
   });
 
   test('hints cut by the ceiling are reported, never dropped silently', async ({ page }) => {
@@ -295,7 +295,8 @@ test.describe('what the bench draws', () => {
     await openBench(page, FINDINGS);
     await page.fill('#exIntake', 'x');
     await page.click('#exRun');
-    await expect(page.locator('#exUsage')).toContainText('4100 cached');
+    await expect(page.locator('#exUsage')).toContainText('120 in');
+    await expect(page.locator('#exUsage')).toContainText('300 out');
   });
 });
 

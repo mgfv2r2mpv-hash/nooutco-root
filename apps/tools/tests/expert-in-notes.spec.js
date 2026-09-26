@@ -225,7 +225,7 @@ test.describe('the reading is compact, and its argument is behind a word', () =>
     // Nothing but the count line, so what the expert costs above the note is
     // one row whatever it found.
     await expect(page.getByTestId('expert-register-row')).toHaveCount(0);
-    await expect(page.getByTestId('expert-register-toggle')).toContainText('2 phrases it would reword');
+    await expect(page.getByTestId('expert-register-toggle')).toContainText('2 phrases to reword');
     await expect(page.getByTestId('expert-register-toggle')).toContainText('show');
 
     // And it is reachable, which is the other half.
@@ -334,8 +334,8 @@ test.describe('the reading is compact, and its argument is behind a word', () =>
 
     const stale = page.getByTestId('expert-behaviorPlanNarrative-stale');
     await expect(stale).toBeVisible();
-    await expect(stale).toContainText('You have edited this section since the expert read it');
-    await expect(stale).toContainText('1 finding');
+    await expect(stale).toContainText('Section edited after expert review');
+    await expect(stale).toContainText('1 earlier finding');
     // Folded, not deleted.
     await expect(stale).not.toContainText('How long did each elopement last?');
     await page.getByTestId('expert-behaviorPlanNarrative-stale-toggle').click();

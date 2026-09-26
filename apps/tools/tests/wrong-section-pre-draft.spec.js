@@ -238,7 +238,7 @@ test.describe('a finding on its own never holds the draft back', () => {
     await setup(page, { sufficient: true, readiness: 40, questions: [] });
 
     await expect(page.locator('[data-skip-held]')).toHaveCount(0);
-    const skip = page.getByRole('button', { name: /generate anyway/i });
+    const skip = page.getByRole('button', { name: /Generate without adding answers/i });
     await expect(skip).toBeVisible({ timeout: 5000 });
     await expect(skip).toBeEnabled();
   });
@@ -249,7 +249,7 @@ test.describe('a finding on its own never holds the draft back', () => {
     await setup(page, 'fail');
 
     await expect(page.locator('[data-skip-held]')).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /generate anyway/i })).toBeEnabled({ timeout: 5000 });
+    await expect(page.getByRole('button', { name: /Generate without adding answers/i })).toBeEnabled({ timeout: 5000 });
   });
 
   test('but a real question beside it still holds the gate, which is his ruling', async ({ page }) => {
@@ -260,6 +260,6 @@ test.describe('a finding on its own never holds the draft back', () => {
     });
 
     await expect(page.locator('[data-skip-held]')).toHaveCount(1);
-    await expect(page.getByRole('button', { name: /generate anyway/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Generate without adding answers/i })).toHaveCount(0);
   });
 });
