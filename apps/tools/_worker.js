@@ -378,7 +378,7 @@ async function handleUserReport(request, env) {
   if (env.SUGGEST_DUPES) {
     const dedupeKey = "userreport:" + (await sha256Hex((tool || "") + "|" + msg.toLowerCase()));
     if (await env.SUGGEST_DUPES.get(dedupeKey)) {
-      return jsonRes(409, { error: "Already reported - we have this one." });
+      return jsonRes(409, { error: "Already reported." });
     }
   }
 
@@ -454,7 +454,7 @@ async function handleLogin(request, env) {
         (body.turnstileToken ?? "").trim(),
         request.headers.get("CF-Connecting-IP") || ""
       );
-      if (!ok) return jsonRes(403, { error: "Verification failed. Please complete the challenge and retry." });
+      if (!ok) return jsonRes(403, { error: "Verification failed.\nPlease complete the check and retry." });
     }
 
     const exp = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30;
@@ -480,7 +480,7 @@ async function handleLogin(request, env) {
     // Unexpected failure (KV, crypto, Turnstile siteverify) - email the admin; a
     // wrong password returns 401 above and is intentionally NOT reported.
     await notifyError(env, "login", err && err.message ? err.message : "Unknown login error.");
-    return jsonRes(500, { error: "Login failed due to a server error. Please try again." });
+    return jsonRes(500, { error: "Login failed: server error.\nTry again." });
   }
 }
 
@@ -538,7 +538,7 @@ async function handleLlmCall(request, env) {
         // to an unknown prompt, and the clinician is told nothing was sent.
         await notifyError(env, "prompt-api", "no prompt available for key " + promptKey);
         return jsonRes(503, {
-          error: "The prompt service is unavailable, so this note was not drafted. Nothing was sent to the model.",
+          error: "Prompt service unavailable.\nNote not drafted; nothing sent to the model.",
         });
       }
       convSystem = composeServerSystem(base, wantsServerPrompt.suffix);
@@ -568,7 +568,7 @@ async function handleLlmCall(request, env) {
       const rec = env.API_PASSWORDS ? await getPasswordRecord(env.API_PASSWORDS, payload.kid) : null;
       if (!rec || !rec.active) return jsonRes(401, { error: "Access revoked. Please log in again." });
       if (tool && !rec.tools.includes(tool)) {
-        return jsonRes(403, { error: "Your access doesn't include this tool." });
+        return jsonRes(403, { error: "This login does not include this tool." });
       }
     }
 
@@ -708,12 +708,12 @@ export function expertPassRequest(body) {
   const intake = typeof b.intake === "string" ? b.intake : "";
   if (!intake.trim()) return { error: "Missing intake." };
   if (intake.length > MAX_MESSAGE_CHARS) {
-    return { error: "The intake is longer than this pass accepts." };
+    return { error: "Intake too long." };
   }
 
   // Absent means the tool has no sections and every finding is about the note.
   const raw = b.sections;
-  if (raw !== undefined && !Array.isArray(raw)) return { error: "sections must be an array." };
+  if (raw !== undefined && !Array.isArray(raw)) return { error: "Section list unreadable." };
   const list = Array.isArray(raw) ? raw : [];
   if (list.length > MAX_EXPERT_SECTIONS) return { error: "Too many sections." };
   const sections = [];
@@ -869,7 +869,7 @@ async function handleExpertPass(request, env, ctx) {
     const auth = request.headers.get("Authorization") || "";
     const token = auth.replace(/^Bearer\s+/i, "");
     const payload = secret ? await readToken(token, secret) : null;
-    if (!payload) return jsonRes(401, { error: "Not logged in. Please log in to use the expert pass." });
+    if (!payload) return jsonRes(401, { error: "Not logged in." });
 
     const body = await request.json();
     const parsed = expertPassRequest(body);
@@ -881,7 +881,7 @@ async function handleExpertPass(request, env, ctx) {
       const rec = env.API_PASSWORDS ? await getPasswordRecord(env.API_PASSWORDS, payload.kid) : null;
       if (!rec || !rec.active) return jsonRes(401, { error: "Access revoked. Please log in again." });
       if (!rec.tools.includes(parsed.tool)) {
-        return jsonRes(403, { error: "Your access doesn't include this tool." });
+        return jsonRes(403, { error: "This login has no access to this tool." });
       }
     }
 
@@ -897,13 +897,13 @@ async function handleExpertPass(request, env, ctx) {
     if (!composed) {
       await notifyError(env, "prompt-api", "no prompt available for key expert");
       return jsonRes(503, {
-        error: "The expert is unavailable, so nothing was reviewed. Nothing was sent to the model.",
+        error: "Expert unavailable.\nNothing reviewed or sent.",
       });
     }
     const system = composed.system;
 
     const apiKey = (env.ANTHROPIC_API_KEY ?? "").trim();
-    if (!apiKey) return jsonRes(503, { error: "Server API key is not configured." });
+    if (!apiKey) return jsonRes(503, { error: "Service not configured." });
 
     /* The conversation path rather than the single-shot one, for the cache
        breakpoint on the system block. This prompt is thirteen or fourteen
@@ -928,7 +928,7 @@ async function handleExpertPass(request, env, ctx) {
 
     const findings = expertFindings(api);
     if (!findings) {
-      return jsonRes(502, { error: "The expert returned something this pass could not read. Nothing was applied." });
+      return jsonRes(502, { error: "Expert reply unreadable.\nNothing applied." });
     }
 
     /* The evidence for a promotion he will rule on later, written server-side
@@ -1101,7 +1101,7 @@ const QUALITY_BANDS = [
   { from: 85, to: 94, label: "Great Work!" },
   { from: 76, to: 85, label: "Close to Great!" },
   { from: 70, to: 76, label: "Closing the Gap!" },
-  { from: 0, to: 70, label: "Keep going, your work is so important." },
+  { from: 0, to: 70, label: "Keep going." },
 ];
 
 /* Exported so the bench's copy of the table can be pinned against this one.
@@ -1215,7 +1215,7 @@ export function expertChatRequest(body) {
   if (raw.length > MAX_ORACLE_TURNS) return { error: "This conversation is too long to continue." };
   const messages = [];
   for (const m of raw) {
-    if (!m || typeof m !== "object") return { error: "Each message must be an object." };
+    if (!m || typeof m !== "object") return { error: "Message unreadable." };
     if (m.role !== "user" && m.role !== "assistant") return { error: "Each message must be from user or assistant." };
     if (typeof m.content !== "string" || !m.content.trim()) return { error: "Each message must carry text." };
     if (m.content.length > MAX_MESSAGE_CHARS) return { error: "A message is longer than this route accepts." };
@@ -1232,15 +1232,15 @@ export function expertChatRequest(body) {
   let grade = null;
   if (b.grade !== undefined && b.grade !== null) {
     if (typeof b.grade !== "object") return { error: "A grade has to be an object." };
-    if (!topic) return { error: "A grade belongs to a conversation about the bar." };
+    if (!topic) return { error: "A grade needs a standing question." };
     const score = Number(b.grade.score);
     if (!Number.isInteger(score) || score < 0 || score > 100) {
       return { error: "A grade is a whole number from 0 to 100." };
     }
     const comment = typeof b.grade.comment === "string" ? b.grade.comment.trim() : "";
-    if (comment.length > MAX_GRADE_COMMENT_CHARS) return { error: "That grade note is longer than this route accepts." };
+    if (comment.length > MAX_GRADE_COMMENT_CHARS) return { error: "Grade note too long." };
     if (messages[messages.length - 1].role !== "assistant") {
-      return { error: "A grade has to follow the example it grades." };
+      return { error: "A grade must follow an example note." };
     }
     grade = { score, comment };
   }
@@ -1248,14 +1248,14 @@ export function expertChatRequest(body) {
 
   // Refused rather than truncated: half a rule is a different rule.
   const knowledge = typeof b.knowledge === "string" ? b.knowledge.trim() : "";
-  if (knowledge.length > MAX_ORACLE_KNOWLEDGE_CHARS) return { error: "The rule under test is longer than this route accepts." };
+  if (knowledge.length > MAX_ORACLE_KNOWLEDGE_CHARS) return { error: "Rule under test too long." };
 
   // The findings are replayed to the model as its own turn, so they are carried
   // as the text the pass produced rather than re-validated field by field. A
   // malformed one costs a confused answer in a bench, and validating it here
   // would be a second copy of the pass's schema to keep in step.
   const findings = typeof b.findings === "string" ? b.findings : JSON.stringify(b.findings || {});
-  if (findings.length > MAX_MESSAGE_CHARS) return { error: "Those findings are too large to continue from." };
+  if (findings.length > MAX_MESSAGE_CHARS) return { error: "Findings too large to continue." };
 
   return { tool: base.tool, intake: base.intake, sections: base.sections, messages, knowledge, findings, topic, grade };
 }
@@ -1347,7 +1347,7 @@ async function handleExpertChat(request, env) {
     if (!payload) return jsonRes(401, { error: "Not logged in." });
     // Before the body is even read. A non-admin has no business posting a rule
     // under test, so they do not get as far as sending one.
-    if (payload.role !== "admin") return jsonRes(403, { error: "The oracle is admin only." });
+    if (payload.role !== "admin") return jsonRes(403, { error: "Admin only." });
 
     const body = await request.json();
     const parsed = expertChatRequest(body);
@@ -1404,7 +1404,7 @@ async function handleExpertChat(request, env) {
       .map((b) => b.text)
       .join("")
       .trim();
-    if (!reply) return jsonRes(502, { error: "The expert returned nothing this bench could read." });
+    if (!reply) return jsonRes(502, { error: "Expert reply unreadable." });
 
     /* knowledgeInForce is echoed rather than assumed. A rule that is silently
        in force is the failure mode of the whole draft-rule idea: he would read
@@ -1746,7 +1746,7 @@ async function handleCorrections(request, env) {
     const auth = request.headers.get("Authorization") || "";
     const token = auth.replace(/^Bearer\s+/i, "");
     const payload = secret ? await readToken(token, secret) : null;
-    if (!payload) return jsonRes(401, { error: "Not logged in. Please log in to use the corrections pass." });
+    if (!payload) return jsonRes(401, { error: "Not logged in." });
 
     const body = await request.json();
     const parsed = correctionsRequest(body);
@@ -1771,7 +1771,7 @@ async function handleCorrections(request, env) {
     if (!composed) {
       await notifyError(env, "prompt-api", "no prompt available for key expert");
       return jsonRes(503, {
-        error: "The corrections pass is unavailable, so nothing was changed. Nothing was sent to the model.",
+        error: "Corrections unavailable. Note unchanged.",
       });
     }
 
@@ -1796,7 +1796,7 @@ async function handleCorrections(request, env) {
 
     const found = correctionsFound(api, parsed.draft);
     if (!found) {
-      return jsonRes(502, { error: "The corrections pass returned something this route could not read. Nothing was changed." });
+      return jsonRes(502, { error: "Corrections response unreadable. Note unchanged." });
     }
 
     return jsonRes(200, {
@@ -1961,7 +1961,7 @@ async function handleNonPii(request, env) {
     let body;
     try { body = await request.json(); } catch { return jsonRes(400, { error: "Invalid body." }); }
     const term = normalizeTerm(body.term);
-    if (!term) return jsonRes(400, { error: "term is required." });
+    if (!term) return jsonRes(400, { error: "Enter a term." });
     // A tech certification no longer commits globally - it lands in a review queue
     // (handleTermQueue) for the admin to approve. Only an admin add commits live here.
     if (payload.role !== "admin") {
@@ -2002,7 +2002,7 @@ async function handleAdminPasswords(request, env) {
   const token = auth.replace(/^Bearer\s+/i, "");
   const payload = secret ? await readToken(token, secret) : null;
   if (!payload || payload.role !== "admin") return jsonRes(401, { error: "Admin access required." });
-  if (!env.API_PASSWORDS) return jsonRes(503, { error: "API_PASSWORDS KV is not bound." });
+  if (!env.API_PASSWORDS) return jsonRes(503, { error: "Password storage unavailable." });
   const kv = env.API_PASSWORDS;
 
   if (request.method === "GET") {
@@ -2030,10 +2030,10 @@ async function handleAdminPasswords(request, env) {
     const tools = Array.isArray(body.tools) ? body.tools.filter((t) => NOTES_TOOLS.includes(t)) : [];
     if (!password) return jsonRes(400, { error: "A password is required." });
     if (tools.length === 0) return jsonRes(400, { error: "Select at least one tool this password can use." });
-    if (password === secret) return jsonRes(409, { error: "That is the admin password - pick a different one." });
+    if (password === secret) return jsonRes(409, { error: "This is an invalid entry. Please try another entry." });
     if (await findPassword(kv, password)) return jsonRes(409, { error: "That password already exists." });
     const supervisorEmail = cleanSupervisorEmail(body.supervisorEmail);
-    if (supervisorEmail === null) return jsonRes(400, { error: "That supervisor email doesn't look like an email address." });
+    if (supervisorEmail === null) return jsonRes(400, { error: "Supervisor email is not a valid address." });
     const id = crypto.randomUUID();
     const metadata = { label, hash: await sha256Hex(password), active: true, tools, createdAt: new Date().toISOString(), supervisorEmail: supervisorEmail || "" };
     await kv.put("pw:" + id, "1", { metadata });
@@ -2722,8 +2722,8 @@ const RESEARCH_SYSTEM = [
 export function expertResearchRequest(body) {
   const b = body || {};
   const question = typeof b.question === "string" ? b.question.trim() : "";
-  if (!question) return { error: "Ask it something." };
-  if (question.length > MAX_RESEARCH_CHARS) return { error: "That question is longer than this route accepts." };
+  if (!question) return { error: "Enter a question." };
+  if (question.length > MAX_RESEARCH_CHARS) return { error: "Question too long." };
 
   const raw = b.messages;
   if (raw !== undefined && !Array.isArray(raw)) return { error: "messages must be an array." };
@@ -2742,8 +2742,8 @@ export function expertResearchRequest(body) {
        the right constraint: if the report did not capture it, it is not
        established. */
     const content = typeof m.content === "string" ? m.content : "";
-    if (!content.trim()) return { error: "A turn with nothing in it cannot be sent." };
-    if (content.length > MAX_MESSAGE_CHARS) return { error: "A turn in this conversation is too long to send." };
+    if (!content.trim()) return { error: "Conversation has an empty turn." };
+    if (content.length > MAX_MESSAGE_CHARS) return { error: "A turn is too long." };
     messages.push({ role: m.role, content: content });
   }
   return { question, messages };
@@ -3195,10 +3195,10 @@ const KNOWLEDGE_OPS = {
    path to fetch, or an error naming what was wrong. */
 export function knowledgeOp(op, method, params) {
   if (typeof op !== "string" || !Object.prototype.hasOwnProperty.call(KNOWLEDGE_OPS, op)) {
-    return { error: "Unknown knowledge operation." };
+    return { error: "Request not allowed." };
   }
   const spec = KNOWLEDGE_OPS[op];
-  if (spec.method !== method) return { error: `Operation ${op} is a ${spec.method}.` };
+  if (spec.method !== method) return { error: "Request not allowed." };
   if (spec.method === "POST") return { path: spec.path };
 
   const search = new URLSearchParams();
@@ -3224,7 +3224,7 @@ async function handleExpertKnowledge(request, env) {
   if (!payload || payload.role !== "admin") {
     return jsonRes(403, { error: "The knowledge store is admin only." });
   }
-  if (!env.PROMPTS) return jsonRes(503, { error: "The prompt store is not bound, so there is no knowledge to reach." });
+  if (!env.PROMPTS) return jsonRes(503, { error: "Knowledge store not connected." });
 
   const url = new URL(request.url);
   const resolved = knowledgeOp(url.searchParams.get("op"), request.method, url.searchParams);
@@ -3236,7 +3236,7 @@ async function handleExpertKnowledge(request, env) {
     try {
       body = await request.json();
     } catch {
-      return jsonRes(400, { error: "A JSON body is required." });
+      return jsonRes(400, { error: "Request unreadable." });
     }
     // Stamped here rather than taken from the page, so the record says who
     // actually approved it rather than who the page claimed.
@@ -3442,7 +3442,7 @@ async function handleScrubLearn(request, env) {
     let body;
     try { body = await request.json(); } catch { return jsonRes(400, { error: "Invalid body." }); }
     const text = (body.text ?? "").trim();
-    if (!text) return jsonRes(400, { error: "text is required." });
+    if (!text) return jsonRes(400, { error: "Enter a test string." });
     const raw = await kv.get(KV_KEY);
     const items = raw ? JSON.parse(raw) : [];
     items.push({ text, submittedAt: new Date().toISOString() });
@@ -3494,7 +3494,7 @@ async function handleScrubSuggestions(request, env) {
     const id = body.id;
     const decision = body.decision;
     if (!id || (decision !== "approve" && decision !== "reject")) {
-      return jsonRes(400, { error: "id and decision (approve|reject) are required." });
+      return jsonRes(400, { error: "Decision missing." });
     }
     const raw = await kv.get(SUG_KEY);
     const suggestions = raw ? JSON.parse(raw) : [];
@@ -3527,7 +3527,7 @@ async function handleScrubRun(request, env) {
   const isCron = cronSecret && timingSafeEqual(token, cronSecret);
   const payload = adminSecret ? await readToken(token, adminSecret) : null;
   const isAdmin = payload && payload.role === "admin";
-  if (!isCron && !isAdmin) return jsonRes(401, { error: "Admin or cron authorization required." });
+  if (!isCron && !isAdmin) return jsonRes(401, { error: "Admin access required." });
   // The report goes back verbatim. A bare ok is what let this job answer "fine" on every
   // run for two months while writing nothing; now the caller sees what it considered,
   // what it queued, and how much backlog is left.
@@ -4255,7 +4255,7 @@ async function handleTermQueue(request, env) {
     const decision = body.decision;
     const term = normalizeTerm(body.term);
     if (!term || (list !== "pii" && list !== "nonpii") || (decision !== "approve" && decision !== "reject")) {
-      return jsonRes(400, { error: "list (pii|nonpii), term, and decision (approve|reject) are required." });
+      return jsonRes(400, { error: "Decision missing." });
     }
     const queueKey = list === "pii" ? PII_Q : NONPII_Q;
     const queue = JSON.parse((await kv.get(queueKey)) || "[]");
@@ -4284,7 +4284,7 @@ async function handleTerms(request, env) {
     const list = body.list;
     const term = normalizeTerm(body.term);
     if (!term || (list !== "pii" && list !== "nonpii")) {
-      return jsonRes(400, { error: "list (pii|nonpii) and term are required." });
+      return jsonRes(400, { error: "Term and list are required." });
     }
     if (request.method === "POST") await commitTerm(kv, list, term);
     else await removeTerm(kv, list, term);
@@ -4491,11 +4491,11 @@ export function scrubBatch(input) {
 export function scrubOutcome(apiResp) {
   if (apiResp && apiResp.stop_reason === "max_tokens") {
     return { ok: false, stopped: "model-response-truncated", stopReason: "max_tokens",
-      error: "the model ran out of output budget; nothing was written" };
+      error: "Run stopped: output limit reached.\nNothing written." };
   }
   const content = apiResp?.content?.[0]?.text ?? "";
   if (!content.trim()) {
-    return { ok: false, stopped: "model-response-empty", error: "the model returned no text" };
+    return { ok: false, stopped: "model-response-empty", error: "Run returned no result." };
   }
   let parsed;
   try {
@@ -4504,7 +4504,7 @@ export function scrubOutcome(apiResp) {
     return { ok: false, stopped: "model-response-unreadable", error: e.message || String(e) };
   }
   if (!parsed || !Array.isArray(parsed.suggestions)) {
-    return { ok: false, stopped: "model-response-unreadable", error: "no suggestions array" };
+    return { ok: false, stopped: "model-response-unreadable", error: "Run result unreadable." };
   }
   return { ok: true, result: parsed };
 }
@@ -4537,7 +4537,7 @@ export async function runScrubLearning(env) {
   if (!env.API_PASSWORDS || !env.ANTHROPIC_API_KEY) {
     // Named, because a report whose only failure detail is null tells the admin button
     // nothing and it falls back to printing a status code.
-    return scrubReport({ stopped: "no-bindings", error: "the KV binding or the Anthropic key is missing on this deployment" });
+    return scrubReport({ stopped: "no-bindings", error: "Run unavailable: storage or model key missing." });
   }
   const kv = env.API_PASSWORDS;
 
@@ -4572,7 +4572,7 @@ export async function runScrubLearning(env) {
   const problemStrings = await readJson("scrub-learn:v1", []);
 
   if (unreadable.length) {
-    const msg = "these KV keys did not parse and the run stopped rather than treating them as empty: " + unreadable.join(", ");
+    const msg = "Run stopped: stored data unreadable (" + unreadable.join(", ") + ").";
     await notifyScrubFailure(env, msg);
     return scrubReport({ stopped: "store-unreadable", error: msg });
   }

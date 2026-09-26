@@ -58,8 +58,8 @@
     .pill.tier { background: #eef1e9; color: #4a5540; }
     .kn-record { border: 1px solid var(--sage-light); border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; }
     .kn-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
-    .err { color: var(--red); font-size: 13px; margin-top: 10px; display: none; }
-    .ok  { color: #3f6121; font-size: 13px; margin-top: 10px; display: none; }
+    .err { color: var(--red); font-size: 13px; margin-top: 10px; display: none; white-space: pre-line; }
+    .ok  { color: #3f6121; font-size: 13px; margin-top: 10px; display: none; white-space: pre-line; }
     .row-actions { display: flex; gap: 6px; justify-content: flex-end; }
     .muted { color: var(--muted); font-size: 13px; }
     .hidden { display: none; }
@@ -155,7 +155,7 @@
     <div class="topbar">
       <div>
         <h1>Admin · No Outcome ABA</h1>
-        <p class="sub">Manage access passwords, curate PII / non-PII terms, review technician submissions, and tune the PHI detection algorithm.</p>
+        <p class="sub">Access passwords, PII and non-PII terms, technician submissions, PHI detection.</p>
       </div>
       <div style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
         <a class="btn-ghost" href="/" style="text-decoration: none;">← Tools</a>
@@ -203,7 +203,7 @@
             </div>
             <div>
               <label for="newSup">Supervisor email (optional)</label>
-              <input id="newSup" type="text" placeholder="who reviews this person's notes" />
+              <input id="newSup" type="text" placeholder="Reviewer of this holder's notes" />
             </div>
             <button id="addBtn" class="btn-primary">Add</button>
           </div>
@@ -228,7 +228,7 @@
             <h2 style="margin: 0;">Pending review - scrubbed names</h2>
             <span class="pill on" id="piiPendingCount">0</span>
           </div>
-          <p class="muted" style="margin: 0 0 14px;">Names technicians scrubbed that aren't yet in the detection dictionary. <strong>Approve</strong> to force-detect a name everywhere; <strong>reject</strong> to discard. Only the bare word is stored - never any note text.</p>
+          <p class="muted" style="margin: 0 0 14px;">Names technicians scrubbed that are not in the detection dictionary.<br><strong>Approve</strong>: always detected as a name.<br><strong>Reject</strong>: discarded.<br>Only the word is stored, no note text.</p>
           <div id="piiPendingRows"></div>
         </div>
 
@@ -237,7 +237,7 @@
             <h2 style="margin: 0;">PII Terms (force-detect)</h2>
             <button class="btn-primary" data-add-term="pii">Add term</button>
           </div>
-          <p class="muted" style="margin: 0 0 14px;">Words always flagged as names, on top of the built-in dictionary. Approved scrubbed names land here.</p>
+          <p class="muted" style="margin: 0 0 14px;">Words always flagged as names, in addition to the built-in dictionary.<br>Approved scrubbed names are added here.</p>
           <table>
             <thead><tr><th>Term</th><th></th></tr></thead>
             <tbody id="piiRows"></tbody>
@@ -253,7 +253,7 @@
             <h2 style="margin: 0;">Pending review - certified terms</h2>
             <span class="pill on" id="nonpiiPendingCount">0</span>
           </div>
-          <p class="muted" style="margin: 0 0 14px;">Terms technicians certified as <em>not</em> being names. <strong>Approve</strong> to exclude a term from detection globally; <strong>reject</strong> to discard. Approving weakens detection - only approve genuine non-names.</p>
+          <p class="muted" style="margin: 0 0 14px;">Terms technicians certified as <em>not</em> names.<br><strong>Approve</strong>: excluded from detection globally.<br><strong>Reject</strong>: discarded.<br>Approving weakens detection; approve only genuine non-names.</p>
           <div id="nonpiiPendingRows"></div>
         </div>
 
@@ -291,12 +291,12 @@
             <button class="btn-ghost" id="profRefresh" type="button">Refresh</button>
           </div>
           <p class="muted" style="margin: 6px 0 14px;">
-            Heuristics only. A technician is identified by their login-code id, which is not a
-            name and does not resolve to one from here.
+            Heuristics only.<br>
+            Technicians are listed by login-code id, not by name.
           </p>
           <div id="profRoster"></div>
           <p id="profEmpty" class="muted hidden" style="margin: 14px 4px 0;">
-            Nobody has generated a note since the profile store went live, so there is nothing learned yet.
+            No notes generated.<br>Nothing learned.
           </p>
           <p id="profError" class="muted hidden" style="margin: 14px 4px 0; color: var(--red);"></p>
         </div>
@@ -313,9 +313,8 @@
 
           <h3 style="font-size: 14px; margin: 22px 0 8px;">How it moved</h3>
           <p class="muted" style="margin: 0 0 10px;">
-            Replayed from the correction record rather than stored, so this is always the same
-            definition of a card that generation uses. Height is confidence; a bar under the line
-            means the rule pushed the other way.
+            Bar height: confidence.<br>
+            Bar below the line: the rule pushed the opposite way.
           </p>
           <div id="profHistory"></div>
         </div>
@@ -328,13 +327,13 @@
             <h2 style="margin: 0;">Pending Suggestions</h2>
             <span class="pill on" id="sugCount">0</span>
           </div>
-          <p class="muted" style="margin: 0 0 14px;">The nightly run proposes terms to suppress globally. Detection does <strong>not</strong> change until you approve. Reject anything that could be a real name.</p>
+          <p class="muted" style="margin: 0 0 14px;">Terms proposed by the nightly run for global suppression.<br>Detection is <strong>unchanged</strong> until approved.<br>Reject anything that could be a real name.</p>
           <div id="sugRows"></div>
         </div>
 
         <div class="card">
           <h2>Test the Detection Algorithm</h2>
-          <p class="muted" style="margin: 0 0 12px;">Paste a clinical note snippet to see which tokens the current algorithm would flag. Words highlighted yellow in the textarea are detected in real time.</p>
+          <p class="muted" style="margin: 0 0 12px;">Paste a note snippet to test detection.<br>Words highlighted yellow are detected.</p>
           <label for="labText">Test string</label>
           <textarea id="labText" placeholder="e.g. The BT worked with Jacob today. Sarah's program was reviewed."></textarea>
           <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center;">
@@ -351,7 +350,7 @@
 
         <div class="card">
           <h2>Algorithm Status</h2>
-          <p class="muted" style="margin: 0 0 14px;">Nightly run: <strong>3am EDT daily</strong> via GitHub Action (Cloudflare Pages can't run cron). The run only <strong>proposes</strong> stopwords from clinician-certified false positives - it never removes names or weakens detection. Every suggestion needs your approval above.</p>
+          <p class="muted" style="margin: 0 0 14px;">Nightly run: <strong>3am EDT daily</strong>.<br><strong>Proposes</strong> stopwords from clinician-certified false positives.<br>Never removes names or weakens detection.<br>Each suggestion requires approval.</p>
           <div class="status-grid" id="labStats">
             <div class="stat-box"><div class="stat-label">Approved stopwords</div><div class="stat-val" id="statStopwords">-</div></div>
             <div class="stat-box"><div class="stat-label">Pending suggestions</div><div class="stat-val" id="statPending">-</div></div>
@@ -368,21 +367,21 @@
 
       <div id="tab-expert" class="tab-panel">
         <div class="card">
-          <h2>Talk to it about the bar</h2>
-          <p class="muted" style="margin: 0 0 12px;">The same expert, with no intake in front of it. Ask it how your BTs are actually doing and it answers from the store's own figures rather than an impression. Ask it for an example note and it writes one, says what bar it was aiming at, and marks where it left the note short on purpose - so you can grade it and say why you disagree.</p>
-          <p class="muted" style="margin: 0 0 12px;">It still writes nothing anywhere. No note tool sees any of this, and a rule reaches the expert only by going into the knowledge store with a version and a pull request, exactly as before.</p>
+          <h2>Quality bar conversation</h2>
+          <p class="muted" style="margin: 0 0 12px;">Same expert, no intake.<br>Answers from the metrics store figures.<br>Example notes state their target bar and mark deliberate gaps, for grading.</p>
+          <p class="muted" style="margin: 0 0 12px;">Writes nothing.<br>Not seen by any note tool.<br>Rules reach the expert only through the Knowledge tab.</p>
           <div class="add-grid" style="margin-bottom: 12px;">
             <div>
               <label for="btTool">Tool</label>
               <select id="btTool" style="width: 100%; padding: 10px 12px; border: 1.5px solid var(--sage-light); border-radius: 8px; font-size: 14px; font-family: inherit;"></select>
             </div>
             <div>
-              <label for="btTopic">The standing question</label>
-              <input id="btTopic" type="text" value="Let's fine-tune BT session note completion criteria" />
+              <label for="btTopic">Standing question</label>
+              <input id="btTopic" type="text" value="BT session note completion criteria" />
             </div>
           </div>
           <div id="btLog" style="margin-bottom: 14px;"></div>
-          <label for="btAsk">Your message</label>
+          <label for="btAsk">Message</label>
           <textarea id="btAsk" style="min-height: 80px;" placeholder="How are my BTs doing on antecedent strategies?"></textarea>
           <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center;">
             <button id="btSend" class="btn-primary">Send</button>
@@ -393,8 +392,8 @@
           <p class="muted" id="btUsage" style="margin: 12px 0 0; font-size: 12px;"></p>
 
           <div id="btGradeBox" class="hidden" style="margin-top: 16px; padding-top: 14px; border-top: 1.5px solid var(--sage-light);">
-            <label for="btScore">Grade the example it just wrote</label>
-            <p class="muted" style="margin: 0 0 10px; font-size: 12px;">The bands are settled. What a note has to do to earn a number on them is not, and this is where that gets decided - so say what you saw, not only what you scored it.</p>
+            <label for="btScore">Grade the last example note</label>
+            <p class="muted" style="margin: 0 0 10px; font-size: 12px;">Record observations as well as the score.</p>
             <div class="add-grid" style="margin-bottom: 10px;">
               <div>
                 <label for="btScore">Score out of 100</label>
@@ -405,11 +404,11 @@
                 <p id="btBand" class="muted" style="margin: 10px 0 0; font-size: 14px;">Type a score.</p>
               </div>
             </div>
-            <label for="btGradeNote">What you saw in it</label>
-            <textarea id="btGradeNote" style="min-height: 70px;" placeholder="What it got right, what it missed, and what would have made it the band above."></textarea>
+            <label for="btGradeNote">Observations</label>
+            <textarea id="btGradeNote" style="min-height: 70px;" placeholder="Strengths, misses, what would reach the next band."></textarea>
             <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center;">
               <button id="btGrade" class="btn-primary" type="button">Send the grade</button>
-              <button id="btPromote" class="btn-secondary" type="button">Write its last answer down as a rule</button>
+              <button id="btPromote" class="btn-secondary" type="button">Draft last answer as a rule</button>
               <span id="btGradeErr" class="err" style="margin: 0;"></span>
             </div>
           </div>
@@ -417,17 +416,17 @@
 
         <div class="card">
           <h2>Run the expert over an intake</h2>
-          <p class="muted" style="margin: 0 0 12px;">The expert reads a de-identified intake with the ABA glossary and the mentalism lexicon in front of it, and hands back what it found. It does <strong>not</strong> write a note and nothing it says is applied anywhere. This runs beside the drafting loop so the two can be compared on the same text.</p>
+          <p class="muted" style="margin: 0 0 12px;">Reads a de-identified intake with the ABA glossary and mentalism lexicon.<br>Returns findings only; writes <strong>no</strong> note and applies nothing.</p>
           <div class="add-grid" style="margin-bottom: 12px;">
             <div>
               <label for="exTool">Tool</label>
               <select id="exTool" style="width: 100%; padding: 10px 12px; border: 1.5px solid var(--sage-light); border-radius: 8px; font-size: 14px; font-family: inherit;"></select>
-              <p class="muted" id="exToolNote" style="margin: 6px 0 0; font-size: 12px;"></p>
+              <p class="muted" id="exToolNote" style="margin: 6px 0 0; font-size: 12px; white-space: pre-line;"></p>
             </div>
           </div>
           <label for="exIntake">Intake</label>
-          <textarea id="exIntake" style="min-height: 150px;" placeholder="Paste session notes. Names and identifiers are removed automatically before this leaves your device."></textarea>
-          <p class="muted hidden" id="exScrubbed" style="margin: 8px 0 0; font-size: 12px;"></p>
+          <textarea id="exIntake" style="min-height: 150px;" placeholder="Paste session notes.&#10;Names and identifiers are removed before sending."></textarea>
+          <p class="muted hidden" id="exScrubbed" style="margin: 8px 0 0; font-size: 12px; white-space: pre-line;"></p>
           <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center;">
             <button id="exRun" class="btn-primary">Run the expert</button>
             <span id="exBusy" class="muted hidden" style="font-size: 13px;">Reading...</span>
@@ -438,29 +437,29 @@
 
         <div class="card">
           <h2>Terms</h2>
-          <p class="muted" style="margin: 0 0 12px;">Every abbreviation it found, and what it read each one as. An <strong>unknown</strong> is the honest answer, not a failure: a wrong expansion reads exactly like a right one to everything downstream.</p>
+          <p class="muted" style="margin: 0 0 12px;">Abbreviations found, with the reading of each.<br><strong>Unknown</strong>: no reading assigned.</p>
           <div id="exTerms"><span class="muted" style="font-size: 13px;">Nothing run yet.</span></div>
         </div>
 
         <div class="card">
           <h2>Register</h2>
-          <p class="muted" style="margin: 0 0 12px;">Mentalistic and judgmental constructions, each with the move. <strong>Reframe</strong> carries the replacement sentence, <strong>ask</strong> carries the question, <strong>keep</strong> is a construction that would be wrongly cut. Nothing here is applied.</p>
+          <p class="muted" style="margin: 0 0 12px;">Mentalistic and judgmental constructions, each with an action.<br><strong>Reframe</strong>: replacement sentence.<br><strong>Ask</strong>: question for the writer.<br><strong>Keep</strong>: construction that stays.<br>Nothing here is applied.</p>
           <div id="exRegister"><span class="muted" style="font-size: 13px;">Nothing run yet.</span></div>
         </div>
 
         <div class="card hidden" id="exOracleCard">
-          <h2>Ask it about this reading</h2>
-          <p class="muted" style="margin: 0 0 12px;">The same expert, on the same intake, with the findings above already in front of it. Ask why it ranked something first, tell it a finding was wrong, or ask what it would have said if a detail had been there. It answers in prose and still writes nothing.</p>
-          <p class="muted" style="margin: 0 0 12px;">When you tell it something was wrong it will say what led it there and then write the rule that would have stopped it. <strong>That rule is the point.</strong> Two of the five bodies of knowledge this expert is meant to carry are not written yet, because they are clinical judgment rather than reference, and this is where they get written: argue a case through until the missing rule can be said out loud, then try it below.</p>
+          <h2>Questions on this reading</h2>
+          <p class="muted" style="margin: 0 0 12px;">Same expert and intake, with the findings above.<br>Answers in prose; writes nothing.</p>
+          <p class="muted" style="margin: 0 0 12px;">A disputed finding gets its cause and a rule that would have prevented it.<br>Test the rule below.</p>
           <div id="exChatLog" style="margin-bottom: 14px;"></div>
 
           <details id="exRuleWrap" style="margin-bottom: 12px;">
             <summary style="cursor: pointer; font-weight: 600; font-size: 14px;">A rule under test</summary>
-            <p class="muted" style="margin: 8px 0;">Anything here is added to the expert's instructions <strong>for this conversation only</strong>. It is never saved, no note tool ever sees it, and every reply below says whether it was in force. A rule that proves out gets promoted by writing it into the knowledge blocks in the prompt store, where it gets a hash and a pull request like everything else.</p>
+            <p class="muted" style="margin: 8px 0;">Added to the expert's instructions <strong>for this conversation only</strong>.<br>Not saved; not seen by any note tool.<br>Each reply states whether the rule was in force.<br>To keep a rule, write it on the Knowledge tab.</p>
             <textarea id="exRule" style="min-height: 90px;" placeholder="When the intake reports what a caregiver said, read the vagueness as data rather than as a gap in the writing."></textarea>
           </details>
 
-          <label for="exAsk">Your question</label>
+          <label for="exAsk">Question</label>
           <textarea id="exAsk" style="min-height: 80px;" placeholder="Why did you rank that one first?"></textarea>
           <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center;">
             <button id="exSend" class="btn-primary">Ask</button>
@@ -472,47 +471,47 @@
         </div>
 
         <div class="card">
-          <h2>Hints, and what the catalog could have said</h2>
-          <p class="muted" style="margin: 0 0 12px;">The expert's questions in its own ranking, beside the whole fixed catalog the live hint channel draws from for this tool. The catalog is the ceiling on the current loop: if a finding is not in that list, today's tool has no way to say it.</p>
+          <h2>Hints and catalog</h2>
+          <p class="muted" style="margin: 0 0 12px;">Expert questions in ranked order, beside this tool's fixed hint catalog.<br>Findings outside the catalog cannot be raised by the live tool.</p>
           <div id="exHints"><span class="muted" style="font-size: 13px;">Nothing run yet.</span></div>
-          <h3 style="margin-top: 20px;">The tool's whole catalog</h3>
+          <h3 style="margin-top: 20px;">Hint catalog</h3>
           <div id="exCatalog"></div>
         </div>
       </div>
 
       <div id="tab-knowledge" class="tab-panel">
         <div class="card" id="knUnbound" style="display: none;">
-          <h2>The store is not bound on this deploy</h2>
-          <p class="muted" style="margin: 0;">The prompt Worker answers, but it has no knowledge database behind it, so there is nothing to read and nothing to write. The expert runs on its authored prompt exactly as it did before. Creating the database and binding it is a one-time change to the prompt Worker's own config.</p>
+          <h2>Knowledge store not connected</h2>
+          <p class="muted" style="margin: 0;">No knowledge store on this deployment.<br>The expert runs on its authored prompt.<br>Setup: create the database and bind it in the prompt Worker config.</p>
         </div>
 
         <div class="card">
-          <h2>Waiting on you</h2>
-          <p class="muted" style="margin: 0 0 12px;">Nothing here is in force. A rule reaches the expert when you approve it and not before, which is the whole reason a proposal is a separate thing from a record. Approving writes a version and takes effect on the next call, so read the rule as the expert will read it.</p>
+          <h2>Pending</h2>
+          <p class="muted" style="margin: 0 0 12px;">These are pending until being accepted; a pending rule is not used or considered by the expert.<br>Rejections cannot be restored but subsequent similar rules may enter the queue if input by user(s).</p>
           <div id="knProposals"><span class="muted" style="font-size: 13px;">Loading...</span></div>
         </div>
 
         <div class="card">
-          <h2>Nominated for the core</h2>
-          <p class="muted" style="margin: 0 0 12px;">Topic records the expert reached for often <strong>and</strong> that changed what it wrote. Frequency alone nominates popular records that change nothing, so both halves have to be true. Promoting one moves its text into every call's prompt rather than leaving it behind an index line, which costs tokens on every note and is why this is a decision rather than a threshold.</p>
+          <h2>Core candidates</h2>
+          <p class="muted" style="margin: 0 0 12px;">Topic records fetched often that also changed the expert's output.<br>Promoting puts the full text in every prompt and adds cost to every note.</p>
           <div id="knCandidates"><span class="muted" style="font-size: 13px;">Loading...</span></div>
         </div>
 
         <div class="card">
           <h2>In force</h2>
-          <p class="muted" style="margin: 0 0 12px;"><strong>Core</strong> rules are in the prompt on every call. <strong>Topic</strong> records are one index line each, and the expert fetches the body when the intake calls for it. Retiring writes a new version rather than deleting anything, so the argument stays readable after the conversation that produced it has gone.</p>
+          <p class="muted" style="margin: 0 0 12px;"><strong>Core</strong>: in the prompt on every call.<br><strong>Topic</strong>: one index line each; body fetched when the intake calls for it.<br>Retiring keeps every version; nothing is deleted.</p>
           <div id="knRecords"><span class="muted" style="font-size: 13px;">Loading...</span></div>
         </div>
 
         <div class="card">
-          <h2>Send it to read</h2>
-          <p class="muted" style="margin: 0 0 12px;">It searches a fixed list you approved - payer medical policy, the federal and state rules, the professional bodies, and the peer-reviewed literature - and reports what those sources say, with the sources beside it. It runs on a larger model than the expert does, because the expert's model cannot search at all, and nothing it returns reaches a note.</p>
-          <p class="muted" style="margin: 0 0 12px;"><strong>It will not write the rule.</strong> Ending on its own recommendation buries the evidence under an opinion, and the point of this is that you can see what is underneath. <strong>Never ask it about a client.</strong> The question goes to a search engine.</p>
+          <h2>Research</h2>
+          <p class="muted" style="margin: 0 0 12px;">Searches an approved list: payer medical policy, federal and state rules, professional bodies, peer-reviewed literature.<br>Reports findings with sources.<br>Nothing returned reaches a note.</p>
+          <p class="muted" style="margin: 0 0 12px;"><strong>Returns evidence only, no rule.</strong><br><strong>Never include client details</strong>; questions go to a search engine.</p>
           <div id="knResearchLog" style="margin-bottom: 14px;"></div>
-          <label for="knQuestion">Your question</label>
-          <textarea id="knQuestion" style="min-height: 80px;" placeholder="What does Aetna's medical policy require a note to establish for continued ABA authorisation?"></textarea>
+          <label for="knQuestion">Question</label>
+          <textarea id="knQuestion" style="min-height: 80px;" placeholder="What does Aetna's medical policy require a note to establish for continued ABA authorization?"></textarea>
           <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center;">
-            <button id="knResearch" class="btn-primary">Go and read</button>
+            <button id="knResearch" class="btn-primary">Research</button>
             <button id="knResearchReset" class="btn-secondary" type="button">Start over</button>
             <span id="knResearchBusy" class="muted hidden" style="font-size: 13px;">Reading...</span>
             <span id="knResearchErr" class="err" style="margin: 0;"></span>
@@ -522,8 +521,8 @@
 
         <div class="card">
           <h2>Write a rule</h2>
-          <p class="muted" style="margin: 0 0 12px;">This is the end of the loop that starts on the Expert tab: argue a case through until the missing rule can be said out loud, then write it here. Nothing you write reaches the expert until you approve it below.</p>
-          <p class="muted" style="margin: 0 0 12px;"><strong>Never paste anything a clinician wrote.</strong> No intake, no quote from a session, no caregiver report. A record carries authored knowledge and the store is built on that being true.</p>
+          <p class="muted" style="margin: 0 0 12px;">New rules go to Pending and are not used until approved.</p>
+          <p class="muted" style="margin: 0 0 12px;"><strong>Never paste clinician-written text</strong>: no intake, session quote or caregiver report.<br>Records hold authored knowledge only.</p>
 
           <div class="add-grid" style="margin-bottom: 12px;">
             <div>
@@ -558,21 +557,21 @@
               <input id="knApplies" type="text" placeholder="when a supervisor attended the session" />
             </div>
           </div>
-          <p class="muted" id="knAppliesNote" style="margin: -4px 0 12px; font-size: 12px;">This line is the only thing the expert sees until it fetches the record, so it has to be enough to decide on. A record nothing can reach is worse than no record.</p>
+          <p class="muted" id="knAppliesNote" style="margin: -4px 0 12px; font-size: 12px;">The expert sees only this line until it fetches the record.</p>
 
           <label for="knTitle">Title</label>
           <input id="knTitle" type="text" placeholder="Name the supervision ratio" />
 
           <label for="knRule" style="margin-top: 10px; display: block;">The rule</label>
-          <textarea id="knRule" style="min-height: 110px;" placeholder="Written as an instruction to the expert, in the words it will read."></textarea>
+          <textarea id="knRule" style="min-height: 110px;" placeholder="An instruction to the expert."></textarea>
 
           <label for="knRationale" style="margin-top: 10px; display: block;">Why (optional)</label>
-          <textarea id="knRationale" style="min-height: 80px;" placeholder="What goes wrong without it. This is what makes the rule arguable later."></textarea>
+          <textarea id="knRationale" style="min-height: 80px;" placeholder="What goes wrong without it."></textarea>
 
           <div style="display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; align-items: center;">
-            <button id="knPropose" class="btn-primary">Stage it for review</button>
+            <button id="knPropose" class="btn-primary">Stage for review</button>
             <span id="knProposeErr" class="err" style="margin: 0;"></span>
-            <span id="knProposeOk" class="muted hidden" style="font-size: 13px;">Staged. It is waiting on you above.</span>
+            <span id="knProposeOk" class="muted hidden" style="font-size: 13px;">Staged. Listed under Pending.</span>
           </div>
         </div>
 
@@ -588,7 +587,7 @@
     <div id="termModal" class="modal-overlay hidden">
       <div class="modal">
         <h2 style="margin: 0 0 4px;">Add a term</h2>
-        <p class="muted" style="margin: 0 0 16px;">Commits to the live list immediately.</p>
+        <p class="muted" style="margin: 0 0 16px;">Takes effect immediately.</p>
         <label for="termInput">Term</label>
         <input id="termInput" type="text" placeholder="A single word" autocomplete="off" />
         <label style="margin-top: 14px;">Classify as</label>
@@ -668,7 +667,7 @@
           });
         } else {
           loginBtn.disabled = true;
-          showLoginErr("The verification check could not load. Reload the page and try again.");
+          showLoginErr("Verification check did not load.\nReload the page.");
         }
         return loginGate;
       }
@@ -686,7 +685,7 @@
         fetch("/api/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password: pw.value, turnstileToken: gate.token() }) })
           .then(function (r) { return r.json().then(function (d) { if (!r.ok || !d.token) throw new Error(d.error || "Login failed."); return d; }); })
           .then(function (d) {
-            if (d.role !== "admin") throw new Error("That password doesn't have admin access.");
+            if (d.role !== "admin") throw new Error("This password has no admin access.");
             localStorage.setItem(TOKEN_KEY, d.token); pw.value = ""; show();
           })
           .catch(function (ex) {
@@ -789,7 +788,7 @@
               var err = document.getElementById("addErr");
               err.style.display = "none";
               if (!picked.length) {
-                err.textContent = "Select at least one tool, or delete the password instead.";
+                err.textContent = "Select at least one tool.";
                 err.style.display = "block";
                 return;
               }
@@ -797,7 +796,7 @@
                 // `tools` is frozen into the token at login, so the server will
                 // allow the new tool immediately while the holder's UI keeps the
                 // button disabled until they sign in again.
-                err.textContent = "Access updated. The holder must log out and back in before the change shows in their browser.";
+                err.textContent = "Access updated.\nThe holder sees the change after logging out and back in.";
                 err.style.display = "block";
                 load();
               }).catch(function (ex) {
@@ -1044,7 +1043,7 @@
       function scrubRunSummary(report) {
         if (!report || typeof report.considered !== "number") return "Run complete.";
         if (report.stopped === "nothing-to-consider") {
-          return "Nothing to consider - every certified term has already been through a run.";
+          return "Nothing to consider.\nEvery certified term has been through a run.";
         }
         var s = "Considered " + report.considered + ", proposed " + report.proposed + ".";
         if (report.backlogRemaining) s += " " + report.backlogRemaining + " still waiting.";
@@ -1145,7 +1144,7 @@
           .then(renderProfileHistory)
           .catch(function () {
             document.getElementById("profHistory").innerHTML =
-              '<p class="muted">No correction record to replay yet.</p>';
+              '<p class="muted">No corrections.</p>';
           });
       }
 
@@ -1174,7 +1173,7 @@
         (d.removedWithoutRule || []).forEach(function (r) {
           rows.push("<tr>"
             + '<td><span class="muted">' + escapeHtml(r.feature)
-            + " (no longer derived)</span></td><td>-</td><td>-</td>"
+            + " (no longer learned)</span></td><td>-</td><td>-</td>"
             + '<td><span class="pill off">removed</span></td>'
             + '<td class="row-actions"><button class="btn-ghost" data-prof-suppress="' + escapeHtml(r.feature)
             + '" data-prof-removed="1">Restore</button></td></tr>');
@@ -1212,7 +1211,7 @@
         var features = d.features || [];
         if (!points.length || !features.length) {
           document.getElementById("profHistory").innerHTML =
-            '<p class="muted">No correction record to replay yet.</p>';
+            '<p class="muted">No corrections.</p>';
           return;
         }
 
@@ -1304,8 +1303,7 @@
         var note = document.getElementById("exToolNote");
         if (note) {
           note.textContent = tools.length < all
-            ? tools.length + " of " + all + " tools. The rest keep their section ids in a private variable" +
-              " no page can read, so the bench would have to guess at them. Giving a tool a responseSchema brings it in."
+            ? tools.length + " of " + all + " tools.\nTools without a response schema are not listed."
             : "";
         }
         renderExpertCatalog();
@@ -1332,12 +1330,12 @@
         var codes = Object.keys(cat);
         box.innerHTML = codes.map(function (code) {
           // "other" carries no wording on purpose; saying so beats a blank row.
-          var text = cat[code] || "(no wording; the model supplies the detail)";
+          var text = cat[code] || "(no fixed wording)";
           return '<div class="cat-row"><code>' + escapeHtml(code) + "</code> - " + escapeHtml(text) + "</div>";
         }).join("") +
           '<p class="muted" style="margin-top:10px; font-size:12px;">' + codes.length +
-          " codes. Everything the live hint channel can say about a " +
-          escapeHtml(tool.label || tool.id) + " note.</p>";
+          " codes for " +
+          escapeHtml(tool.label || tool.id) + " notes.</p>";
       }
 
       function expertRow(tagClass, tagText, head, why, move) {
@@ -1384,17 +1382,15 @@
                 (h.why ? '<div class="why">' + escapeHtml(h.why) + "</div>" : "") +
                 "</div>";
             }).join("")
-          : emptyRow("Nothing it would ask about.")) +
+          : emptyRow("No hints proposed.")) +
           // Reported rather than swallowed. A silent cut reads as "that is
           // everything it found", which is the one thing it is not.
           (data.hintsDropped ? '<p class="muted" style="margin-top:10px;font-size:12px;">' +
-            data.hintsDropped + " lower-ranked hint(s) were past the ceiling and are not shown.</p>" : "");
+            data.hintsDropped + " lower-ranked hint(s) over the limit, not shown.</p>" : "");
 
         var u = data.usage || {};
         document.getElementById("exUsage").textContent = data.model
-          ? data.model + " · in " + (u.input_tokens || 0) +
-            " (+" + (u.cache_read_input_tokens || 0) + " cached, " +
-            (u.cache_creation_input_tokens || 0) + " written) · out " + (u.output_tokens || 0)
+          ? data.model + " \u00b7 " + (u.input_tokens || 0) + " in \u00b7 " + (u.output_tokens || 0) + " out"
           : "";
       }
 
@@ -1457,7 +1453,7 @@
         var el = document.getElementById("exScrubbed");
         if (!el) return;
         if (!scrubbed.count) {
-          el.textContent = "Nothing to remove: no names or identifiers were detected in this intake.";
+          el.textContent = "No names or identifiers detected.";
           el.classList.remove("hidden");
           return;
         }
@@ -1465,8 +1461,8 @@
           var n = scrubbed.removed[k];
           return n + " " + k + (n === 1 ? "" : "s");
         });
-        el.textContent = "Removed before this left your device: " + parts.join(", ") +
-          ". The findings below have your own words put back.";
+        el.textContent = "Removed before sending: " + parts.join(", ") +
+          ".\nFindings below show the original words.";
         el.classList.remove("hidden");
       }
 
@@ -1588,8 +1584,8 @@
           renderOracle();
           var usage = document.getElementById("exChatUsage");
           if (usage && data.usage) {
-            usage.textContent = "This turn: " + (data.usage.input_tokens || 0) + " in, " +
-              (data.usage.output_tokens || 0) + " out, on " + (data.model || "the pass model") + ".";
+            usage.textContent = (data.usage.input_tokens || 0) + " in \u00b7 " +
+              (data.usage.output_tokens || 0) + " out \u00b7 " + (data.model || "the pass model");
           }
         }).catch(function (ex) {
           // The question stays in the transcript on a failure, because deleting
@@ -1645,7 +1641,7 @@
         { from: 85, to: 94, label: "Great Work!" },
         { from: 76, to: 85, label: "Close to Great!" },
         { from: 70, to: 76, label: "Closing the Gap!" },
-        { from: 0, to: 70, label: "Keep going, your work is so important." },
+        { from: 0, to: 70, label: "Keep going." },
       ];
 
       function benchBand(score) {
@@ -1688,9 +1684,9 @@
         if (gradeErr) gradeErr.style.display = "none";
 
         var topic = (document.getElementById("btTopic").value || "").trim();
-        if (!topic) { err.textContent = "Give it a standing question, or use the intake bench instead."; err.style.display = "block"; return; }
+        if (!topic) { err.textContent = "Enter a standing question."; err.style.display = "block"; return; }
         var toolId = (document.getElementById("btTool") || {}).value;
-        if (!toolId) { err.textContent = "Pick a tool. The expert prompt is fetched per tool."; err.style.display = "block"; return; }
+        if (!toolId) { err.textContent = "Select a tool."; err.style.display = "block"; return; }
 
         var sess = benchSession();
         if (beforeSend) beforeSend(sess);
@@ -1737,7 +1733,7 @@
             // an answer quoting a rate is a different kind of answer, and he
             // must not have to guess which one he just read.
             var parts = [];
-            parts.push(data.metricsInForce ? "Answered with the store's figures in front of it." : "Answered with NO figures - the metrics store was unreachable.");
+            parts.push(data.metricsInForce ? "Answered with metrics store figures." : "Answered without figures: metrics store unreachable.");
             if (data.band) parts.push("Graded " + data.band + ".");
             if (data.usage) {
               parts.push("This turn: " + (data.usage.input_tokens || 0) + " in, " +
@@ -1784,7 +1780,7 @@
         var sess = benchSession();
         var last = sess.turns[sess.turns.length - 1];
         if (!last || last.role !== "assistant") {
-          err.textContent = "There is nothing of its own to grade yet.";
+          err.textContent = "No example note to grade.";
           err.style.display = "block";
           return;
         }
@@ -1815,7 +1811,7 @@
           if (sess.turns[i].role === "assistant") { last = sess.turns[i]; break; }
         }
         if (!last) {
-          if (err) { err.textContent = "It has not said anything to write down yet."; err.style.display = "block"; }
+          if (err) { err.textContent = "No answer to draft from."; err.style.display = "block"; }
           return;
         }
         var scope = document.getElementById("knScope");
@@ -1829,7 +1825,7 @@
         knSyncTier();
         document.getElementById("knRule").value = last.text;
         document.getElementById("knRationale").value =
-          "Said by the expert on the bench while grading its own example notes. Cut it down to the instruction before you approve it - what is here is an argument, and what belongs in the store is the rule the argument arrived at.";
+          "From the expert bench (graded example notes).\nTrim to the instruction before approving.";
         document.querySelectorAll(".tab-btn").forEach(function (b) {
           if (b.dataset.tab === "knowledge") b.click();
         });
@@ -1940,7 +1936,7 @@
           var rows = d.records || [];
           if (!rows.length) {
             records.innerHTML = '<span class="muted" style="font-size: 13px;">' +
-              (d.knowledge === false ? "No store on this deploy." : "Nothing in force. The expert is running on its authored prompt alone.") + "</span>";
+              (d.knowledge === false ? "No knowledge store on this deployment." : "No rules in force.<br>The expert uses its authored prompt only.") + "</span>";
             return;
           }
           var core = rows.filter(function (r) { return r.tier === "core"; });
@@ -1970,7 +1966,7 @@
           proposals.innerHTML = rows.map(function (r) {
             return knRecordHtml(r,
               '<div class="kn-actions">' +
-              '<button class="btn-primary kn-commit" data-id="' + escapeHtml(r.proposalId) + '" type="button">Put it in force</button>' +
+              '<button class="btn-primary kn-commit" data-id="' + escapeHtml(r.proposalId) + '" type="button">Accept</button>' +
               '<button class="btn-secondary kn-reject" data-id="' + escapeHtml(r.proposalId) + '" type="button">Reject</button>' +
               (r.targetId ? '<span class="muted" style="font-size: 12px; align-self: center;">replaces ' + escapeHtml(r.targetId) + "</span>" : "") +
               "</div>");
@@ -1981,14 +1977,14 @@
           var rows = d.candidates || [];
           knCandidateRows = rows;
           if (!rows.length) {
-            candidates.innerHTML = '<span class="muted" style="font-size: 13px;">Nothing nominated. A topic record needs to be fetched often and to have changed the answer before it earns a place in every prompt.</span>';
+            candidates.innerHTML = '<span class="muted" style="font-size: 13px;">No candidates.</span>';
             return;
           }
           candidates.innerHTML = rows.map(function (r) {
             return knRecordHtml(r,
               '<p class="muted" style="margin: 8px 0 0; font-size: 12px;">Fetched ' + (r.fetches || 0) + " times, changed the answer " + (r.moved || 0) + " of them.</p>" +
               '<div class="kn-actions">' +
-              '<button class="btn-secondary kn-elevate" data-id="' + escapeHtml(r.id) + '" type="button">Draft it as core</button>' +
+              '<button class="btn-secondary kn-elevate" data-id="' + escapeHtml(r.id) + '" type="button">Draft as core</button>' +
               "</div>");
           }).join("");
         }).catch(oops(candidates));
@@ -2010,7 +2006,7 @@
           kn("reject", "POST", { proposalId: id }).then(loadKnowledge).catch(function (ex) { btn.disabled = false; alert(ex.message); });
         } else if (btn.classList.contains("kn-retire")) {
           // The one press here that changes what every note reads, so it asks.
-          if (!confirm('Retire "' + (btn.dataset.title || id) + '"? The expert stops seeing it on the next call. Nothing is deleted.')) return;
+          if (!confirm('Retire "' + (btn.dataset.title || id) + '"?\nThe expert stops using it immediately.\nVersions are kept.')) return;
           btn.disabled = true;
           kn("retire", "POST", { id: id }).then(loadKnowledge).catch(function (ex) { btn.disabled = false; alert(ex.message); });
         } else if (btn.classList.contains("kn-history")) {
@@ -2056,9 +2052,8 @@
         document.getElementById("knTitle").value = r.title || "";
         document.getElementById("knRule").value = r.rule || "";
         document.getElementById("knRationale").value =
-          "Promoted from topic record " + r.id + ", fetched " + (r.fetches || 0) + " times and changed the answer " +
-          (r.moved || 0) + " of them. Say here why it belongs in every prompt rather than behind an index line, " +
-          "because that is what costs tokens on notes that will never need it.";
+          "Promoted from topic record " + r.id + ": fetched " + (r.fetches || 0) + " times, changed the answer " +
+          (r.moved || 0) + " times.\nReason for core:";
         knSyncTier();
         document.getElementById("knTitle").scrollIntoView({ behavior: "smooth", block: "center" });
       }
@@ -2135,7 +2130,7 @@
             '<strong style="font-size: 13px;">It read ' + (t.searches || 0) + (t.searches === 1 ? " source" : " sources") + "</strong>" +
             (t.truncated ? ' <span class="pill off">cut off</span>' : "") +
             '<p style="margin: 8px 0 0; white-space: pre-wrap;">' + escapeHtml(t.content) + "</p>" +
-            (sources ? '<p class="muted" style="margin: 10px 0 4px; font-size: 12px;">What it cited</p><ul style="margin: 0; padding-left: 18px; font-size: 13px;">' + sources + "</ul>" : '<p class="muted" style="margin: 10px 0 0; font-size: 12px;">It cited nothing, so nothing here is sourced.</p>') +
+            (sources ? '<p class="muted" style="margin: 10px 0 4px; font-size: 12px;">What it cited</p><ul style="margin: 0; padding-left: 18px; font-size: 13px;">' + sources + "</ul>" : '<p class="muted" style="margin: 10px 0 0; font-size: 12px;">No sources cited.</p>') +
             "</div>";
         }).join("");
       }
@@ -2175,8 +2170,8 @@
           box.value = "";
           knRenderResearch();
           var u = d.usage || {};
-          usage.textContent = d.model + " - " + (d.searches || 0) + " searches across " + (d.domains || 0) +
-            " approved domains, " + (u.input_tokens || 0) + " in, " + (u.output_tokens || 0) + " out.";
+          usage.textContent = d.model + " \u00b7 " + (d.searches || 0) + " searches \u00b7 " + (d.domains || 0) +
+            " approved domains";
         }).catch(function (ex) {
           err.textContent = ex.message;
           err.style.display = "block";
