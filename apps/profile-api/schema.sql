@@ -36,10 +36,23 @@ CREATE INDEX IF NOT EXISTS idx_correction_kid_feature
 CREATE INDEX IF NOT EXISTS idx_correction_kid_ts
   ON correction_event (kid, ts);
 
--- The derived card. One row per (technician, feature); rebuilt from
+-- The derived card. One row per (technician, register, feature); rebuilt from
 -- correction_event whenever new evidence lands.
+--
+-- REGISTER IS PART OF THE KEY, not a column beside it. A learned habit belongs
+-- to the document class someone is writing in, not to the person: the same
+-- author writes 20.9 words a sentence in academic prose and 13.0 in a clinical
+-- plan. Keyed (kid, feature) there was one pool per technician, so a correction
+-- made on the SAP tool changed how their supervision notes were written.
+--
+-- Per register rather than per tool, which was Kaleb's ruling of 2026-08-06 and
+-- the production numbers back it: his 66 corrections were sup 57, assess 6, and
+-- one each for sap, parent and bt, so keying per tool would have kept sup's
+-- rules and dropped every other tool below the five-evidence bar. Per register
+-- keeps 63 of the 66 together. src/registers.js holds the map.
 CREATE TABLE IF NOT EXISTS style_card (
   kid         TEXT    NOT NULL,
+  register    TEXT    NOT NULL,            -- document class, from registers.js
   feature     TEXT    NOT NULL,
   direction   INTEGER NOT NULL,
   rule        TEXT    NOT NULL,            -- rendered from a fixed template
@@ -47,7 +60,7 @@ CREATE TABLE IF NOT EXISTS style_card (
   confidence  REAL    NOT NULL,            -- 0..1 agreement among those events
   muted       INTEGER NOT NULL DEFAULT 0,  -- technician switched it off
   updated_at  INTEGER NOT NULL,
-  PRIMARY KEY (kid, feature)
+  PRIMARY KEY (kid, register, feature)
 );
 
 -- Rules a supervisor has removed, because they are not in line with company or
@@ -61,11 +74,18 @@ CREATE TABLE IF NOT EXISTS style_card (
 --
 -- Nothing here is shown to the technician. The removal is a supervision matter,
 -- reviewed in supervision; the tool simply stops applying the rule.
+--
+-- SCOPED TO ONE REGISTER, for the same reason the card is. A supervisor looking
+-- at a supervision note removes a rule they judged wrong for supervision notes.
+-- Keyed without the register that judgement silently reached every other
+-- document class the technician writes in, which is not a call they made and
+-- not one they were shown.
 CREATE TABLE IF NOT EXISTS style_card_suppression (
-  kid      TEXT    NOT NULL,
-  feature  TEXT    NOT NULL,
-  ts       INTEGER NOT NULL,
-  PRIMARY KEY (kid, feature)
+  kid       TEXT    NOT NULL,
+  register  TEXT    NOT NULL,
+  feature   TEXT    NOT NULL,
+  ts        INTEGER NOT NULL,
+  PRIMARY KEY (kid, register, feature)
 );
 
 -- Engagement metrics. `data` is JSON, but the Pages worker sanitises every
