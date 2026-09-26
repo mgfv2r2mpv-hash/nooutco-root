@@ -128,10 +128,9 @@
     if (cyc.turningPoints.available && cyc.turningPoints.oscillating) {
       out.push({
         kind: "oscillation",
-        text: phaseName + " swings up and down " + cyc.turningPoints.count + " times where about " +
-          (Math.round(cyc.turningPoints.expected * 10) / 10) + " would be ordinary. A behavior that bounces " +
-          "this fast will appear to turn around wherever a phase line happens to be drawn, so treat the turn " +
-          "above as provisional.",
+        text: phaseName + ": " + cyc.turningPoints.count + " turning points; about " +
+          (Math.round(cyc.turningPoints.expected * 10) / 10) + " expected.\n" +
+          "Fast oscillation produces apparent turns at any phase line. The turn above is provisional.",
         detail: "Kendall turning points " + cyc.turningPoints.count + " against " +
           (Math.round(cyc.turningPoints.expected * 10) / 10) + " expected, z = " + r2(cyc.turningPoints.z) + ".",
       });
@@ -139,17 +138,16 @@
     if (cyc.alternating) {
       out.push({
         kind: "alternation",
-        text: phaseName + " runs high, then low, then high again in a regular beat. Where a behavior cycles like " +
-          "that, on a weekly pattern or a rotating schedule, an apparent turn can be the cycle arriving rather " +
-          "than the plan working.",
+        text: phaseName + " alternates high and low in a regular pattern.\n" +
+          "A cycle (weekly pattern, rotating schedule) can produce an apparent turn.",
         detail: "Alternation signature: lag-1 autocorrelation " + r2(cyc.lag1.r) + ", lag-2 " + r2(cyc.lag2.r) + ".",
       });
     }
     if (cyc.seriallyDependent && !cyc.cyclical) {
       out.push({
         kind: "serial-dependence",
-        text: "Each session in " + phaseName + " predicts the next one fairly well, so its sessions are not " +
-          "independent of one another. The two-line check assumes they are, so read its verdict with some slack.",
+        text: "Sessions in " + phaseName + " are serially dependent.\n" +
+          "The projected-line check assumes independence; its result is less reliable.",
         detail: "Lag-1 autocorrelation " + r2(cyc.lag1.r) + "; Crosbie (1987) on binomial accuracy under serial dependence.",
       });
     }

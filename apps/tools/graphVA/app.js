@@ -29,6 +29,9 @@
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
     });
   };
+  // Reading text is written as separate notes joined by "\n"; on screen each
+  // note gets its own line.
+  var escBr = function (s) { return esc(s).replace(/\n/g, "<br>"); };
   var r1 = function (v) { return S.isNum(v) ? (Math.round(v * 10) / 10).toFixed(1) : "n/a"; };
   var r2 = function (v) { return S.isNum(v) ? (Math.round(v * 100) / 100).toFixed(2) : "n/a"; };
   var pctS = function (v) { return S.isNum(v) ? Math.round(v * 100) + "%" : "n/a"; };
@@ -101,13 +104,13 @@
   function renderChartNotes(result, chartInfo) {
     var notes = [];
     if (chartInfo.cramped) {
-      notes.push("There are too many sessions on this scale to read level and trend off the chart. Switch the view to the terminal condition change to expand the phases either side of it.");
+      notes.push("Too many sessions to read level and trend at this scale.\nView: Terminal condition change expands the phases on either side of it.");
     }
     // design.js already emits a richer within-condition warning, so adding one
     // here printed the same point twice.
     result.warnings.forEach(function (w) { notes.push(w); });
     $("chartNotes").innerHTML = notes.length
-      ? '<div class="banner info"><ul>' + notes.map(function (n) { return "<li>" + esc(n) + "</li>"; }).join("") + "</ul></div>"
+      ? '<div class="banner info"><ul>' + notes.map(function (n) { return "<li>" + escBr(n) + "</li>"; }).join("") + "</ul></div>"
       : "";
   }
 
@@ -134,15 +137,15 @@
       "</div>" +
       '<div class="vbody">' +
         result.rationale.map(function (line) {
-          return "<p>" + esc(line.text) + "</p>" +
+          return "<p>" + escBr(line.text) + "</p>" +
             (withStats && line.detail ? '<p class="stat">' + esc(line.detail) + "</p>" : "");
         }).join("") +
       "</div>" +
-      '<div class="vcausal-body">' + esc(result.causal.body) +
+      '<div class="vcausal-body">' + escBr(result.causal.body) +
         (result.endsInWithdrawal
-          ? " This record currently sits in a withdrawal phase, so the finding above speaks to the most recent intervention onset rather than to the terminal phase."
+          ? "<br>Record ends in a withdrawal phase.<br>The finding refers to the most recent intervention onset, not the terminal phase."
           : "") +
-        (result.causalNote ? "<p style=\"margin:8px 0 0\">" + esc(result.causalNote) + "</p>" : "") +
+        (result.causalNote ? "<p style=\"margin:8px 0 0\">" + escBr(result.causalNote) + "</p>" : "") +
       "</div>";
   }
 
@@ -155,26 +158,26 @@
     // checking the method will look for them.
     var tiles = [
       ["Typical session", (p.level.deltaMedian > 0 ? "+" : "") + r1(p.level.deltaMedian),
-        p.level.therapeutic ? "moved the way the plan wants" : "moved the wrong way for this target"],
+        p.level.therapeutic ? "in the target direction" : "against the target direction"],
       // Tied values across phases are ordinary in count data, so the exact test
       // is often unavailable. Falling back to the interval keeps the tile
       // informative instead of only explaining its own silence.
       ["Pairs improved", S.isNum(nap.value) ? Math.round(nap.value * 100) + "%" : "n/a",
         nap.exact && nap.exact.available
-          ? "luck would give this in " + oneInShort(nap.exact.p)
+          ? "chance: " + oneInShort(nap.exact.p)
           : (nap.ciDegenerate
-            ? "no session overlap at all"
-            : "could sit from " + pctS(nap.ciLow) + " to " + pctS(nap.ciHigh))],
+            ? "no overlap"
+            : "range " + pctS(nap.ciLow) + " to " + pctS(nap.ciHigh))],
       ["Change at the line", p.immediacy.available ? (p.immediacy.delta > 0 ? "+" : "") + r1(p.immediacy.delta) : "n/a",
-        p.immediacy.available && p.immediacy.therapeutic ? "showed up straight away" : "did not show up straight away"],
+        p.immediacy.available && p.immediacy.therapeutic ? "immediate" : "not immediate"],
       ["Sessions past both lines", p.cdc.available ? p.cdc.k + "/" + p.cdc.n : "n/a",
-        p.cdc.available ? "takes " + p.cdc.critical + " to call a change" : "phases too short for this check"],
+        p.cdc.available ? p.cdc.critical + " required" : "phases too short"],
       ["Trend under the plan", S.isNum(p.trend.toSlope) ? (p.trend.toSlope > 0 ? "+" : "") + r2(p.trend.toSlope) : "n/a",
-        p.trend.therapeutic ? "per session, the way the plan wants" : "per session, wrong way or flat"],
+        p.trend.therapeutic ? "per session, target direction" : "per session, against target or flat"],
       ["Against baseline", p.lrr.available ? (p.lrr.pctChange > 0 ? "+" : "") + Math.round(p.lrr.pctChange) + "%" : "n/a",
         p.lrr.available
-          ? ((p.lrr.pctChange >= 0) === (result.direction === "inc") ? "the way the plan wants" : "the wrong way for this target")
-          : "this measure cannot carry a percentage"],
+          ? ((p.lrr.pctChange >= 0) === (result.direction === "inc") ? "target direction" : "against target direction")
+          : "not available for this measure"],
     ];
     $("tiles").innerHTML = tiles.map(function (t) {
       return '<div class="tile"><div class="lab">' + esc(t[0]) + '</div><div class="val">' +
@@ -187,14 +190,14 @@
     $("legacyBox").classList.remove("hidden");
     var o = result.primary.overlap;
     var rows = [
-      ["PND", pctS(o.pnd), "Rests entirely on the single most extreme baseline session, so one bad day ruins it. It also drifts downward as a baseline gets longer even when nothing about the behavior changes, and there is no way to put a range around it."],
-      ["PEM", pctS(o.pem), "Gives full credit to any session past the baseline midpoint however small the change, so it maxes out almost at once. It takes no account of how spread out baseline was."],
-      ["Tau-U", r2(o.tauU), "Its correction for baseline trend reports effects that are not there (Tarlow, 2017). Its range shifts with phase length, so two records' values are not comparable, and it cannot be drawn on the graph for you to check."],
+      ["PND", pctS(o.pnd), "Based on the single most extreme baseline session.\nDecreases as baseline lengthens. No confidence interval."],
+      ["PEM", pctS(o.pem), "Full credit for any session past the baseline median, regardless of size.\nReaches ceiling quickly. Ignores baseline spread."],
+      ["Tau-U", r2(o.tauU), "Baseline-trend correction reports false effects (Tarlow, 2017).\nRange shifts with phase length; not comparable across records. Cannot be drawn on the graph."],
       ["Overlap", pctS(o.inside), "How many intervention sessions fall inside the range baseline covered. Descriptive only."],
     ];
     $("legacy").innerHTML = rows.map(function (row) {
       return '<div class="legacy-item"><div>' + esc(row[0]) + '</div><div class="n">' +
-        esc(row[1]) + '</div><div class="why">' + esc(row[2]) + "</div></div>";
+        esc(row[1]) + '</div><div class="why">' + escBr(row[2]) + "</div></div>";
     }).join("");
   }
 
@@ -223,7 +226,7 @@
   function renderTransitions(result) {
     var t = result.transitions;
     if (!t.length) {
-      $("transitions").innerHTML = '<p class="fineprint" style="margin:0">This record contains no condition change, so there is nothing to compare across phases.</p>';
+      $("transitions").innerHTML = '<p class="fineprint" style="margin:0">No condition change in this record.</p>';
       return;
     }
     var html = t.map(function (a) {
@@ -234,10 +237,10 @@
         "Trend " + (S.isNum(a.trend.fromSlope) ? r2(a.trend.fromSlope) : "n/a") + " → " +
           (S.isNum(a.trend.toSlope) ? r2(a.trend.toSlope) : "n/a"),
         a.trend.reversal && a.trend.reversal.present
-          ? "turned at the line" + (a.trend.reversal.immediate ? ", straight away" : ", not straight away") +
-            (a.trend.reversal.cyclicalCaution ? " (may be a cycle)" : "")
-          : (a.trend.signInversion === true ? "direction of travel flipped" : null),
-        a.cdc.available ? "Past both lines " + a.cdc.k + "/" + a.cdc.n + " (takes " + a.cdc.critical + ")" : null,
+          ? "reversal at the line" + (a.trend.reversal.immediate ? ", immediate" : ", delayed") +
+            (a.trend.reversal.cyclicalCaution ? " (possible cycle)" : "")
+          : (a.trend.signInversion === true ? "trend direction reversed" : null),
+        a.cdc.available ? "Beyond both projected lines " + a.cdc.k + "/" + a.cdc.n + " (" + a.cdc.critical + " required)" : null,
       ].filter(Boolean);
       return '<div class="legacy-item" style="grid-template-columns:1fr">' +
         "<div><strong>" + esc(a.transition.letters) + "</strong> &middot; " +
@@ -250,19 +253,19 @@
 
     var extra = "";
     if (result.reversibility.available) {
-      extra += '<p class="fineprint"><strong>Did behavior come back when the plan came off.</strong> ' +
+      extra += '<p class="fineprint"><strong>Return to baseline.</strong> ' +
         result.reversibility.phases.map(function (p) {
-          return esc(p.name) + " " +
-            (p.reversed ? "returned close enough to the first baseline to count"
-              : "did not return to the first baseline, so this demonstration does not count") +
-            " (" + r2(p.nap) + " against the 0.85 bar)";
+          return esc(p.name) + ": " +
+            (p.reversed ? "returned to first baseline; counts"
+              : "did not return to first baseline; demonstration does not count") +
+            " (" + r2(p.nap) + " against the 0.85 criterion)";
         }).join("; ") + ".</p>";
     }
     if (result.consistency.available) {
-      extra += '<p class="fineprint"><strong>Do like phases resemble each other.</strong> ' +
+      extra += '<p class="fineprint"><strong>Consistency of like phases.</strong> ' +
         result.consistency.pairs.map(function (p) {
           return esc(p.label) + (p.consistent ? " alike" : " differs") + " (" + r2(p.nap) + ")";
-        }).join("; ") + ". Phases in the same condition should look like one another, so a figure near 0.50 is what you want here.</p>";
+        }).join("; ") + ".<br>For same-condition phases, a figure near 0.50 indicates consistency.</p>";
     }
     $("transitions").innerHTML = html + extra;
   }
@@ -370,7 +373,7 @@
       return res.text().then(function (raw) {
         var data;
         try { data = JSON.parse(raw); } catch (e) {
-          throw new Error("The server returned something that was not JSON (" + res.status + ").");
+          throw new Error("Unexpected server response (" + res.status + ").");
         }
         if (!res.ok) throw new Error(data.error || "Request failed (" + res.status + ").");
         return data;
@@ -399,8 +402,8 @@
       banner.className = "banner";
       $("phases").parentNode.insertBefore(banner, $("phases"));
     }
-    banner.innerHTML = "<strong>Verify before use.</strong> These values were read from an image and can be misread, " +
-      "particularly where points are unlabeled, overlapping, or compressed. Check every phase against the source graph and correct it below." +
+    banner.innerHTML = "<strong>Verify before use.</strong><br>Values read from an image can be misread, " +
+      "especially unlabeled, overlapping or compressed points.<br>Check each phase against the source graph." +
       (u.length ? "<ul>" + u.map(function (x) { return "<li>" + esc(String(x)) + "</li>"; }).join("") + "</ul>" : "");
     return state.phases.reduce(function (acc, p) { return acc + window.GVA_DESIGN.parseValues(p.data).length; }, 0);
   }
@@ -555,12 +558,12 @@
     var btn = $("extract");
     btn.disabled = true;
     btn.textContent = "Reading";
-    st("Reading the graph. This takes a few seconds.", "busy");
+    st("Reading graph", "busy");
 
     callReader(baked, $("context").value.trim()).then(function (data) {
       var text = (data.content || []).filter(function (b) { return b.type === "text"; })
         .map(function (b) { return b.text; }).join("\n");
-      if (!text.trim()) throw new Error("The model returned no text. Retry, or crop to one panel.");
+      if (!text.trim()) throw new Error("No reading returned. Retry, or crop to one panel.");
       var out;
       var salvaged = false;
       try { out = parseJSON(text); }
@@ -568,16 +571,16 @@
         out = repairJSON(text);
         if (!out) {
           throw new Error(data.stop_reason === "max_tokens"
-            ? "The reading ran past the length limit and was cut off. Crop to one panel and try again."
-            : "The reply was not valid JSON.");
+            ? "Reading exceeded the length limit. Crop to one panel and retry."
+            : "Reading could not be parsed. Retry.");
         }
         salvaged = true;
       }
       var n = applyExtraction(out);
       st("Read " + state.phases.length + " phases, " + n + " data points" +
-        (out.target ? " for " + out.target : "") +
-        (salvaged ? ". The reading was cut off and partly recovered, so later phases may be incomplete" : "") +
-        ". Verify against the source graph before use.", salvaged ? "err" : "ok");
+        (out.target ? " for " + out.target : "") + "." +
+        (salvaged ? "\nReading cut off and partly recovered; later phases may be incomplete." : "") +
+        "\nVerify against the source graph before use.", salvaged ? "err" : "ok");
     }).catch(function (err) {
       st(String(err.message || err), "err");
     }).finally(function () {

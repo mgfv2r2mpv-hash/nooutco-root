@@ -267,7 +267,7 @@
       items.push(['<span class="key" style="border-top-color:' + COLOR.muted + ';border-top-style:dotted"></span>', "Phase mean"]);
     }
     if (opts.showCDC && result.primary && result.primary.cdc.available) {
-      items.push(['<span class="key" style="border-top-color:' + COLOR.cdc + ';border-top-style:dashed"></span>', "Where baseline sat, and where it was heading"]);
+      items.push(['<span class="key" style="border-top-color:' + COLOR.cdc + ';border-top-style:dashed"></span>', "Baseline level and trend, projected"]);
     }
     if (result.structure.withinChanges.length) {
       items.push(['<span class="key" style="border-top-color:' + COLOR.muted + ';border-top-style:dotted"></span>', "Change within a condition"]);
