@@ -186,7 +186,7 @@ test("the injected block is capped, so a prompt cannot grow without bound", () =
 
 test("cardRows carries only the columns the schema declares", () => {
   const rules = deriveRules(many(6, "quantification", 1), NOW);
-  const rows = cardRows("pw:abc-123", rules, NOW);
+  const rows = cardRows("pw:abc-123", "clinical-narrative", rules, NOW);
   assert.equal(rows.length, 1);
   assert.deepEqual(Object.keys(rows[0]).sort(), [
     "confidence",
@@ -194,11 +194,35 @@ test("cardRows carries only the columns the schema declares", () => {
     "evidence",
     "feature",
     "kid",
+    "register",
     "rule",
     "updated_at",
   ]);
   assert.equal(rows[0].kid, "pw:abc-123");
   assert.equal(rows[0].updated_at, NOW);
+});
+
+test("cardRows stamps the register it was given on every row", () => {
+  // The register is half of the primary key. A row built without one, or with
+  // the wrong one, is written where nothing reads it and nothing reports it.
+  const rules = deriveRules(
+    [...many(6, "quantification", 1), ...many(6, "opener_variety", 1)],
+    NOW,
+  );
+  const rows = cardRows("pw:abc-123", "clinical-instrument", rules, NOW);
+  assert.ok(rows.length >= 2);
+  for (const row of rows) assert.equal(row.register, "clinical-instrument");
+});
+
+test("the same evidence under two registers builds two separate rows", () => {
+  // This is the bleed the key exists to stop: one correction made in a SAP note
+  // used to land in the single pool that also wrote supervision notes.
+  const rules = deriveRules(many(6, "quantification", 1), NOW);
+  const instrument = cardRows("pw:abc-123", "clinical-instrument", rules, NOW);
+  const narrative = cardRows("pw:abc-123", "clinical-narrative", rules, NOW);
+
+  assert.equal(instrument[0].feature, narrative[0].feature);
+  assert.notEqual(instrument[0].register, narrative[0].register);
 });
 
 test("opener_variety derives a rule in each direction", () => {

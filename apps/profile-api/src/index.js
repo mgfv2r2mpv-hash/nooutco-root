@@ -18,6 +18,7 @@
 
 import { deriveRules, cardRows, renderStyleBlock } from "./derive.js";
 import { FEATURE_NAMES } from "./features.js";
+import { registerFor } from "./registers.js";
 import { sanitizeCorrections, sanitizeMetrics, cleanKid, cleanSlug } from "./validate.js";
 import { runWeekly, isSendHour } from "./weekly.js";
 import { accumulate, targetFor, renderShapeBlock } from "./shape.js";
@@ -195,11 +196,19 @@ async function handleEvents(request, env) {
   await env.DB.batch(statements);
 
   // Only rebuild when something could actually have changed the card.
-  const rules = corrections.length ? await rebuildCard(env, kid, now) : null;
+  const ruleSets = corrections.length ? await rebuildCard(env, kid, now) : null;
+
+  /* Still one number, summed across registers rather than reported per one. The
+     caller uses it to know whether a rebuild produced anything at all, and a
+     breakdown here would name which document classes a technician writes in,
+     which this response has no reason to carry. */
+  const ruleCount = ruleSets
+    ? [...ruleSets.values()].reduce((total, rules) => total + rules.length, 0)
+    : null;
 
   return json(200, {
     stored: { corrections: corrections.length, metrics: metrics.length, voice: voice.length },
-    rules: rules ? rules.length : undefined,
+    rules: ruleCount === null ? undefined : ruleCount,
   });
 }
 
@@ -209,19 +218,30 @@ async function handleGetCard(url, env) {
   const kid = cleanKid(url.searchParams.get("kid"));
   if (!kid) return json(400, { error: "Missing kid." });
 
+  /* The tool decides which pool is read, so it is resolved before the card
+     query rather than further down with the shape target. An absent or unknown
+     tool resolves to a register of its own, so it reads an empty card instead
+     of borrowing somebody else's rules. */
+  const tool = cleanSlug(url.searchParams.get("tool")) || "unknown";
+  const register = registerFor(tool);
+
   // A suppressed rule is gone as far as this route is concerned: not in the
   // list, not in the block, so it cannot reach a prompt. The technician is not
   // told, by design - the removal is reviewed in supervision, not announced by
   // the tool.
+  //
+  // The join carries the register as well as the feature. Without it a removal
+  // made for one document class would hide the rule in every other, which is a
+  // judgement the supervisor did not make.
   const { results } = await env.DB.prepare(
     `SELECT c.feature, c.direction, c.rule, c.evidence, c.confidence, c.muted, c.updated_at
        FROM style_card c
        LEFT JOIN style_card_suppression s
-         ON s.kid = c.kid AND s.feature = c.feature
-      WHERE c.kid = ? AND s.feature IS NULL
+         ON s.kid = c.kid AND s.register = c.register AND s.feature = c.feature
+      WHERE c.kid = ? AND c.register = ? AND s.feature IS NULL
       ORDER BY c.confidence DESC`,
   )
-    .bind(kid)
+    .bind(kid, register)
     .all();
 
   const rules = (results || []).map((r) => ({
@@ -239,8 +259,11 @@ async function handleGetCard(url, env) {
      chance for the two to disagree about which note they are describing.
 
      The seed is the caller's, so the same note redraws the same target on a
-     revision and the prompt prefix stays stable for the cache. */
-  const tool = cleanSlug(url.searchParams.get("tool")) || "unknown";
+     revision and the prompt prefix stays stable for the cache.
+
+     shape_profile stays keyed by TOOL, not by register. It is a measurement of
+     the notes a tool actually produced rather than a learned rule, and two
+     tools in one register can still have different shapes. */
   const seed = (url.searchParams.get("seed") || "").slice(0, 64) || (kid + ":" + tool);
   const shapeRow = await env.DB.prepare(
     `SELECT n_notes, sum_len, sum_cv, sum_cv_sq, sum_step, sum_step_sq
@@ -270,10 +293,18 @@ async function handleMute(request, env) {
   const feature = FEATURE_NAMES.includes(body.feature) ? body.feature : null;
   if (!kid || !feature) return json(400, { error: "Missing kid or unknown feature." });
 
+  /* SCOPED TO THE REGISTER THE TECHNICIAN IS WRITING IN. Muting "prefer shorter
+     sentences" while writing a supervision note used to mute it for SAP as
+     well. The switch sits on one rule on one card, in front of somebody who is
+     looking at one document, and it should do what it looks like it does. */
+  const register = registerFor(cleanSlug(body.tool) || "unknown");
+
   // A mute is reversible and the evidence is untouched, so a rule the
   // technician switches off can come back if they keep making that correction.
-  await env.DB.prepare(`UPDATE style_card SET muted = ? WHERE kid = ? AND feature = ?`)
-    .bind(body.muted === false ? 0 : 1, kid, feature)
+  await env.DB.prepare(
+    `UPDATE style_card SET muted = ? WHERE kid = ? AND register = ? AND feature = ?`,
+  )
+    .bind(body.muted === false ? 0 : 1, kid, register, feature)
     .run();
 
   return json(200, { ok: true });
@@ -296,10 +327,23 @@ async function handleMute(request, env) {
 const MIN_COHORT = 2;
 
 async function handleInsights(env) {
+  /* COUNT(DISTINCT kid), NOT COUNT(*). This is the direct consequence of
+     putting the register in the key, and it is an anonymity guard rather than
+     an arithmetic nicety. One person can now hold the same feature in two
+     registers, so counting rows would report them as two technicians. That
+     floats a feature over MIN_COHORT that exactly one person actually has, and
+     MIN_COHORT is the entire reason this route can return anything at all: it
+     is what makes the answer a fact about the house prompt instead of a fact
+     about one identifiable individual.
+
+     The rows are still grouped across registers on purpose. The question this
+     answers is which way technicians are pulling overall, and splitting it by
+     document class would narrow each group toward the point where one person
+     is recognisable in it. */
   const { results } = await env.DB.prepare(
     `SELECT feature,
             direction,
-            COUNT(*)              AS technicians,
+            COUNT(DISTINCT kid)   AS technicians,
             SUM(evidence)         AS evidence,
             AVG(confidence)       AS confidence,
             SUM(muted)            AS muted
@@ -482,9 +526,17 @@ async function handleRoster(env) {
             t.first_seen,
             t.last_seen,
             t.note_count,
-            (SELECT COUNT(*) FROM style_card c WHERE c.kid = t.kid)              AS rules,
-            (SELECT COUNT(*) FROM style_card c WHERE c.kid = t.kid AND c.muted = 1) AS muted,
-            (SELECT COUNT(*) FROM style_card_suppression s WHERE s.kid = t.kid)  AS removed,
+            /* DISTINCT feature, not rows. These three are a magnitude for
+               deciding whose card to open, and counting rows would multiply
+               each of them by the number of document classes a technician
+               writes in. The removals are the sharp case: the migration copies
+               an old suppression into every register, so three judgements would
+               be reported as twelve and a supervisor would read that as a
+               person whose card keeps being corrected. The detail view is where
+               the per-register breakdown belongs. */
+            (SELECT COUNT(DISTINCT c.feature) FROM style_card c WHERE c.kid = t.kid)              AS rules,
+            (SELECT COUNT(DISTINCT c.feature) FROM style_card c WHERE c.kid = t.kid AND c.muted = 1) AS muted,
+            (SELECT COUNT(DISTINCT s.feature) FROM style_card_suppression s WHERE s.kid = t.kid)  AS removed,
             (SELECT COUNT(*) FROM correction_event e WHERE e.kid = t.kid)        AS corrections
        FROM technician t
       ORDER BY t.last_seen DESC`,
@@ -511,20 +563,29 @@ async function handleCardDetail(url, env) {
   const kid = cleanKid(url.searchParams.get("kid"));
   if (!kid) return json(400, { error: "Missing kid." });
 
+  /* This view spans every register on purpose: a supervisor opening a card
+     wants the whole person, not one document class at a time. The register
+     therefore travels on each row, because the same feature can now appear
+     more than once and without it two rules would be indistinguishable. */
   const [card, suppressed, who] = await Promise.all([
     env.DB.prepare(
-      `SELECT feature, direction, rule, evidence, confidence, muted, updated_at
-         FROM style_card WHERE kid = ? ORDER BY confidence DESC`,
+      `SELECT register, feature, direction, rule, evidence, confidence, muted, updated_at
+         FROM style_card WHERE kid = ? ORDER BY register, confidence DESC`,
     ).bind(kid).all(),
     env.DB.prepare(
-      `SELECT feature, ts FROM style_card_suppression WHERE kid = ?`,
+      `SELECT register, feature, ts FROM style_card_suppression WHERE kid = ?`,
     ).bind(kid).all(),
     env.DB.prepare(
       `SELECT first_seen, last_seen, note_count FROM technician WHERE kid = ?`,
     ).bind(kid).first(),
   ]);
 
-  const removedAt = new Map((suppressed.results || []).map((r) => [r.feature, r.ts]));
+  /* Keyed by register AND feature. Keyed by feature alone, a removal made for
+     supervision notes would mark the rule removed on every other document
+     class in this view, showing a supervisor a judgement they never made and
+     inviting them to act on it. */
+  const keyOf = (row) => `${row.register}\u0000${row.feature}`;
+  const removedAt = new Map((suppressed.results || []).map((r) => [keyOf(r), r.ts]));
 
   return json(200, {
     kid,
@@ -532,22 +593,24 @@ async function handleCardDetail(url, env) {
     lastSeen: who ? who.last_seen : null,
     notes: who ? who.note_count : 0,
     rules: (card.results || []).map((r) => ({
+      register: r.register,
       feature: r.feature,
       direction: r.direction,
       rule: r.rule,
       evidence: r.evidence,
       confidence: r.confidence,
       muted: !!r.muted,
-      removed: removedAt.has(r.feature),
-      removedAt: removedAt.get(r.feature) || null,
+      removed: removedAt.has(keyOf(r)),
+      removedAt: removedAt.get(keyOf(r)) || null,
       updatedAt: r.updated_at,
     })),
     // A rule can be removed and then fall below the evidence bar, at which
     // point no style_card row exists to hang it off. Report it anyway, or the
-    // removal looks like it never happened.
+    // removal looks like it never happened. Matched on the register too, or a
+    // removal in one class would be hidden by a surviving rule in another.
     removedWithoutRule: (suppressed.results || [])
-      .filter((r) => !(card.results || []).some((c) => c.feature === r.feature))
-      .map((r) => ({ feature: r.feature, removedAt: r.ts })),
+      .filter((r) => !(card.results || []).some((c) => keyOf(c) === keyOf(r)))
+      .map((r) => ({ register: r.register, feature: r.feature, removedAt: r.ts })),
   });
 }
 
@@ -614,64 +677,98 @@ async function handleSuppress(request, env) {
   const removed = body.removed !== false;
   const now = Number.isFinite(body.now) ? Math.round(body.now) : Date.now();
 
+  /* SCOPED TO ONE REGISTER. A supervisor reviewing a supervision note removes a
+     rule they judged wrong for supervision notes. Unscoped, that judgement
+     silently reached every other document class the technician writes in, and
+     they were never shown the rules it was removing there. Removing it in
+     another register is a separate call, which is a separate decision. */
+  const register = registerFor(cleanSlug(body.tool) || "unknown");
+
   if (removed) {
     await env.DB.prepare(
-      `INSERT INTO style_card_suppression (kid, feature, ts) VALUES (?, ?, ?)
-       ON CONFLICT(kid, feature) DO UPDATE SET ts = excluded.ts`,
-    ).bind(kid, feature, now).run();
+      `INSERT INTO style_card_suppression (kid, register, feature, ts) VALUES (?, ?, ?, ?)
+       ON CONFLICT(kid, register, feature) DO UPDATE SET ts = excluded.ts`,
+    ).bind(kid, register, feature, now).run();
   } else {
     await env.DB.prepare(
-      `DELETE FROM style_card_suppression WHERE kid = ? AND feature = ?`,
-    ).bind(kid, feature).run();
+      `DELETE FROM style_card_suppression WHERE kid = ? AND register = ? AND feature = ?`,
+    ).bind(kid, register, feature).run();
   }
 
-  return json(200, { ok: true, kid, feature, removed });
+  return json(200, { ok: true, kid, register, feature, removed });
 }
 
 async function rebuildCard(env, kid, now) {
+  /* `tool` is read here for the first time. correction_event has carried it
+     since the table was written and nothing ever selected it, which is the
+     mechanical reason one person had a single pool: the rebuild could not tell
+     a SAP correction from a supervision one, so it derived over all of them
+     together. */
   const { results } = await env.DB.prepare(
-    `SELECT feature, direction, magnitude, ts FROM correction_event
+    `SELECT tool, feature, direction, magnitude, ts FROM correction_event
       WHERE kid = ? ORDER BY ts DESC LIMIT ?`,
   )
     .bind(kid, CORRECTION_WINDOW)
     .all();
 
-  const rules = deriveRules(results || [], now);
-  const rows = cardRows(kid, rules, now);
-  const keep = new Set(rows.map((r) => r.feature));
+  /* One derivation per register, not one over everything. The window is still
+     applied per technician above, so a busy register cannot be starved by
+     splitting the limit, and a register with too little evidence simply derives
+     no rules, which is the correct outcome rather than a borrowed one. */
+  const byRegister = new Map();
+  for (const event of results || []) {
+    const register = registerFor(event.tool);
+    if (!byRegister.has(register)) byRegister.set(register, []);
+    byRegister.get(register).push(event);
+  }
 
-  const statements = rows.map((r) =>
-    env.DB.prepare(
-      `INSERT INTO style_card (kid, feature, direction, rule, evidence, confidence, muted, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, 0, ?)
-       ON CONFLICT(kid, feature) DO UPDATE SET
-         direction  = excluded.direction,
-         rule       = excluded.rule,
-         evidence   = excluded.evidence,
-         confidence = excluded.confidence,
-         updated_at = excluded.updated_at,
-         -- A mute is an opinion about one specific instruction. When the
-         -- evidence flips the direction, the rule becomes its own opposite, and
-         -- carrying the mute across would silently suppress a rule the
-         -- technician never saw, let alone objected to.
-         muted      = CASE WHEN style_card.direction != excluded.direction
-                           THEN 0 ELSE style_card.muted END`,
-    ).bind(r.kid, r.feature, r.direction, r.rule, r.evidence, r.confidence, r.updated_at),
-  );
+  const statements = [];
+  const ruleSets = new Map();
 
-  // A feature that no longer clears the evidence bar must lose its rule --
-  // otherwise a card only ever grows and stale rules quietly persist.
-  const drop = FEATURE_NAMES.filter((f) => !keep.has(f));
-  if (drop.length) {
-    statements.push(
-      env.DB.prepare(
-        `DELETE FROM style_card WHERE kid = ? AND feature IN (${drop.map(() => "?").join(",")})`,
-      ).bind(kid, ...drop),
-    );
+  for (const [register, events] of byRegister) {
+    const rules = deriveRules(events, now);
+    const rows = cardRows(kid, register, rules, now);
+    const keep = new Set(rows.map((r) => r.feature));
+    ruleSets.set(register, rules);
+
+    for (const r of rows) {
+      statements.push(
+        env.DB.prepare(
+          `INSERT INTO style_card (kid, register, feature, direction, rule, evidence, confidence, muted, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)
+           ON CONFLICT(kid, register, feature) DO UPDATE SET
+             direction  = excluded.direction,
+             rule       = excluded.rule,
+             evidence   = excluded.evidence,
+             confidence = excluded.confidence,
+             updated_at = excluded.updated_at,
+             -- A mute is an opinion about one specific instruction. When the
+             -- evidence flips the direction, the rule becomes its own opposite,
+             -- and carrying the mute across would silently suppress a rule the
+             -- technician never saw, let alone objected to.
+             muted      = CASE WHEN style_card.direction != excluded.direction
+                               THEN 0 ELSE style_card.muted END`,
+        ).bind(r.kid, r.register, r.feature, r.direction, r.rule, r.evidence, r.confidence, r.updated_at),
+      );
+    }
+
+    /* A feature that no longer clears the evidence bar must lose its rule, or a
+       card only ever grows and stale rules quietly persist. Scoped to this
+       register: an unscoped DELETE would reach into pools this derivation saw
+       no evidence for and wipe rules that are still earned there. */
+    const drop = FEATURE_NAMES.filter((f) => !keep.has(f));
+    if (drop.length) {
+      statements.push(
+        env.DB.prepare(
+          `DELETE FROM style_card
+            WHERE kid = ? AND register = ? AND feature IN (${drop.map(() => "?").join(",")})`,
+        ).bind(kid, register, ...drop),
+      );
+    }
   }
 
   if (statements.length) await env.DB.batch(statements);
-  return rules;
+  return ruleSets;
 }
 
 /* ─────────────────────────── transport ─────────────────────────── */

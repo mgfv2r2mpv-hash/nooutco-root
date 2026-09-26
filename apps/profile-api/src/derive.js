@@ -104,9 +104,13 @@ export function renderStyleBlock(rules) {
 }
 
 /** Rows the caller should write back to style_card for this technician. */
-export function cardRows(kid, rules, now) {
+export function cardRows(kid, register, rules, now) {
   return rules.map((r) => ({
     kid,
+    // Half of the row's primary key, so it is carried here rather than added
+    // at the call site: a row built without one would be written under a key
+    // the reader never looks up, and nothing would say so.
+    register,
     feature: r.feature,
     direction: r.direction,
     rule: r.rule,
