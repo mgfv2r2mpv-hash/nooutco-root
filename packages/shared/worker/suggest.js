@@ -28,7 +28,7 @@ export async function handleSuggest(request, env) {
   }
 
   if (!env.RESEND_API_KEY) {
-    return jsonRes(503, { error: "Email delivery not configured. Use 'Copy instead'." });
+    return jsonRes(503, { error: "Email delivery not configured." });
   }
 
   const subject = `[Feature: ${kind || "Other"}] ${(summary || "").trim() || "Suggestion"}`;
@@ -62,7 +62,7 @@ export async function handleSuggest(request, env) {
   if (!sendResp.ok) {
     const err = await sendResp.json().catch(() => ({}));
     console.error("Resend error", sendResp.status, err);
-    return jsonRes(502, { error: "Send failed. Use 'Copy instead' to send manually." });
+    return jsonRes(502, { error: "Send failed." });
   }
 
   if (env.SUGGEST_DUPES) {
