@@ -87,7 +87,7 @@
       color: var(--slate-900); background: var(--white); margin-bottom: 12px;
     }
     .admin-modal input[type="password"]:focus { outline: none; border-color: var(--sage-500); }
-    .admin-modal .error { color: var(--red-600); font-size: 13px; margin-bottom: 10px; }
+    .admin-modal .error { color: var(--red-600); font-size: 13px; margin-bottom: 10px; white-space: pre-line; }
     .admin-modal .actions { display: flex; gap: 10px; justify-content: flex-end; }
     .admin-modal button {
       padding: 9px 18px; border-radius: var(--radius-md);
@@ -204,11 +204,11 @@
   <div id="adminModalRoot"></div>
 
   <h1>Behavior Analysis Tools</h1>
-  <p class="lede">Practical tools for assessing, documenting, planning, and structuring sessions - for BTs and BCBAs. Select a tool to get started.</p>
+  <p class="lede">Tools for assessment, documentation, planning and structure.<br>For behavior technicians and analysts.</p>
 
   <div class="privacy">
     <span class="ic">🔒</span>
-    <span class="t"><b>Your client data stays with you.</b> These tools structure <em>your</em> writing or generate a prompt you run yourself - they don't store client data, send it anywhere, or stand in for your clinical record. You remain the author of every note.</span>
+    <span class="t"><b>Client data is not stored.</b><br>Names and identifiers are removed before a draft request is sent.<br>Not a clinical record; the clinician authors every note.</span>
   </div>
 
   <!-- Direct Service -->
@@ -222,7 +222,7 @@
       <span class="accent" style="background:var(--sage-500)"></span>
       <div class="cat" style="color:var(--sage-600)">Direct Service · BT</div>
       <div class="title">In-Home Session Flow Guide</div>
-      <div class="desc">A research-informed compass for in-home sessions - pairing, DTT/NET work cycles, easing off, and rapport repair, scaled to any session length. Built to help, not grade.</div>
+      <div class="desc">In-home session structure tool. Scales to input I session length; research-informed structure:<br>pairing, DTT/NET work cycles, easing off, rapport repair.</div>
       <div class="tags">
         <span class="tag print">Replaces printout</span>
         <span class="tag local">Cited</span>
@@ -232,7 +232,7 @@
       <span class="accent" style="background:var(--sage-500)"></span>
       <div class="cat" style="color:var(--sage-600)">Direct Service · BT</div>
       <div class="title">BT Direct Service Session Note Tool</div>
-      <div class="desc">Pick session details, drop in rough notes (bullets are fine) - generate a prompt that drafts polished documentation for every free-text field.</div>
+      <div class="desc">Session details and rough notes (bulletpoints accepted). Generates a prompt that drafts every free-text field.</div>
       <div class="tags">
         <span class="tag prompt">Prompt-only</span>
         <span class="tag">No PHI stored</span>
@@ -251,7 +251,7 @@
       <span class="accent" style="background:var(--violet-600)"></span>
       <div class="cat" style="color:var(--violet-700)">Supervision · BCBA</div>
       <div class="title">Supervision Session Note Tool</div>
-      <div class="desc">Enter brief notes (bullets welcome) - receive polished documentation across the supervision note sections.</div>
+      <div class="desc">Brief notes (bulletpoints accepted). Drafts every supervision note section.</div>
       <div class="tags">
         <span class="tag prompt">Prompt-only</span>
         <span class="tag">No PHI stored</span>
@@ -261,7 +261,7 @@
       <span class="accent" style="background:var(--sky-500)"></span>
       <div class="cat" style="color:#0a6c97">Assessment · BCBA</div>
       <div class="title">Assessment / Case Planning Note Tool</div>
-      <div class="desc">Select assessment items, add bullet details - receive documentation of assessment and case-planning activities.</div>
+      <div class="desc">Assessment items and bullet details.<br>Drafts assessment and case-planning documentation.</div>
       <div class="tags">
         <span class="tag prompt">Prompt-only</span>
         <span class="tag">No PHI stored</span>
@@ -271,7 +271,7 @@
       <span class="accent" style="background:#6d93a4"></span>
       <div class="cat" style="color:#557585">Parent Training</div>
       <div class="title">Parent Session Note Tool</div>
-      <div class="desc">Select session activities and caregiver progress - receive documentation for parent / coordination-of-care sessions.</div>
+      <div class="desc">Session activities and caregiver progress.<br>Drafts parent and coordination-of-care session notes.</div>
       <div class="tags">
         <span class="tag prompt">Prompt-only</span>
         <span class="tag">No PHI stored</span>
@@ -281,7 +281,7 @@
       <span class="accent" style="background:var(--amber-500)"></span>
       <div class="cat" style="color:var(--amber-700)">Service Authorization</div>
       <div class="title">SAP Goals &amp; Planning Tool</div>
-      <div class="desc">Enter a medically-necessary goal and SAP specs - refine it to be SMART and draft a complete Service Authorization Plan for clinical review.</div>
+      <div class="desc">Medically necessary goal and SAP specifications.<br>Refines the goal to SMART; drafts a full Service Authorization Plan for clinical review.</div>
       <div class="tags">
         <span class="tag prompt">Prompt-only</span>
         <span class="tag">SMART check</span>
@@ -319,7 +319,7 @@
   </div>
 
   <p class="foot">
-    <b>Not a clinical record.</b> Every tool here assists drafting and structure; the clinician reviews, edits, and owns the final documentation. Tools never replace clinical judgment, a treatment plan, a behavior plan, or BCBA supervision.
+    <b>Not a clinical record.</b><br>The clinician reviews, edits and owns the final documentation.<br>No substitute for clinical judgment, a treatment plan, a behavior plan or BCBA supervision.
   </p>
 
   <section class="support">
@@ -379,7 +379,7 @@
           <button type="button" id="adminX" aria-label="Close" style="position:absolute;top:8px;right:12px;border:none;background:none;font-size:24px;line-height:1;color:#7a8a68;cursor:pointer;">&times;</button>
           <h2 id="adminModalTitle">${authed ? "Admin" : "Admin Sign-In"}</h2>
           ${authed
-            ? `<div class="status">You are signed in${admin ? " as admin" : ""}.</div>
+            ? `<div class="status">Signed in${admin ? " as admin" : ""}.</div>
                <div class="actions">
                  ${admin ? `<a class="btn-primary" href="/admin/" aria-label="Open API Passwords admin" title="API Passwords admin" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none;padding:9px 13px;font-size:17px;line-height:1;border-radius:8px;">🛠️</a>` : ""}
                  <button type="button" class="btn-secondary" id="adminSignOut">Log out</button>

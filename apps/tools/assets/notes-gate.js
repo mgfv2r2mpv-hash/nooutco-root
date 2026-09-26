@@ -82,7 +82,7 @@
         // Network-level failure (offline, DNS, blocked). The raw message is
         // "Failed to fetch", which tells a clinician nothing - but the situation
         // is one they can act on, so it stays visible rather than being masked.
-        if (e instanceof TypeError) throw userError("Couldn't reach the server. Check your connection and try again.");
+        if (e instanceof TypeError) throw userError("Server unreachable.\nCheck the connection and retry.");
         throw e;
       })
       .finally(function () { clearTimeout(timer); });
@@ -101,7 +101,7 @@
   // diagnostics are filed as an internal ticket instead. Before this split a raw
   // JSON.parse SyntaxError was rendered straight into the note tool's error line,
   // and nothing was recorded about why it threw.
-  var GENERIC_ERROR = "Something went wrong. Please try again - if it happens again, contact your administrator.";
+  var GENERIC_ERROR = "Request failed. Please retry. If it repeats, contact the administrator.";
 
   function userError(message) {
     var e = new Error(message);
@@ -384,14 +384,14 @@
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ password: password, turnstileToken: turnstileToken || "" }),
-    }, LOGIN_TIMEOUT_MS, "Login is taking too long - please retry.").then(function (res) {
+    }, LOGIN_TIMEOUT_MS, "Login timed out: please retry.").then(function (res) {
       // Read as text first: if a Cloudflare edge challenge intercepts the request it
       // returns HTML, not JSON. Surface a clear message instead of a raw JSON-parse error.
       return res.text().then(function (raw) {
         var data;
         try { data = JSON.parse(raw); }
         catch (e) {
-          throw userError("The login service is unreachable (a security check blocked the request). Please retry, or contact the administrator if it persists.");
+          throw userError("Login service unreachable: a security check blocked the request.\nRetry. If it repeats, contact the administrator.");
         }
         if (!res.ok || !data.token) {
           throw userError(data && data.error ? data.error : "Login failed.");
@@ -420,12 +420,12 @@
       'border:none;background:none;font-size:22px;line-height:1;color:#7a8a68;cursor:pointer;">&times;</button>' +
       '<h2 id="notes-login-title" style="font-size:18px;font-weight:700;color:#2d3a1f;margin:0 0 6px;">Log in</h2>' +
       '<p style="font-size:13px;color:#5a6b4a;margin:0 0 14px;line-height:1.5;">' +
-      'Enter your access password to enable <strong>Generate Note</strong>. ' +
-      'Generate Prompt stays available without logging in.</p>' +
+      'Password enables <strong>Generate Note</strong>.<br>' +
+      'Generate Prompt works without login.</p>' +
       '<form id="notes-login-form">' +
       '<input id="notes-login-pw" type="password" autocomplete="current-password" placeholder="Password" ' +
       'style="width:100%;padding:11px 12px;border:1.5px solid #c0d4a8;border-radius:8px;font-size:14px;box-sizing:border-box;" />' +
-      '<div id="notes-login-err" style="display:none;color:#c0392b;font-size:13px;margin-top:8px;"></div>' +
+      '<div id="notes-login-err" style="display:none;color:#c0392b;font-size:13px;margin-top:8px;white-space:pre-line;"></div>' +
       '<div id="notes-login-turnstile" style="margin-top:12px;"></div>' +
       '<button id="notes-login-submit" type="submit" ' +
       'style="margin-top:14px;width:100%;padding:12px;border:none;border-radius:8px;background:#374528;color:#fff;' +
@@ -457,8 +457,8 @@
           // Out of retries. Saying nothing here leaves a permanently dead Log in
           // button and no reason for it, which reads as "the tool is broken and
           // I have done something wrong". Name what failed and what to try.
-          err.textContent = "The verification check could not load. Reload the page, "
-            + "and if it keeps happening report it from the assistant.";
+          err.textContent = "Verification check did not load.\nReload the page.\n"
+            + "If it repeats, report it from the assistant.";
           err.style.display = "block";
           return;
         }
@@ -595,7 +595,7 @@
       tool: opts.tool,
       want_opinions: opts.wantOpinions === true ? true : null,
     }).then(function (res) {
-      if (res.status === 401) { setToken(""); throw userError("Session expired - please log in again."); }
+      if (res.status === 401) { setToken(""); throw userError("Session expired.\nLog in again."); }
       return res.json().then(function (data) {
         if (!res.ok) {
           throw internalError(
@@ -754,7 +754,7 @@
         "Authorization": "Bearer " + getToken(),
       },
       body: JSON.stringify(payload),
-    }, GEN_TIMEOUT_MS, "Note generation timed out - please retry.");
+    }, GEN_TIMEOUT_MS, "Note generation timed out. Please retry.");
   }
 
   // The model hand-serializes the whole draft as JSON, so one missed escape
