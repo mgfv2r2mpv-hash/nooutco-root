@@ -296,7 +296,7 @@
 
   function decideFinding(analysis) {
     if (!analysis) {
-      return { finding: FINDING.NONE, reasons: [line("This record has no intervention phase to speak to.")] };
+      return { finding: FINDING.NONE, reasons: [line("No intervention phase in this record.")] };
     }
     var txN = analysis.to.n;
     var nap = analysis.overlap.nap.value;
@@ -307,8 +307,8 @@
         severity: "hard",
         reasons: [
           line(
-            analysis.to.phase.name + " holds " + sessions(txN) + ". Nothing this tool computes would mean " +
-            "anything on that, in either direction, so it reports no finding rather than a weak one.",
+            analysis.to.phase.name + ": " + sessions(txN) + ".\n" +
+            "Too few sessions for any computed result; no finding reported.",
             "WWC v5.0: a phase with fewer than " + TX_REFUSE_HARD +
             " points cannot demonstrate the presence or the absence of an effect."
           ),
@@ -322,8 +322,8 @@
         severity: "soft",
         reasons: [
           line(
-            analysis.to.phase.name + " holds " + sessions(txN) + ", which is enough to see something and not " +
-            "enough to say it is holding. Another " + sessions(short) + " would let every check on this page run.",
+            analysis.to.phase.name + ": " + sessions(txN) + ". Too few to judge whether the change is holding.\n" +
+            short + " more session" + (short === 1 ? "" : "s") + " needed for every check on this page to run.",
             "Below " + TX_REFUSE_SOFT + " intervention points the dual-criteria binomial cannot reach p < .05 " +
             "at any degree of separation."
           ),
@@ -368,8 +368,8 @@
     var unit = (opts && opts.ordinate) || "the measure";
 
     out.push(line(
-      "This reads " + a.phase.name + ", " + sessions(a.n) + ", against " + b.phase.name + ", " +
-      sessions(b.n) + ", measured as " + String(unit).toLowerCase() + "."
+      a.phase.name + " (" + sessions(a.n) + ") against " + b.phase.name + " (" +
+      sessions(b.n) + "), measured as " + String(unit).toLowerCase() + "."
     ));
 
     if (decision.reasons) {
@@ -378,11 +378,11 @@
 
     // Level, said as where a typical session sat rather than as a median.
     var dMed = analysis.level.deltaMedian;
-    var aim = analysis.level.therapeutic ? "the way the plan is aiming" : "the wrong way for this target";
+    var aim = analysis.level.therapeutic ? "in the target direction" : "against the target direction";
     out.push(line(
       dMed === 0
-        ? "A typical session sat at " + r1(a.median) + " in both phases, so the level did not move."
-        : "A typical session moved from " + r1(a.median) + " to " + r1(b.median) + ", " + mag(dMed) + " " +
+        ? "Typical session " + r1(a.median) + " in both phases; level unchanged."
+        : "Typical session " + r1(a.median) + " to " + r1(b.median) + ", " + mag(dMed) + " " +
           (dMed > 0 ? "higher" : "lower") + ", " + aim + ".",
       "Median " + r1(a.median) + " → " + r1(b.median) + " (" + signed(dMed) + "). " +
       "Mean " + r1(a.mean) + " → " + r1(b.mean) + " (" + signed(analysis.level.deltaMean) + ")."
@@ -394,16 +394,15 @@
       // read as enormous precision at exactly the moment there is least of it.
       if (nap.ciDegenerate) {
         out.push(line(
-          "Every intervention session came out better than every baseline session, with no overlap anywhere. " +
-          "There is no range to put around a clean sweep, so the chance figure below carries the weight instead.",
+          "Every intervention session better than every baseline session; no overlap.\n" +
+          "No interval exists at complete separation; see the chance figure below.",
           "NAP " + r2(nap.value) + ", complete separation. Hanley-McNeil SE is 0 at the boundary, so no interval exists."
         ));
       } else {
         out.push(line(
-          "Pair every baseline session with every intervention session, one pair at a time, and " +
-          pct(nap.value) + " of those pairs came out better under the plan. Chance alone would sit near 50%. " +
-          "This record is short enough that the true figure could sit anywhere from " + pct(nap.ciLow) +
-          " to " + pct(nap.ciHigh) + ".",
+          pct(nap.value) + " of baseline-intervention session pairs better under the plan.\n" +
+          "Chance level: 50%.\n" +
+          "Plausible range: " + pct(nap.ciLow) + " to " + pct(nap.ciHigh) + ".",
           "NAP " + r2(nap.value) + ", 95% CI " + r2(nap.ciLow) + " to " + r2(nap.ciHigh) +
           (nap.ciClamped ? ", nudged off the boundary to compute the interval" : "") + "."
         ));
@@ -412,9 +411,9 @@
       if (nap.exact && nap.exact.available) {
         var sig = nap.exact.p < S.CONST.ALPHA;
         out.push(line(
-          "If the plan had changed nothing at all, a separation this clean would turn up by luck in " +
-          oneIn(nap.exact.p) + " of this size. " +
-          (sig ? "That is rare enough to take seriously." : "That is common enough that luck remains a live account."),
+          "With no plan effect, separation this clean occurs by chance in " +
+          oneIn(nap.exact.p) + " of this size.\n" +
+          (sig ? "Unlikely to be chance." : "Chance remains a plausible account."),
           "Exact Mann-Whitney p = " + (nap.exact.p < 0.001 ? "<.001" : r3(nap.exact.p)) +
           ", one-tailed, from the full null distribution."
         ));
@@ -422,16 +421,16 @@
         // self-contradiction unless the tool says which question each answers.
         if (decision.finding === FINDING.IN_TREATMENT && sig) {
           out.push(line(
-            "Those two readings do not conflict. The separation is already too clean to be luck, and the phase is " +
-            "still too short to describe. Read it as promising and unfinished."
+            "Separation unlikely to be chance; phase still too short to describe.\n" +
+            "Promising, incomplete."
           ));
         }
         // The load-bearing sentence for short phases.
         if (nap.exact.pFloor >= S.CONST.ALPHA) {
           out.push(line(
-            "At " + a.n + " sessions against " + b.n + ", no result here can clear the usual bar, not even a clean " +
-            "sweep. The best this pairing could ever produce is " + oneIn(nap.exact.pFloor) + ". " +
-            "Nothing on this line counts against the plan; the record is simply too short to test.",
+            "At " + a.n + " sessions against " + b.n + ", no result can reach the usual significance bar, even " +
+            "complete separation.\nBest possible: " + oneIn(nap.exact.pFloor) + ".\n" +
+            "Too short to test; this line does not count against the plan.",
             "Best achievable one-tailed p for these phase lengths = " + r3(nap.exact.pFloor) + "."
           ));
         }
@@ -441,22 +440,22 @@
     if (analysis.immediacy.available && decision.severity !== "hard") {
       var im = analysis.immediacy;
       out.push(line(
-        (im.therapeutic ? "The change showed up straight away. " : "The change did not show up straight away. ") +
-        "The last " + sessions(im.lastThree.length) + " of baseline averaged " + r1(im.lastMean) +
-        " and the first " + sessions(im.firstThree.length) + " under the plan averaged " + r1(im.firstMean) +
-        (im.partial ? ", fewer sessions than the three-and-three this normally compares" : "") + ".",
+        (im.therapeutic ? "Immediate change.\n" : "No immediate change.\n") +
+        "Last " + im.lastThree.length + " baseline session" + (im.lastThree.length === 1 ? "" : "s") +
+        ": mean " + r1(im.lastMean) +
+        ". First " + sessions(im.firstThree.length) + " under the plan: mean " + r1(im.firstMean) + "." +
+        (im.partial ? "\nFewer than the usual 3 and 3 sessions." : ""),
         "Immediacy delta " + signed(im.delta) + " on the 3-vs-3 window."
       ));
     }
 
     if (analysis.cdc.available) {
       out.push(line(
-        "Two lines run across the intervention phase, carried forward from baseline: where baseline sat, and " +
-        "where baseline was heading. " + analysis.cdc.k + " of the " + analysis.cdc.n +
-        " intervention sessions landed on the better side of both. " +
+        "Baseline level and trend lines projected across the intervention phase.\n" +
+        analysis.cdc.k + " of " + analysis.cdc.n + " intervention sessions beyond both.\n" +
         (analysis.cdc.positive
-          ? "That clears the " + analysis.cdc.critical + " this check wants, so the change reads as more than noise."
-          : "This check wants " + analysis.cdc.critical + " before it will call a change, so it stops short here."),
+          ? analysis.cdc.critical + " required; met, change exceeds noise."
+          : analysis.cdc.critical + " required; not met."),
         "Conservative dual-criteria (Fisher, Kelley & Lomas, 2003), criterion lines shifted " +
         S.CONST.CDC_SHIFT_SD + " baseline SD; binomial p = " +
         (analysis.cdc.p < 0.001 ? "<.001" : r3(analysis.cdc.p)) +
@@ -464,7 +463,7 @@
       ));
       if (a.n <= 5 && b.n <= 5) {
         out.push(line(
-          "At five sessions a side, that check only catches very large changes, so its stopping short says little.",
+          "At 5 sessions per phase, this check detects only very large changes; not meeting it is weak evidence.",
           "Fisher, Kelley & Lomas (2003): power reaches 0.79 at 5/5 only at d = 3.0."
         ));
       }
@@ -472,21 +471,20 @@
       // The method's own reason is written in the method's language, so it is
       // restated here and kept verbatim in the detail.
       out.push(line(
-        "The two lines carried forward from baseline were not drawn, because " +
+        "Projected baseline lines not drawn: " +
         (b.n < S.CONST.CDC_MIN_TX_POINTS
-          ? b.phase.name + " is too short for that check to land either way"
+          ? b.phase.name + " too short for this check"
           : a.n < S.CONST.CDC_MIN_BASE_POINTS
-            ? a.phase.name + " is too short to carry a trend line forward"
-            : "this record does not meet its requirements") + ".",
+            ? a.phase.name + " too short to project a trend line"
+            : "requirements not met") + ".",
         sentence(analysis.cdc.reason) + "."
       ));
     }
 
     if (decision.cdcPositive === false && decision.supports && decision.supports.overlap) {
       out.push(line(
-        "The two checks disagree here. The sessions separate cleanly, and the two-line check still refuses, " +
-        "because its lines are drawn a deliberate step harder to beat. Read the disagreement as a reason to keep " +
-        "collecting rather than as a result either way.",
+        "Checks disagree: sessions separate clearly; conservative projected-line check not met.\n" +
+        "Not a result either way. Continue data collection.",
         "NAP clears " + r2(NAP_MEDIUM) + " while the conservative CDC, offset 0.25 baseline SD, does not."
       ));
     }
@@ -498,15 +496,15 @@
       var moved = analysis.lrr.pctChange;
       var helped = (analysis.direction === "dec") === (moved < 0);
       out.push(line(
-        "Behavior is running " + Math.abs(Math.round(moved)) + "% " + (moved >= 0 ? "higher" : "lower") +
-        " than it did in baseline, " + (helped ? "which is the direction the plan wants." : "which is the wrong way for this target."),
+        "Behavior " + Math.abs(Math.round(moved)) + "% " + (moved >= 0 ? "higher" : "lower") +
+        " than baseline, " + (helped ? "in the target direction." : "against the target direction."),
         "Log response ratio " + r2(analysis.lrr.value) + ", 95% CI " +
         r2(analysis.lrr.ciLow) + " to " + r2(analysis.lrr.ciHigh) + "."
       ));
     } else if (analysis.lrr.reason) {
       out.push(line(
-        "How large the change is, as a percentage, was not computed on this record. " +
-        "That figure needs a measure with a true zero and a phase average above it.",
+        "Percentage change not computed.\n" +
+        "Requires a measure with a true zero and a phase mean above zero.",
         sentence(analysis.lrr.reason) + "."
       ));
     }
@@ -517,19 +515,17 @@
         // itself can fall inside it. Reporting the proportion alone would blame
         // the client for an artifact of the criterion.
         out.push(line(
-          "The steadiness check will not work on " + a.phase.name + ". A typical session there is " +
-          r1(a.stability.median) + " on whole counts, and a band of " + Math.round(a.stability.width * 100) +
-          "% around that is narrower than a single count, so only an exact " + r1(a.stability.median) +
-          " could ever land inside it. Read the range instead: this phase runs " + r1(a.min) + " to " +
-          r1(a.max) + ".",
+          "Steadiness check not applicable to " + a.phase.name + ": a " + Math.round(a.stability.width * 100) +
+          "% band around " + r1(a.stability.median) + " is narrower than one count.\n" +
+          "Range: " + r1(a.min) + " to " + r1(a.max) + ".",
           "Envelope ±" + r2(a.stability.halfWidth) + " on integer data, so the proportion within is an artifact. " +
           "SD " + r1(a.sd) + ", MAD " + r1(a.mad) + "."
         ));
       } else {
         out.push(line(
-          a.phase.name + " never settled. Only " + pct(a.stability.proportion) + " of its sessions sit close to " +
-          "its own typical value, where " + Math.round(a.stability.threshold * 100) + "% is the usual bar. " +
-          "That weakens every comparison below, because a moving baseline gives the plan nothing fixed to differ from.",
+          a.phase.name + " unstable: " + pct(a.stability.proportion) + " of sessions near its median; " +
+          "criterion " + Math.round(a.stability.threshold * 100) + "%.\n" +
+          "An unstable baseline weakens every comparison below.",
           pct(a.stability.proportion) + " within " + Math.round(a.stability.width * 100) +
           "% of the median, against a " + Math.round(a.stability.threshold * 100) + "% criterion."
         ));
@@ -538,17 +534,16 @@
 
     if (analysis.wwcBaselineTrend.available && !analysis.wwcBaselineTrend.minimalTrend) {
       out.push(line(
-        "Behavior was already improving before the plan started. Improvement across the phase line cannot be " +
-        "credited to the plan on its own when it was already under way.",
+        "Behavior improving before the plan started.\n" +
+        "Improvement across the phase line cannot be attributed to the plan alone.",
         "WWC v5.0 baseline trend screen: NAP " + r2(analysis.wwcBaselineTrend.nap) + " against the 0.85 threshold."
       ));
     }
 
     if (analysis.trend.signConflict) {
       out.push(line(
-        "One session is steering the trend line in at least one phase. Two ways of drawing that line point in " +
-        "opposite directions, which happens when a single outlying session carries it. The line drawn on the " +
-        "chart is the one that resists outliers.",
+        "Trend in at least one phase driven by a single outlying session.\n" +
+        "The trend line on the chart is outlier-resistant.",
         "OLS and Theil-Sen slopes disagree in sign."
       ));
     }
@@ -561,12 +556,12 @@
     var rightWay = analysis.direction === "dec" ? "falls" : "climbs";
     if (rev && rev.present) {
       out.push(line(
-        "Behavior was " + wrongWay + " through " + a.phase.name + ", about " + mag(a.slope) +
-        " a session, and it turned at the phase line: under " + b.phase.name + " it " + rightWay + " about " +
-        mag(b.slope) + " a session. " +
+        "Behavior " + wrongWay + " through " + a.phase.name + " (about " + mag(a.slope) +
+        " per session); turned at the phase line.\nUnder " + b.phase.name + ": " + rightWay + " about " +
+        mag(b.slope) + " per session.\n" +
         (rev.immediate
-          ? "The turn is already visible across the first " + sessions(rev.window) + " of the plan."
-          : "The first " + sessions(rev.window) + " of the plan do not show it yet, so the turn built up rather than arriving with the change."),
+          ? "Turn visible in the first " + sessions(rev.window) + " of the plan."
+          : "Turn not visible in the first " + sessions(rev.window) + "; developed gradually."),
         "Theil-Sen slope " + signed(a.slope, r2) + " → " + signed(b.slope, r2) +
         "; early-window slope " + signed(rev.earlySlope, r2) + " over " + rev.window + " points."
       ));
@@ -578,9 +573,8 @@
       // Trend only. Saying "behavior improved" here was wrong on any record
       // whose level rose while its within-phase slope ran the right way.
       out.push(line(
-        "Within " + b.phase.name + " the line runs the way the plan wants, and it was not running the wrong way " +
-        "through " + a.phase.name + " beforehand. That makes this a bend in the line rather than a turnaround, " +
-        "and a bend carries less weight than a turn.",
+        "Trend in " + b.phase.name + " in the target direction; " + a.phase.name + " trend was not counter-therapeutic.\n" +
+        "Trend change, not a reversal; weaker evidence than a reversal.",
         "Theil-Sen slope " + signed(a.slope, r2) + " → " + signed(b.slope, r2) + "; no counter-therapeutic baseline slope to invert."
       ));
     }
@@ -593,8 +587,8 @@
 
     if (b.atFloor) {
       out.push(line(
-        "Behavior sat at zero for the whole of " + b.phase.name + ". The comparison figures max out there and " +
-        "stop saying anything about how large the change was."
+        "Behavior at zero throughout " + b.phase.name + ".\n" +
+        "Comparison figures at ceiling; size of change not measurable."
       ));
     }
 
@@ -664,17 +658,15 @@
     if (!rev || !rev.present) return null;
     var single = !structure || !structure.design || structure.design.conditionChanges <= 1;
     if (rev.cyclicalCaution) {
-      return "Behavior turned at the phase line, and this baseline swings fast enough that the turn could be the swing " +
-        "arriving rather than the plan working. Treat it as unresolved until a longer settled stretch" +
+      return "Behavior turned at the phase line.\nBaseline oscillation could explain the turn.\n" +
+        "Unresolved until a longer stable stretch" +
         (single ? ", or a second phase change," : "") +
-        " tells the two apart.";
+        " separates the two.";
     }
-    return "Behavior was heading the wrong way and turned at the phase line" +
-      (rev.immediate ? ", visibly within the opening sessions" : "") +
-      (single
-        ? ". With one phase change this does not establish a functional relation, and a turn that lines up this closely " +
-          "makes history and maturation harder accounts to sustain."
-        : ". A turn that lines up this closely makes history and maturation harder accounts to sustain.");
+    return "Counter-therapeutic trend turned at the phase line" +
+      (rev.immediate ? ", within the opening sessions" : "") + "." +
+      (single ? "\nOne phase change: does not establish a functional relation." : "") +
+      "\nClose alignment weakens history and maturation as explanations.";
   }
 
   window.GVA_VERDICT = {

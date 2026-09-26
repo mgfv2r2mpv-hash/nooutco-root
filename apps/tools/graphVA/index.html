@@ -146,7 +146,7 @@
     border-radius: var(--radius-sm); overflow: hidden; }
   .redact-tools .seg button { border: none; border-radius: 0; }
   .redact-tools .seg button[aria-pressed=true] { background: var(--brand-primary); color: var(--brand-primary-text); }
-  .status { font-family: var(--font-mono); font-size: var(--text-xs); margin-top: 10px;
+  .status { font-family: var(--font-mono); font-size: var(--text-xs); margin-top: 10px; white-space: pre-line;
     color: var(--text-muted); min-height: 16px; }
   .status.err { color: var(--intent-danger); }
   .status.ok { color: var(--intent-success); }
@@ -171,7 +171,7 @@
 <header class="page">
   <p class="eyebrow">Single-case design / visual analysis</p>
   <h1>Graph visual analysis</h1>
-  <p class="sub">Reads level, trend, variability, immediacy, overlap and consistency within and across phases, identifies the design, and returns a preliminary finding in plain terms. Switch on <em>Show the arithmetic</em> for the statistic behind each line. The output supports the responsible analyst's visual inspection and does not replace it.</p>
+  <p class="sub">Reads level, trend, variability, immediacy, overlap and consistency within and across phases.<br>Identifies the design and returns a preliminary finding.<br><em>Show the arithmetic</em>: the statistic behind each line.<br>Supports the responsible analyst's visual inspection; does not replace it.</p>
 </header>
 
 <section>
@@ -235,7 +235,7 @@
   <div id="verdict"></div>
   <div class="tiles" id="tiles"></div>
   <details class="legacy" id="legacyBox">
-    <summary>Older comparison figures, and why none of them is the headline</summary>
+    <summary>Older overlap indices (not used for the finding)</summary>
     <div id="legacy"></div>
   </details>
 </section>
@@ -280,7 +280,7 @@
     </div>
 
     <div class="banner" id="redactNotice">
-      <strong>Anything you black out is destroyed before upload.</strong> Drag over the image to paint an opaque box, or switch to Crop and drag to keep only that region. The tool composes a new bitmap from what is left and sends only that, so the original never leaves this tab.
+      <strong>Blacked-out areas are expunged/removed before upload.</strong> Drag over the image to black out an area. Crop: drag to keep only that region. Only the edited image is sent; the original stays on this device.
     </div>
 
     <label for="context" style="display:block;font-size:var(--text-sm);color:var(--text-body);margin:14px 0 5px">
@@ -292,7 +292,7 @@
       <button id="logout" class="hidden">Log out</button>
     </div>
     <div class="status" id="status"></div>
-    <p class="fineprint">The image is sent to the model through this site's server, which holds the API key. No key is entered here and none is stored in your browser. Values land in the editor below, and every metric on this page is computed from that editor rather than by the model.</p>
+    <p class="fineprint">Values read from the image appear in Phase data below.<br>All metrics are computed from Phase data, not by the model.</p>
   </div>
 </section>
 
@@ -306,7 +306,7 @@
       <button id="clear">Clear all</button>
       <button id="copy" class="btn-primary">Copy metrics as text</button>
     </div>
-    <p class="fineprint">Enter values separated by commas or spaces, in session order. Keep one unit within a graph. Where session duration varied across phases, enter a rate rather than a count, or level differences will confound behavior change with exposure time.</p>
+    <p class="fineprint">Values separated by commas or spaces, in session order.<br>One unit per graph.<br>If session duration varied across phases, enter a rate, not a count.</p>
   </div>
 </section>
 

@@ -239,14 +239,14 @@
           level: "ineligible",
           headline: "Not eligible as a demonstration",
           body:
-            "The comparison is drawn and you can read it. It does not count toward a demonstration of effect, " +
-            "because " + (short[0] || "a phase falls below the " + MIN_PHASE_POINTS + "-point minimum") + ".",
+            "Comparison shown; does not count toward a demonstration of effect.\n" +
+            "Reason: " + (short[0] || "a phase falls below the " + MIN_PHASE_POINTS + "-point minimum") + ".",
         };
       }
       return {
         level: "none",
         headline: "No comparison available",
-        body: "This record contains no condition change, so there is no phase pair to compare.",
+        body: "No condition change in this record.",
       };
     }
     if (d === 1) {
@@ -254,12 +254,10 @@
         level: "correlation",
         headline: "Correlation only",
         body:
-          "The change lines up with the start of the plan. " +
-          // "A AB design" otherwise, since every design label opens with a vowel sound.
-          (/^[AEIOU]/.test(design.letters) ? "An " : "A ") + design.letters +
-          " design has one condition change, so it can carry correlation and it cannot demonstrate a functional " +
-          "relation, which takes " + DEMONSTRATIONS_REQUIRED + " demonstrations at " + DEMONSTRATIONS_REQUIRED +
-          " different points in time. History, maturation and regression to the mean all stay on the table.",
+          "Change coincides with the start of the plan.\n" +
+          design.letters + " design: one condition change; correlation only.\n" +
+          "A functional relation requires " + DEMONSTRATIONS_REQUIRED + " demonstrations at " + DEMONSTRATIONS_REQUIRED +
+          " points in time.\nHistory, maturation and regression to the mean not ruled out.",
       };
     }
     if (d < DEMONSTRATIONS_REQUIRED) {
@@ -267,16 +265,16 @@
         level: "partial",
         headline: "Partial replication",
         body:
-          d + " of " + DEMONSTRATIONS_REQUIRED + " demonstrations. The effect has replicated once, which is " +
-          "stronger than a single condition change and short of a functional relation.",
+          d + " of " + DEMONSTRATIONS_REQUIRED + " demonstrations.\n" +
+          "Replicated once; short of a functional relation.",
       };
     }
     return {
       level: "functional",
       headline: "Functional relation supported",
       body:
-        d + " demonstrations at " + d + " different points in time, which meets the three-demonstration " +
-        "convention. A complete return to baseline, and like phases that resemble each other, would firm it further.",
+        d + " demonstrations at " + d + " points in time; meets the three-demonstration convention.\n" +
+        "Complete return to baseline and consistent like phases would strengthen it.",
     };
   }
 
@@ -287,19 +285,18 @@
     var out = [];
     if (design.family === "reversal" && targetKind === "acquisition") {
       out.push(
-        "This is a reversal design on an acquisition target, so a phase that does not return to baseline is not " +
-        "evidence against the plan here."
+        "Reversal design on an acquisition target.\n" +
+        "A phase that does not return to baseline is not evidence against the plan."
       );
     }
     if (design.letters === "B" || design.letters.charAt(0) === "B") {
-      out.push("The record opens in an intervention condition, so there is no pretreatment comparison to reason from.");
+      out.push("Record opens in an intervention condition; no pretreatment comparison.");
     }
     var withinCount = buildWithinChanges(phases).length;
     if (withinCount >= 2) {
       out.push(
-        withinCount + " phase changes fall inside a single condition, drawn as light dotted lines. None of them " +
-        "counts as a demonstration of effect. Where one of them is a change in who took the data, a shift at that " +
-        "line may be a recording change rather than a behavior change."
+        withinCount + " within-condition phase changes (light dotted lines); none counts as a demonstration.\n" +
+        "A shift at a change of data collector may reflect recording, not behavior."
       );
     }
     return out;
