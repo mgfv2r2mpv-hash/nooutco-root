@@ -1276,7 +1276,7 @@ function RevisionPanel({
                 ? "Available after a draft exists."
                 : annotation
                   ? "Suggest a correction or give next step for the selected section"
-                  : "Supervising clinician's next step Answers in the panel. The note is unchanged."}
+                  : "Supervising clinician's next step. Answers in the panel. The note is unchanged."}
             >
               What would you do here?
             </button>
