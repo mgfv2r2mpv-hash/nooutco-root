@@ -74,9 +74,8 @@ function EmptyState({ onNew, onImport }: { onNew: () => void; onImport: () => vo
         <p className="text-2xl">📋</p>
         <p className="text-base font-semibold text-gray-700 dark:text-gray-300">No assessments yet</p>
         <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto">
-          Use this tool to collect and analyze systematic descriptive assessment data using
-          conditional probability, tracking behavior co-occurrence with EOs and consequences
-          across conditions.
+          Collects and analyzes systematic descriptive assessment data by conditional probability.<br />
+          Tracks behavior co-occurrence with EOs and consequences across conditions.
         </p>
       </div>
 

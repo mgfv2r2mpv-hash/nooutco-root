@@ -93,7 +93,7 @@ export async function importAssessmentFromExcel(file: File): Promise<Assessment>
   });
 
   if (!clientName && Object.keys(separateSessions).length === 0 && synthesizedSessions.length === 0) {
-    throw new Error('No recognisable CPR data sheets found in this file.');
+    throw new Error('No recognizable CPR data sheets found in this file.');
   }
 
   // Derive broadest window: earliest start → latest end across all parsed sheets

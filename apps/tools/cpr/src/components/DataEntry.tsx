@@ -210,8 +210,8 @@ export function DataEntry({
           <div className="space-y-1">
             <p className="text-sm font-semibold text-green-800 dark:text-green-300">All intervals scored</p>
             <p className="text-xs text-green-700 dark:text-green-400">
-              Review your data before moving on. It&apos;s the last chance to catch entry errors before
-              the contingency tables are calculated. When ready, proceed to analysis.
+              Review data before analysis.<br />
+              Contingency tables are calculated from the data as entered.
             </p>
             <div className="flex gap-2 mt-2">
               <button onClick={onGoReview} className="btn btn-secondary text-xs py-1">Review data</button>
