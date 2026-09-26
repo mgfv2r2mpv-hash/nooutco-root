@@ -1296,12 +1296,32 @@
 
   // Numbers and short enums only. Anything else is dropped here, before it can
   // reach the buffer - the client-side half of "this cannot carry note text".
+  //
+  // BOTH BOUNDS HERE MUST MATCH sanitizeAuditEvent IN _worker.js. This runs in
+  // front of it, so whatever this one throws away the worker never gets a
+  // chance to keep, and for a long time it threw away the two things the worker
+  // had been carefully fixed to preserve.
   function sanitizeAuditData(data) {
     var out = {};
     if (!data || typeof data !== "object") return out;
-    Object.keys(data).slice(0, 12).forEach(function (k) {
+    /* 24, matching the worker. note_register carries 22 keys and was capped at
+       12 here, so its last ten never left the page: actorRate, clientRate,
+       imperativeRate, topOpener and the whole register-remediation block
+       through score. Those are exactly the counts added so the Friday report
+       could say whether the fix that took a note from 53% to 0% still held, and
+       the cap in front of them meant it never could. String keys iterate in
+       insertion order, so a positional cap does not sample - it decapitates. */
+    Object.keys(data).slice(0, 24).forEach(function (k) {
       var v = data[k];
-      if (typeof v === "number" && isFinite(v)) out[k] = Math.round(v);
+      /* THREE DECIMALS, NOT A WHOLE NUMBER, for the reason spelled out beside
+         the same line in the worker: burstiness runs 0.55 to 0.82 and the two
+         section coefficients sit well under 1, so rounding to an integer sent
+         0.34 as 0. index.js folds a note into the shape profile only when
+         sectionCv and sectionStep are finite AND greater than zero, so the fold
+         was skipped every time. Bounding the precision is what the rounding was
+         for, and three decimals still bounds it: a sentence cannot survive this
+         any more than it could before. */
+      if (typeof v === "number" && isFinite(v)) out[k] = Math.round(v * 1000) / 1000;
       else if (typeof v === "boolean") out[k] = v;
       else if (typeof v === "string" && /^[a-z0-9_-]{1,24}$/i.test(v)) out[k] = v;
     });
