@@ -507,6 +507,31 @@ test('finishing the passage ends the copy round early and scores the time it too
   await expect(page.locator('[data-drill-basis]')).toContainText('A copy round');
 });
 
+test('the passage box scrolls with him: the current word stays in sight to the last line', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 700 });
+  await page.goto('/index.html?clock=10');
+  await wordsReady(page);
+  await page.locator('[data-drill-mode="copy"]').click();
+  await page.locator('[data-drill-start]').click();
+  const passage = page.locator('[data-drill-passage]');
+  const words = (await passage.textContent()).trim().split(/\s+/);
+  // The passage has to overflow its box, or there is nothing to scroll.
+  expect(await passage.evaluate((p) => p.scrollHeight > p.clientHeight + 60)).toBe(true);
+  const box = page.locator('[data-drill-box]');
+  const hidden = [];
+  for (let i = 0; i < words.length - 1; i++) {
+    await box.pressSequentially(words[i] + ' ', { delay: 0 });
+    const inSight = await passage.evaluate((p) => {
+      const cur = p.querySelector('.is-cur');
+      if (!cur) return true;
+      const pr = p.getBoundingClientRect(), cr = cur.getBoundingClientRect();
+      return cr.top >= pr.top && cr.bottom <= pr.bottom;
+    });
+    if (!inSight) hidden.push(i + 1);
+  }
+  expect(hidden).toEqual([]);
+});
+
 test('the copy picker aims at his weak keys, says so, and marks those letters', async ({ page }) => {
   await page.addInitScript(() => {
     const keys = {};
