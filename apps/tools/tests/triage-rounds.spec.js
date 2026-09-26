@@ -277,7 +277,7 @@ test.describe('the skip cooldown covers the BCBA drafters too', () => {
     const rev = page.locator('#notes-scrub-go');
     if (await rev.isVisible({ timeout: 1500 }).catch(() => false)) await rev.click();
 
-    const skip = page.getByRole('button', { name: /Nothing to add/i });
+    const skip = page.getByRole('button', { name: /Nothing to add|Generate without adding answers/i });
     await expect(skip).toBeVisible({ timeout: 15000 });
     await expect(skip).toBeDisabled();
     await expect(skip).toHaveText(/\(\d+s\)/);

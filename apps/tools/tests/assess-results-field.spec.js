@@ -256,9 +256,9 @@ test.describe('the intake asks for what the second field needs', () => {
   test('the summary input prompts for findings as well as activities', async ({ page }) => {
     await ready(page);
     const input = await assess(page, (t) => t.inputs.find((i) => i.id === 'summaryNotes'));
-    expect(input.hint).toMatch(/Then what it showed/);
+    expect(input.hint).toMatch(/Findings:/);
     expect(input.hint).toMatch(/Results of Assessment/);
     expect(input.placeholder).toMatch(/23\.5 milestone points/);
-    expect(input.placeholder).toMatch(/attention-only condition did not/);
+    expect(input.placeholder).toMatch(/attention-only condition/);
   });
 });

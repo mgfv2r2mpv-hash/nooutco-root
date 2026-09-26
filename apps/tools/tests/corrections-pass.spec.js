@@ -38,7 +38,7 @@ test.describe('what the route accepts', () => {
     expect(correctionsRequest({ ...ok(), tool: '' }).error).toMatch(/Missing tool/);
     expect(correctionsRequest({ ...ok(), intake: '   ' }).error).toMatch(/Missing intake/);
     expect(correctionsRequest({ ...ok(), intake: 'x'.repeat(correctionsLimits().intakeChars + 1) }).error)
-      .toMatch(/longer than this pass accepts/);
+      .toMatch(/Intake too long/);
   });
 
   test('a section id that could reach the upstream enum is checked rather than trusted', () => {

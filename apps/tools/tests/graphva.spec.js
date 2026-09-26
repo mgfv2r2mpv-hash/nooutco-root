@@ -137,7 +137,7 @@ test.describe('graph visual analysis', () => {
     expect(res.causal.level).toBe('correlation');
     expect(res.causal.headline).not.toMatch(/functional/i);
     expect(res.rating.demonstrations).toBe(1);
-    expect(res.causal.body).toMatch(/cannot demonstrate a functional relation/i);
+    expect(res.causal.body).toMatch(/correlation only/i);
   });
 
   // WWC v5.0: "nonsequential phases cannot serve as demonstrations". A short
@@ -269,14 +269,14 @@ test.describe('graph visual analysis', () => {
       };
     });
     expect(res.ab.structure.design.conditionChanges).toBe(1);
-    expect(res.ab.causalNote).toMatch(/With one phase change this does not establish a functional relation/);
+    expect(res.ab.causalNote).toMatch(/One phase change: does not establish a functional relation/);
 
     expect(res.abab.structure.design.conditionChanges).toBe(3);
     expect(res.abab.causal.headline).toBe('Functional relation supported');
-    expect(res.abab.causalNote).toMatch(/heading the wrong way and turned at the phase line/);
+    expect(res.abab.causalNote).toMatch(/Counter-therapeutic trend turned at the phase line/);
     expect(res.abab.causalNote).not.toMatch(/one phase change/i);
     expect(res.abab.causalNote).not.toMatch(/does not establish a functional relation/);
-    expect(res.abab.causalNote).toMatch(/makes history and maturation harder accounts to sustain/);
+    expect(res.abab.causalNote).toMatch(/Close alignment weakens history and maturation as explanations/);
   });
 
   test('a swinging baseline only asks for a second phase change where there is not one yet', async ({ page }) => {
@@ -300,7 +300,7 @@ test.describe('graph visual analysis', () => {
     expect(res.abab.structure.design.conditionChanges).toBe(3);
     expect(res.abab.primary.trend.reversal.cyclicalCaution).toBe(true);
     expect(res.abab.causalNote).not.toMatch(/second phase change/);
-    expect(res.abab.causalNote).toMatch(/unresolved until a longer settled stretch tells the two apart/);
+    expect(res.abab.causalNote).toMatch(/Unresolved until a longer stable stretch/);
   });
 
   test('a flat baseline gives a trend change, not a reversal', async ({ page }) => {
@@ -315,7 +315,7 @@ test.describe('graph visual analysis', () => {
     );
     expect(res.primary.trend.reversal.present).toBe(false);
     expect(res.causalNote).toBeNull();
-    expect(res.rationale.map((l) => l.text).join(' ')).toMatch(/bend in the line rather than a turnaround/i);
+    expect(res.rationale.map((l) => l.text).join(' ')).toMatch(/Trend change, not a reversal/i);
   });
 
   // The bend branch reads trend only. On the sample record the level rises
@@ -334,7 +334,7 @@ test.describe('graph visual analysis', () => {
     const text = res.rationale.map((l) => l.text).join(' ');
     // Level went the wrong way on this record, so no line may say it improved.
     expect(res.primary.level.therapeutic).toBe(false);
-    expect(text).toMatch(/bend in the line rather than a turnaround/i);
+    expect(text).toMatch(/Trend change, not a reversal/i);
     expect(text).not.toMatch(/behavior improved/i);
   });
 
@@ -569,7 +569,7 @@ test.describe('graph visual analysis', () => {
         { direction: 'dec' },
       ).causal.body,
     );
-    expect(body).toMatch(/cannot demonstrate a functional relation/i);
+    expect(body).toMatch(/correlation only/i);
     expect(body).not.toMatch(/funder|withh|cascading|treatment decision/i);
   });
 
@@ -606,10 +606,10 @@ test.describe('graph visual analysis', () => {
     expect(res.decision.severity).toBe('hard');
     expect(res.causalNote).toBeNull();
     const text = res.rationale.map((l) => l.text).join(' ');
-    expect(text).not.toMatch(/turned at the phase line|bend in the line/i);
+    expect(text).not.toMatch(/turned at the phase line|Trend change, not a reversal/i);
     // The refusal itself, and the level, still print.
-    expect(text).toMatch(/holds 2 sessions/);
-    expect(text).toMatch(/A typical session moved/);
+    expect(text).toMatch(/Plan 1: 2 sessions\./);
+    expect(text).toMatch(/Typical session \S+ to /);
   });
 
   test('the arithmetic is off by default and appears when asked for', async ({ page }) => {

@@ -97,7 +97,7 @@ test.describe('the arrival answer', () => {
     const bodies = [];
     await open(page, { aid: false, onCall: (last) => bodies.push(last) });
     await expect(page.locator('[data-arrival-field]')).toHaveCount(0);
-    await expect(page.getByText('How did they show up?')).toHaveCount(0);
+    await expect(page.getByText('Status/Bx at Arrival')).toHaveCount(0);
 
     await fillRequired(page);
     await generate(page);
@@ -106,8 +106,8 @@ test.describe('the arrival answer', () => {
 
   test('two buttons and a short box, and nothing is preselected', async ({ page }) => {
     await open(page);
-    await expect(page.getByText('How did they show up?')).toBeVisible();
-    await expect(page.locator('[data-arrival="ready"]')).toHaveText('Normal, ready to go');
+    await expect(page.getByText('Status/Bx at Arrival')).toBeVisible();
+    await expect(page.locator('[data-arrival="ready"]')).toHaveText('Ready');
     await expect(page.locator('[data-arrival="notready"]')).toHaveText('Not ready');
     // Never answered on the technician's behalf. Clinical status is a clinical
     // claim and the tool does not get to make it.

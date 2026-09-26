@@ -144,7 +144,7 @@ test.describe('asking what he would do', () => {
     const ask = page.getByRole('button', { name: /What would you do here/i });
     await expect(ask).toBeVisible();
     await expect(ask).toBeDisabled();
-    await expect(ask).toHaveAttribute('title', /Generate the note first/i);
+    await expect(ask).toHaveAttribute('title', /Available after a draft exists/i);
     // Nothing was pushed into the thread by looking at it.
     await expect(page.getByText('Generate the note first, then I can suggest')).toHaveCount(0);
   });

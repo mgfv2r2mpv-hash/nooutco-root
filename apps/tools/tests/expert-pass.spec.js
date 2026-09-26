@@ -46,12 +46,12 @@ test.describe('what the pass accepts', () => {
   test('an oversized intake is refused rather than truncated', () => {
     const n = expertLimits().intakeChars;
     expect(expertPassRequest({ tool: 'bt', intake: 'x'.repeat(n) }).error).toBeUndefined();
-    expect(expertPassRequest({ tool: 'bt', intake: 'x'.repeat(n + 1) }).error).toMatch(/longer/i);
+    expect(expertPassRequest({ tool: 'bt', intake: 'x'.repeat(n + 1) }).error).toMatch(/too long/i);
   });
 
   test('sections are optional, and absent means every finding is about the note', () => {
     expect(expertPassRequest({ tool: 'bt', intake: 'x' }).sections).toEqual([]);
-    expect(expertPassRequest({ tool: 'bt', intake: 'x', sections: 'nope' }).error).toMatch(/array/i);
+    expect(expertPassRequest({ tool: 'bt', intake: 'x', sections: 'nope' }).error).toMatch(/Section list unreadable/i);
   });
 
   test('a section id is checked rather than trusted, because it reaches a schema enum', () => {
@@ -206,8 +206,8 @@ test.describe('the live route', () => {
     });
     expect(res.status()).toBe(503);
     const body = await res.json();
-    expect(body.error).toMatch(/expert is unavailable/i);
-    expect(body.error).toMatch(/nothing was sent/i);
+    expect(body.error).toMatch(/expert unavailable/i);
+    expect(body.error).toMatch(/nothing (?:reviewed or )?sent/i);
   });
 
   test('a GET reaches no handler, so an intake can never ride in a query string', async ({ request }) => {
@@ -246,6 +246,6 @@ test.describe('the live route', () => {
     });
     expect(res.status(), 'a 400 would mean the expert pass moved the drafting contract').not.toBe(400);
     expect(res.status()).toBe(503);
-    expect((await res.json()).error).toMatch(/nothing was sent/i);
+    expect((await res.json()).error).toMatch(/nothing (?:reviewed or )?sent/i);
   });
 });

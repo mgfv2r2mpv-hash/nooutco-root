@@ -67,7 +67,7 @@ test.describe('what the route accepts', () => {
   test('a question is required and is bounded', () => {
     expect(expertResearchRequest({}).error).toBeTruthy();
     expect(expertResearchRequest({ question: '   ' }).error).toBeTruthy();
-    expect(expertResearchRequest({ question: 'x'.repeat(4001) }).error).toMatch(/longer than this route accepts/);
+    expect(expertResearchRequest({ question: 'x'.repeat(4001) }).error).toMatch(/Question too long/);
     expect(expertResearchRequest({ question: 'What does Aetna require?' }).question).toBe('What does Aetna require?');
   });
 
@@ -160,7 +160,7 @@ test.describe('who can spend the account on a search', () => {
   test('an admin with a bad question is refused before anything is spent', async ({ request }) => {
     const res = await post(request, adminToken(), { question: '' });
     expect(res.status()).toBe(400);
-    expect((await res.json()).error).toMatch(/Ask it something/);
+    expect((await res.json()).error).toMatch(/Enter a question/);
   });
 });
 
@@ -211,7 +211,7 @@ test.describe('the console around it', () => {
     );
     await page.fill('#knQuestion', 'Does the BACB require it?');
     await page.locator('#knResearch').click();
-    await expect(page.locator('#knResearchLog')).toContainText('It cited nothing, so nothing here is sourced');
+    await expect(page.locator('#knResearchLog')).toContainText('No sources cited.');
   });
 
   test('a follow-up sends the transcript as text, never as content blocks', async ({ page }) => {

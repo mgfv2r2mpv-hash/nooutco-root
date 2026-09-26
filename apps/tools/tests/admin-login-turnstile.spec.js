@@ -101,7 +101,7 @@ test.describe('admin sign-in modal (/)', () => {
 
     // A silent dead button reads as "I typed the wrong password". The page must
     // say what broke instead.
-    await expect(page.locator('#adminError')).toContainText(/verification check could not load/i, {
+    await expect(page.locator('#adminError')).toContainText(/verification check did not load/i, {
       timeout: 15000,
     });
   });

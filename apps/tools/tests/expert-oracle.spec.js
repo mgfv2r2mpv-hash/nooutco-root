@@ -57,8 +57,8 @@ test.describe('what the oracle accepts', () => {
     expect(expertChatRequest(ok({ tool: '' })).error).toMatch(/tool/i);
     expect(expertChatRequest(ok({ intake: '  ' })).error).toMatch(/intake/i);
     expect(expertChatRequest(ok({ intake: 'x'.repeat(expertLimits().intakeChars + 1) })).error)
-      .toMatch(/longer/i);
-    expect(expertChatRequest(ok({ sections: 'nope' })).error).toMatch(/array/i);
+      .toMatch(/too long/i);
+    expect(expertChatRequest(ok({ sections: 'nope' })).error).toMatch(/Section list unreadable/i);
   });
 
   test('a conversation needs turns, and they have to be real ones', () => {
@@ -99,7 +99,7 @@ test.describe('what the oracle accepts', () => {
     expect(expertChatRequest(ok({ knowledge: '  a rule  ' })).knowledge).toBe('a rule');
     const n = oracleLimits().knowledgeChars;
     expect(expertChatRequest(ok({ knowledge: 'x'.repeat(n) })).error).toBeUndefined();
-    expect(expertChatRequest(ok({ knowledge: 'x'.repeat(n + 1) })).error).toMatch(/longer/i);
+    expect(expertChatRequest(ok({ knowledge: 'x'.repeat(n + 1) })).error).toMatch(/too long/i);
   });
 });
 
@@ -517,8 +517,8 @@ test.describe('the bands, and what a grade says to the model', () => {
     expect(bandFor(76)).toBe('Close to Great!');
     expect(bandFor(75)).toBe('Closing the Gap!');
     expect(bandFor(70)).toBe('Closing the Gap!');
-    expect(bandFor(69)).toBe('Keep going, your work is so important.');
-    expect(bandFor(0)).toBe('Keep going, your work is so important.');
+    expect(bandFor(69)).toBe('Keep going.');
+    expect(bandFor(0)).toBe('Keep going.');
   });
 
   test('the bench and the Worker score against the same table', async () => {
@@ -544,7 +544,7 @@ test.describe('the bands, and what a grade says to the model', () => {
   test('the model is told the scale, and told the scoring is the open question', async () => {
     const sys = oracleSystem('STORED', '', { topic: 'calibration', metrics: null });
     expect(sys).toContain('Top-Tier Documentation');
-    expect(sys).toContain('Keep going, your work is so important.');
+    expect(sys).toContain('Keep going.');
     // The half that is easy to lose. Without it the model presents a scoring
     // rule as settled, and the bench is calibrating against its invention.
     expect(sys).toContain('is not settled');
@@ -611,7 +611,7 @@ test.describe('the bands, and what a grade says to the model', () => {
   test('a grade has to follow something the expert wrote', async () => {
     // Grading his own last message would send the model a number about nothing.
     const p = chat({ topic: 'calibration', grade: { score: 80, comment: '' } });
-    expect(p.error).toBe('A grade has to follow the example it grades.');
+    expect(p.error).toBe('A grade must follow an example note.');
   });
 
   test('a score off the scale is refused rather than clamped', async () => {
@@ -642,7 +642,7 @@ test.describe('the bands, and what a grade says to the model', () => {
       ],
       grade: { score: 80, comment: '' },
     });
-    expect(p.error).toBe('A grade belongs to a conversation about the bar.');
+    expect(p.error).toBe('A grade needs a standing question.');
   });
 
   test('a grade note longer than the route accepts is refused, not truncated', async () => {
@@ -654,6 +654,6 @@ test.describe('the bands, and what a grade says to the model', () => {
       ],
       grade: { score: 80, comment: 'x'.repeat(4001) },
     });
-    expect(p.error).toBe('That grade note is longer than this route accepts.');
+    expect(p.error).toBe('Grade note too long.');
   });
 });

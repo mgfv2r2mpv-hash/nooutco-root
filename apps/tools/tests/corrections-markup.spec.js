@@ -405,7 +405,7 @@ test.describe('an UNDONE addition leaves no words in the box either', () => {
 
     const added = page.locator('[data-corrections-section="behaviorPlanNarrative"] [data-correction-type="ins"]').first();
     await added.click();
-    await page.getByRole('button', { name: 'Take it out' }).click();
+    await page.getByRole('button', { name: 'Remove', exact: true }).click();
 
     const box = page.locator('[data-corrections-section="behaviorPlanNarrative"]');
     await expect(box).not.toContainText('Episodes ended once the alternative was reinforced');

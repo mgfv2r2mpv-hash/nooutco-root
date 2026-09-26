@@ -245,7 +245,7 @@ test.describe('triage questions before drafting', () => {
     // be one click, and the audit trail is why it is not: two technicians, ten
     // gap-question rounds, zero revisions ever. Skipping was cheaper than
     // reading. So the button locks briefly, shows the wait, and then works.
-    const skip = page.getByRole('button', { name: /Nothing to add/i });
+    const skip = page.getByRole('button', { name: /Nothing to add|Generate without adding answers/i });
     await expect(skip).toBeVisible();
     await expect(skip).toBeDisabled();
     await expect(skip).toHaveText(/\(\d+s\)/);
@@ -277,7 +277,7 @@ test.describe('triage questions before drafting', () => {
     await page.goto('/notes/bt/');
     await fillRequiredAndGenerate(page);
 
-    const skip = page.getByRole('button', { name: /Nothing to add/i });
+    const skip = page.getByRole('button', { name: /Nothing to add|Generate without adding answers/i });
     await expect(skip).toHaveText(/\(30s\)/);
 
     const width = () => page.locator('.skip-cooldown-bar > span').evaluate((el) => el.style.width);
@@ -318,7 +318,7 @@ test.describe('triage questions before drafting', () => {
       await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), tokenFor());
       await page.goto('/notes/bt/');
       await fillRequiredAndGenerate(page);
-      return page.getByRole('button', { name: /Nothing to add/i });
+      return page.getByRole('button', { name: /Nothing to add|Generate without adding answers/i });
     }
 
     /* READ THE COUNTDOWN FAST. The clock is installed but not paused, so it
@@ -339,7 +339,7 @@ test.describe('triage questions before drafting', () => {
       // the work properly.
       const skip = await openQuestions(page, triageWith({ readiness: 90 }));
       await expect(skip).toBeEnabled();
-      await expect(skip).toHaveText(/generate anyway/i);
+      await expect(skip).toHaveText(/Generate without adding answers/i);
       // No bar either. A drained bar on a button that was never locked is a
       // progress indicator for nothing.
       await expect(page.locator('.skip-cooldown-bar')).toHaveCount(0);
@@ -377,7 +377,7 @@ test.describe('triage questions before drafting', () => {
       await page.locator('.revision-input').fill('twice');
       await page.locator('.revision-send').click();
       await expect(page.getByText(/for how long/i)).toBeVisible();
-      return page.getByRole('button', { name: /Nothing to add/i });
+      return page.getByRole('button', { name: /Nothing to add|Generate without adding answers/i });
     }
 
     test('a middling note still waits', async ({ page }) => {
@@ -601,7 +601,7 @@ test.describe('annotate + panel revision', () => {
     await expect(page.locator('.revision-chip')).toContainText('two occasions');
     await page.locator('.revision-input').fill('say twice instead');
     await page.locator('.revision-send').click();
-    await expect(page.locator('.revision-panel-body')).toContainText(/No change was needed|Updated/i, { timeout: 15000 });
+    await expect(page.locator('.revision-panel-body')).toContainText(/No change made|Updated/i, { timeout: 15000 });
 
     const sent = revisionBody.messages[revisionBody.messages.length - 1].content;
     // The model is told which phrase was highlighted, and to leave the rest.
@@ -776,7 +776,7 @@ test.describe('annotate + panel revision', () => {
        open the panel and read the hint anyway. */
     await expect(fab).toHaveAttribute(
       'title',
-      'Strategy described without its outcome, say what happened as a result of trying it',
+      'Strategy described without its outcome',
     );
   });
 });

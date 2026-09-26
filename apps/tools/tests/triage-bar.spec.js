@@ -277,7 +277,7 @@ test.describe('below the bar the tool will not draft yet', () => {
     // Not a disabled button. A dead control invites hunting for the state that
     // enables it, and there is exactly one.
     await expect(page.locator('.revision-skip')).toHaveCount(0);
-    await expect(page.locator('[data-skip-held]')).toContainText('Answer one of these');
+    await expect(page.locator('[data-skip-held]')).toContainText('Generates after one answer');
   });
 
   test('a kept suggestion is an answer, so it opens the gate', async ({ page }) => {
@@ -297,7 +297,7 @@ test.describe('below the bar the tool will not draft yet', () => {
     await own.fill('');
     await own.press('Enter');
     await expect(page.locator('.revision-skip')).toHaveCount(0);
-    await expect(page.locator('[data-skip-held]')).toContainText('Keep one of the suggestions');
+    await expect(page.locator('[data-skip-held]')).toContainText('Generates after one kept suggestion');
   });
 
   test('at the bar the button is there, with no wait on it', async ({ page }) => {

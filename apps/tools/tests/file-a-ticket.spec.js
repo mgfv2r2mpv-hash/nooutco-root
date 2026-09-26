@@ -115,8 +115,8 @@ test.describe('the offer in the panel', () => {
     await page.locator('.revision-send').click();
     await page.getByRole('button', { name: 'File it' }).click();
 
-    await expect(page.locator('.revision-panel-body')).toContainText(/Could not file it/i);
-    await expect(page.locator('.revision-panel-body')).toContainText(/Nothing was lost/i);
+    await expect(page.locator('.revision-panel-body')).toContainText(/Ticket not filed/i);
+    await expect(page.locator('.revision-panel-body')).toContainText(/The text remains above/i);
     await expect(page.locator('.revision-panel-body')).toContainText('the timer pill overlaps the nav on a phone');
   });
 

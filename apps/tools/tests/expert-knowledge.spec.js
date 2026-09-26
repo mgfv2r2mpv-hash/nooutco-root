@@ -18,7 +18,7 @@ const params = (qs) => new URLSearchParams(qs);
 
 test.describe('the browser never names the upstream path', () => {
   test('an unknown operation is refused rather than fetched', () => {
-    expect(knowledgeOp('anything', 'GET', params('')).error).toMatch(/Unknown knowledge operation/);
+    expect(knowledgeOp('anything', 'GET', params('')).error).toBe('Request not allowed.');
     expect(knowledgeOp('', 'GET', params('')).error).toBeTruthy();
     expect(knowledgeOp(undefined, 'GET', params('')).error).toBeTruthy();
     expect(knowledgeOp('/knowledge', 'GET', params('')).error).toBeTruthy();
@@ -42,7 +42,7 @@ test.describe('the browser never names the upstream path', () => {
     // tool's prompt. A page that could post its own fetch records could
     // manufacture a promotion, so only the Worker writes that log, server-side,
     // during a real expert call. It has no operation name on purpose.
-    expect(knowledgeOp('fetch-log', 'POST', null).error).toMatch(/Unknown knowledge operation/);
+    expect(knowledgeOp('fetch-log', 'POST', null).error).toBe('Request not allowed.');
     expect(knowledgeOp('fetchLog', 'POST', null).error).toBeTruthy();
     expect(knowledgeOp('log', 'POST', null).error).toBeTruthy();
   });
@@ -50,10 +50,10 @@ test.describe('the browser never names the upstream path', () => {
   test('an operation may only be called with the method it is', () => {
     // A commit arriving as a GET would be a state change reachable from a link,
     // an image tag, or a prefetch.
-    expect(knowledgeOp('commit', 'GET', params('')).error).toMatch(/is a POST/);
-    expect(knowledgeOp('retire', 'GET', params('')).error).toMatch(/is a POST/);
-    expect(knowledgeOp('list', 'POST', null).error).toMatch(/is a GET/);
-    expect(knowledgeOp('candidates', 'POST', null).error).toMatch(/is a GET/);
+    expect(knowledgeOp('commit', 'GET', params('')).error).toBe('Request not allowed.');
+    expect(knowledgeOp('retire', 'GET', params('')).error).toBe('Request not allowed.');
+    expect(knowledgeOp('list', 'POST', null).error).toBe('Request not allowed.');
+    expect(knowledgeOp('candidates', 'POST', null).error).toBe('Request not allowed.');
   });
 });
 

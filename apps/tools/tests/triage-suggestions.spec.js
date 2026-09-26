@@ -474,7 +474,7 @@ test.describe('what the technician does with them', () => {
        there is no button here at all. The line names both ways out rather than
        leaving them to work out which one the tool wanted. */
     await expect(page.locator('.revision-skip')).toHaveCount(0);
-    await expect(page.locator('[data-skip-held]')).toHaveText(/Keep one of the suggestions/);
+    await expect(page.locator('[data-skip-held]')).toHaveText(/Generates after one kept suggestion/);
   });
 
   test('and on a note already at the bar the button goes back to nothing to add', async ({ page }) => {
@@ -483,7 +483,7 @@ test.describe('what the technician does with them', () => {
     await ask(page, { ...TWO, readiness: 90 });
     await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
     await declineByOwnWords(page, 0);
-    await expect(page.locator('.revision-skip')).toHaveText(/Nothing to add/);
+    await expect(page.locator('.revision-skip')).toHaveText(/Generate without adding answers/);
   });
 
   test('rewording one sends the reworded sentence, not the one it was offered as', async ({ page }) => {

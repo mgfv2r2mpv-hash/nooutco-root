@@ -395,7 +395,7 @@ test.describe('a revision does not lose the words the draft round-tripped', () =
     // The banner is the clinician's instruction sheet for their EHR. Replacing
     // it with the revision's own map took "Jacob -> Client" off the screen while
     // Client was still in the note they were about to copy.
-    await expect(page.getByText('Removed before this left your device')).toBeVisible();
+    await expect(page.getByText('Removed before sending.', { exact: true })).toBeVisible();
     expect(await page.locator('body').innerText()).toContain('Jacob');
   });
 });

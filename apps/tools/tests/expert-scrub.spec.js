@@ -124,7 +124,7 @@ test.describe('the expert pass de-identifies before it sends', () => {
     await runBench(page);
     const notice = page.locator('#exScrubbed');
     await expect(notice).toBeVisible();
-    await expect(notice).toContainText(/removed before this left your device/i);
+    await expect(notice).toContainText(/removed before sending/i);
     await expect(notice).toContainText('3 names');
     for (const secret of SECRETS) {
       await expect(notice).not.toContainText(secret);
@@ -140,6 +140,6 @@ test.describe('the expert pass de-identifies before it sends', () => {
     await page.getByRole('button', { name: 'Expert', exact: true }).click();
     await page.locator('#exIntake').fill('The learner tolerated a two minute wait with no protest.');
     await page.getByRole('button', { name: 'Run the expert' }).click();
-    await expect(page.locator('#exScrubbed')).toContainText(/nothing to remove/i);
+    await expect(page.locator('#exScrubbed')).toContainText(/No names or identifiers detected/i);
   });
 });
