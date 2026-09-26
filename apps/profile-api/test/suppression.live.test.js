@@ -146,7 +146,7 @@ test("a removed rule leaves the prompt and does not come back", async (t) => {
     corrections: corrections("sentence_length", -1, 8, now),
   });
 
-  let card = await get(`/style-card?kid=${KID}`);
+  let card = await get(`/style-card?kid=${KID}&tool=bt`);
   assert.ok(
     card.rules.some((r) => r.feature === "sentence_length"),
     "the rule should exist before anyone removes it",
@@ -154,10 +154,10 @@ test("a removed rule leaves the prompt and does not come back", async (t) => {
   assert.match(card.block, /sentence/i, "and it should be in the block that reaches the prompt");
 
   // A supervisor removes it.
-  const removed = await post("/suppress", { kid: KID, feature: "sentence_length", removed: true, now });
+  const removed = await post("/suppress", { kid: KID, tool: "bt", feature: "sentence_length", removed: true, now });
   assert.equal(removed.ok, true);
 
-  card = await get(`/style-card?kid=${KID}`);
+  card = await get(`/style-card?kid=${KID}&tool=bt`);
   assert.equal(
     card.rules.some((r) => r.feature === "sentence_length"), false,
     "a removed rule must not be listed",
@@ -173,7 +173,7 @@ test("a removed rule leaves the prompt and does not come back", async (t) => {
     corrections: corrections("sentence_length", 1, 12, now + 1000),
   });
 
-  card = await get(`/style-card?kid=${KID}`);
+  card = await get(`/style-card?kid=${KID}&tool=bt`);
   assert.equal(
     card.rules.some((r) => r.feature === "sentence_length"), false,
     "a rebuild must not resurrect a rule a supervisor removed",
@@ -197,12 +197,12 @@ test("restoring a rule brings it back when the evidence still supports one", asy
     corrections: corrections("contractions", 1, 9, now),
   });
 
-  await post("/suppress", { kid, feature: "contractions", removed: true, now });
-  let card = await get(`/style-card?kid=${kid}`);
+  await post("/suppress", { kid, tool: "bt", feature: "contractions", removed: true, now });
+  let card = await get(`/style-card?kid=${kid}&tool=bt`);
   assert.equal(card.rules.some((r) => r.feature === "contractions"), false, "removed");
 
-  await post("/suppress", { kid, feature: "contractions", removed: false });
-  card = await get(`/style-card?kid=${kid}`);
+  await post("/suppress", { kid, tool: "bt", feature: "contractions", removed: false });
+  card = await get(`/style-card?kid=${kid}&tool=bt`);
   assert.ok(card.rules.some((r) => r.feature === "contractions"), "and back again");
 });
 
@@ -215,9 +215,9 @@ test("the supervisor view shows what the technician view hides", async (t) => {
     kid, tool: "bt", now,
     corrections: corrections("plain_wording", 1, 8, now),
   });
-  await post("/suppress", { kid, feature: "plain_wording", removed: true, now });
+  await post("/suppress", { kid, tool: "bt", feature: "plain_wording", removed: true, now });
 
-  const tech = await get(`/style-card?kid=${kid}`);
+  const tech = await get(`/style-card?kid=${kid}&tool=bt`);
   assert.equal(tech.rules.length, 0, "the technician sees nothing of the removal");
 
   const sup = await get(`/card-detail?kid=${kid}`);
@@ -274,4 +274,119 @@ test("suppress refuses anything outside the closed feature list", async (t) => {
   const bad = await post("/suppress", { kid: KID, feature: "not_a_real_feature", removed: true });
   assert.equal(bad.ok, undefined);
   assert.match(bad.error, /Unknown feature/);
+});
+
+/* The reason the register is in the key at all. Each of these was true before
+   it went in, and each is a thing Kaleb actually asked about: a correction he
+   made on the SAP tool was changing how his supervision notes were written. */
+
+test("a correction made in one register does not reach another register's card", async (t) => {
+  if (!live) return t.skip("wrangler dev did not come up");
+
+  const kid = kidFor("reg-bleed");
+  const now = Date.now();
+
+  // Earn a rule on sap, which is a clinical instrument.
+  await post("/events", {
+    kid, tool: "sap", now,
+    corrections: corrections("sentence_length", -1, 9, now),
+  });
+
+  const instrument = await get(`/style-card?kid=${kid}&tool=sap`);
+  assert.ok(
+    instrument.rules.some((r) => r.feature === "sentence_length"),
+    "the tool the corrections were made in should have learned the rule",
+  );
+
+  // sup writes clinical narrative, which is a different document class.
+  const narrative = await get(`/style-card?kid=${kid}&tool=sup`);
+  assert.equal(
+    narrative.rules.some((r) => r.feature === "sentence_length"), false,
+    "a SAP correction must not reach the supervision card",
+  );
+  assert.doesNotMatch(narrative.block, /sentence/i, "and must not reach its prompt");
+});
+
+test("two tools in the same register share one pool", async (t) => {
+  if (!live) return t.skip("wrangler dev did not come up");
+
+  const kid = kidFor("reg-pool");
+  const now = Date.now();
+
+  // sup and assess are both clinical narrative. This is the half of the ruling
+  // that per-tool keying would have broken: assess carried 6 of his 66
+  // corrections and would have sat under the evidence bar on its own.
+  await post("/events", {
+    kid, tool: "sup", now,
+    corrections: corrections("contractions", 1, 9, now),
+  });
+
+  const assess = await get(`/style-card?kid=${kid}&tool=assess`);
+  assert.ok(
+    assess.rules.some((r) => r.feature === "contractions"),
+    "assess should read the rule sup earned, because they write the same class",
+  );
+});
+
+test("a supervisor's removal applies to one register and leaves the others standing", async (t) => {
+  if (!live) return t.skip("wrangler dev did not come up");
+
+  const kid = kidFor("reg-suppress");
+  const now = Date.now();
+
+  // The same rule earned in two document classes.
+  await post("/events", {
+    kid, tool: "sap", now,
+    corrections: corrections("plain_wording", 1, 9, now),
+  });
+  await post("/events", {
+    kid, tool: "sup", now: now + 10,
+    corrections: corrections("plain_wording", 1, 9, now + 10),
+  });
+
+  // Removed while reviewing a supervision note. That judgement is about
+  // supervision notes.
+  await post("/suppress", { kid, tool: "sup", feature: "plain_wording", removed: true, now });
+
+  const narrative = await get(`/style-card?kid=${kid}&tool=sup`);
+  assert.equal(
+    narrative.rules.some((r) => r.feature === "plain_wording"), false,
+    "the rule must be gone from the register it was removed in",
+  );
+
+  const instrument = await get(`/style-card?kid=${kid}&tool=sap`);
+  assert.ok(
+    instrument.rules.some((r) => r.feature === "plain_wording"),
+    "and must still stand in a register nobody judged",
+  );
+});
+
+test("a mute applies to one register and leaves the others unmuted", async (t) => {
+  if (!live) return t.skip("wrangler dev did not come up");
+
+  const kid = kidFor("reg-mute");
+  const now = Date.now();
+
+  await post("/events", {
+    kid, tool: "sap", now,
+    corrections: corrections("quantification", 1, 9, now),
+  });
+  await post("/events", {
+    kid, tool: "sup", now: now + 10,
+    corrections: corrections("quantification", 1, 9, now + 10),
+  });
+
+  await post("/style-card/mute", { kid, tool: "sup", feature: "quantification", muted: true });
+
+  const narrative = await get(`/style-card?kid=${kid}&tool=sup`);
+  const instrument = await get(`/style-card?kid=${kid}&tool=sap`);
+
+  const inNarrative = narrative.rules.find((r) => r.feature === "quantification");
+  const inInstrument = instrument.rules.find((r) => r.feature === "quantification");
+
+  assert.ok(inNarrative && inNarrative.muted, "the switch must mute the card in front of them");
+  assert.ok(
+    inInstrument && !inInstrument.muted,
+    "and must not reach into a document class they were not looking at",
+  );
 });
