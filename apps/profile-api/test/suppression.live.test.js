@@ -390,3 +390,51 @@ test("a mute applies to one register and leaves the others unmuted", async (t) =
     "and must not reach into a document class they were not looking at",
   );
 });
+
+test("a correction is filed under its own tool, not the tool that flushed it", async (t) => {
+  if (!live) return t.skip("wrangler dev did not come up");
+
+  const kid = kidFor("reg-own-tool");
+  const now = Date.now();
+
+  /* The shape that used to go wrong. The browser's correction buffer is shared
+     across tools and survives a reload, so a flush that happens while the
+     technician is in sup can carry corrections they made in sap. The request
+     carries one label; each correction now carries its own. */
+  await post("/events", {
+    kid, tool: "sup", now,
+    corrections: corrections("sentence_length", -1, 9, now).map((c) => ({ ...c, tool: "sap" })),
+  });
+
+  const instrument = await get(`/style-card?kid=${kid}&tool=sap`);
+  assert.ok(
+    instrument.rules.some((r) => r.feature === "sentence_length"),
+    "the rule belongs to the tool the corrections were made in",
+  );
+
+  const narrative = await get(`/style-card?kid=${kid}&tool=sup`);
+  assert.equal(
+    narrative.rules.some((r) => r.feature === "sentence_length"), false,
+    "and not to the tool that happened to flush the buffer",
+  );
+});
+
+test("a correction with no tool of its own still falls back to the batch", async (t) => {
+  if (!live) return t.skip("wrangler dev did not come up");
+
+  // An older client sends no per-correction tool. It must keep working, and the
+  // batch label is the best information available in that case.
+  const kid = kidFor("reg-fallback");
+  const now = Date.now();
+
+  await post("/events", {
+    kid, tool: "parent", now,
+    corrections: corrections("contractions", 1, 9, now),
+  });
+
+  const card = await get(`/style-card?kid=${kid}&tool=parent`);
+  assert.ok(
+    card.rules.some((r) => r.feature === "contractions"),
+    "an unlabelled correction still lands where the batch says",
+  );
+});

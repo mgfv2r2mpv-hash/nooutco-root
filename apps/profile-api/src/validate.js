@@ -41,6 +41,19 @@ export function sanitizeCorrections(input, now) {
       source: raw.source === "manual" ? "manual" : "revision",
       magnitude: Number.isFinite(raw.magnitude) ? Math.max(0, Math.min(1, raw.magnitude)) : 1,
       ts: Number.isFinite(raw.ts) ? clampTs(raw.ts, now) : now,
+      /* THE TOOL THIS CORRECTION WAS MADE IN, carried on the correction rather
+         than taken from the batch. The browser's correction buffer is shared
+         across tools and survives a reload, so the batch's own label is the
+         tool whoever flushed it happened to be in, not the tool each correction
+         came from. That was a mislabelled row before; now that the register is
+         half of the card's primary key it teaches a rule into the wrong pool.
+
+         null when absent, never the batch's tool and never a default: the
+         caller can only choose a sensible fallback if it can tell an
+         unlabelled correction from a labelled one. And this value reaches a
+         primary key by way of registerFor, so anything that is not a plain
+         short slug is dropped rather than coerced. */
+      tool: cleanSlug(raw.tool) || null,
     });
   }
   return out;

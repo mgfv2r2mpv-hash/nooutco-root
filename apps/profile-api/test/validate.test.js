@@ -33,11 +33,18 @@ test.describe("nothing that looks like prose survives", () => {
       NOW,
     );
 
+    /* `tool` joined this list deliberately, and it is the only addition since
+       the store was written. It is a closed short slug from cleanSlug, so it
+       cannot carry prose any more than a direction or a magnitude can, and it
+       is here because the register keyed off it is half of the card's primary
+       key. Anything else added to this list needs the same argument made out
+       loud, which is why the set is pinned rather than sampled. */
     assert.deepEqual(Object.keys(out).sort(), [
       "direction",
       "feature",
       "magnitude",
       "source",
+      "tool",
       "ts",
     ]);
     const serialised = JSON.stringify(out);
@@ -106,6 +113,7 @@ test("opener_variety is on the closed list, in both directions", () => {
     "feature",
     "magnitude",
     "source",
+    "tool",
     "ts",
   ]);
 });
@@ -268,4 +276,48 @@ test("a metric with no valid values still records that the event happened", () =
   const [out] = sanitizeMetrics([{ type: "note_copied", data: { prose: "..." } }], NOW);
   assert.equal(out.type, "note_copied");
   assert.deepEqual(out.data, {});
+});
+
+/* A correction now carries the tool it was made in. The server used to label a
+   whole batch from body.tool, and the browser's correction buffer is shared
+   across tools and survives reloads, so the batch label was the tool whoever
+   flushed it happened to be in, not the tool each correction came from. With
+   the register in the card's primary key a wrong label does not just mislabel a
+   row, it teaches the rule into the wrong pool. */
+test("a correction keeps the tool it was made in", () => {
+  const now = 1_800_000_000_000;
+  const out = sanitizeCorrections([
+    { feature: "sentence_length", direction: -1, tool: "sap", ts: now },
+    { feature: "contractions", direction: 1, tool: "sup", ts: now },
+  ], now);
+
+  assert.equal(out.length, 2);
+  assert.equal(out[0].tool, "sap");
+  assert.equal(out[1].tool, "sup");
+});
+
+test("a correction with no tool of its own carries none, rather than a guess", () => {
+  const now = 1_800_000_000_000;
+  const [out] = sanitizeCorrections([
+    { feature: "sentence_length", direction: -1, ts: now },
+  ], now);
+
+  // null, not the batch's tool and not a default. The caller decides what an
+  // unlabelled correction falls back to, and it can only do that if it can
+  // tell the difference.
+  assert.equal(out.tool, null);
+});
+
+test("a correction's tool is a closed slug or nothing at all", () => {
+  const now = 1_800_000_000_000;
+  const rows = sanitizeCorrections([
+    { feature: "sentence_length", direction: -1, tool: "../../etc/passwd", ts: now },
+    { feature: "contractions", direction: 1, tool: "A".repeat(40), ts: now },
+    { feature: "plain_wording", direction: 1, tool: { evil: true }, ts: now },
+    { feature: "quantification", direction: 1, tool: "sup extra", ts: now },
+  ], now);
+
+  // This value reaches a primary key by way of registerFor, so anything that is
+  // not a plain short slug is dropped rather than coerced.
+  for (const row of rows) assert.equal(row.tool, null);
 });

@@ -124,12 +124,20 @@ async function handleEvents(request, env) {
     ).bind(kid, now, now),
   ];
 
+  /* EACH CORRECTION'S OWN TOOL, falling back to the batch's only when the
+     client did not say. The browser's correction buffer is shared across tools
+     and survives a reload, so `tool` on the request is the tool whoever
+     flushed the buffer happened to be in, not the tool each correction was
+     made in. Labelling the whole batch from it used to write a mislabelled
+     row; now that the register is half of the card's primary key, it teaches
+     the rule into the wrong pool, which is the bleed this change exists to
+     stop and would reintroduce it one flush at a time. */
   for (const c of corrections) {
     statements.push(
       env.DB.prepare(
         `INSERT INTO correction_event (kid, tool, ts, source, feature, direction, magnitude)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      ).bind(kid, tool, c.ts, c.source, c.feature, c.direction, c.magnitude),
+      ).bind(kid, c.tool || tool, c.ts, c.source, c.feature, c.direction, c.magnitude),
     );
   }
 
