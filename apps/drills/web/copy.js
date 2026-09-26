@@ -90,8 +90,12 @@ export function markPassage(root, text, reference) {
     if (m.startsWith("cur")) cur = s;
   });
   if (cur) {
-    const top = cur.offsetTop - root.offsetTop;
-    if (top > root.scrollTop + root.clientHeight - 40 || top < root.scrollTop) root.scrollTop = Math.max(0, top - 30);
+    // Measured against the box itself: offsetTop counts from the nearest
+    // positioned ancestor, which is not the passage box, so the old sum ran
+    // a line or more behind and the current word slid out of sight.
+    const top = cur.getBoundingClientRect().top - root.getBoundingClientRect().top + root.scrollTop;
+    const line = cur.offsetHeight || 30;
+    if (top + line > root.scrollTop + root.clientHeight - line || top < root.scrollTop) root.scrollTop = Math.max(0, top - line);
   }
   return marks;
 }
