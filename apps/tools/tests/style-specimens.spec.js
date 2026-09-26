@@ -307,7 +307,7 @@ test.describe('what the partition keeps out', () => {
 // ───────────────────────────────────────────── the shape did not grow
 
 test.describe('what leaves the page is the same shape it always was', () => {
-  test('all three kinds on one note post only feature, direction, magnitude, source and ts', async ({ page }) => {
+  test('all three kinds on one note post only feature, direction, magnitude, source, tool and ts', async ({ page }) => {
     const corrections = [
       { section: 'behaviorPlanNarrative', text: PLAN + HEDGED, why: 'test' },
       { section: 'followUpNarrative', text: FOLLOW + WORDY, why: 'test' },
@@ -323,9 +323,17 @@ test.describe('what leaves the page is the same shape it always was', () => {
     expect(sources.has('revision'), 'the rejection did not fire, so this proves less than it says').toBe(true);
     expect(sources.has('manual'), 'neither manual kind fired, so this proves less than it says').toBe(true);
 
+    /* `tool` joined this list deliberately and is the only field added since
+       this shape was pinned. It is a short closed slug, so it carries no more
+       than a direction or a magnitude does, and it is here because the buffer
+       these corrections sit in is shared across tools and survives a reload:
+       without it the server labels a whole flush from one request and teaches a
+       rule into the wrong document class. Anything else added here needs the
+       same argument made out loud, which is why the set is pinned. */
     for (const c of wire.corrections) {
-      expect(Object.keys(c).sort()).toEqual(['direction', 'feature', 'magnitude', 'source', 'ts']);
+      expect(Object.keys(c).sort()).toEqual(['direction', 'feature', 'magnitude', 'source', 'tool', 'ts']);
       expect(['revision', 'manual']).toContain(c.source);
+      expect(c.tool, 'a correction must name the tool it was made in').toBe('bt');
     }
     // And no word of any of the three pairs rode along in any request body.
     const all = wire.bodies.join('\n');

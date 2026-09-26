@@ -1354,27 +1354,37 @@
 
   // The same "drop it, never coerce it" rule the audit path uses. A feature is
   // a short slug from a closed list; a direction is exactly -1 or 1.
-  function sanitizeCorrection(c) {
+  function sanitizeCorrection(c, tool) {
     if (!c || typeof c !== "object") return null;
     if (!/^[a-z][a-z0-9_]{0,31}$/.test(c.feature || "")) return null;
     var direction = c.direction > 0 ? 1 : c.direction < 0 ? -1 : 0;
     if (!direction) return null;
     var mag = typeof c.magnitude === "number" && isFinite(c.magnitude)
       ? Math.max(0, Math.min(1, c.magnitude)) : 1;
+    var which = typeof tool === "string" && /^[a-z0-9_-]{1,16}$/.test(tool) ? tool : null;
     return {
       feature: c.feature,
       direction: direction,
       magnitude: mag,
       source: c.source === "manual" ? "manual" : "revision",
+      /* WHICH TOOL THIS WAS MADE IN, stamped here rather than left for the
+         server to take from the request. This buffer is shared across tools
+         and survives a reload, so by the time it flushes it can hold
+         corrections from more than one, and a request carries only one label.
+         The server learns a style rule into a pool keyed off this, so a wrong
+         label does not merely mislabel a row: it teaches the rule into another
+         document class. Still a slug from a closed shape, so it cannot carry
+         anything but a tool id. */
+      tool: which,
       ts: Date.now(),
     };
   }
 
-  function auditCorrections(list) {
+  function auditCorrections(list, tool) {
     if (!list || !list.length) return;
     var clean = [];
     for (var i = 0; i < list.length && clean.length < 20; i++) {
-      var c = sanitizeCorrection(list[i]);
+      var c = sanitizeCorrection(list[i], tool);
       if (c) clean.push(c);
     }
     if (!clean.length) return;

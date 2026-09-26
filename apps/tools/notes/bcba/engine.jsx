@@ -2168,7 +2168,8 @@ function App() {
     // it never leaves his browser. See assets/voice-capture.js.
     if (window.NoteStyleFeatures && window.NotesGate?.audit?.corrections) {
       const features = window.NoteStyleFeatures.compare(before, after, source);
-      if (features.length) window.NotesGate.audit.corrections(features);
+      // The tool goes with the correction, not with whatever flush carries it.
+      if (features.length) window.NotesGate.audit.corrections(features, tool.id);
     }
     // `own` is false for a rejection, whose after side is the model's draft put
     // back rather than anything he wrote.
