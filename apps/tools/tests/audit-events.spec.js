@@ -313,3 +313,92 @@ test.describe('every event the client emits is one the server names', () => {
     expect(JSON.stringify(out)).not.toContain('eloped');
   });
 });
+
+/* The client sanitizer sits in front of the worker's, and for a long time it
+   quietly undid it. The worker keeps three decimals and says in a comment why
+   integers are wrong; the browser rounded to an integer before the worker ever
+   saw the number, and kept only the first 12 keys of a payload that now carries
+   22. Both halves have to agree, so both are pinned here. */
+test.describe('the client sanitizer does not undo the worker', () => {
+  // The real note_register shape, in the order engine.jsx emits it. Order
+  // matters: string keys iterate in insertion order, so a positional cap drops
+  // a known tail rather than an arbitrary selection.
+  const REGISTER_PAYLOAD = {
+    tool: 'bt',
+    intakeWords: 84,
+    expansion: 3.274,
+    sentences: 19,
+    words: 275,
+    meanLen: 14.47,
+    burstiness: 0.62,
+    sectionCv: 0.34,
+    sectionStep: 0.081,
+    sections: 4,
+    openerVariety: 0.947,
+    repeatRate: 0.105,
+    actorRate: 0.368,
+    clientRate: 0.211,
+    imperativeRate: 0.053,
+    topOpener: 0.158,
+    flaggedPer100: 1.455,
+    emptyAdverbs: 2,
+    participialCausals: 1,
+    abstractStates: 0,
+    vagueVerbs: 1,
+    score: 0.83,
+  };
+
+  async function emitRegister(page) {
+    await page.goto('/notes/scrub-test.html');
+    await page.waitForFunction(() => !!(window.NotesGate && window.NotesGate.audit));
+    return page.evaluate((payload) => {
+      localStorage.removeItem('noaba.audit.buffer.v1');
+      window.NotesGate.audit.emit('note_register', payload);
+      return JSON.parse(localStorage.getItem('noaba.audit.buffer.v1') || '[]');
+    }, REGISTER_PAYLOAD);
+  }
+
+  test('a fractional metric keeps its value instead of collapsing to 0 or 1', async ({ page }) => {
+    const [evt] = await emitRegister(page);
+
+    /* These three are coefficients below 1, and index.js folds a note into the
+       shape profile only when sectionCv and sectionStep are finite AND greater
+       than zero. Rounded to an integer, 0.34 arrives as 0 and the fold is
+       skipped every time, which is the whole reason the profile was empty. */
+    expect(evt.data.sectionCv).toBeCloseTo(0.34, 3);
+    expect(evt.data.sectionStep).toBeCloseTo(0.081, 3);
+    expect(evt.data.burstiness).toBeCloseTo(0.62, 3);
+    expect(evt.data.openerVariety).toBeCloseTo(0.947, 3);
+
+    // Whole numbers are untouched by the change, and still whole.
+    expect(evt.data.sentences).toBe(19);
+    expect(evt.data.words).toBe(275);
+  });
+
+  test('the client bounds precision at the same three decimals the worker does', async ({ page }) => {
+    await page.goto('/notes/scrub-test.html');
+    await page.waitForFunction(() => !!(window.NotesGate && window.NotesGate.audit));
+    const [evt] = await page.evaluate(() => {
+      localStorage.removeItem('noaba.audit.buffer.v1');
+      window.NotesGate.audit.emit('note_register', { tool: 'bt', sectionCv: 0.3333333333333333 });
+      return JSON.parse(localStorage.getItem('noaba.audit.buffer.v1') || '[]');
+    });
+    // Bounded, not merely passed through: a float is still just a number, but
+    // the cap is what the rounding was there for in the first place.
+    expect(evt.data.sectionCv).toBe(0.333);
+  });
+
+  test('every key of a full note_register payload reaches the buffer', async ({ page }) => {
+    const [evt] = await emitRegister(page);
+
+    /* The worker raised its own cap to 24 as this payload grew. The browser
+       stayed at 12, so the last ten keys never left the page - the entire
+       register-remediation block plus the score, which are precisely the
+       measurements added so the Friday report could say whether the fix that
+       took a note from 53% to 0% was still holding. */
+    for (const key of Object.keys(REGISTER_PAYLOAD)) {
+      expect(evt.data, `note_register lost ${key}`).toHaveProperty(key);
+    }
+    expect(Object.keys(evt.data)).toHaveLength(Object.keys(REGISTER_PAYLOAD).length);
+  });
+});
