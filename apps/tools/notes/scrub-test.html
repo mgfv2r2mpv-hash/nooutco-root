@@ -43,13 +43,9 @@
   <div class="wrap">
     <h1>PHI scrubbing - stress test</h1>
     <p class="lead">
-      Exercises name detection (<code>NotesScrub._detect</code>) and replacement
-      (<code>applyScrub</code>) against tricky inputs. Detection is intentionally
-      aggressive - the in-app review step lets a clinician uncheck false positives or
-      certify a term is not PII, so over-detection is safe and under-detection is the
-      real risk. Rows marked <span class="gap">KNOWN GAP</span> document a limitation
-      (a name that appears <em>only</em> in lowercase is not auto-detected; the review
-      step and any capitalized occurrence elsewhere are the safety net).
+      Name detection (<code>NotesScrub._detect</code>) and replacement
+      (<code>applyScrub</code>) against tricky inputs.<br>
+      <span class="gap">KNOWN GAP</span>: a name that appears <em>only</em> in lowercase is not detected.
     </p>
 
     <h2>Live tester</h2>

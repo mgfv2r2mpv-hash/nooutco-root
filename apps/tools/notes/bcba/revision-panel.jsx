@@ -412,7 +412,7 @@ function SuggestionRow({ id, text, original, accepted, alternatives, own, onTogg
           /* Their own words are there but a preloaded row was checked after. The
              text is kept; this makes it the choice again, ipso facto. */
           <button type="button" className="tg-check" data-suggestion-tick={id}
-            title="Use my own words instead" aria-label="Choose my own words" onClick={onToggle}>
+            title="Use my answer" aria-label="Use my answer" onClick={onToggle}>
             &#10003;
           </button>
         ) : accepted || own ? (
@@ -423,7 +423,7 @@ function SuggestionRow({ id, text, original, accepted, alternatives, own, onTogg
               data-suggestion-pencil={id}
               data-suggestion-dirty={dirty ? "1" : "0"}
               disabled={blank}
-              title={dirty ? "Keep what you typed" : (blank ? "Type an answer first" : "Change the wording")}
+              title={dirty ? "Save edit" : (blank ? "No answer yet" : "Edit wording")}
               aria-label={dirty ? "Save this wording" : "Edit this wording"}
               onClick={() => { if (dirty) save(); else if (ref.current) ref.current.focus(); }}
             >
@@ -435,8 +435,8 @@ function SuggestionRow({ id, text, original, accepted, alternatives, own, onTogg
                 className={"tg-revert" + (dirty ? " is-dirty" : "")}
                 data-suggestion-revert={id}
                 title={dirty
-                  ? "Throw away what you typed and put the suggestion back"
-                  : (own ? "Clear this" : "Put NoMe's wording back")}
+                  ? "Discard edit, restore suggestion"
+                  : (own ? "Clear this" : "Restore NoMe's wording")}
                 aria-label={own ? "Clear this answer" : "Revert to the original suggestion"}
                 onClick={revert}
               >
@@ -512,8 +512,8 @@ function SkipAfterCooldown({ seconds, onSkip, loading, carrying }) {
         disabled={loading || !ready}
         className="revision-skip"
         title={ready
-          ? (carrying ? "Generate with the suggestions you left standing" : "Generate without answering these")
-          : "Have a look at the questions first. This unlocks in a moment."}
+          ? (carrying ? "Generate with the kept suggestions" : "Generate without answers")
+          : "Available momentarily."}
       >
         {/* This button is the ACCEPT path when suggestions are on screen, since
             sending needs typed text and agreeing with a suggestion needs none.
@@ -521,7 +521,7 @@ function SkipAfterCooldown({ seconds, onSkip, loading, carrying }) {
             the note would describe the wrong thing entirely. */}
         {carrying
           ? (ready ? "Use these and generate" : `Use these and generate (${left}s)`)
-          : (ready ? "Nothing to add - generate anyway" : `Nothing to add (${left}s)`)}
+          : (ready ? "Generate without adding answers :(" : `Nothing to add (${left}s)`)}
       </button>
       {!ready && (
         <div className="skip-cooldown-bar" aria-hidden="true">
@@ -769,10 +769,10 @@ function RevisionPanel({
       className={"point-toggle" + (pointMode ? " is-on" : "")}
       onClick={() => onPointMode(!pointMode)}
       aria-pressed={pointMode}
-      aria-label={pointMode ? "Stop pointing at things" : "Point at something on the page"}
+      aria-label="Toggle page-point mode"
       title={
         pointMode
-          ? "Pointing. Click anything, or press Escape."
+          ? "Point mode on\nClick a target. Escape to stop."
           : pointScope === "page"
             ? "Point at anything on the page"
             : "Point at any part of the note"
@@ -794,10 +794,10 @@ function RevisionPanel({
             signedOut
               ? "Ask NoMe. Sign in to use the assistant, or report a problem."
               : hasChanges
-                ? "See what NoMe changed. " + changeList.length + (changeList.length === 1 ? " change" : " changes") + ", already in your note."
+                ? "NoMe changes: " + changeList.length + ", applied to the note."
                 : "Open the assistant. " + qs.label
           }
-          title={signedOut ? "Sign in to use the assistant, or report a problem" : q.reason || qs.label}
+          title={signedOut ? "Signed out: assistant unavailable Report a problem below." : q.reason || qs.label}
         >
           <span className="revision-fab-check" aria-hidden="true">
             {signedOut || q.level === "idle" ? "💬" : q.level === "good" ? "✓" : "!"}
@@ -840,7 +840,7 @@ function RevisionPanel({
             problem, so the panel carries two views and the pill stays one
             control. */}
         {hasChanges && (
-          <div className="cd-switch" role="group" aria-label="What you are looking at">
+          <div className="cd-switch" role="group" aria-label="Panel view">
             <button
               type="button"
               className={"cd-tab" + (view === "changes" ? " is-on" : "")}
@@ -857,7 +857,7 @@ function RevisionPanel({
               aria-pressed={view === "ask"}
               onClick={() => setView("ask")}
             >
-              Ask NoMe something
+              Ask NoMe
             </button>
           </div>
         )}
@@ -882,13 +882,13 @@ function RevisionPanel({
           <React.Fragment>
         {signedOut && (
           <p className="revision-empty">
-            Sign in with your access code to use the assistant. If signing in is the
-            problem, report it below and say what happened.
+            Signed out. The assistant requires an access code.<br />
+            Sign-in problems: Report a problem, below.
           </p>
         )}
         {!signedOut && thread.length === 0 && !awaitingQuestions && (
-          <p className="revision-empty">
-            {intro || "Fill in the form above and press the generate button. I'll ask about anything that looks thin before drafting, then you can click any section, or select a phrase inside one, to revise it."}
+          <p className="revision-empty" style={{ whiteSpace: "pre-line" }}>
+            {intro || "No draft yet.\nThin input gets questions before drafting.\nClick a section, or select a phrase in one, to revise it."}
           </p>
         )}
         {thread.map((m, i) => (
@@ -899,7 +899,7 @@ function RevisionPanel({
             only after pointing at page furniture. */}
         {ticketOffer ? (
           <div className="bcba-offer ticket-offer">
-            <p className="bcba-offer-q">File this as a stub?</p>
+            <p className="bcba-offer-q">Ticket stub ready. File?</p>
             <p className="bcba-offer-preview">{ticketOffer.note}</p>
             <div className="bcba-offer-actions">
               <button type="button" className="bcba-take" onClick={onFileTicket} disabled={ticketFiling}>
@@ -919,12 +919,12 @@ function RevisionPanel({
         {bcbaOffer ? (
           <div className="bcba-offer">
             <p className="bcba-offer-q">
-              That sounds like one for the BCBA. Add this to the note?
+              Is that a question for the BCBA? On confirm: it will move to the follow-up section when taken.
             </p>
             <p className="bcba-offer-preview">{bcbaOffer}</p>
             <div className="bcba-offer-actions">
               <button type="button" className="bcba-take" onClick={onTakeBcba}>Add it to the note</button>
-              <button type="button" className="bcba-leave" onClick={onDismissBcba}>No thanks</button>
+              <button type="button" className="bcba-leave" onClick={onDismissBcba}>Dismiss</button>
             </div>
           </div>
         ) : null}
@@ -1032,8 +1032,8 @@ function RevisionPanel({
                  answer something. */
               <div className="skip-held" data-skip-held="1">
                 {hasSuggestions && !acceptedSuggestions
-                  ? "Keep one of the suggestions, or answer a question, and the note generates."
-                  : "Answer one of these and the note generates."}
+                  ? "Generates after one kept suggestion or one answer."
+                  : "Generates after one answer."}
               </div>
             ) : (
               <SkipAfterCooldown
@@ -1120,7 +1120,7 @@ function RevisionPanel({
             >
               {loading ? "Sending…" : "Send " + asks.length + (asks.length === 1 ? " change" : " changes") + " to NoMe"}
             </button>
-            <p className="revision-asks-foot">One turn, all of them together. Nothing has been sent yet.</p>
+            <p className="revision-asks-foot">Not sent. Sends as one request.</p>
           </div>
         )}
         {!signedOut && !barMode && <div className="revision-compose">
@@ -1134,10 +1134,10 @@ function RevisionPanel({
             rows={2}
             placeholder={
               awaitingQuestions
-                ? "Answer here - or skip above…"
+                ? "Answer, or skip above"
                 : annotation
-                  ? "What should change about this?"
-                  : "Ask for a change, or add a detail you forgot…"
+                  ? "Change to make"
+                  : "Change or added detail"
             }
             className="revision-input"
           />
@@ -1160,7 +1160,7 @@ function RevisionPanel({
               data-speak="true"
               className={"icon-btn speak-btn" + (listening ? " is-on" : "")}
               aria-pressed={listening ? "true" : "false"}
-              title={listening ? "Listening. Let go when you are done." : "Hold to talk"}
+              title={listening ? "Listening. Release to stop." : "Hold to talk"}
               /* Capturing the pointer means a thumb that slides off the button
                  while talking still ends the recording on the way up, rather
                  than leaving the microphone open. */
@@ -1184,7 +1184,7 @@ function RevisionPanel({
                   in. Sighted people read the same thing off the colour and off
                   the line under the row. */}
               <span className="icon-btn-say">
-                {listening ? "Listening. Let go when you are done." : "Hold to talk"}
+                {listening ? "Listening. Release to stop." : "Hold to talk"}
               </span>
             </button>
           )}
@@ -1219,7 +1219,7 @@ function RevisionPanel({
               somebody is actually speaking into it. */}
           {window.NoteSpeech && window.NoteSpeech.available() && (
             <span data-speak-rule="true" className={listening ? "is-listening" : undefined}>
-              {listening ? "Listening. Let go when you are done." : "Hold the mic to talk."}
+              {listening ? "Listening. Release to stop." : "Hold the mic to talk."}
               {" "}{window.NoteSpeech.RULE}{" "}
             </span>
           )}
@@ -1273,10 +1273,10 @@ function RevisionPanel({
               disabled={loading || !canAsk}
               onClick={onAskAdvice}
               title={!canAsk
-                ? "Generate the note first, then this can suggest what to do next."
+                ? "Available after a draft exists."
                 : annotation
-                  ? "Ask what the supervising clinician would do about the selected section"
-                  : "Ask what the supervising clinician would do next. This answers in the panel and does not change the note."}
+                  ? "Suggest a correction or give next step for the selected section"
+                  : "Supervising clinician's next step Answers in the panel. The note is unchanged."}
             >
               What would you do here?
             </button>
@@ -1290,7 +1290,7 @@ function RevisionPanel({
               type="button"
               className="revision-advice revision-export"
               onClick={onExportPairs}
-              title="Save the captured before/after pairs to a file. Nothing has left this browser."
+              title={"Saves captured before/after pairs to a file.\nPairs are stored in this browser only."}
             >
               Export {pairCount} pair{pairCount === 1 ? "" : "s"}
             </button>

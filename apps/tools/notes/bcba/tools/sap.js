@@ -67,7 +67,7 @@
   var NOTE_PREFIX = "Note: ";
 
   var HINT_CATALOG = {
-    thin_section: "This section is thin relative to what technicians need to implement, add specifics if you have them",
+    thin_section: "Thin relative to what technicians need to implement",
     ambiguous_item: "Clarify",
     other: "",
   };
@@ -684,23 +684,23 @@
     id: "sap",
     label: "SAP",
     title: "SAP Goals & Planning Tool",
-    subtitle: "Enter a treatment goal and SAP specifications, generate a prompt or draft a complete Service Authorization Plan for clinical review.",
-    assistantIntro: "Enter the treatment goal and any SAP specifications, then press Generate SAP. I'll ask what I need to know about the learner, design the rest of the plan myself, and mark every block I designed so you can change it in a click.",
+    subtitle: "Input: treatment goal and SAP specifications.\nOutput: a prompt, or a complete Service Authorization Plan draft for clinical review.",
+    assistantIntro: "Enter the treatment goal and SAP specifications, then Generate SAP.\nQuestions about the learner come before drafting.\nTool-designed blocks are marked; one click changes each.",
     genLabel: "Generate SAP",
     outputTitle: "Generated SAP Draft",
-    promptIntro: "Copy and paste into your AI of choice. It will return a refined SMART goal and complete SAP draft, no preamble, no editorializing.",
+    promptIntro: "Paste into any AI chat.\nOutput: a refined SMART goal and a complete SAP draft.",
     maxTokens: 4200,
     inputs: [
       {
         id: "goal", type: "textarea", label: "Treatment Goal", required: true, height: 120, charCount: true,
         tooltip: SMART_TOOLTIP,
-        hint: "Write a SMART goal tied to the client's diagnosis and functional needs, without PHI. Hover the i icon to see what makes a goal SMART.",
+        hint: "SMART goal tied to the client's diagnosis and functional needs.\nNo PHI.\nSMART criteria: hover the i icon.",
         placeholder: "e.g., [Client] will independently request preferred items or activities using their AAC device in 4 out of 5 opportunities, absent behaviors targeted for reduction, across 3 consecutive sessions within 1 authorization period, as measured by direct observation during structured and unstructured activities.",
       },
       {
         id: "sapSpecs", type: "textarea", label: "SAP Specifications", height: 150, charCount: true,
-        tip: "The tool designs the plan mechanics itself and marks each one so you can change it. What it cannot know is the learner. The more you say here about the current repertoire, what competes with the target, what has already been tried, and where the skill has to work, the more tailored the draft. No PHI. Anything you do specify here is taken as given rather than designed.",
-        placeholder: "What the tool cannot guess, e.g.:\n- Already matches identical pictures, breaks down when the field goes past 3\n- Grabs and vocalizes when the demand goes up\n- Tried a picture exchange binder last authorization, abandoned it, too slow\n- Works for the tablet and for crunchy snacks; stickers stopped working\n- Has to work with 2 staff at the clinic and with mom at home\n- 45 minute sessions, one technician",
+        tip: "Plan mechanics not specified here are designed by the tool and marked.\nAnything specified here is used as given.\nLearner details: current repertoire, what competes with the target, what has been tried, settings the skill must work in.\nNo PHI.",
+        placeholder: "Learner details, e.g.:\n- Already matches identical pictures, breaks down when the field goes past 3\n- Grabs and vocalizes when the demand goes up\n- Tried a picture exchange binder last authorization, abandoned it, too slow\n- Works for the tablet and for crunchy snacks; stickers stopped working\n- Has to work with 2 staff at the clinic and with mom at home\n- 45 minute sessions, one technician",
       },
     ],
     groupOptions: {},
@@ -744,7 +744,7 @@
     triageKind: "sap_design_triage",
     triageIntro: "CLINICIAN'S GOAL AND SPECIFICATIONS:",
     validate: function (values) {
-      if (!(values.goal || "").trim()) return "Please enter a treatment goal.";
+      if (!(values.goal || "").trim()) return "Treatment Goal is required.";
       return null;
     },
     serverPrompt: true,

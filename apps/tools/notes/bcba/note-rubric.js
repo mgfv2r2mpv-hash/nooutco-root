@@ -174,7 +174,7 @@
       tier: n ? 2 : NO_TIER,
       rank: 98,
       detail: n
-        ? n + " sentence" + (n > 1 ? "s restate" : " restates") + " data the EHR already attaches, say what the numbers cannot"
+        ? n + " sentence" + (n > 1 ? "s restate" : " restates") + " data the EHR already attaches.\nState what the numbers cannot."
         : "",
       sections: [],
       count: n,
@@ -291,7 +291,7 @@
     if (!gaps.length) {
       return {
         level: "good",
-        reason: "Nothing flagged. Review it before you file it.",
+        reason: "Nothing flagged. Review before filing.",
         dimensions: dimensions,
         band: reading.band,
         worstTier: reading.worstTier,

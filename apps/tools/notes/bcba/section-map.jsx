@@ -75,7 +75,7 @@ function summaryLine(counts, total) {
   var parts = [total + (total === 1 ? " section" : " sections")];
   if (counts.copied) parts.push(counts.copied + " copied");
   if (counts.changed) {
-    parts.push(counts.changed + (counts.changed === 1 ? " changed since you copied it" : " changed since you copied them"));
+    parts.push(counts.changed + " changed since copied");
   }
   if (!counts.copied && !counts.changed) parts.push("nothing copied yet");
   return parts.join(" · ");
@@ -124,7 +124,7 @@ function SectionMap(props) {
               }}
               aria-label={
                 r.heading + ", " + MAP_WORD[r.state] +
-                (wants ? ". Open it and copy it again." : ". Go to this section.")
+                (wants ? ". Copy again." : ".")
               }
             >
               <span className="section-tile-name">{r.heading}</span>
@@ -137,10 +137,10 @@ function SectionMap(props) {
       {/* The legend is permanent rather than a tooltip, because a word a
           technician has to hover to understand is the cryptic thing this design
           exists to avoid, and hovering does not exist on the phone they use. */}
-      <div className="section-map-legend">
-        <span><b>copied</b> it is in the EHR</span>
-        <span><b>changed</b> it moved after you copied it</span>
-        <span><b>not copied</b> still here only</span>
+      <div className="section-map-legend" style={{ flexDirection: "column", gap: "2px" }}>
+        <span><b>copied:</b> in the EHR</span>
+        <span><b>changed:</b> edited after copying</span>
+        <span><b>not copied:</b> not in the EHR</span>
       </div>
     </div>
   );

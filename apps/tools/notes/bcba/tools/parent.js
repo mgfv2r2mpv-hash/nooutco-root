@@ -51,7 +51,7 @@
   var SECTION_IDS = ["individualsPresent", "supportActivities", "caregiverResponse", "progressStatus", "summary", "followup"];
 
   var HINT_CATALOG = {
-    thin_section: "This section is thin relative to the form's expectations, add specifics if you have them",
+    thin_section: "Thin relative to the form's expectations",
     ambiguous_item: "Clarify",
     other: "",
   };
@@ -166,14 +166,14 @@ TERMINOLOGY (non-negotiable)\n\
     id: "parent",
     label: "Parent Training",
     title: "Parent Note Tool",
-    subtitle: "Enter your session notes, the tool drafts the clinical note and suggests which checkboxes to select on your EHR form.",
-    assistantIntro: "Enter your session notes and press Generate Note. I'll ask about anything that looks thin before drafting, then you can click any section, or select a phrase inside one, to revise it.",
+    subtitle: "Input: session notes.\nOutput: the clinical note and suggested EHR checkboxes.",
+    assistantIntro: "Enter session notes, then Generate Note.\nThin input gets questions before drafting.\nClick a section, or select a phrase in it, to revise.",
     genLabel: "Generate Note",
     inputs: [
       {
         id: "sessionNotes", type: "textarea", label: "Session Notes", required: true, height: 200,
-        hint: "Describe the session: who was present, the support you provided (data, modeling, problem-solving, discussion, feedback), how the caregiver responded, progress toward goals, and any follow-ups. The tool drafts the note and suggests which checkboxes to select on your EHR form.",
-        placeholder: "No PHI. Bullet points are fine, e.g.:\n- Parent + client present; modeled manding, parent practiced, 70% independent\n- Reviewed token board setup, parent unsure of steps\n- Phase change needed on DTT targets\n- Parent to practice prompting hierarchy at home",
+        hint: "Who was present, support provided (data, modeling, problem-solving, discussion, feedback), caregiver response, progress toward goals, follow-ups.",
+        placeholder: "No PHI. Bulletpoints are OK. Examples: - Parent + client present; modeled manding, parent practiced, 70% independent - Reviewed token board setup, parent unsure of steps - Phase change needed on DTT targets - Parent to practice prompting hierarchy at home",
       },
     ],
     groupOptions: GROUP_OPTIONS,
@@ -181,7 +181,7 @@ TERMINOLOGY (non-negotiable)\n\
     hintCatalog: HINT_CATALOG,
     responseSchema: RESPONSE_SCHEMA,
     validate: function (values) {
-      if (!(values.sessionNotes || "").trim()) return "Please enter your session notes.";
+      if (!(values.sessionNotes || "").trim()) return "Session Notes is required.";
       return null;
     },
     /* This tool's system prompt is composed inside the Worker, from the prompt

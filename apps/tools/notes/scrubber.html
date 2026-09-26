@@ -133,7 +133,7 @@ textarea.raw-input {
 <div class="header">
   <div style="flex:1;">
     <h1>Clinical Summary Scrubber</h1>
-    <div class="subtitle">PHI scrubbing &amp; ABA clinical prompt builder - client-side only, zero network calls</div>
+    <div class="subtitle">PHI scrubbing and ABA clinical prompt builder</div>
   </div>
   <span class="badge">Local · No AI · No Network</span>
 </div>
@@ -143,7 +143,7 @@ textarea.raw-input {
   <!-- SIDEBAR -->
   <div class="sidebar">
     <h2>Role → Name Mapping</h2>
-    <p style="font-size:11px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">Enter real names per role. All occurrences are replaced with tokens before output leaves this tool.</p>
+    <p style="font-size:11px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">Real names, per role.<br>Every occurrence is replaced with the role token in the output.</p>
     <div id="role-groups"></div>
 
     <hr class="divider">
@@ -151,7 +151,7 @@ textarea.raw-input {
       <input type="checkbox" id="flag-unknowns" checked>
       <span style="font-weight:600;font-size:12px;">Flag unknown identifiers</span>
     </label>
-    <p>After scrubbing, the tool highlights Title-Case words that may be missed names for review.</p>
+    <p>Title-Case words that may be names are highlighted for review.</p>
   </div>
 
   <!-- MAIN -->
@@ -165,8 +165,9 @@ textarea.raw-input {
     <!-- INPUT PANEL -->
     <div class="panel active" id="panel-input">
       <div class="info-box">
-        Paste a session summary below. Names in the sidebar are scrubbed; sections are classified by clinical domain.
-        The output is a structured, anonymized prompt ready for an LLM - no data is sent anywhere from this tool.
+        Names in the sidebar are replaced with role tokens.<br>
+        Sections are classified by clinical domain.<br>
+        No data leaves this browser.
       </div>
       <div class="field-group">
         <div class="label">Session Type (optional)</div>
@@ -204,8 +205,9 @@ textarea.raw-input {
     <!-- OUTPUT PANEL -->
     <div class="panel" id="panel-output">
       <div class="info-box">
-        Anonymized &amp; clinically filtered. Review flagged items in Step 2 before sharing.
-        Copy into any LLM - no PHI should remain if all names are mapped.
+        Anonymized and clinically filtered.<br>
+        Review flagged items in step 2 before sharing.<br>
+        An unmapped name stays in the prompt.
       </div>
       <div class="btn-row">
         <span class="label" style="flex:1;">Generated Prompt</span>
@@ -406,7 +408,7 @@ function renderReview() {
   warn.innerHTML = unknownNouns.length ? `
     <div class="phi-warning">
       <h3>⚠ ${unknownNouns.length} Potential Unrecognized Identifier${unknownNouns.length>1?'s':''}</h3>
-      <p>These Title-Case words were not matched to any role. If they are names, add them to the Role Mapping sidebar and reprocess. Click a chip to quick-add.</p>
+      <p>Title-Case words not matched to any role.<br>Click a chip to assign it to a role.</p>
       <div class="phi-chips" id="phi-chips-list">
         ${unknownNouns.map(n=>`<span class="phi-chip" id="chip-${n}" onclick="quickAdd('${n}',this)">${n}</span>`).join('')}
       </div>

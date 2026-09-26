@@ -201,7 +201,7 @@ function CorrectionsView({ id, ops, marks, state, onToggle, onEdit, onGoToOrigin
                 className="cx cx-restored"
                 data-correction={p.key}
                 data-correction-restored="true"
-                title="Your own wording. You put this back."
+                title="Original wording; restored"
               >
                 {p.text}
               </span>
@@ -215,7 +215,7 @@ function CorrectionsView({ id, ops, marks, state, onToggle, onEdit, onGoToOrigin
                here, read the header of this file first. */
             const title = p.tone === "move"
               ? "Moved out of here" + (headings[p.op.to] ? ", into " + headings[p.op.to] : "")
-              : "Removal " + p.n + ". The words are under the note.";
+              : "Removal " + p.n + ". Removed words listed under the note.";
             return (
               <span
                 key={p.index}
@@ -258,7 +258,7 @@ function CorrectionsView({ id, ops, marks, state, onToggle, onEdit, onGoToOrigin
                     if (e.key === "Escape") { e.preventDefault(); setEditKey(null); }
                   }}
                 />
-                <button type="button" className="cx-ck" title="Save this wording"
+                <button type="button" className="cx-ck" title="Save wording"
                         data-correction-save={p.key} onClick={() => commitEdit(p.key)}>✓</button>
                 <button type="button" className="cx-ck" title="Cancel the edit"
                         data-correction-cancel={p.key} onClick={() => setEditKey(null)}>✕</button>
@@ -275,7 +275,7 @@ function CorrectionsView({ id, ops, marks, state, onToggle, onEdit, onGoToOrigin
                 data-correction-reverted="false"
                 role={quiet ? undefined : "button"}
                 tabIndex={quiet ? undefined : 0}
-                title={p.tone === "ins" ? "Added. Click to read why, or change it." : "Moved here. Click to read why."}
+                title={p.tone === "ins" ? "Added. Click for reason and options." : "Moved here. Click for reason."}
                 onClick={() => { if (!quiet) setOpenKey(openKey === p.key ? null : p.key); }}
                 onKeyDown={(e) => {
                   if (quiet) return;
@@ -289,8 +289,8 @@ function CorrectionsView({ id, ops, marks, state, onToggle, onEdit, onGoToOrigin
                   type="button"
                   className="cx-dot"
                   data-correction-origin={p.op.from}
-                  aria-label={"Show where this came from" + (headings[p.op.from] ? ": " + headings[p.op.from] : "")}
-                  title={headings[p.op.from] ? "Came from " + headings[p.op.from] : "Show where this came from"}
+                  aria-label={"Go to origin" + (headings[p.op.from] ? ": " + headings[p.op.from] : "")}
+                  title={headings[p.op.from] ? "Came from " + headings[p.op.from] : "Go to origin"}
                   onClick={(e) => { e.stopPropagation(); onGoToOrigin(p.op.from); }}
                 />
               )}
@@ -298,16 +298,16 @@ function CorrectionsView({ id, ops, marks, state, onToggle, onEdit, onGoToOrigin
                 <span className="cx-pop" data-correction-pop={p.key}>
                   {p.why ? <span className="cx-pop-why">{p.why}</span> : null}
                   <button type="button" className="cx-ck" data-correction-undo={p.key}
-                          title="Take this out of the note"
-                          onClick={() => { onToggle(p.key); setOpenKey(null); }}>Take it out</button>
+                          title="Remove from note"
+                          onClick={() => { onToggle(p.key); setOpenKey(null); }}>Remove</button>
                   <button type="button" className="cx-ck" data-correction-pencil={p.key}
-                          title="Say it in your own words"
-                          onClick={() => startEdit(p.key, p.text)}>Reword it</button>
+                          title="Edit wording"
+                          onClick={() => startEdit(p.key, p.text)}>Reword</button>
                   {/* His fourth answer: keep the content, ask for different
                       wording. It queues rather than sending, because the send
                       is one move for the whole note and it lives in the panel. */}
                   <button type="button" className="cx-ck" data-correction-ask={p.key}
-                          title="Say what you want instead, and send it with the rest"
+                          title="Request a change to content or wording. Sent with the other queued asks."
                           onClick={() => {
                             const had = (queue || {})[p.key];
                             setAskBuffer(had ? had.text : "");
@@ -323,7 +323,7 @@ function CorrectionsView({ id, ops, marks, state, onToggle, onEdit, onGoToOrigin
                     data-correction-ask-input={p.key}
                     value={askBuffer}
                     autoFocus
-                    placeholder="What should it say instead"
+                    placeholder="Requested change"
                     onChange={(e) => setAskBuffer(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") { e.preventDefault(); onAsk(p.key, askBuffer); setAskKey(null); }
@@ -376,7 +376,7 @@ function CorrectionsView({ id, ops, marks, state, onToggle, onEdit, onGoToOrigin
                   type="button"
                   className="cx-ck cx-cut-act"
                   data-correction-undo={r.key}
-                  title={r.kind === "ins" ? "Put this back into the note" : "Put these words back into the note"}
+                  title={r.kind === "ins" ? "Restore to note" : "Restore to note"}
                   onClick={() => onToggle(r.key)}
                 >
                   {r.kind === "ins" ? "Put it back" : "Restore"}
@@ -401,11 +401,11 @@ function CorrectionsView({ id, ops, marks, state, onToggle, onEdit, onGoToOrigin
               </span>
               {!quiet && (
                 <button type="button" className="cx-ck" data-correction-ask-drop={a.key}
-                        title="Take this off the queue" onClick={() => onDropAsk(a.key)}>Drop</button>
+                        title="Remove from queue" onClick={() => onDropAsk(a.key)}>Drop</button>
               )}
             </div>
           ))}
-          <p className="cx-asks-foot">Send them from the Ask NoMe panel, all at once.</p>
+          <p className="cx-asks-foot">Sent together from the Ask NoMe panel.</p>
         </div>
       )}
 

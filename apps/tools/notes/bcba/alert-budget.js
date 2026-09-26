@@ -451,7 +451,7 @@
     return [item("register", TIER.POLISH, {
       code: "tired_register",
       rank: 70,
-      detail: flagged.length + " tired constructions. Say what happened in your own words.",
+      detail: flagged.length + " tired constructions.\nState what happened plainly.",
     })];
   }
 

@@ -338,7 +338,7 @@ function InfoTooltip({ text }) {
 
 function Tip({ text }) {
   return (
-    <div style={{ fontSize: 12, color: "#5a7040", background: "#eef4e6", border: "1px solid #c8dba8", borderRadius: 7, padding: "7px 11px", marginBottom: 10, lineHeight: 1.55 }}>{text}</div>
+    <div style={{ fontSize: 12, color: "#5a7040", background: "#eef4e6", border: "1px solid #c8dba8", borderRadius: 7, padding: "7px 11px", marginBottom: 10, lineHeight: 1.55, whiteSpace: "pre-line" }}>{text}</div>
   );
 }
 
@@ -399,7 +399,7 @@ function TextareaField({ field: f, value, onChange }) {
       </div>
       {helpOpen && f.help ? <HelpList intro={f.help.intro} items={f.help.items} /> : null}
       {f.tip ? <Tip text={f.tip} /> : null}
-      {f.hint ? <p style={hintStyle}>{f.hint}</p> : null}
+      {f.hint ? <p style={{ ...hintStyle, whiteSpace: "pre-line" }}>{f.hint}</p> : null}
       <textarea
         id={fieldId}
         value={value}
@@ -521,7 +521,7 @@ function CacheTimer({ remaining }) {
       <button
         type="button"
         className="cache-timer-pill"
-        aria-label={"Note-freshness timer: " + (expired ? "window elapsed" : mmss + " remaining") + ". Activate for details."}
+        aria-label={"Revision timer: " + (expired ? "expired" : mmss + " remaining")}
         aria-expanded={open}
         onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
       >
@@ -530,8 +530,8 @@ function CacheTimer({ remaining }) {
       </button>
       <span className="cache-timer-bubble" role="tooltip">
         {expired
-          ? "The quick-edit window has passed. Revisions still work - the next one just takes a moment longer while the tool re-reads the note. Edits made soon after generating are the fastest."
-          : "Edits are most useful when made promptly. For about 5 minutes after each generation the tool keeps your note “warm,” so revisions apply fastest - each revision resets the timer."}
+          ? <React.Fragment>Quick-revision window expired.<br />The next revision is slower.</React.Fragment>
+          : <React.Fragment>Revisions are fastest within 5 minutes of the last generation.<br />Each revision resets the timer.</React.Fragment>}
       </span>
     </div>
   );
@@ -569,7 +569,8 @@ function Checklist({ options, selected, single = false, sectionId: sid }) {
           <span style={{ fontSize: 13.5, lineHeight: 1.45, color: "#2d3a1f", fontWeight: 600 }}>{answer}</span>
         </div>
         <p className="section-note" style={{ fontSize: 11.5, color: "#8a9678", margin: "7px 0 0", lineHeight: 1.5 }}>
-          Suggested from what you wrote. Use your clinical judgment and pick a different one on your form if it does not match the session.
+          Suggested from the intake.<br />
+          Verify against the session before selecting on the form.
         </p>
       </div>
     );
@@ -791,7 +792,7 @@ function ConflictPanel({ conflicts, onAnswer, busy }) {
   return (
     <div data-testid="conflicts" style={{ marginBottom: 18 }}>
       <div style={{ fontSize: 11, letterSpacing: ".07em", textTransform: "uppercase", color: "#7a5510", fontWeight: 700, marginBottom: 6 }}>
-        Reading the plan back
+        Conflicts in the plan
       </div>
       {list.map((c) => (
         <div
@@ -944,7 +945,8 @@ function ExpertStale({ findings, testid }) {
         onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
         style={{ fontSize: 11.5, color: "#7a9460", background: "none", border: "none", padding: 0, cursor: "pointer", textDecoration: "underline", textAlign: "left" }}
       >
-        You have edited this section since the expert read it. {n} finding{n === 1 ? "" : "s"} from that reading{open ? " - hide" : " - show"}
+        Section edited after expert review.<br />
+        {n} earlier finding{n === 1 ? "" : "s"}{open ? " - hide" : " - show"}
       </button>
       {open && <ExpertList findings={findings} testid={testid} />}
     </div>
@@ -1038,7 +1040,7 @@ function ClaimQuestion({ quote, answer, onAnswer, busy }) {
 
   return (
     <div data-testid="claim-question" data-claim-kind={claim.kind} style={{ marginTop: 4, fontSize: 12 }}>
-      <span style={{ color: "#7a9460", marginRight: 6 }}>What did you see?</span>
+      <span style={{ color: "#7a9460", marginRight: 6 }}>Observed/Observable behavior:</span>
       {FunctionClaim.optionsFor(claim).map((o) => (
         <button
           key={o.id}
@@ -1061,7 +1063,7 @@ function ClaimQuestion({ quote, answer, onAnswer, busy }) {
             data-testid="claim-detail"
             value={detail}
             autoFocus
-            placeholder="What did you see?"
+            placeholder="Observed/Observable behavior:"
             onClick={(e) => e.stopPropagation()}
             onChange={(e) => setDetail(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && detail.trim()) { e.preventDefault(); onAnswer(quote, "other", detail.trim()); } }}
@@ -1131,7 +1133,7 @@ function RegisterStack({ findings, answers, onAnswer, busy }) {
         onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
         style={{ fontSize: 12, color: "#5d6a4d", background: "none", border: "none", padding: "0 0 4px", cursor: "pointer", textDecoration: "underline" }}
       >
-        {n} phrase{n === 1 ? "" : "s"} it would reword{open ? " - hide" : " - show"}
+        {n} phrase{n === 1 ? "" : "s"} to reword{open ? " - hide" : " - show"}
       </button>
       {open && findings.map((r, i) => (
         <RegisterFinding
@@ -1149,7 +1151,7 @@ function RegisterStack({ findings, answers, onAnswer, busy }) {
 /* Abbreviations, and what the expert took each one to mean. A resolved reading
    is a reading aid; an ambiguous or unknown one is a warning, because the whole
    draft downstream was written on that guess. */
-const TERM_STATUS_LABEL = { resolved: "read as", ambiguous: "ambiguous", unknown: "not recognised" };
+const TERM_STATUS_LABEL = { resolved: "read as", ambiguous: "ambiguous", unknown: "not recognized" };
 
 function TermFinding({ finding }) {
   const token = String(finding.token || "").trim();
@@ -1223,7 +1225,7 @@ function ExpertReading({ expert, claimAnswers, onClaimAnswer, busy }) {
 
   const head = (
     <div style={{ fontSize: 11, letterSpacing: ".07em", textTransform: "uppercase", color: "#7a9460", fontWeight: 700, marginBottom: 4 }}>
-      What the expert read in your intake
+      Expert review of intake
     </div>
   );
 
@@ -1232,7 +1234,8 @@ function ExpertReading({ expert, claimAnswers, onClaimAnswer, busy }) {
       <div style={{ marginBottom: 16 }} data-testid="expert-reading">
         {head}
         <p style={{ fontSize: 12.5, color: "#7a9460", lineHeight: 1.5 }} data-testid="expert-running">
-          Still reading. Your note is finished and this arrives beside it.
+          Expert review in progress.<br />
+          The note is complete without it.
         </p>
       </div>
     );
@@ -1243,7 +1246,8 @@ function ExpertReading({ expert, claimAnswers, onClaimAnswer, busy }) {
       <div style={{ marginBottom: 16 }} data-testid="expert-reading">
         {head}
         <p style={{ fontSize: 12.5, color: "#8a6d1a", lineHeight: 1.5 }} data-testid="expert-failed">
-          The expert pass did not come back, so nothing here was reviewed a second time. Your note is unaffected.
+          Expert review failed.<br />
+          The note is unchanged.
         </p>
       </div>
     );
@@ -1268,13 +1272,13 @@ function ExpertReading({ expert, claimAnswers, onClaimAnswer, busy }) {
         /* Finding nothing is a result, and the panel has to agree or a clean
            note reads as a broken call. */
         <p style={{ fontSize: 12.5, color: "#7a9460", marginBottom: 8 }} data-testid="expert-register-empty">
-          Nothing in your intake claims something you did not observe.
+          No unobserved claims found in the intake.
         </p>
       )}
       <ExpertList findings={wholeHints} testid="expert-note" />
       {expert.hintsDropped ? (
         <p style={{ fontSize: 11.5, color: "#7a9460", marginTop: 6 }} data-testid="expert-dropped">
-          {expert.hintsDropped} lower-ranked finding{expert.hintsDropped === 1 ? " was" : "s were"} past the ceiling and are not shown.
+          {expert.hintsDropped} lower-ranked finding{expert.hintsDropped === 1 ? "" : "s"} not shown.
         </p>
       ) : null}
     </div>
@@ -2822,12 +2826,12 @@ function App() {
         ? window.ChangesDrawer.countOf(marks, {}, correctionHeadings)
         : (marks ? marks.count : 0);
       pushThread("assistant", "status", marks
-        ? "Drafted, and I made " + shownCount + (shownCount === 1 ? " change" : " changes") +
-          " the note needed. They are already in it and marked where they are. " +
+        ? "Drafted with " + shownCount + (shownCount === 1 ? " change" : " changes") +
+          ", marked in the note.\n" +
           (authorAidEnabled()
-            ? "Nothing needs you. Open what changed if you want one of them different."
-            : "Click a tick to undo or reword one.")
-        : "Drafted. Click any section - or select a phrase inside one - to revise it.");
+            ? "Changes are listed under What changed."
+            : "Click a check mark to undo or reword a change.")
+        : "Drafted.\nClick a section or select a phrase to revise it.");
       // Register signals for the weekly audit. Numbers only, measured on the
       // draft the clinician is about to read, so a drift toward machine-uniform
       // prose shows up in the Friday email rather than in a detector months
@@ -2933,7 +2937,7 @@ function App() {
       }
     } catch (e) {
       patchS({ error: NotesGate.displayError(e) });
-      pushThread("assistant", "status", "That didn't go through. " + NotesGate.displayError(e));
+      pushThread("assistant", "status", "Request failed. " + NotesGate.displayError(e));
       reportError(tool.id, e);
     } finally {
       setLoading(false);
@@ -3397,10 +3401,10 @@ function App() {
       patchS({ conversation, lastCallAt: Date.now(), annotation: null, error: "" });
       audit("recommendation", { requested: 1, scoped: section ? 1 : 0 });
       const adviceForReader = NotesScrub.restoreOutput(advice, scrubMapRef.current);
-      pushThread("assistant", "answer", adviceForReader || "I do not have enough in this note to suggest anything.");
+      pushThread("assistant", "answer", adviceForReader || "Not enough in the note for a recommendation.");
     } catch (e) {
       patchS({ error: NotesGate.displayError(e) });
-      pushThread("assistant", "status", "That didn't go through. " + NotesGate.displayError(e));
+      pushThread("assistant", "status", "Request failed. " + NotesGate.displayError(e));
       reportError(tool.id, e);
     } finally {
       setLoading(false);
@@ -3695,8 +3699,8 @@ function App() {
               ? `Updated “${changes[0].heading}” - the change is highlighted in the note.`
               : `Updated ${changes.length} sections - the changes are highlighted in the note.`)
           : asks.length
-            ? "That reads as belonging to a different section. See below."
-            : "No change was needed for that - the note already reflects it, or the detail isn't in your notes."
+            ? "Change belongs to a different section.\nSee below."
+            : "No change made.\nThe note already reflects it, or the detail is not in the intake."
       );
       // Name what was carried past the section they clicked, and why. Applying
       // it quietly would be the same content-routing problem in reverse: the
@@ -3705,9 +3709,9 @@ function App() {
         pushThread(
           "assistant",
           "status",
-          `That also changed ${carried.map((c) => "“" + c.heading + "”").join(" and ")}, because ` +
+          `Also changed ${carried.map((c) => "\u201c" + c.heading + "\u201d").join(" and ")}: ` +
             (carried[0].why || "the instruction reached that section") +
-            ". Discard reverts all of it.",
+            ".\nDiscard reverts all changes.",
         );
       }
       /* Named separately from the carried sections above, because they are a
@@ -3719,15 +3723,14 @@ function App() {
         pushThread(
           "assistant",
           "status",
-          `I also updated ${dependents.map((c) => "“" + c.heading + "”").join(" and ")} to stay ` +
-            `consistent with that: ` +
+          `Also updated ${dependents.map((c) => "\u201c" + c.heading + "\u201d").join(" and ")} for consistency: ` +
             (dependents[0].why || "the figure you changed is quoted there too") +
-            ". Discard reverts all of it.",
+            ".\nDiscard reverts all changes.",
         );
       }
     } catch (e) {
       patchS({ error: NotesGate.displayError(e) });
-      pushThread("assistant", "status", "That didn't go through. " + NotesGate.displayError(e));
+      pushThread("assistant", "status", "Request failed. " + NotesGate.displayError(e));
       reportError(tool.id, e);
     } finally {
       setLoading(false);
@@ -3843,8 +3846,8 @@ function App() {
       const target = (S.annotation && (S.annotation.text || S.annotation.heading)) || "";
       patchS({ annotation: null, ticketOffer: { note: text, target } });
       pushThread("assistant", "status", pointedAtPage
-        ? "That reads as feedback about the tool rather than the note. Want it filed as a stub you can grill later?"
-        : "You said stub, so I am reading that as feedback about the tool rather than a change to the note. File it?");
+        ? "Reads as feedback about the tool, not the note. File as an issue?"
+        : "Message mentions stub: read as tool feedback, not a note change. File as an issue?");
       return;
     }
     if (S.questions && S.questions.length) {
@@ -3898,7 +3901,7 @@ function App() {
       return;
     }
     if (!S.output) {
-      pushThread("assistant", "status", "Generate the note first, then I can revise it.");
+      pushThread("assistant", "status", "Generate the note before revising.");
       return;
     }
     await sendRevision(text);
@@ -4093,19 +4096,19 @@ function App() {
           heldOut: held,
         });
         pushThread("assistant", "status", asks.length === 1
-          ? "Done. The change you asked for is in the note."
-          : "Done. All " + asks.length + " changes are in the note.");
+          ? "Requested change applied."
+          : asks.length + " requested changes applied.");
       } else {
         /* An empty answer is a real answer on this route, and saying so beats a
            queue that empties with nothing visibly different. */
         patchS({ askQueue: {}, heldOut: held });
         pushThread("assistant", "status",
-          "I could not make those changes from what you wrote in your notes, so the note is unchanged.");
+          "Requested changes not supported by the intake.\nNote unchanged.");
       }
     } catch (e) {
       // The queue is deliberately left standing, so a failed send costs nothing
       // but a second press.
-      pushThread("assistant", "status", "That did not reach NoMe. Your queue is still here, so you can send it again.");
+      pushThread("assistant", "status", "Request failed.\nQueue kept; send again.");
     } finally {
       setLoading(false);
     }
@@ -4297,11 +4300,11 @@ function App() {
       const data = await res.json().catch(() => ({}));
       patchS({ ticketOffer: null, ticketFiling: false });
       pushThread("assistant", "status", res.ok && data.ok
-        ? "Filed as issue #" + data.number + ". It is labelled a stub, so nobody builds it before you have grilled it."
-        : "Could not file it: " + (data.error || "the request failed") + " Nothing was lost, it is still above in this conversation.");
+        ? "Filed as issue #" + data.number + ", labeled stub."
+        : "Ticket not filed: " + (data.error || "the request failed") + "\nThe text remains above.");
     } catch (e) {
       patchS({ ticketFiling: false });
-      pushThread("assistant", "status", "Could not reach the ticket route. Nothing was lost, it is still above in this conversation.");
+      pushThread("assistant", "status", "Ticket not filed: server unreachable.\nThe text remains above.");
     }
   };
 
@@ -4331,7 +4334,7 @@ function App() {
         : { changes, hints: st.output?.hints || [], targetSectionId: FOLLOWUP_KEY, kind: "bcba" },
     }));
     pushThread("assistant", "status", tick
-      ? "Added to \u201c" + sec.heading + "\u201d and ticked \u201c" + tick.value[tick.value.length - 1] + "\u201d. Both are highlighted in the note."
+      ? "Added to \u201c" + sec.heading + "\u201d; \u201c" + tick.value[tick.value.length - 1] + "\u201d checked.\nBoth highlighted in the note."
       : "Added to \u201c" + sec.heading + "\u201d. It is highlighted in the note.");
   };
 
@@ -4363,7 +4366,7 @@ function App() {
     // The wording itself, kept where it can be read and reused. Dropping it is
     // the content loss this whole feature exists to stop.
     const text = Array.isArray(ask.value) ? ask.value.join(", ") : String(ask.value || "");
-    pushThread("assistant", "answer", `Left “${ask.heading}” alone. What it would have said:\n\n${text}`);
+    pushThread("assistant", "answer", `\u201c${ask.heading}\u201d unchanged. Proposed text:\n\n${text}`);
   };
 
   const discardProposal = () => {
@@ -4441,7 +4444,7 @@ function App() {
   // note across an accidental reload; this is the deliberate "start fresh" escape.
   const handleClear = () => {
     if (loading) return;
-    if (hasContent() && !window.confirm("Clear this tool's inputs and generated note to start fresh? This can't be undone.")) return;
+    if (hasContent() && !window.confirm("Clear inputs and generated note?\nThis cannot be undone.")) return;
     if (window.NotesGate) {
       NotesGate.draft.clear(tool.id);
       NotesGate.draft.clear(scrubMapKey(tool.id));
@@ -4649,7 +4652,9 @@ function App() {
           </button>
           <button type="button" className="diff-discard" onClick={discardProposal}>Discard</button>
           <p className="diff-note">
-            {count > 1 ? `${count} sections changed - accepting applies them together.` : "Green is added, striped is reworded, a red mark is removed. Tap one to see what it was."}
+            {count > 1
+              ? <React.Fragment>{count} sections changed.<br />Accept applies all.</React.Fragment>
+              : <React.Fragment>Green: added. Striped: reworded. Red mark: removed.<br />Tap a mark to see the original.</React.Fragment>}
           </p>
         </div>
       </div>
@@ -4701,7 +4706,7 @@ function App() {
               className="cx-done"
               data-corrections-done={id}
               onClick={() => dismissCorrections(id)}
-              title="Put the marks away and edit this section as text. Nothing is undone."
+              title={"Hide marks and edit as text.\nChanges stay applied."}
             >
               Edit by hand
             </button>
@@ -4733,7 +4738,7 @@ function App() {
     if (sec.kind === "checklist") {
       return (v && v.length)
         ? <Checklist options={tool.groupOptions[sec.group]} selected={v} sectionId={id} />
-        : <p style={{ fontSize: 13, color: "#9aab86", fontStyle: "italic" }}>{sec.emptyNote || "No options suggested - leave blank or review your notes."}</p>;
+        : <p style={{ fontSize: 13, color: "#9aab86", fontStyle: "italic" }}>{sec.emptyNote || "No options suggested."}</p>;
     }
     if (sec.kind === "table") {
       return (
@@ -5029,7 +5034,7 @@ function App() {
         <div style={{ marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
             <h1 style={{ fontSize: 26, fontWeight: 700, color: "#2d3a1f", marginBottom: 4 }}>{tool.title}</h1>
-            <p style={{ fontSize: 14, color: "#5a6b4a" }}>{tool.subtitle}</p>
+            <p style={{ fontSize: 14, color: "#5a6b4a", whiteSpace: "pre-line" }}>{tool.subtitle}</p>
             {/* Which mode this tab is in has to be readable, not inferred from
                 the URL: the toggle exists to produce two samples for comparison,
                 and a tab that doesn't say invites mislabelling them. */}
@@ -5050,8 +5055,10 @@ function App() {
 
         {/* Disclaimer */}
         <div style={{ marginBottom: 24, padding: "14px 18px", borderRadius: 10, border: "1.5px solid #d4b483", background: "#fdf6e8", color: "#5a4420", fontSize: 13, lineHeight: 1.55 }}>
-          <strong style={{ color: "#7a5a1a" }}>Disclaimer:</strong> Use of these AI-assisted queries is subject to the legal and regulatory constraints of the user's jurisdiction. These tools do not remove the user's responsibility to review all output for accuracy and to maintain compliance with the ethical standards of their credentialing board for professional behavior analysis work.{" "}
-          <strong style={{ color: "#7a5a1a" }}>Do not enter any PHI (Protected Health Information) into this tool.</strong> PHI is any detail that could identify a specific client - including names, dates of birth, addresses, phone numbers, ID or insurance numbers, or any other personal identifiers.
+          Use is subject to the laws and regulations of the user's jurisdiction.<br />
+          The user reviews all output for accuracy and remains responsible for credentialing board ethics compliance.<br />
+          <strong style={{ color: "#7a5a1a" }}>Do not enter PHI (Protected Health Information).</strong><br />
+          PHI: names, dates of birth, addresses, phone numbers, ID or insurance numbers, any other client identifier.
         </div>
 
         {/* The documentation-standards panel used to sit here. Removed: they are
@@ -5063,20 +5070,20 @@ function App() {
         <div style={card}>
           {tool.inputs.map(renderInput)}
 
-          {S.error && <p style={{ color: "#c0392b", fontSize: 13, marginBottom: 12 }}>{S.error}</p>}
+          {S.error && <p style={{ color: "#c0392b", fontSize: 13, marginBottom: 12, whiteSpace: "pre-line" }}>{S.error}</p>}
           {/* The legal notice, which used to be a modal accepted once per page load
               and then never read again. It sits here instead, beside the box being
               typed into, where it is in front of the clinician every time rather
               than once. Same words, load-bearing ones unabridged. */}
-          <div style={{ margin: "0 0 14px", padding: "10px 14px", borderRadius: 10, border: "1px solid #d9c9a3", background: "#fdfaf2", color: "#5a4420", fontSize: 12, lineHeight: 1.55 }}>
+          <div style={{ margin: "0 0 14px", padding: "10px 14px", borderRadius: 10, border: "1px solid #d9c9a3", background: "#fdfaf2", color: "#5a4420", fontSize: 12, lineHeight: 1.55, whiteSpace: "pre-line" }}>
             {NotesScrub.ACK_NOTICE}
           </div>
 
           {S.scrubMap.some((m) => !m.restore) && (
             <div style={{ margin: "0 0 16px", borderRadius: 10, border: "2px solid #c8962a", overflow: "hidden" }}>
               <div style={{ padding: "8px 14px", background: "#fdf3dc", color: "#5a3d00", fontSize: 12, lineHeight: 1.5 }}>
-                <strong>Removed before this left your device</strong>{" "}
-                <span style={{ color: "#7a6020" }}>- substitute back in your EHR.</span>
+                <strong>Removed before sending.</strong><br />
+                <span style={{ color: "#7a6020" }}>Substitute back in the EHR.</span>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 7 }}>
                   {/* Round-tripped words are not listed. The banner tells a
                       clinician what to substitute back in their EHR, and a word
@@ -5110,7 +5117,7 @@ function App() {
                   })}
                 </div>
               </div>
-              <div style={{ padding: "10px 14px", background: "#fff8ec", color: "#3d2a00", fontSize: 13.5, fontWeight: 600, lineHeight: 1.55 }}>
+              <div style={{ padding: "10px 14px", background: "#fff8ec", color: "#3d2a00", fontSize: 13.5, fontWeight: 600, lineHeight: 1.55, whiteSpace: "pre-line" }}>
                 ⚠️ {NotesScrub.SCRUB_GUIDANCE}
               </div>
             </div>
@@ -5132,7 +5139,7 @@ function App() {
             {!loggedIn && (
               <button
                 onClick={handleGeneratePrompt}
-                title="Build a prompt you can paste into an AI of your choice. Log in to have the tool write the note for you instead."
+                title={"Builds a prompt to paste into any AI.\nLog in to generate the note here."}
                 style={{ padding: "11px 18px", borderRadius: 8, border: "1.5px solid #374528", background: "white", color: "#374528", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
               >
                 Generate Prompt
@@ -5162,7 +5169,7 @@ function App() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
               <div>
                 <h2 style={{ fontSize: 17, fontWeight: 700, color: "#2d3a1f" }}>Generated Prompt</h2>
-                {tool.promptIntro ? <p style={{ fontSize: 13, color: "#5a6b4a", marginTop: 3 }}>{tool.promptIntro}</p> : null}
+                {tool.promptIntro ? <p style={{ fontSize: 13, color: "#5a6b4a", marginTop: 3, whiteSpace: "pre-line" }}>{tool.promptIntro}</p> : null}
               </div>
               <button
                 onClick={() => { navigator.clipboard.writeText(S.promptText); setCopiedPrompt(true); setTimeout(() => setCopiedPrompt(false), 1800); }}
@@ -5201,7 +5208,11 @@ function App() {
               )}
             </div>
             <p style={{ fontSize: 13, color: "#7a9460", marginBottom: 20, lineHeight: 1.55 }}>
-              Checkbox suggestions are inferred from your notes - verify before ticking your form. Narratives are editable. <strong style={{ color: "#5a6b4a" }}>Click a section to revise it, or select a phrase inside one to revise just that</strong> - the assistant panel takes it from there. 💡 flags what might be missing, ⚠ flags what a funder could reject the claim over.
+              Checkbox suggestions are inferred from the intake; verify before checking the form.<br />
+              Narratives are editable.<br />
+              <strong style={{ color: "#5a6b4a" }}>Click a section or select a phrase to revise it.</strong><br />
+              {"\ud83d\udca1"} possible missing detail.<br />
+              {"\u26a0"} possible grounds for claim rejection.
             </p>
 
             {/* Find and replace, scoped to the clipboard. Only shown when this
@@ -5218,9 +5229,10 @@ function App() {
                     style={{ marginTop: 2, width: 16, height: 16, flex: "0 0 auto" }}
                   />
                   <span style={{ fontSize: 13, color: "#3a4326", lineHeight: 1.5 }}>
-                    <strong>Put my words back when I copy</strong>
+                    <strong>Restore original words on copy</strong>
                     <span style={{ display: "block", fontSize: 12, color: "#7a9460", marginTop: 2 }}>
-                      The note on this page keeps its tokens and nothing is sent anywhere - only what lands on your clipboard changes.
+                      Applies to copied text only.<br />
+                      The note on this page keeps its tokens.
                     </span>
                   </span>
                 </label>
@@ -5248,7 +5260,8 @@ function App() {
                       </div>
                     ))}
                     <p style={{ fontSize: 11.5, color: "#7a9460", margin: "8px 0 0", lineHeight: 1.5 }}>
-                      Pre-filled with what you typed. Blank one out to leave that token in place.
+                      Pre-filled with the original words.<br />
+                      Leave a field blank to keep the token.
                     </p>
                   </div>
                 )}
@@ -5399,7 +5412,7 @@ class ErrorBoundary extends React.Component {
     return (
       <div style={{ maxWidth: 560, margin: "80px auto", padding: 24, textAlign: "center", color: "#374528", fontFamily: "inherit" }}>
         <h1 style={{ fontSize: 20, marginBottom: 8 }}>Something went wrong</h1>
-        <p style={{ fontSize: 14, color: "#5a6b4a", marginBottom: 16 }}>This tool hit an unexpected error. Reloading usually fixes it.</p>
+        <p style={{ fontSize: 14, color: "#5a6b4a", marginBottom: 16 }}>Unexpected error.<br />Reload the page.</p>
         <button onClick={() => location.reload()} style={{ padding: "10px 22px", borderRadius: 8, border: "none", background: "#374528", color: "white", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Reload</button>
       </div>
     );
