@@ -23,7 +23,7 @@
 
   function Popover({ hunk, onAsk }) {
     const label = hunk.type === "ins" ? "Added" : hunk.type === "del" ? "Removed" : "Was";
-    const body = hunk.type === "ins" ? "Not in your note before."
+    const body = hunk.type === "ins" ? "New text"
       : hunk.type === "del" ? hunk.text.trim() : hunk.was.trim();
     return (
       <span className="pd-pop" role="note" data-pending-pop="true" onClick={(e) => e.stopPropagation()}>
@@ -60,7 +60,7 @@
           role="button"
           tabIndex={0}
           aria-expanded={open}
-          aria-label={hunk.type === "del" ? "Removed text, show it" : undefined}
+          aria-label={hunk.type === "del" ? "Removed text" : undefined}
           onClick={toggle}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onPin(); }

@@ -149,11 +149,11 @@
        completeness B7 both say the note carries the observation the numbers
        cannot. What a reader needs from a number is the comparison, and
        no_rate_comparison carries that. */
-    no_strategy_outcome: "Strategy described without its outcome, say what happened as a result of trying it",
-    helped_not_in_plan: "Something that helped is not in the plan, name it so the BCBA can consider adding it",
-    no_rate_comparison: "No comparison to recent sessions, say whether this was higher, lower, or about the same",
-    no_prompt_level: "Teaching described without a prompt level, name the prompt type used and whether it was faded",
-    single_program_only: "Only one program is described, a second (ideally communication/social plus adaptive) makes the note stronger",
+    no_strategy_outcome: "Strategy described without its outcome",
+    helped_not_in_plan: "Something that helped is not in the plan; name it for the BCBA",
+    no_rate_comparison: "No comparison to recent sessions (higher, lower or about the same)",
+    no_prompt_level: "Teaching described without a prompt type or fading decision",
+    single_program_only: "Only one program described; minimum two expected (communication/social plus adaptive)",
     antecedent_effect_unstated: "Antecedent strategy named without its effect, say whether it helped",
     thin_clinical_status: "Little detail on how the client presented at the start of session",
     no_response_described: "Behavior noted without your response, add what you did and whether it worked",
@@ -617,14 +617,14 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
     asker: "behavior technician",
     label: "BT Session",
     title: "BT Direct Service Note Tool",
-    subtitle: "Enter your session notes as free text. The tool drafts each clinical narrative and suggests which checkboxes to select on your EHR form.",
-    assistantIntro: "Fill in your session notes and press Generate Note. I'll ask about anything that looks thin before drafting, then you can click any section, or select a phrase inside one, to revise it.",
+    subtitle: "Session notes in free text.\nOutput: a narrative per form section and suggested EHR checkboxes.",
+    assistantIntro: "Enter session notes, then Generate Note.\nThin input gets questions before drafting.\nClick a section, or select a phrase in it, to revise.",
     genLabel: "Generate Note",
     maxTokens: 4000,
     // The EHR takes these one field at a time, so a single combined blob is
     // never what gets pasted. Per-section Copy stays.
     copyAll: false,
-    promptIntro: "Returns each form section with its narrative and a \"Tick:\" line indicating which boxes to select on your EHR.",
+    promptIntro: "Output: each form section with its narrative and a \"Tick:\" line listing the EHR boxes to select.",
 
     inputs: [
       {
@@ -664,37 +664,37 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
          would have been a free-text field the scrubber does not read, which is
          the one mistake this form cannot make. */
       {
-        id: "arrival", type: "choice", label: "How did they show up?", aidOnly: true,
+        id: "arrival", type: "choice", label: "Status/Bx at Arrival", aidOnly: true,
         options: [
-          { value: "ready", label: "Normal, ready to go" },
+          { value: "ready", label: "Ready" },
           { value: "notready", label: "Not ready" },
         ],
       },
       {
-        id: "arrivalWords", type: "textarea", label: "1 to 3 words, if you have them",
+        id: "arrivalWords", type: "textarea", label: "Arrival detail (1 to 3 words, optional)",
         aidOnly: true, oneLine: true, height: 44,
         placeholder: "tired, refused breakfast",
       },
       {
         id: "fSession", type: "textarea", label: "Session Start & Context", height: 120,
-        hint: "Who was there, how the client seemed when you started, and, in a few words, whether you worked on building rapport/pairing, skill goals, or reducing a behavior. We'll suggest the Individuals, Clinical Status, and Purpose checkboxes for you.",
+        hint: "Who was present, how the client presented at the start, and the session focus: rapport/pairing, skill goals, or behavior reduction.\nFeeds the Individuals, Clinical Status and Purpose checkboxes.",
         help: {
-          intro: "Just jot what you saw, no need to label anything.",
+          intro: "Plain observations; no labels needed.",
           items: [
             { t: "How they arrived", d: "ready & engaged, tired, hungry/thirsty, distracted, seemed unwell, upset or already having behavior, or a recent medication change" },
-            { t: "Focus of session", d: "building rapport / getting them to work with you (pairing), running learning programs, or working on a behavior plan" },
+            { t: "Focus of session", d: "building rapport (pairing), running learning programs, or working on a behavior plan" },
             { t: "Pauses", d: "mention if the session was unexpectedly paused (e.g., a nap)" },
           ],
         },
-        placeholder: "No names or other PHI (anything that could identify a specific person).\nFragments are fine, e.g.:\n- BCBA present 20 min; parent home in another room\n- Arrived tired, slow to engage, asked for tablet\n- Ran treatment-plan goals + behavior plan",
+        placeholder: "No names or other PHI (anything that could identify a specific person). Bulletpoints are OK. \nExamples:\n- BCBA present 20 min; parent home in another room\n- Arrived tired, slow to engage, asked for tablet\n- Ran treatment-plan goals + behavior plan",
       },
       {
         id: "fLesson", type: "textarea", label: "Skill Acquisition / Lesson Progress", required: true, height: 150,
-        hint: "What you taught and how it went. Ideally two programs (e.g. one communication/social, one adaptive/daily-living or replacing a repetitive behavior). Include prompting, accuracy/progress, and barriers.",
+        hint: "Programs taught and how each went. Two programs per hour: one communication/social, one adaptive/daily-living or repetitive-behavior replacement. Include prompting, accuracy/progress and barriers.",
         help: {
-          intro: "Did any of these happen? Name the ones you used.",
+          intro: "Name the techniques used.",
           items: [
-            { t: "Differential reinforcement", d: "you reinforced the behavior you want to see (the replacement skill or appropriate behavior) and gave little to no reinforcement to the problem behavior you're trying to reduce" },
+            { t: "Differential reinforcement", d: "reinforced the replacement skill or appropriate behavior; little to no reinforcement for the target behavior" },
             { t: "Errorless", d: "prompted right away so they didn't make mistakes" },
             { t: "Most-to-Least", d: "started with strong help and faded it" },
             { t: "Least-to-Most", d: "started with little help, added more only if needed" },
@@ -705,13 +705,13 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
             { t: "Token Economy", d: "earning tokens toward a reward" },
           ],
         },
-        placeholder: "No names or other PHI.\nFragments are fine, e.g.:\n- Receptive ID in DTT, 3-item array; full physical → independent, 2 indep at end\n- Tact training in NET during play, ~70% accuracy\n- Errorless start, faded to gestural prompt",
+        placeholder: "No names or other PHI.\nFragments OK. Examples:\n- Receptive ID in DTT, 3-item array; full physical \u2192 independent, 2 indep at end\n- Tact training in NET during play, ~70% accuracy\n- Errorless start, faded to gestural prompt",
       },
       {
         id: "fAntecedent", type: "textarea", label: "Antecedent Strategies", required: true, height: 120,
-        hint: "What you did proactively to prevent or reduce behavior of concern, and whether it helped.",
+        hint: "Proactive strategies used to prevent or reduce behavior of concern, and their effect.",
         help: {
-          intro: "Did you do any of these to prevent problems before they started?",
+          intro: "Strategies used before behavior occurred:",
           items: [
             { t: "Environmental arrangement", d: "set up the space / removed distractions or unsafe items" },
             { t: "Visual schedule", d: "showed what's coming with a picture schedule" },
@@ -719,36 +719,36 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
             { t: "Premack / first-then", d: "said “first this, then that” - most people do this without knowing the name" },
             { t: "Priming / warning", d: "a heads-up or countdown before a transition or before ending something fun" },
             { t: "Motivation alteration", d: "adjusted things to meet a need, e.g., a break before a hard task, or held back a preferred item so it stayed motivating" },
-            { t: "Also worth a mention", d: "non-contingent reinforcement, easy wins first (behavior momentum), pre-session pairing, simplified instructions" },
+            { t: "Other", d: "non-contingent reinforcement, easy wins first (behavior momentum), pre-session pairing, simplified instructions" },
           ],
         },
-        placeholder: "No names or other PHI.\ne.g.:\n- First/then board for transitions\n- 1-min warnings before switching activities\n- Offered choice of work order\n- Reduced noise/distractions; helped engagement",
+        placeholder: "No names or other PHI.\nExamples:\n- First/then board for transitions\n- 1-min warnings before switching activities\n- Offered choice of work order\n- Reduced noise/distractions; helped engagement",
       },
       {
         id: "fBehavior", type: "textarea", label: "Behavior & Staff Response", required: true, height: 130,
-        hint: "Behavior(s) of concern this session (rates vs. recent sessions, even if zero), how you responded, whether it worked, and overall progress.",
+        hint: "Behavior(s) of concern this session, including zero, with rates vs. recent sessions.\nStaff response and its effect.\nOverall progress.",
         help: {
-          intro: "What behavior(s) of concern happened (even if zero), and how did you respond?",
+          intro: "What tracked or new behavior(s) of concern occurred? For current goals, report 0 frequency when it occurs. Include staff/family response.",
           items: [
             { t: "Redirection", d: "redirected to an appropriate task" },
             { t: "Lessened response requirement", d: "briefly lowered the demand" },
             { t: "Prompted functional communication", d: "cued them to ask / communicate" },
             { t: "Allowed break", d: "gave a break to de-escalate" },
             { t: "Differential reinforcement", d: "reinforced the replacement behavior, withheld for the target" },
-            { t: "Then say", d: "how well it worked (highly / moderately / not effective) and how rates compared to recent sessions" },
+            { t: "Effectiveness", d: "highly / moderately / not effective, and rates vs. recent sessions" },
           ],
         },
         placeholder: "No names or other PHI.\ne.g.:\n- Elopement x2; blocked + redirected, no escalation\n- Prompted 'break please'; allowed break, behavior dropped\n- Lower rate than last week; responses worked well",
       },
       {
         id: "fFollowUp", type: "textarea", label: "Follow-Up & Concerns", height: 110,
-        hint: "Anything the BCBA should do or know, scheduling/staffing, a new behavior, billing, materials, involvement. Items mentioned in earlier fields are surfaced here automatically; leave blank if there is nothing new.",
+        hint: "Items for the BCBA: scheduling/staffing, a new behavior, billing, materials, involvement.\nItems in earlier fields carry over.\nBlank if nothing new.",
         help: {
           intro: "Anything the BCBA should do or know.",
           items: [
             { t: "Action items", d: "scheduling/staffing, a new behavior, billing, contact staff, materials needed, or nothing new" },
             { t: "Overall progress", d: "steady, impacted by behavior of concern, or limited" },
-            { t: "No need to repeat", d: "things you mentioned above are surfaced here automatically" },
+            { t: "Carried over", d: "items from earlier fields" },
           ],
         },
         placeholder: "No names or other PHI.\ne.g.:\n- Ask BCBA to update elopement protocol\n- Need new visual schedule printed\n- No new concerns this session",
@@ -772,9 +772,9 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
     triageKind: "bt_triage",
 
     validate: function (values) {
-      if (!(values.fLesson || "").trim()) return "Please add notes for Skill Acquisition / Lesson Progress.";
-      if (!(values.fAntecedent || "").trim()) return "Please add notes for Antecedent Strategies.";
-      if (!(values.fBehavior || "").trim()) return "Please add notes for Behavior & Staff Response.";
+      if (!(values.fLesson || "").trim()) return "Skill Acquisition / Lesson Progress is required.";
+      if (!(values.fAntecedent || "").trim()) return "Antecedent Strategies is required.";
+      if (!(values.fBehavior || "").trim()) return "Behavior & Staff Response is required.";
       return null;
     },
 

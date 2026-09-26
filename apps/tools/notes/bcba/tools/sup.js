@@ -60,15 +60,15 @@
   // Canonical hint wording lives HERE, client-side; the model returns only the
   // code (+ optional short detail). Consistent phrasing, nothing fabricated.
   var HINT_CATALOG = {
-    no_ioa_result: "IOA mentioned but no result, include the agreement % if it was collected",
-    no_fidelity: "No IOA or procedural fidelity check noted, add one if it was run",
-    no_pf: "No performance feedback or coaching noted, add what feedback was delivered, if any",
-    no_review: "Nothing noted as reviewed (session notes, data sheets, written materials), add if anything was reviewed",
-    no_pending_items: "No pending items or follow-ups noted, add any if they exist",
-    parent_concerns_unrouted: "Caregiver concerns are mentioned but no follow-up is routed for them, confirm where they land",
+    no_ioa_result: "IOA mentioned without a result (agreement %)",
+    no_fidelity: "No IOA or procedural fidelity check noted",
+    no_pf: "No performance feedback or coaching noted",
+    no_review: "Nothing noted as reviewed (session notes, data sheets, written materials)",
+    no_pending_items: "No pending items or follow-ups noted",
+    parent_concerns_unrouted: "Caregiver concerns mentioned without a follow-up",
     disposition_unclear: "Clarify whether this change was made in session or is still pending",
-    no_goal_data: "No performance data for this goal, add counts, percentages, or trial results if collected",
-    thin_behavior: "Behavior noted without topography, intensity, or frequency, add specifics for the support description",
+    no_goal_data: "No performance data for this goal (counts, percentages or trial results)",
+    thin_behavior: "Behavior noted without topography, intensity or frequency",
     /* Same gap bt had. The shared register rules tell every session tool to
        emit this code for an opinion with no observation and for a feeling with
        nothing attached, and `code` is an enum built from this object, so the
@@ -246,8 +246,8 @@ TERMINOLOGY (non-negotiable)\n\
     id: "sup",
     label: "Supervision",
     title: "Supervision Note Tool",
-    subtitle: "Two focused inputs, clinical observations and staff feedback, drafted into your EHR supervision form's fields, with AI revision help after the first pass.",
-    assistantIntro: "Enter your clinical observations and staff feedback, then press Generate Note. I'll ask about anything that looks thin before drafting, then you can click any section, or select a phrase inside one, to revise it.",
+    subtitle: "Inputs: clinical observations and staff feedback.\nOutput: the EHR supervision form fields.\nRevisions available after the first draft.",
+    assistantIntro: "Enter clinical observations and staff feedback, then Generate Note.\nThin input gets questions before drafting.\nClick a section, or select a phrase in it, to revise.",
     genLabel: "Generate Note",
     // The widest output of any tool here: up to 6 goal rows of three prose fields
     // each, five narratives, follow-ups, and hints - and every revision turn
@@ -269,13 +269,13 @@ TERMINOLOGY (non-negotiable)\n\
       },
       {
         id: "clinicalNotes", type: "textarea", label: "Session Notes / Clinical Observations", required: true, height: 190,
-        hint: "Client skill progress and goal data, behavior observations, protocol changes made or still needed, probe/baseline/generalization findings. Name the goals you analyzed, each becomes a row in the Goals Analyzed table.",
-        placeholder: "No PHI. Bullets are fine, e.g.:\n- 3-step motor imitation: initiating before full SD most of observation, minimal progress, placed on hold, teaching wait-before-responding first\n- FCT \"my turn\" with peers: independent 2 of 4 opportunities, up from 0-1\n- Reviewed data trends; expressive/receptive goals variable since last protocol mod\n- Elopement x2, blocked, no escalation\n- Updated PECS lesson plan to contrive more opportunities (done today)",
+        hint: "Client skill progress and goal data, behavior observations, protocol changes made or still needed, probe/baseline/generalization findings.\nEach named goal becomes a row in Goals Analyzed.",
+        placeholder: "No PHI.\nBullets OK. Examples:\n- 3-step motor imitation: initiating before full SD most of observation, minimal progress, placed on hold, teaching wait-before-responding first\n- FCT \"my turn\" with peers: independent 2 of 4 opportunities, up from 0-1\n- Reviewed data trends; expressive/receptive goals variable since last protocol mod\n- Elopement x2, blocked, no escalation\n- Updated PECS lesson plan to contrive more opportunities (done today)",
       },
       {
         id: "staffNotes", type: "textarea", label: "Staff Feedback, Training & Fidelity", height: 150,
         hint: "Feedback given to staff, skills trained or modeled, anything reviewed (last week's notes, data sheets, written materials), IOA or procedural fidelity checks and their results, caregiver concerns raised.",
-        placeholder: "No PHI. e.g.:\n- Observed RBT run teaching strategies; gave feedback on assent-withdrawal signs\n- BST on the new prompting procedure after the change\n- Ran IOA on tact data - 92% agreement\n- Reviewed last week's session notes\n- Parent asked about morning routine, follow up Thursday",
+        placeholder: "No PHI.\nExamples:\n- Observed RBT run teaching strategies; gave feedback on assent-withdrawal signs\n- BST on the new prompting procedure after the change\n- Ran IOA on tact data - 92% agreement\n- Reviewed last week's session notes\n- Parent asked about morning routine, follow up Thursday",
       },
     ],
     groupOptions: GROUP_OPTIONS,
@@ -283,8 +283,8 @@ TERMINOLOGY (non-negotiable)\n\
     hintCatalog: HINT_CATALOG,
     responseSchema: RESPONSE_SCHEMA,
     validate: function (values) {
-      if (!(values.clinicalNotes || "").trim()) return "Please enter Session Notes / Clinical Observations.";
-      if (values.btPresent === null || values.btPresent === undefined) return "Please indicate whether a BT/RBT was present.";
+      if (!(values.clinicalNotes || "").trim()) return "Session Notes / Clinical Observations is required.";
+      if (values.btPresent === null || values.btPresent === undefined) return "BT / RBT Present is required.";
       return null;
     },
     // Old single-textarea drafts carry over into the clinical notes box.

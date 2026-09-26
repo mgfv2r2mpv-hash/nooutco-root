@@ -69,7 +69,7 @@ function QuestionInline(props) {
                 "yes, those two sentences are right" has already given it above
                 and should not have to retype it here. */}
             <label className="qi-answer">
-              <span className="qi-answer-label">Anything to add in your own words (optional)</span>
+              <span className="qi-answer-label">Own answer (optional)</span>
               <textarea
                 className="qi-answer-box"
                 rows={2}

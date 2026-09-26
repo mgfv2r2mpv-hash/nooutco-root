@@ -49,14 +49,14 @@
   var SECTION_IDS = ["activities", "reporting", "narrative", "results"];
 
   var HINT_CATALOG = {
-    thin_section: "This section is thin relative to the form's expectations, add specifics if you have them",
+    thin_section: "Thin relative to the form's expectations",
     ambiguous_item: "Clarify",
     /* Both of these belong to the results field, and both are a failure a
        one-narrative tool could not have had: the intake says what was run and
        never what it showed. That leaves a REQUIRED field on the form with
        nothing to put in it, which is a different thing from a thin section and
        needs its own code to be worth acting on. */
-    no_results: "The activities are described and the findings are not, so the Results of Assessment field has nothing to fill it",
+    no_results: "Findings missing; Results of Assessment is empty",
     unscored_instrument: "An instrument is named with no score, level or result given for it",
     other: "",
   };
@@ -171,14 +171,14 @@ TERMINOLOGY (non-negotiable)\n\
     id: "assess",
     label: "Assessment",
     title: "Assessment Note Tool",
-    subtitle: "Describe what was done and what it showed, the tool drafts both narratives and suggests which checkboxes to select on your EHR form.",
-    assistantIntro: "Describe what was done in the assessment, then press Generate Note. I'll ask about anything that looks thin before drafting, then you can click any section, or select a phrase inside one, to revise it.",
+    subtitle: "Input: what was done and what it showed.\nOutput: both form narratives and suggested EHR checkboxes.",
+    assistantIntro: "Enter what was done in the assessment, then Generate Note.\nThin input gets questions before drafting.\nClick a section, or select a phrase in it, to revise.",
     genLabel: "Generate Note",
     inputs: [
       {
         id: "summaryNotes", type: "textarea", label: "Summary Notes of Activities", required: true, height: 200,
-        hint: "Describe what was done this session, which assessment tools/interviews/observations/analyses you ran, and reporting tasks (record review, scoring, treatment-plan work). Then what it showed: scores in the instrument's own units, strengths and deficits by domain, what a target behavior looked like and what each condition did to it. Name instruments (e.g. VB-MAPP, Vineland-3). The tool drafts both form narratives, \"Brief Summary of Activities Completed\" from what you did and \"Results of Assessment\" from what you found, and suggests which activity and reporting checkboxes to select.",
-        placeholder: "No PHI. Bullets are fine, e.g.:\n- VB-MAPP milestones administered, levels 1-2 complete\n- Scored Level 1 overall, 23.5 milestone points\n- Strong manding + visual matching; imitation generalized in play but not on vocal instruction\n- Caregiver interview re: increase in tantrums over past 2 weeks\n- FBA: wordless pitched vocalizations when a preferred item is visible but out of reach\n- Tangible condition resolved it; attention-only condition did not\n- No aggression or tears alongside the crying\n- Scored protocol; began treatment-plan goal development\n- Need to schedule follow-up for preference assessment",
+        hint: "Activities: assessment tools, interviews, observations and analyses run; reporting tasks (record review, scoring, treatment-plan work).\nFindings: scores in the instrument's own units, strengths and deficits by domain, target behavior topography and the effect of each condition.\nName instruments (e.g. VB-MAPP, Vineland-3).\nActivities feed \"Brief Summary of Activities Completed\"; findings feed \"Results of Assessment\".",
+        placeholder: "No PHI. Bulletpoints are OK. Examples: - VB-MAPP milestones administered, levels 1-2 complete - Scored Level 1 overall, 23.5 milestone points - Strong manding + visual matching; imitation generalized in play but not on vocal instruction - Caregiver interview re: increase in tantrums over past 2 weeks - FBA: wordless pitched vocalizations when a preferred item is visible but out of reach - Tangible condition resolved it; attention-only condition did not - No aggression or tears alongside the crying - Scored protocol; began treatment-plan goal development - Need to schedule follow-up for preference assessment",
       },
     ],
     groupOptions: GROUP_OPTIONS,
@@ -186,7 +186,7 @@ TERMINOLOGY (non-negotiable)\n\
     hintCatalog: HINT_CATALOG,
     responseSchema: RESPONSE_SCHEMA,
     validate: function (values) {
-      if (!(values.summaryNotes || "").trim()) return "Please enter Summary Notes of Activities.";
+      if (!(values.summaryNotes || "").trim()) return "Summary Notes of Activities is required.";
       return null;
     },
     /* This tool's system prompt is composed inside the Worker, from the prompt

@@ -121,7 +121,7 @@ function ChangesDrawerLine(props) {
           className="cd-where-btn"
           data-change-goto={e.id}
           onClick={function () { props.onGoTo(e.id); }}
-          title="Show me this section"
+          title="Go to section"
         >
           {where}
         </button>
@@ -146,8 +146,8 @@ function ChangesDrawer(props) {
   if (!entries.length) {
     return (
       <p className="cd-empty" data-changes-empty="true">
-        Nothing has been changed yet. Once you generate a note, everything the
-        tool added shows up here.
+        No changes.<br />
+        Changes from a generated note are listed here.
       </p>
     );
   }
@@ -157,8 +157,9 @@ function ChangesDrawer(props) {
   return (
     <div className="cd-wrap" data-changes-drawer="true">
       <p className="cd-head">
-        {kept === 1 ? "One change is in your note." : kept + " changes are in your note."}
-        <span className="cd-head-sub"> Nothing here needs you. Open a line only if you want it different.</span>
+        {kept === 1 ? "1 change applied to the note." : kept + " changes applied to the note."}
+        <br />
+        <span className="cd-head-sub">No action required. Open a line to change it.</span>
       </p>
       <ul className="cd-list">
         {entries.map(function (e) {

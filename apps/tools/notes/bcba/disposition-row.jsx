@@ -90,8 +90,8 @@ function DispositionRow(props) {
           value={ask}
           autoFocus
           rows={2}
-          placeholder="What should it say instead"
-          aria-label="Say what you want NoMe to change"
+          placeholder="Requested edit or content change for NoMe"
+          aria-label="Requested edit or content change for NoMe"
           data-disposition-ask-edit={props.id}
           onChange={function (e) { setAsk(e.target.value); }}
           onKeyDown={function (e) {
@@ -117,7 +117,7 @@ function DispositionRow(props) {
           value={buffer}
           autoFocus
           rows={2}
-          aria-label="Reword what the tool added"
+          aria-label="Edit added text"
           data-disposition-edit={props.id}
           onChange={function (e) { setBuffer(e.target.value); }}
           onKeyDown={function (e) {
@@ -126,7 +126,7 @@ function DispositionRow(props) {
         />
         <div className="dz-actions">
           <button type="button" className="dz-act dz-act-keep" data-disposition-save={props.id}
-            onClick={function () { props.onEdit(buffer); setEditing(false); setOpen(false); }}>Keep my wording</button>
+            onClick={function () { props.onEdit(buffer); setEditing(false); setOpen(false); }}>Save</button>
           <button type="button" className="dz-act" data-disposition-cancel={props.id}
             onClick={function () { setBuffer(text); setEditing(false); }}>Cancel</button>
         </div>
@@ -152,7 +152,7 @@ function DispositionRow(props) {
       </button>
 
       {open && (
-        <div className="dz-actions" role="group" aria-label="What do you want to do with this">
+        <div className="dz-actions" role="group" aria-label="Change actions">
           {/* Approve is first because it is the cheapest honest answer for a
               technician who read it and agreed. It changes nothing in the note
               and everything in what the profile learns. */}
@@ -165,7 +165,7 @@ function DispositionRow(props) {
           {props.onAsk && (
             <button type="button" className="dz-act" data-disposition-ask={props.id}
               onClick={function () { setAsking(true); }}>
-              {queued ? "Change what you asked" : "Ask for a change"}
+              {queued ? "Edit request" : "Ask for a change"}
             </button>
           )}
           <button type="button" className="dz-act" data-disposition-revert={props.id}
@@ -187,8 +187,9 @@ function DispositionHeading(props) {
   var n = props.count;
   return (
     <div className="dz-head">
-      {n === 1 ? "NoMe added this to your note." : "NoMe added these to your note."}
-      <span className="dz-head-sub"> Already in. Tap one to approve, edit or remove it.</span>
+      Added to the note by NoMe.
+      <br />
+      <span className="dz-head-sub">Tap one to approve, edit or remove it.</span>
     </div>
   );
 }
