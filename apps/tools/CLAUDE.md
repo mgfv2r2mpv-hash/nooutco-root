@@ -4,8 +4,6 @@
 
 ABA clinician tools hosted at **tools.nooutco.me**. Static HTML pages served via Cloudflare Pages with a `_worker.js` Pages Worker handling API routes (LLM proxy, suggest form). No build step - vanilla HTML/JS/CSS.
 
-**Tools:** CPRAnalyzer, NoteDrafter, SessionFlow, SuggestFeature
-
 ## Tech Stack
 
 - **Frontend:** Vanilla HTML/JS/CSS per tool, shared `tokens.css` design tokens
