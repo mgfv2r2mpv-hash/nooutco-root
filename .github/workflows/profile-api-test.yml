@@ -45,5 +45,14 @@ jobs:
       # lockfile because there are no dependencies, and `npm ci` fails without
       # one. If a dependency is ever added, this needs a lockfile and an install
       # step, not a looser command.
+      # --test-concurrency=1 is not optional, and it is why this line is not a
+      # bare `node --test`. Two of these files are live tests: each brings up
+      # its own `wrangler dev` against the SAME local D1 directory. Run in
+      # parallel they contend for it, and the failure does not look like
+      # contention - routes come back without their fields, so the assertions
+      # read as "Cannot read properties of undefined" and "the supervisor still
+      # sees the rule". Locally the same race shows up as five silently SKIPPED
+      # tests and a green run, which is worse. package.json's test script has
+      # carried the flag for exactly this reason; this line had drifted from it.
       - name: Run unit tests
-        run: node --test "test/*.test.js"
+        run: node --test --test-concurrency=1 "test/*.test.js"

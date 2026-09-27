@@ -332,14 +332,53 @@ test.describe('the correction buffer behaves like the audit buffer', () => {
         { feature: 'not a feature', direction: 1 },
         { feature: 'hedging', direction: 0 },
         null,
-      ]);
+      ], 'bt');
       return JSON.parse(localStorage.getItem('noaba.corrections.buffer.v1') || '[]');
     });
 
     expect(buffered).toHaveLength(1);
-    expect(Object.keys(buffered[0]).sort()).toEqual(['direction', 'feature', 'magnitude', 'source', 'ts']);
+    /* `tool` joined this set deliberately and is the only field added to it
+       since the buffer was written. It is a short closed slug, so it carries no
+       more than a direction or a magnitude does, and it is here because this
+       buffer is shared across tools and survives a reload: without it the
+       server labels a whole flush from one request and teaches a style rule
+       into the wrong document class. Anything else added here needs the same
+       argument made out loud, which is why the set is pinned rather than
+       sampled. */
+    expect(Object.keys(buffered[0]).sort()).toEqual(['direction', 'feature', 'magnitude', 'source', 'tool', 'ts']);
+    expect(buffered[0].tool).toBe('bt');
     expect(JSON.stringify(buffered)).not.toContain('Jacob');
     expect(JSON.stringify(buffered)).not.toContain('eloped');
+  });
+
+  test('a correction buffered without a tool carries null, not a guess', async ({ page }) => {
+    // An older caller passes no tool. The field must be present and empty
+    // rather than absent or invented, so the server can tell the difference and
+    // fall back to the batch label deliberately.
+    const buffered = await page.evaluate(() => {
+      localStorage.removeItem('noaba.corrections.buffer.v1');
+      window.NotesGate.audit.corrections([{ feature: 'sentence_length', direction: -1 }]);
+      return JSON.parse(localStorage.getItem('noaba.corrections.buffer.v1') || '[]');
+    });
+
+    expect(buffered).toHaveLength(1);
+    expect(buffered[0].tool).toBeNull();
+  });
+
+  test('a tool that is not a plain slug is dropped rather than carried', async ({ page }) => {
+    // This value reaches a primary key by way of the register map, so the
+    // client half refuses anything that is not a short closed slug.
+    const buffered = await page.evaluate(() => {
+      localStorage.removeItem('noaba.corrections.buffer.v1');
+      window.NotesGate.audit.corrections(
+        [{ feature: 'sentence_length', direction: -1 }],
+        '../../etc/passwd',
+      );
+      return JSON.parse(localStorage.getItem('noaba.corrections.buffer.v1') || '[]');
+    });
+
+    expect(buffered).toHaveLength(1);
+    expect(buffered[0].tool).toBeNull();
   });
 
   test('corrections are kept when the profile store did not take them', async ({ page }) => {
