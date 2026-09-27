@@ -110,8 +110,20 @@ jobs:
             { project: 'touch',    browser: 'webkit',   shards: 1 },
           ];
 
+          /* A dispatch input is outside text, and its fields reach `run:`
+             lines through ${{ matrix.* }}. So only a known project is taken,
+             always with its own browser, and shards are clamped to 1..8. An
+             unknown name is dropped rather than fanned out into jobs that run
+             nothing. An input that leaves nothing gives an empty matrix, and
+             `suite` then fails because e2e did not succeed. */
+          const known = new Map(ALL.map((p) => [p.project, p]));
           const chosen = requested
-            ? JSON.parse(requested)
+            ? JSON.parse(requested).flatMap((p) => {
+                const base = known.get(p && p.project);
+                if (!base) return [];
+                const shards = Number(p.shards) || base.shards;
+                return [{ ...base, shards: Math.min(Math.max(1, Math.floor(shards)), 8) }];
+              })
             : ALL;
 
           // One entry per job. The shard number rides along so the run step,
@@ -144,9 +156,11 @@ jobs:
     # 420 in 14.0m, and shard 3 was a minute from the end. Both times the cap
     # was raised.
     #
-    # Those numbers are also the evidence for this one: the slowest shard ever
-    # recorded here is 20.8 minutes, so 30 is roughly nine minutes of headroom
-    # on one shard rather than five on three. If a shard is ever cancelled at
+    # Those numbers are also the evidence for this one. The cap covers the
+    # whole JOB, which now pays checkout, npm ci and playwright install before
+    # the first test. The slowest job measured with one job per shard was
+    # webkit 3/3 at 21 minutes end to end (run 36291689338), so 30 is about
+    # nine minutes of margin on a job, not on a shard's tests alone. If a shard is ever cancelled at
     # exactly 30:00 with nothing red, that is this cap and not the code - split
     # to four shards before raising it, since the suite grows most weeks.
     timeout-minutes: 30
