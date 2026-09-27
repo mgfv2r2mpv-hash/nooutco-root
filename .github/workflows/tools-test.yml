@@ -12,7 +12,7 @@ name: Tools E2E Tests
 # hiccup can therefore fail this workflow without anything being wrong with the
 # code; check the failure before believing it.
 #
-# ── ONE JOB PER SHARD, AND WEBKIT ONLY WHERE IT IS WORTH WAITING FOR ────────
+# ── ONE JOB PER SHARD ──────────────────────────────────────────────────────
 #
 # This file used to run three shards one after another inside a single job per
 # browser, and its own comment named the fix: "The move that buys wall clock is
@@ -20,8 +20,6 @@ name: Tools E2E Tests
 # a number, and is the thing to do when 70 runs out." It ran out on 2026-09-26,
 # when webkit was the last check standing on a PR that was otherwise green and
 # ready, at roughly 55 minutes a browser: three shards at 20.8, 15.2 and 19.6.
-#
-# Two changes, and they are independent.
 #
 # PARALLEL SHARDS. Each (project, shard) is now its own job, so the wall clock
 # for the whole suite is the SLOWEST SINGLE SHARD rather than the sum of three.
@@ -37,17 +35,15 @@ name: Tools E2E Tests
 # RUNNER, so a server starts on a clean machine rather than the third one
 # inheriting whatever the first two left behind.
 #
-# WEBKIT IS NOT ON PULL REQUESTS. It is the slowest engine and it was the last
-# check standing on every PR. It still runs on every push to main and dev, so
-# Safari breakage is caught before a deploy rather than never - this buys merge
-# latency, it does not drop coverage. Run it on a PR on demand with
-# workflow_dispatch when a change is layout or CSS shaped, which is where webkit
-# earns its time. The `touch` profile is webkit-driven and stays on PRs: it is
-# one spec and costs seconds.
+# WEBKIT STAYS ON PULL REQUESTS. It was the last check standing because its
+# three shards ran back to back; with one job per shard it costs its slowest
+# shard like every other browser, so dropping it from PRs would give up Safari
+# coverage before merge for no remaining gain. workflow_dispatch still runs a
+# chosen set on demand.
 
 on:
-  # Run a chosen set on demand: a webkit check on a PR branch, or one browser
-  # while collecting evidence about the dev server.
+  # Run a chosen set on demand, e.g. one browser while collecting evidence
+  # about the dev server.
   workflow_dispatch:
     inputs:
       projects:
@@ -92,11 +88,9 @@ jobs:
         env:
           # A manual run names its own list. Otherwise the event decides.
           REQUESTED: ${{ github.event.inputs.projects }}
-          IS_PR: ${{ github.event_name == 'pull_request' }}
         run: |
           node <<'JS' >> "$GITHUB_OUTPUT"
           const requested = process.env.REQUESTED;
-          const isPr = process.env.IS_PR === 'true';
 
           /* `browser` is carried alongside `project` because the two stopped
              being the same word. `touch` is the iPhone 13 profile, which
@@ -118,7 +112,7 @@ jobs:
 
           const chosen = requested
             ? JSON.parse(requested)
-            : ALL.filter((p) => !(isPr && p.project === 'webkit'));
+            : ALL;
 
           // One entry per job. The shard number rides along so the run step,
           // the report directory and the artefact name can all use it.
@@ -135,9 +129,6 @@ jobs:
         run: |
           echo "jobs: $(echo '${{ steps.build.outputs.matrix }}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).include.length))')"
           echo "webkit included: ${{ steps.build.outputs.webkit }}"
-          if [ "${{ steps.build.outputs.webkit }}" != "true" ]; then
-            echo "::notice::webkit is not run on pull requests. Push to dev or main runs it, or dispatch this workflow on this branch to run it now."
-          fi
 
   e2e:
     needs: plan
@@ -287,7 +278,4 @@ jobs:
           if [ "${{ needs.e2e.result }}" != "success" ]; then
             echo "::error::Tools E2E did not pass (${{ needs.e2e.result }})."
             exit 1
-          fi
-          if [ "${{ needs.plan.outputs.webkit }}" != "true" ]; then
-            echo "::notice::Green without webkit. Push to dev or main runs it."
           fi
