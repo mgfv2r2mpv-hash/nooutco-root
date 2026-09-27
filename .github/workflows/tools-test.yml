@@ -77,12 +77,18 @@ jobs:
   # where it can be read.
   plan:
     runs-on: ubuntu-latest
+    # The workflow-level default is apps/tools, and this job never checks the
+    # repo out, so that directory does not exist on its runner. Without this
+    # every step here dies before it runs with "No such file or directory",
+    # which is what happened on the first push of this file.
+    defaults:
+      run:
+        working-directory: .
     outputs:
       matrix: ${{ steps.build.outputs.matrix }}
       webkit: ${{ steps.build.outputs.webkit }}
     steps:
       - id: build
-        working-directory: ${{ github.workspace }}
         env:
           # A manual run names its own list. Otherwise the event decides.
           REQUESTED: ${{ github.event.inputs.projects }}
@@ -269,6 +275,10 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     name: Tools E2E (suite)
+    # Same reason as plan: no checkout here, so apps/tools does not exist.
+    defaults:
+      run:
+        working-directory: .
     steps:
       - name: Report
         run: |
