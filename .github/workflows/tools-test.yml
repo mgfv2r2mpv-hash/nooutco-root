@@ -6,25 +6,53 @@ name: Tools E2E Tests
 # SAP note-drafter work (structured output, malformed-JSON recovery, the admin
 # ?schema=off toggle) reached production having only ever been run by hand.
 #
-# Sharded by browser for the same reason the games suite is: each project gets
-# its own short-lived `wrangler pages dev` rather than one process that has to
-# survive the whole matrix, and a failure in one engine does not hide the others.
-#
 # Note this suite is CDN-dependent in a way the games one is not - the note
 # pages pull React and Babel from a CDN and compile JSX in the browser, which is
 # why playwright.config.js caps workers at 2 and sets a 90s timeout. A CDN
 # hiccup can therefore fail this workflow without anything being wrong with the
 # code; check the failure before believing it.
+#
+# ── ONE JOB PER SHARD, AND WEBKIT ONLY WHERE IT IS WORTH WAITING FOR ────────
+#
+# This file used to run three shards one after another inside a single job per
+# browser, and its own comment named the fix: "The move that buys wall clock is
+# project x shard as parallel jobs, which is a rewrite of this file rather than
+# a number, and is the thing to do when 70 runs out." It ran out on 2026-09-26,
+# when webkit was the last check standing on a PR that was otherwise green and
+# ready, at roughly 55 minutes a browser: three shards at 20.8, 15.2 and 19.6.
+#
+# Two changes, and they are independent.
+#
+# PARALLEL SHARDS. Each (project, shard) is now its own job, so the wall clock
+# for the whole suite is the SLOWEST SINGLE SHARD rather than the sum of three.
+# Roughly 20 minutes instead of 55, for the same tests on the same runners.
+#
+# It also helps the server problem, though it does not solve it. `wrangler pages
+# dev` leaks per request - measured on the runner 2026-09-17 at ~0.06 MB each,
+# workerd climbing 137 MB to 3.1 GB over ~50,000 requests - and it stops
+# answering near the top of that climb, which is what turned "every spec after
+# minute 21 failed" into ERR_CONNECTION_REFUSED reading as test failures. That
+# leak is upstream and not ours to fix. Sharding was always the mitigation:
+# no server lives long enough to get there. Now each shard also gets its own
+# RUNNER, so a server starts on a clean machine rather than the third one
+# inheriting whatever the first two left behind.
+#
+# WEBKIT IS NOT ON PULL REQUESTS. It is the slowest engine and it was the last
+# check standing on every PR. It still runs on every push to main and dev, so
+# Safari breakage is caught before a deploy rather than never - this buys merge
+# latency, it does not drop coverage. Run it on a PR on demand with
+# workflow_dispatch when a change is layout or CSS shaped, which is where webkit
+# earns its time. The `touch` profile is webkit-driven and stays on PRs: it is
+# one spec and costs seconds.
 
 on:
-  # Run one browser on demand. The dev server has died mid-run on every red run
-  # since 2026-09-16, taking every later spec with it as ERR_CONNECTION_REFUSED,
-  # and it reproduces on no Mac, so the evidence has to be collected here.
+  # Run a chosen set on demand: a webkit check on a PR branch, or one browser
+  # while collecting evidence about the dev server.
   workflow_dispatch:
     inputs:
       projects:
         description: 'JSON array of {project, browser, shards} to run'
-        default: '[{"project":"chromium","browser":"chromium","shards":3}]'
+        default: '[{"project":"webkit","browser":"webkit","shards":3}]'
   push:
     branches: [main, dev]
     paths:
@@ -41,54 +69,95 @@ defaults:
     working-directory: apps/tools
 
 jobs:
-  e2e:
+  # Which (project, shard) pairs to run, expanded into one entry per job.
+  #
+  # A separate job rather than an expression on the matrix itself, because the
+  # shard fan-out has to be computed and a matrix `include` cannot loop. It
+  # costs a few seconds on a shared runner and keeps the decision in one place
+  # where it can be read.
+  plan:
     runs-on: ubuntu-latest
-    name: Tools E2E (${{ matrix.project }})
-    # 45 RATHER THAN 30, AND THE 30 WAS NOT A FLAKE. On 2026-09-02 the firefox
-    # shard of run 33624526400 was cancelled by this cap at exactly 30:00, with
-    # no test failure in the log. Its two siblings on the same commit finished
-    # at 17:04 (chromium) and 24:57 (webkit), so the cap had roughly five
-    # minutes of headroom for the second-slowest engine and none at all for the
-    # slowest.
+    outputs:
+      matrix: ${{ steps.build.outputs.matrix }}
+      webkit: ${{ steps.build.outputs.webkit }}
+    steps:
+      - id: build
+        working-directory: ${{ github.workspace }}
+        env:
+          # A manual run names its own list. Otherwise the event decides.
+          REQUESTED: ${{ github.event.inputs.projects }}
+          IS_PR: ${{ github.event_name == 'pull_request' }}
+        run: |
+          node <<'JS' >> "$GITHUB_OUTPUT"
+          const requested = process.env.REQUESTED;
+          const isPr = process.env.IS_PR === 'true';
+
+          /* `browser` is carried alongside `project` because the two stopped
+             being the same word. `touch` is the iPhone 13 profile, which
+             Playwright drives with webkit, and `playwright install touch` is not
+             a thing.
+
+             touch is a shard rather than a browser: playwright.config.js gives
+             it testMatch, so it runs the one touch spec and the three desktop
+             projects skip that file. It costs seconds, not the 17 to 25 minutes
+             the others take. Leaving it out would ship a spec file that never
+             ran anywhere, which is the failure this whole workflow exists to
+             stop. */
+          const ALL = [
+            { project: 'chromium', browser: 'chromium', shards: 3 },
+            { project: 'firefox',  browser: 'firefox',  shards: 3 },
+            { project: 'webkit',   browser: 'webkit',   shards: 3 },
+            { project: 'touch',    browser: 'webkit',   shards: 1 },
+          ];
+
+          const chosen = requested
+            ? JSON.parse(requested)
+            : ALL.filter((p) => !(isPr && p.project === 'webkit'));
+
+          // One entry per job. The shard number rides along so the run step,
+          // the report directory and the artefact name can all use it.
+          const include = chosen.flatMap((p) =>
+            Array.from({ length: p.shards }, (_, i) => ({
+              ...p, shard: i + 1,
+            })));
+
+          console.log('matrix=' + JSON.stringify({ include }));
+          console.log('webkit=' + String(chosen.some((p) => p.project === 'webkit')));
+          JS
+
+      - name: Say what will run
+        run: |
+          echo "jobs: $(echo '${{ steps.build.outputs.matrix }}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).include.length))')"
+          echo "webkit included: ${{ steps.build.outputs.webkit }}"
+          if [ "${{ steps.build.outputs.webkit }}" != "true" ]; then
+            echo "::notice::webkit is not run on pull requests. Push to dev or main runs it, or dispatch this workflow on this branch to run it now."
+          fi
+
+  e2e:
+    needs: plan
+    runs-on: ubuntu-latest
+    name: Tools E2E (${{ matrix.project }} ${{ matrix.shard }}/${{ matrix.shards }})
+    # 30 RATHER THAN 70, BECAUSE A JOB IS NOW ONE SHARD, NOT THREE.
     #
-    # 70 RATHER THAN 45, AND THE 45 WENT THE SAME WAY. On 2026-09-20 webkit on
-    # run 35489268071 was cancelled at 45:17 having failed NOTHING: shard 1
-    # passed 421 tests in 15.1m, shard 2 passed 420 in 14.0m, and shard 3 was
-    # a minute or so from the end when the cap killed it. Its siblings on that
-    # commit finished at 28m and 30m. webkit had gone green twice at 38m in the
-    # days before, so the margin was seven minutes and ordinary runner variance
-    # spent it. The suite was 924 tests when the 30 was raised; it is 1262 now,
-    # and it grows most weeks, so read this number as rented rather than fixed.
+    # The history is worth keeping, because this number has been raised twice by
+    # someone reading a cancelled job as a test failure. On 2026-09-02 firefox
+    # was cancelled at exactly 30:00 with nothing failed, when the cap covered
+    # three sequential shards. On 2026-09-20 webkit was cancelled at 45:17
+    # having failed NOTHING: shard 1 passed 421 tests in 15.1m, shard 2 passed
+    # 420 in 14.0m, and shard 3 was a minute from the end. Both times the cap
+    # was raised.
     #
-    # Raised rather than parallelised on purpose, twice now. `workers: 2` in
-    # playwright.config.js is a deliberate cap - every page compiles JSX in the
-    # browser and that CPU is shared with the Pages dev server - so buying time
-    # by widening it would buy flakes instead. The three shards are sequential
-    # inside one job because that is what replaces the leaking `wrangler pages
-    # dev` twice mid-run, so a fourth shard buys memory headroom and COSTS wall
-    # clock. The move that buys wall clock is project x shard as parallel jobs,
-    # which is a rewrite of this file rather than a number, and is the thing to
-    # do when 70 runs out.
-    timeout-minutes: 70
+    # Those numbers are also the evidence for this one: the slowest shard ever
+    # recorded here is 20.8 minutes, so 30 is roughly nine minutes of headroom
+    # on one shard rather than five on three. If a shard is ever cancelled at
+    # exactly 30:00 with nothing red, that is this cap and not the code - split
+    # to four shards before raising it, since the suite grows most weeks.
+    timeout-minutes: 30
     strategy:
-      # One browser failing must not cancel the other two - knowing whether a
-      # failure is browser-specific is most of the diagnosis.
+      # One shard failing must not cancel the others - knowing whether a failure
+      # is browser-specific, or confined to one shard, is most of the diagnosis.
       fail-fast: false
-      matrix:
-        # `browser` is carried alongside `project` because the two stopped being
-        # the same word. `touch` is the iPhone 13 profile, which Playwright
-        # drives with webkit, and `playwright install touch` is not a thing.
-        # Every other step still keys off `project`, so the job names and the
-        # artefact names read the way they always did.
-        #
-        # touch is a shard rather than a browser: playwright.config.js gives it
-        # testMatch, so it runs the one touch spec and the three desktop
-        # projects skip that file. It costs seconds, not the 17 to 25 minutes
-        # the others take. Leaving it out of this list would have shipped a spec
-        # file that never ran anywhere, which is the failure this whole workflow
-        # exists to stop.
-        # A manual run may name its own list; a push always runs all four.
-        include: ${{ fromJSON(github.event.inputs.projects || '[{"project":"chromium","browser":"chromium","shards":3},{"project":"firefox","browser":"firefox","shards":3},{"project":"webkit","browser":"webkit","shards":3},{"project":"touch","browser":"webkit","shards":1}]') }}
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
 
@@ -109,18 +178,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Only the browser this shard actually needs. See the matrix above for
-      # why this is `browser` and not `project`.
+      # Only the browser this shard actually needs. See the plan job for why
+      # this is `browser` and not `project`.
       - name: Install Playwright browser
         run: npx playwright install --with-deps ${{ matrix.browser }}
 
       # This is what turned "every spec after minute 21 failed" into a named
-      # cause, and it stays: the server's death leaves no message of its own, so
-      # without a sample of memory, its processes and the socket there is nothing
-      # to read afterwards. It also watches the headroom the fix depends on -
-      # measured 2026-09-17 with three shards, workerd peaks at 1831 MB and the
-      # server stopped answering at ~3.1 GB, so a suite that grows needs a fourth
-      # shard before it needs anything cleverer. Costs a few kB and one shell.
+      # cause, and it stays even though one shard per job makes the climb much
+      # shorter: the server's death leaves no message of its own, so without a
+      # sample of memory, its processes and the socket there is nothing to read
+      # afterwards. Costs a few kB and one shell.
       - name: Start resource sampler
         run: |
           cat > "$RUNNER_TEMP/sample.sh" <<'SH'
@@ -137,36 +204,31 @@ jobs:
           echo "sampler pid $!"
 
       - name: Run E2E tests
-        # SHARDED SO THE DEV SERVER IS REPLACED THREE TIMES, not for speed - the
-        # shards run one after another in this one job and cost what one run
-        # cost. `wrangler pages dev` leaks per request (measured on the runner
-        # 2026-09-17: ~0.06 MB each, workerd 137 MB -> 3.1 GB over ~50,000
-        # requests), and it stops answering near the top of that climb: every
-        # spec after the 21st minute failed ERR_CONNECTION_REFUSED and read as a
-        # test failure. Playwright cannot restart a web server mid-run, so each
-        # shard gets a fresh one and none lives long enough to get there.
-        # MEASURED with three shards on run 35286988727: workerd sawtooths to a
-        # 1831 MB peak and resets at each boundary, against ~3.1 GB where it
-        # died. Green, with about 1.3 GB of headroom rather than a wide margin.
+        # ONE SHARD, ONE SERVER, ONE RUNNER. `wrangler pages dev` leaks per
+        # request (~0.06 MB each, workerd 137 MB -> 3.1 GB over ~50,000
+        # requests) and stops answering near the top of that climb. Sharding was
+        # always the mitigation rather than a speed trick: no server lives long
+        # enough to get there. Measured with three sequential shards on run
+        # 35286988727, workerd sawtoothed to 1831 MB and reset at each boundary,
+        # against ~3.1 GB where it died.
+        #
+        # Now the boundary is a job boundary, so the server also starts on a
+        # clean machine. The peak should be at or below that same 1831 MB with
+        # more headroom, and the sampler above is what will say so.
         #
         # Shards split by FILE and are deterministic, so a failure names the
         # same shard on a re-run. touch is one file, hence shards: 1.
         #
-        # No port override is needed here: playwright.config.js already sets
+        # No port override is needed: playwright.config.js already sets
         # `reuseExistingServer: !process.env.CI`, so a CI run always starts its
         # own wrangler rather than adopting whatever else answers on 8789.
+        env:
+          PLAYWRIGHT_HTML_REPORT: playwright-report
+          PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report
         run: |
-          failed=0
-          for shard in $(seq 1 ${{ matrix.shards }}); do
-            echo "::group::shard $shard of ${{ matrix.shards }}"
-            # A per-shard report directory, or each shard would overwrite the last.
-            PLAYWRIGHT_HTML_REPORT="playwright-report/shard-$shard" \
-            PLAYWRIGHT_HTML_OUTPUT_DIR="playwright-report/shard-$shard" \
-              npx playwright test --project=${{ matrix.project }} \
-              --shard=$shard/${{ matrix.shards }} || failed=1
-            echo "::endgroup::"
-          done
-          exit $failed
+          npx playwright test \
+            --project=${{ matrix.project }} \
+            --shard=${{ matrix.shard }}/${{ matrix.shards }}
 
       # Kernel messages name an OOM kill; the sampler shows the run-up to it.
       - name: Collect server death evidence
@@ -182,7 +244,9 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: server-evidence-tools-${{ matrix.project }}
+          # The shard is in the name now: upload-artifact v4 rejects duplicate
+          # names, and (project, shard) pairs are separate jobs.
+          name: server-evidence-tools-${{ matrix.project }}-${{ matrix.shard }}
           path: |
             ${{ runner.temp }}/resources.log
             ${{ runner.temp }}/dmesg.log
@@ -192,25 +256,28 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          # upload-artifact v4 rejects duplicate names across matrix jobs, and
-          # these must not collide with the games workflow's artefacts either.
-          name: playwright-report-tools-${{ matrix.project }}
+          # Must not collide across shards, nor with the games workflow's.
+          name: playwright-report-tools-${{ matrix.project }}-${{ matrix.shard }}
           path: apps/tools/playwright-report/
           retention-days: 14
 
-  aggregate:
-    # One stable check name regardless of how the matrix is shaped. Distinct
-    # from the games workflow's aggregate so both can be required independently.
-    name: Tools E2E Tests (Playwright)
-    runs-on: ubuntu-latest
-    needs: e2e
+  # One status to look at, and one thing a branch protection rule could require
+  # later. Without it, "did the suite pass" means reading ten job results, and a
+  # skipped or cancelled job is easy to misread as a pass.
+  suite:
+    needs: [plan, e2e]
     if: always()
+    runs-on: ubuntu-latest
+    name: Tools E2E (suite)
     steps:
-      - name: Report shard results
-        working-directory: .
+      - name: Report
         run: |
-          echo "shard result: ${{ needs.e2e.result }}"
-          [ "${{ needs.e2e.result }}" = "success" ] || {
-            echo "::error::One or more browser shards failed - see the Tools E2E (<browser>) jobs."
+          echo "e2e result: ${{ needs.e2e.result }}"
+          echo "webkit included: ${{ needs.plan.outputs.webkit }}"
+          if [ "${{ needs.e2e.result }}" != "success" ]; then
+            echo "::error::Tools E2E did not pass (${{ needs.e2e.result }})."
             exit 1
-          }
+          fi
+          if [ "${{ needs.plan.outputs.webkit }}" != "true" ]; then
+            echo "::notice::Green without webkit. Push to dev or main runs it."
+          fi
