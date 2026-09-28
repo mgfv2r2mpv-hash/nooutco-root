@@ -557,7 +557,14 @@ test.describe('the analysis rules reach the technician tool and no other', () =>
      and the failure prints it so reading it is the fix. That is closed-enum
      behaviour on prose: unknown input fails, rather than being waved through
      because no pattern happened to match it. */
-  const ANALYSIS_VOCAB = /caus|\bwhy\b|hypothes|function|motivat|speculat|explanation|diagnos/i;
+  /* WIDENED after a third read. Five bans got past the first list by avoiding
+     the words rather than the meaning: "Leave out the reason a behavior
+     occurred." and "Do not interpret the purpose of the behavior." carry none
+     of caus, why, hypothes, function, motivat, speculat, explanation or
+     diagnos. An allow-list is only closed over the vocabulary that opens it,
+     so the vocabulary is the hole, and widening it costs twelve more sentences
+     to read once rather than a guess at every phrasing. */
+  const ANALYSIS_VOCAB = /caus|\bwhy\b|hypothes|function|motivat|speculat|explanation|diagnos|reason|purpose|interpret|infer|maintain|attribut|\bescape|\battention|\bintent/i;
 
   function analysisSentences(text) {
     return String(text)
@@ -598,6 +605,21 @@ test.describe('the analysis rules reach the technician tool and no other', () =>
     'Naming why a behavior occurs is the assessment\'s finding, not an overreach, provided it is hedged to the evidence that supports it.',
     '- Precise verbs: administered [instrument], conducted a preference assessment, conducted FBA/FA, ran probes, established baseline, observed, interviewed, scored, identified function.',
     '- progress (Summary of Progress and Findings): up to 10 sentences narrating the session arc - what data or trends were reviewed, which goals were focused on and why, what was observed during the session, what was modified in response to those observations, and any probes or assessments run.',
+    // Surfaced by the widening, read 2026-09-28. Output specs, checkbox
+    // inference, one worked example, and the opinion carve-out, which flags
+    // rather than removes and is the opposite of a ban.
+    'OUTPUT: (a) third-person clinical narratives, (b) conservative checkbox inferences for the BCBA to verify.',
+    'CHECKBOX INFERENCE:',
+    'Infer conservatively - only options clearly supported by the notes.',
+    '"The behavior technician modeled play with the toy and reduced attention for several seconds.',
+    'Staff opinion about the client, the family or the program is sometimes fine and the technician may have a reason for it.',
+    'Keep what they wrote, and emit an ambiguous_item hint on that section giving the reason in a few words, for example \'opinion, not observation.',
+    'Purpose: assess language skills."',
+    'OUTPUT: (a) a up to 8 sentence third-person clinical narrative for the "Brief Summary of Activities Completed" field, (b) a up to 10 sentence third-person clinical narrative for the "Results of Assessment" field, (c) conservative checkbox inferences for the BCBA to verify.',
+    '- "Brief Summary of Activities Completed" is what the Behavior Analyst DID: the instruments administered and the repertoire or domains each one covers, how data were collected, what was manipulated and in what order, and the clinical purpose of each.',
+    '- Hedge the inference to the evidence behind it.',
+    'YOUR JOB: put what the BCBA entered into the permitted format while preserving clinical intent - NOT to capture everything a session could contain.',
+    'EXACTLY one of the allowed strings, inferred conservatively from the progress data across goals.',
   ]);
 
   for (const id of ['parent', 'assess', 'sup']) {
@@ -616,6 +638,33 @@ test.describe('the analysis rules reach the technician tool and no other', () =>
       expect(system).toContain('A light judgment sitting on something actually seen');
     });
   }
+
+  /* THE VOCABULARY IS THE ONE PART THAT CAN STILL BE TOO NARROW, so it gets its
+     own fixture. The allow-list is closed over whatever ANALYSIS_VOCAB matches;
+     a sentence the vocabulary never sees is never reviewed and never fails.
+     castor-fa9d3593 found five that way, and every one of them is invisible to
+     the first list: not one carries caus, why, hypothes, function, motivat,
+     speculat, explanation or diagnos. */
+  test('the vocabulary sees a ban that avoids the obvious words', () => {
+    const SNEAKY = [
+      'Leave out the reason a behavior occurred.',
+      'Do not interpret the purpose of the behavior.',
+      'Never infer what maintained the response.',
+      'Do not attribute the behavior to escape or attention.',
+      'Omit any statement of the client intent.',
+    ];
+    for (const s of SNEAKY) {
+      expect(analysisSentences(s), `the vocabulary cannot see: ${s}`).toEqual([s]);
+      expect(REVIEWED.has(s), `a ban is in the allow-list: ${s}`).toBe(false);
+    }
+
+    /* And a sentence with nothing to do with the analysis stays out, because a
+       vocabulary that matched everything would turn the allow-list into a
+       transcript of the prompt and nobody would read the next addition. */
+    for (const s of ['The client sat down.', 'Data were collected on three goals.']) {
+      expect(analysisSentences(s), `the vocabulary is too wide: ${s}`).toEqual([]);
+    }
+  });
 
   /* THE POSITIVE CONTROL, and the allow-list is worth nothing without it. An
      allow-list passes trivially when the vocabulary never matches anything, so
