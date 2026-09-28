@@ -176,8 +176,9 @@ test.describe('it asks again when something is still missing', () => {
     await answer(page, 'twice, in the money program');
     await expect(page.getByText(/What prompt level/i)).toBeVisible({ timeout: 20000 });
 
-    // Skip the second. The first answer is work they already did.
-    await page.locator('.revision-skip').click();
+    // Skip the second with an empty Send. The first answer is work they
+    // already did.
+    await page.locator('.revision-send').click();
     await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 20000 });
     await expect(page.locator('.revision-panel-body')).toContainText('twice, in the money program');
   });
@@ -185,7 +186,7 @@ test.describe('it asks again when something is still missing', () => {
 
 // The wait applies to every tool, including his own.
 //
-// He asked for the skip button to cost a few seconds when the draft is thin,
+// He asked for skipping to cost a few seconds when the draft is thin (a minute on Send since 2026-09-28),
 // after the audit trail showed ten gap-question rounds against zero revisions
 // ever on bt. I shipped it scoped to bt, reasoning that the price was aimed at
 // a technician still learning what a note needs and that a BCBA already knows.
@@ -245,7 +246,7 @@ test.describe('the round reaches the model, not just the audit trail', () => {
   });
 });
 
-test.describe('the skip cooldown covers the BCBA drafters too', () => {
+test.describe('the Send lock covers the BCBA drafters too', () => {
   const supToken = () => {
     const p = { role: 'user', kid: 'test-kid', exp: Math.floor(Date.now() / 1000) + 3600, tools: ['sup'] };
     return Buffer.from(JSON.stringify(p)).toString('base64')
@@ -255,7 +256,7 @@ test.describe('the skip cooldown covers the BCBA drafters too', () => {
   test('a BCBA drafter waits like everyone else', async ({ page }) => {
     await page.route('**/api/llm-call**', (route) => route.fulfill(reply({
       sufficient: false,
-      questions: [{ field: 'fNarrative', question: 'How long was the observation?' }],
+      questions: [{ field: 'fNarrative', question: 'How long was the observation?', suggestions: ['The observation ran about an hour.'] }],
     })));
 
     await page.goto('/notes/bcba/index.html?tool=sup');
@@ -277,10 +278,9 @@ test.describe('the skip cooldown covers the BCBA drafters too', () => {
     const rev = page.locator('#notes-scrub-go');
     if (await rev.isVisible({ timeout: 1500 }).catch(() => false)) await rev.click();
 
-    const skip = page.getByRole('button', { name: /Nothing to add|Generate without adding answers/i });
-    await expect(skip).toBeVisible({ timeout: 15000 });
-    await expect(skip).toBeDisabled();
-    await expect(skip).toHaveText(/\(\d+s\)/);
-    await expect(page.locator('.skip-cooldown-bar')).toBeVisible();
+    await expect(page.getByText('How long was the observation?')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('.revision-send')).toBeDisabled();
+    await expect(page.locator('[data-send-lock]')).toHaveText(/\b\d+s\b/);
+    await expect(page.locator('.send-lock-bar')).toBeVisible();
   });
 });

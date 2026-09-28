@@ -104,11 +104,11 @@ test.describe('the assistant footer is three rows, not six', () => {
     expect(g.micParent, 'the mic is in the composer row').toContain('revision-compose');
     expect(g.sendParent, 'and so is send').toContain('revision-compose');
 
-    // Side by side rather than stacked: same baseline, mic to the left of send,
-    // both to the right of the box they fill.
+    // Side by side rather than stacked: same baseline. His 2026-09-28 order:
+    // the mic left of the box, the box in the middle, Send on the right.
     expect(Math.abs(g.mic.mid - g.send.mid), 'mic and send share a baseline').toBeLessThan(4);
-    expect(g.mic.right, 'the mic comes before send').toBeLessThanOrEqual(g.send.left + 1);
-    expect(g.mic.left, 'both sit after the box').toBeGreaterThanOrEqual(g.input.right - 1);
+    expect(g.mic.right, 'the mic comes before the box').toBeLessThanOrEqual(g.input.left + 1);
+    expect(g.input.right, 'the box comes before send').toBeLessThanOrEqual(g.send.left + 1);
   });
 
   /* THE ONE TEST HERE THAT ALSO PASSES ON THE BUILD THIS REPLACED, and it is
