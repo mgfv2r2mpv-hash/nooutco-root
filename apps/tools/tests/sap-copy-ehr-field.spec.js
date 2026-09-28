@@ -219,3 +219,53 @@ test.describe('each EHR field has its own Copy', () => {
     expect(all).toBe(parts.join('\n\n'));
   });
 });
+
+/* THE FIELD ROW FITS AT EVERY WIDTH.
+ *
+ * Review of #215 measured the first cut: the heading beside "Copy Treatment
+ * Goal (Refined)" was squeezed to 98 px and wrapped to four lines at every
+ * width, and at 320 px the page scrolled sideways by 33 px because the button
+ * could not wrap. Measured with boxes, not screenshots. */
+test.describe('the field row fits', () => {
+  // One line of the 13 px heading is under 26 px; two lines are over it.
+  const ONE_LINE_MAX = 26;
+
+  for (const width of [320, 1280]) {
+    test(`at ${width} px nothing scrolls sideways and every Copy is on screen`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await draft(page);
+      const sideways = await page.evaluate(() =>
+        document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      expect(sideways, 'the page scrolls sideways').toBeLessThanOrEqual(0);
+
+      for (const field of FIELDS) {
+        const button = page.getByRole('button', { name: `Copy ${field.heading}`, exact: true });
+        const box = await button.boundingBox();
+        expect(box, `Copy ${field.heading} has no box`).not.toBeNull();
+        expect(box.x).toBeGreaterThanOrEqual(0);
+        expect(box.x + box.width, `Copy ${field.heading} runs off the right edge`).toBeLessThanOrEqual(width);
+      }
+    });
+  }
+
+  /* 390 px is where the first cut showed the squeeze: 98 px wide, four lines.
+     There the button drops below the heading; at 1280 it sits beside it. */
+  for (const width of [390, 1280]) {
+    test(`at ${width} px every field heading is one line`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await draft(page);
+      const rows = page.getByTestId('copy-group');
+      await expect(rows).toHaveCount(FIELDS.length);
+      for (let i = 0; i < FIELDS.length; i++) {
+        const heading = await rows.nth(i).getByTestId('copy-group-heading').boundingBox();
+        expect(heading.height, `${FIELDS[i].heading} wraps at ${width} px`).toBeLessThan(ONE_LINE_MAX);
+        if (width < 1280) continue;
+        // Same row: the button's vertical middle sits inside the heading's box.
+        const button = await rows.nth(i).getByRole('button').boundingBox();
+        const mid = button.y + button.height / 2;
+        expect(mid).toBeGreaterThan(heading.y);
+        expect(mid).toBeLessThan(heading.y + heading.height);
+      }
+    });
+  }
+});

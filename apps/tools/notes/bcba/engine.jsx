@@ -5373,9 +5373,11 @@ function App() {
                       className="full-row"
                       data-testid="copy-group"
                       data-group={group.heading}
-                      style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginTop: i === 0 ? 0 : 10, paddingBottom: 6, borderBottom: "1.5px solid #c0d4a8" }}
+                      // Wraps rather than squeezes: the heading keeps its own
+                      // width and the button drops below it when both do not fit.
+                      style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 8, marginTop: i === 0 ? 0 : 10, paddingBottom: 6, borderBottom: "1.5px solid #c0d4a8" }}
                     >
-                      <span style={{ fontSize: 13, fontWeight: 700, color: "#2d3a1f", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                      <span data-testid="copy-group-heading" style={{ flex: "1 1 auto", fontSize: 13, fontWeight: 700, color: "#2d3a1f", textTransform: "uppercase", letterSpacing: "0.04em" }}>
                         {group.heading}
                         <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 600, color: "#7a9460", textTransform: "none", letterSpacing: 0 }}>
                           EHR field
@@ -5383,7 +5385,7 @@ function App() {
                       </span>
                       <button
                         onClick={() => handleCopyGroup(group)}
-                        style={{ ...smallBtn, border: "1.5px solid #374528", background: copied === "grp-" + group.heading ? "#374528" : "white", color: copied === "grp-" + group.heading ? "white" : "#374528" }}
+                        style={{ ...smallBtn, flex: "0 0 auto", border: "1.5px solid #374528", background: copied === "grp-" + group.heading ? "#374528" : "white", color: copied === "grp-" + group.heading ? "white" : "#374528" }}
                       >
                         {copied === "grp-" + group.heading ? "Copied!" : "Copy " + group.heading}
                       </button>
