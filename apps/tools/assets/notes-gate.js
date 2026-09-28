@@ -651,7 +651,7 @@
       },
       body: JSON.stringify({
         tool: o.tool,
-        intake: o.intake,
+        intake: outbound(o.intake),
         sections: Array.isArray(o.sections) ? o.sections : [],
       }),
     }, EXPERT_TIMEOUT_MS, "The expert pass timed out.")
@@ -700,14 +700,14 @@
       },
       body: JSON.stringify({
         tool: o.tool,
-        intake: o.intake,
-        draft: Array.isArray(o.draft) ? o.draft : [],
+        intake: outbound(o.intake),
+        draft: outbound(Array.isArray(o.draft) ? o.draft : []),
         /* Both optional and both new on 2026-09-20. `asks` is the technician's
            queue, spent in one turn for the whole note. `heldOut` is the wording
            they already took out, so the pass is told not to bring it back.
            A first pass sends neither and reads exactly as it did. */
-        asks: Array.isArray(o.asks) ? o.asks : [],
-        heldOut: Array.isArray(o.heldOut) ? o.heldOut : [],
+        asks: outbound(Array.isArray(o.asks) ? o.asks : []),
+        heldOut: outbound(Array.isArray(o.heldOut) ? o.heldOut : []),
       }),
     }, EXPERT_TIMEOUT_MS, "The corrections pass timed out.")
       .then(function (res) {
@@ -753,7 +753,7 @@
         "Content-Type": "application/json",
         "Authorization": "Bearer " + getToken(),
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(payload.messages ? Object.assign({}, payload, { messages: outbound(payload.messages) }) : payload),
     }, GEN_TIMEOUT_MS, "Note generation timed out. Please retry.");
   }
 
@@ -2182,6 +2182,56 @@
     });
   }
 
+  /* ─────────── The words he types into the put-back table ───────────
+   *
+   * His ruling, 2026-09-28: the note shows his words in place of the role
+   * tokens, and every review goes out DEHYDRATED. A word typed there is a real
+   * name and it is in no scrub map, so nothing upstream would catch it. The
+   * page keeps its own state as tokens and dehydrates what he edits; this is
+   * the second lock, at the only three doors a note leaves by. Each word goes
+   * back to its token wherever it stands whole.
+   *
+   * `list` is [{token, word}]. Longest word first, so "Mary Beth" is taken
+   * before "Mary". Case-sensitive: the word is what he typed, and a case-blind
+   * match would take "mom" in prose for the "Mom" he typed for [CAREGIVER]. */
+  var outboundWords = [];
+
+  function dehydrateWords(text, list) {
+    var out = String(text == null ? "" : text);
+    (list || [])
+      .filter(function (e) { return e && e.word && e.token && String(e.word).trim(); })
+      .slice()
+      .sort(function (a, b) { return String(b.word).length - String(a.word).length; })
+      .forEach(function (e) {
+        var w = String(e.word).trim();
+        var lead = /^\w/.test(w) ? "\\b" : "";
+        var tail = /\w$/.test(w) ? "\\b" : "";
+        out = out.replace(new RegExp(lead + escapeRe(w) + tail, "g"), e.token);
+      });
+    return out;
+  }
+
+  // Keys whose values are structure the Worker reads, never prose.
+  var OUTBOUND_SKIP = { id: true, section: true, tool: true, type: true, role: true, cache_control: true };
+
+  function outbound(value) {
+    if (!outboundWords.length) return value;
+    if (typeof value === "string") return dehydrateWords(value, outboundWords);
+    if (Array.isArray(value)) return value.map(outbound);
+    if (value && typeof value === "object") {
+      var o = {};
+      Object.keys(value).forEach(function (k) { o[k] = OUTBOUND_SKIP[k] ? value[k] : outbound(value[k]); });
+      return o;
+    }
+    return value;
+  }
+
+  function setOutboundWords(list) {
+    outboundWords = (Array.isArray(list) ? list : []).filter(function (e) {
+      return e && typeof e.word === "string" && e.word.trim() && typeof e.token === "string" && e.token;
+    }).map(function (e) { return { token: e.token, word: e.word.trim() }; });
+  }
+
   function restoreDeep(value, map) {
     if (typeof value === "string") {
       var s = value;
@@ -2325,13 +2375,17 @@
       isFirstName: function (w) {
         return !!FIRST_NAMES[String(w || "").toLowerCase().replace(/[^a-z'\-]/g, "")];
       },
-      applyScrub: applyScrub, restoreDeep: restoreDeep,
+      applyScrub: applyScrub, restoreDeep: restoreDeep, dehydrateWords: dehydrateWords,
       inferRoles: inferRoles, buildRoleMap: buildRoleMap,
     },
     /* The de-identification the expert pass runs, PUBLIC rather than under
      * _scrub, because it is a supported way to call the model and not a test
      * hook. scrubForAgent(text) out, restoreDeep(findings, map) back. */
     scrubForAgent: scrubForAgent,
+    /* The put-back table's words, taken back to their tokens at every model
+       door (llm-call messages, expert pass, corrections pass). The engine sets
+       it whenever the table changes. */
+    setOutboundWords: setOutboundWords,
     _json: { repair: repairModelJson },
   };
 })();
