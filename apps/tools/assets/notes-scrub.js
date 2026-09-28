@@ -3,7 +3,7 @@
  *
  * Compliance model (no BAA / no ZDR): PHI must never reach the API. De-identifying
  * the input *before* anything is sent is the HIPAA control here - the API only ever
- * receives role tokens (Client, Caregiver, …). Both gates run with no dialog:
+ * receives role tokens ([CLIENT], [CAREGIVER], …). Both gates run with no dialog:
  *
  *   1. acknowledge() - resolves true. The legal notice is now a permanent banner on
  *      the page rather than a modal you dismiss once and never read again.
@@ -56,19 +56,72 @@
 (function () {
   "use strict";
 
-  // Role -> readable replacement token. Title-case so it reads naturally inline.
-  // BCBA stays upper-case because it is an acronym, not a word.
+  /* Role -> the tag a person is replaced with.
+   *
+   * `tag` is what is minted: [CLIENT], [CAREGIVER], [BT]. `token` is the word
+   * the mint used before 2026-09-28, "Client--1", and it stays only so a saved
+   * draft or an open session holding that shape still restores. Nothing mints
+   * it any more. */
   var ROLES = [
-    { key: "client", label: "Client", token: "Client" },
-    { key: "caregiver", label: "Caregiver", token: "Caregiver" },
-    { key: "sibling", label: "Sibling", token: "Sibling" },
-    { key: "peer", label: "Peer", token: "Peer" },
-    { key: "technician", label: "Technician (BT/RBT)", token: "Technician" },
-    { key: "bcba", label: "BCBA", token: "BCBA" },
-    { key: "teacher", label: "Teacher", token: "Teacher" },
-    { key: "specialist", label: "Specialist (SLP/OT/PT)", token: "Specialist" },
-    { key: "staff", label: "Other staff", token: "Staff" },
+    { key: "client", label: "Client", token: "Client", tag: "CLIENT" },
+    { key: "caregiver", label: "Caregiver", token: "Caregiver", tag: "CAREGIVER" },
+    { key: "sibling", label: "Sibling", token: "Sibling", tag: "SIBLING" },
+    { key: "peer", label: "Peer", token: "Peer", tag: "PEER" },
+    { key: "technician", label: "Technician (BT/RBT)", token: "Technician", tag: "BT" },
+    { key: "bcba", label: "BCBA", token: "BCBA", tag: "BCBA" },
+    { key: "teacher", label: "Teacher", token: "Teacher", tag: "TEACHER" },
+    { key: "specialist", label: "Specialist (SLP/OT/PT)", token: "Specialist", tag: "SPECIALIST" },
+    { key: "staff", label: "Other staff", token: "Staff", tag: "STAFF" },
   ];
+
+  /* THE ROLE TOKEN IS [CLIENT], AND A SECOND CLIENT IS [CLIENT-2].
+   *
+   * His ruling on 2026-09-28: "Need them to all be [CLIENT] so I can audit them
+   * easily for missed restored tokens." One client, the common case, reads
+   * exactly [CLIENT]. The number appears only from the second person of a role.
+   *
+   * It keeps what "Client--1" was chosen for. Square brackets around an
+   * upper-case word are not prose, so a match is a token and never a word the
+   * model chose, and rehydrate() and the EHR copy can substitute on it safely.
+   * It also ends the prefix problem: the closing bracket means [CLIENT] is not
+   * the start of [CLIENT-12], so no substitution depends on its order any more.
+   *
+   * THE SEPARATOR IS A HYPHEN, NEVER AN UNDERSCORE. [PHONE_1] is the identifier
+   * shape and identifiers restore; a role tag written [CLIENT_2] would be
+   * indexed as one and put a person's name back into the note. And the opaque
+   * restorers need a T followed by a digit, which no role tag has, so neither
+   * [TEACHER-2] nor [BT] can be read as [[T2]].
+   */
+  function roleTag(role, n) {
+    return "[" + role.tag + (n > 1 ? "-" + n : "") + "]";
+  }
+
+  function roleByTag(tag) {
+    for (var i = 0; i < ROLES.length; i++) if (ROLES[i].tag === tag) return ROLES[i];
+    return null;
+  }
+
+  function roleByLegacyWord(word) {
+    for (var i = 0; i < ROLES.length; i++) if (ROLES[i].token === word) return ROLES[i];
+    return null;
+  }
+
+  /* Which role and which number a token stands for, in either shape. Null for
+     anything that is not a role token, opaque and identifier tokens included. */
+  function parseRoleToken(token) {
+    var t = String(token || "");
+    var m = /^\[([A-Z]+)(?:-(\d+))?\]$/.exec(t);
+    if (m) {
+      var byTag = roleByTag(m[1]);
+      return byTag ? { role: byTag, n: m[2] ? parseInt(m[2], 10) : 1 } : null;
+    }
+    var legacy = /^([A-Za-z]+)--(\d+)$/.exec(t);
+    if (legacy) {
+      var byWord = roleByLegacyWord(legacy[1]);
+      return byWord ? { role: byWord, n: parseInt(legacy[2], 10) } : null;
+    }
+    return null;
+  }
 
   // What counts as PII/PHI - surfaced in the (?) tooltip on each row and in the
   // acknowledgment notice. Mirrors the HIPAA Safe-Harbor identifiers in plain words.
@@ -303,7 +356,7 @@
 
   /* Two kinds of replacement, decided by evidence rather than by hope.
    *
-   * A word with person-evidence gets a ROLE token (Client, Caregiver 2) and that
+   * A word with person-evidence gets a ROLE token ([CLIENT], [CAREGIVER-2]) and that
    * token is what stays in the signed note. Unchanged, and deliberately so: the
    * de-identification of actual people is the whole point of this pass.
    *
@@ -346,12 +399,11 @@
         if (n > seeds.opaque) seeds.opaque = n;
         return;
       }
-      var rm = /^(.+?)--(\d+)$/.exec(token);
-      if (!rm) return;
-      var role = ROLES.filter(function (r) { return r.token === rm[1]; })[0];
-      if (!role) return;
-      var idx = parseInt(rm[2], 10);
-      if (idx > (seeds.counts[role.key] || 0)) seeds.counts[role.key] = idx;
+      // Both shapes, so a draft saved as "Client--2" still stops the next mint
+      // reusing its number.
+      var rt = parseRoleToken(token);
+      if (!rt) return;
+      if (rt.n > (seeds.counts[rt.role.key] || 0)) seeds.counts[rt.role.key] = rt.n;
     });
     return seeds;
   }
@@ -424,27 +476,17 @@
       var role = roleByKey(guessRole(name, freeText));
       counts[role.key] = (counts[role.key] || 0) + 1;
       var n = counts[role.key];
-      /* EVERY ROLE TOKEN IS NUMBERED, AND THE SEPARATOR IS TWO HYPHENS.
+      /* WHY NOT A BARE WORD, AND WHY NOT "Client--1" ANY MORE.
        *
-       * It used to be the bare word for the first person of a role and "Client 2"
-       * after that, which reads well and is the reason two other things could not
-       * be done. A bare "Client" is ordinary English the model writes on its own
-       * account, so the page could never tell a token apart from a word the model
-       * chose, and rehydrate() below could not exist. And "Client" is a prefix of
-       * "Client 2", so every substitution pass has to sort by length or leave a
-       * stray digit behind.
-       *
-       * "Client--1" is not English. No model writing prose types it, so a match is
-       * a token and never a coincidence, and the maintainer's stated reason on
-       * 2026-09-02 was exactly that: make it clear enough that the agent respects
-       * it for its oddness.
-       *
-       * IT IS UGLY IN THE SIGNED NOTE, and that is the deliberate trade. The
-       * technician has always had to substitute their own words back before
-       * signing; "Client" let them forget, and "Client--1" does not. */
+       * It was once the bare word "Client" for the first person of a role. That
+       * is ordinary English the model writes on its own account, so the page
+       * could never tell a token from a word the model chose, and rehydrate()
+       * below could not exist. From 2026-09-02 it was "Client--1", which fixed
+       * that and was ugly on purpose. From 2026-09-28 it is [CLIENT], which
+       * keeps the property and is the shape he audits by. See roleTag(). */
       return {
         roleKey: role.key,
-        token: role.token + "--" + n,
+        token: roleTag(role, n),
         restore: false,
       };
     });
@@ -488,10 +530,136 @@
     return { map: kept, certified: certified };
   }
 
+  /* Names through the gate's case-blind replace, role words through their own.
+     A role word is tokenised only where it stands for a person, which the
+     gate's replace cannot tell: it would turn "client Jacob" and "the client"
+     into tokens along with the "Client" he typed in place of a name. */
   function applyMap(text, map) {
     var s = scrub();
     if (!s || !map || !map.length) return text;
-    return s.applyScrub(text, map);
+    var names = map.filter(function (e) { return !isRoleWordEntry(e); });
+    var words = map.filter(isRoleWordEntry);
+    var out = names.length ? s.applyScrub(text, names) : text;
+    return words.length ? applyRoleWords(out, words) : out;
+  }
+
+  /* ─────────── A role word typed in place of a name ───────────
+   *
+   * His ruling, 2026-09-28: staff are told to write "Client" or "Caregiver"
+   * instead of a name, and a word typed that way is where a name can be put
+   * back, so it becomes that role's token. "Client" is [CLIENT], never a minted
+   * person number, and it lands in the put-back table beside any name the scrub
+   * found, pre-filled with the word itself so an untouched copy reads exactly
+   * as he typed it.
+   *
+   * WHAT COUNTS. The word as a stand-in for a person: capitalised (Client,
+   * Mom), or the acronym in capitals (BT, BCBA). NOT a label on a name that
+   * follows it ("Client Jacob", "BT Marcus", where the name is the person and
+   * gets the token), not a compound title ("Parent Training", "BCBA
+   * Supervision"), not a hyphen compound ("BT-led"), and not the lower-case
+   * word in running prose ("with staff using items"), which is not a person
+   * standing in a sentence. */
+  /* Every word here is on the gate's stoplist, so none of them can also be
+     detected as a name and carry two entries. Add a word here only with it. */
+  var ROLE_WORD_ROLE = {
+    Client: "client",
+    Caregiver: "caregiver", Parent: "caregiver",
+    Mom: "caregiver", Dad: "caregiver", Mother: "caregiver", Father: "caregiver",
+    Technician: "technician", BT: "technician", RBT: "technician",
+    BCBA: "bcba", Teacher: "teacher", Staff: "staff",
+    Sibling: "sibling", Peer: "peer",
+  };
+
+  /* Read off the entry itself as well as its flag. A map that lost the flag on
+     the way through a caller would otherwise send "Client" through the gate's
+     case-blind replace, which rewrites "the client" and even the "CLIENT"
+     inside an issued [CLIENT]. No name can be a role word (every one of them
+     is on the gate's stoplist), so the shape is proof enough. */
+  function isRoleWordEntry(e) {
+    if (!e) return false;
+    if (e.roleWord) return true;
+    return Object.prototype.hasOwnProperty.call(ROLE_WORD_ROLE, e.name) && !e.restore && !!parseRoleToken(e.token);
+  }
+
+  // The map without the role words, for re-scrubbing text the MODEL wrote.
+  function withoutRoleWords(map) {
+    return (map || []).filter(function (e) { return !isRoleWordEntry(e); });
+  }
+
+  function roleWordPattern(word) {
+    /* Lead: start, or anything that is not a letter, digit, underscore,
+       bracket or hyphen. Tail: not a word character or hyphen, and not a space
+       then a capital or a bracket, which is a label on the name or token that
+       follows it. No lookbehind, so Safari before 16.4 still parses it. */
+    return new RegExp(
+      "(^|[^A-Za-z0-9_\\[\\-])(" + word + ")(?![A-Za-z0-9_\\-])(?![ \\t]+[A-Z\\[])",
+      "g",
+    );
+  }
+
+  function applyRoleWords(text, entries) {
+    var out = String(text);
+    entries.forEach(function (e) {
+      out = out.replace(roleWordPattern(e.name), function (hit, lead) { return lead + e.token; });
+    });
+    return out;
+  }
+
+  /* The name a role word is a label on, where the text says so: "Mom Sarah"
+     makes a later bare "Mom" the same person as Sarah. */
+  function labelledToken(word, text, persons) {
+    for (var i = 0; i < persons.length; i++) {
+      var esc = String(persons[i].name).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      if (new RegExp("\\b" + word + "\\.?\\s+" + esc + "\\b").test(text)) return persons[i].token;
+    }
+    return null;
+  }
+
+  function roleWordMap(text, built, seen) {
+    var t = String(text || "");
+    if (!t) return [];
+    var prior = (seen || []).concat(built || []);
+    var persons = prior.filter(function (e) { return e && !e.restore && !e.roleWord && !e.identifier && e.token; });
+    var counts = seedsFromMap(prior).counts;
+    var out = [];
+    Object.keys(ROLE_WORD_ROLE).forEach(function (word) {
+      if (!roleWordPattern(word).test(t)) return;
+      var role = roleByKey(ROLE_WORD_ROLE[word]);
+      var already = prior.concat(out).filter(function (e) { return e.roleWord && e.name === word; })[0];
+      var token = (already && already.token) || labelledToken(word, t, persons);
+      /* THE CLIENT IS ONE PERSON. A note has one client, so "Client" joins the
+         client a name already stands for rather than minting a second. */
+      if (!token && role.key === "client") {
+        var firstClient = prior.concat(out).filter(function (e) {
+          var rt = !e.restore && parseRoleToken(e.token);
+          return rt && rt.role.key === "client";
+        }).sort(function (a, b) { return parseRoleToken(a.token).n - parseRoleToken(b.token).n; })[0];
+        if (firstClient) token = firstClient.token;
+      }
+      if (!token) {
+        counts[role.key] = (counts[role.key] || 0) + 1;
+        token = roleTag(role, counts[role.key]);
+      }
+      out.push({ name: word, token: token, restore: false, roleWord: true });
+    });
+    return out;
+  }
+
+  /* ONE ROW PER TOKEN, for the put-back table and for forEhr. Two entries can
+     share a token: the name the scrub found and the role word typed for the
+     same person. The name wins the pre-fill, because it is the word the
+     clinician would put back; the role word is only used where no name was
+     typed. */
+  function roleTokenRows(map) {
+    var rows = [];
+    var at = {};
+    (map || []).forEach(function (e) {
+      if (!e || e.restore || !e.name || !e.token) return;
+      var i = at[e.token];
+      if (i === undefined) { at[e.token] = rows.length; rows.push({ token: e.token, name: e.name, roleWord: !!e.roleWord }); return; }
+      if (rows[i].roleWord && !e.roleWord) rows[i] = { token: e.token, name: e.name, roleWord: false };
+    });
+    return rows;
   }
 
   /* Put the round-trippable words back.
@@ -531,9 +699,62 @@
 
   function restoreOutput(value, map) {
     var s = scrub();
-    if (!s || !s.restoreDeep || !map || !map.length) return value;
-    var back = map.filter(function (e) { return e.restore; });
-    return back.length ? s.restoreDeep(value, back) : value;
+    var list = map || [];
+    var back = list.filter(function (e) { return e.restore; });
+    var restored = (s && s.restoreDeep && back.length) ? s.restoreDeep(value, back) : value;
+    return retireModelRoleTokens(restored, list);
+  }
+
+  function mapStrings(value, fn) {
+    if (typeof value === "string") return fn(value);
+    if (Array.isArray(value)) return value.map(function (v) { return mapStrings(v, fn); });
+    if (value && typeof value === "object") {
+      var o = {};
+      Object.keys(value).forEach(function (k) { o[k] = mapStrings(value[k], fn); });
+      return o;
+    }
+    return value;
+  }
+
+  /* A ROLE TOKEN THE MODEL WROTE ON ITS OWN ACCOUNT, in a shape this note never
+   * issued.
+   *
+   * WHAT HE READ ON 2026-09-28. His SAP input named nobody, the scrub minted no
+   * person token for it, and the note came back saying "Client--1". The
+   * corrections pass had written it: it runs on the expert prompt, which told
+   * it role tokens look like "Client--1" and must be carried through "both
+   * hyphens and the number included", and the intake opened with the bare word
+   * "Client". It wrote the shape it had been told a client takes.
+   *
+   * The prompt side is fixed where the prompt lives. This is the page's half,
+   * for a model that does it anyway, and for the expert prompt until its store
+   * is re-deployed: an old-shape token this note did not issue is not anybody's
+   * name, so number one of a role becomes that role's tag, "Client--1" to
+   * [CLIENT], and a [CLIENT-1] the model numbered for itself becomes [CLIENT].
+   * A higher number the note never issued is left exactly as written, because
+   * guessing which person it meant could point at the wrong one, and a visible
+   * token is what his audit looks for.
+   *
+   * IT NEVER WRITES A NAME. Every replacement is a token for a token. An ISSUED
+   * old-shape token, from a draft saved before the change, is not touched, so
+   * rehydrate() and the EHR copy still put its word back. */
+  function retireModelRoleTokens(value, map) {
+    var issued = {};
+    (map || []).forEach(function (e) { if (e && e.token) issued[e.token] = true; });
+    var words = ROLES.map(function (r) { return r.token; }).join("|");
+    var legacy = new RegExp("\\b(" + words + ")--(\\d+)\\b", "g");
+    var selfNumbered = /\[([A-Z]+)-1\]/g;
+    return mapStrings(value, function (str) {
+      return str
+        .replace(legacy, function (hit, word, num) {
+          if (issued[hit] || parseInt(num, 10) !== 1) return hit;
+          return roleTag(roleByLegacyWord(word), 1);
+        })
+        .replace(selfNumbered, function (hit, tag) {
+          var role = roleByTag(tag);
+          return role && !issued[hit] ? roleTag(role, 1) : hit;
+        });
+    });
   }
 
   /* PUTTING THE CLINICIAN'S OWN WORD BACK INTO THE CLINICIAN'S OWN SENTENCE.
@@ -551,10 +772,11 @@
    * a real name into a sentence the model wrote about the role, which is a worse
    * fault than the one being fixed and is invisible when it happens.
    *
-   * WHAT CHANGED IS THE TOKEN, NOT THE RULE. defaultTokens mints "Client--1" now,
-   * and no model writing prose types that. A token in the text is therefore a
+   * WHAT CHANGED IS THE TOKEN, NOT THE RULE. defaultTokens mints [CLIENT] now
+   * (it minted "Client--1" from 2026-09-02 to 2026-09-28, and both are read),
+   * and no model writing prose types either. A token in the text is therefore a
    * token and never a coincidence, so the substitution the old comment could not
-   * make safely is now the ordinary one. That is what the odd shape buys, and if
+   * make safely is now the ordinary one. That is what the shape buys, and if
    * the shape ever goes back to a bare word this has to go back to a caption.
    *
    * SCOPE IS THE CLINICIAN'S OWN WORDS AND NOTHING ELSE. Call it on a register
@@ -562,18 +784,36 @@
    * replacement sentence for the note and has to agree with the note. Never on
    * the note itself: the token is what protects it, and it stays. Opaque tokens
    * are not this function's business either - restoreOutput round-trips those.
-   *
-   * Longest token first, because "Client--1" is a prefix of "Client--12".
+   * And never on anything bound for the model: what this returns is for a
+   * screen or a clipboard.
    */
   function rehydrate(text, map) {
+    return forEhr(text, map);
+  }
+
+  /* THE ONE SUBSTITUTION OF A ROLE TOKEN FOR A WORD, used by rehydrate() and by
+   * the engine's "Restore original words on copy".
+   *
+   * `overrides` is {token: replacement} from the put-back panel. A token with
+   * no override gets the word the clinician typed; a blank override keeps the
+   * token, as the panel says. Longest token first stays although the new shape
+   * does not need it ([CLIENT] is not a prefix of [CLIENT-12]): a draft saved in
+   * the old shape still holds Client--1 beside Client--12.
+   */
+  function forEhr(text, map, overrides) {
     var t = String(text || "");
     if (!t || !map || !map.length) return t;
-    var back = map.filter(function (e) { return !e.restore && e.name && e.token; });
+    var back = roleTokenRows(map);
     if (!back.length) return t;
+    var chosen = overrides || {};
     back
       .slice()
-      .sort(function (a, b) { return b.token.length - a.token.length; })
-      .forEach(function (e) { t = t.split(e.token).join(e.name); });
+      .sort(function (a, b) { return String(b.token).length - String(a.token).length; })
+      .forEach(function (e) {
+        var has = Object.prototype.hasOwnProperty.call(chosen, e.token);
+        var rep = String(has ? chosen[e.token] : e.name).trim();
+        if (rep) t = t.split(e.token).join(rep);
+      });
     return t;
   }
 
@@ -712,7 +952,10 @@
 
   var ROLE_TOKENS = (function () {
     var set = {};
-    for (var i = 0; i < ROLES.length; i++) set[ROLES[i].token.toLowerCase()] = true;
+    for (var i = 0; i < ROLES.length; i++) {
+      set[ROLES[i].token.toLowerCase()] = true;
+      set[ROLES[i].tag.toLowerCase()] = true;
+    }
     return set;
   })();
 
@@ -770,28 +1013,29 @@
       var stats = { screened: 0, cued: 0 };
       var names = detect(freeText, stats);
       screenAudit(opts, stats);
-      if (!names.length) { resolve({ cancelled: false, map: idMap, certified: [] }); return; }
 
-      var defaults = defaultTokens(names, freeText, seen);
-      var built = buildMap(names.map(function (name, i) {
+      var defaults = names.length ? defaultTokens(names, freeText, seen) : [];
+      var built = names.length ? buildMap(names.map(function (name, i) {
         return {
           name: name,
           replacement: defaults[i].token,
           cert: false,
           restore: defaults[i].restore,
         };
-      }), freeText);
-      var map = idMap.concat(built.map);
+      }), freeText) : { map: [] };
+      // Role words go LAST, so they can join the person a name already stands
+      // for and so their numbers continue after the names'.
+      var roleWords = roleWordMap(freeText, built.map, seen);
+      var map = idMap.concat(built.map, roleWords);
 
       // Report the bare scrubbed words (names only, no context) to the admin PII
       // review queue. NotesGate.pii drops dictionary names and anything it cannot
       // transmit safely. Identifiers are excluded on purpose: the point of that
       // queue is to learn name vocabulary, and a phone number is neither a word
-      // nor safe to transmit.
-      if (map.length && window.NotesGate && window.NotesGate.pii) {
-        window.NotesGate.pii.reportScrubbed(
-          map.filter(function (m) { return !m.identifier; }).map(function (m) { return m.name; })
-        );
+      // nor safe to transmit. A role word is not a name either.
+      var reportable = map.filter(function (m) { return !m.identifier && !m.roleWord; });
+      if (reportable.length && window.NotesGate && window.NotesGate.pii) {
+        window.NotesGate.pii.reportScrubbed(reportable.map(function (m) { return m.name; }));
       }
 
       resolve({ cancelled: false, map: map, certified: [] });
@@ -1070,6 +1314,10 @@
     mergeMaps: mergeMaps,
     noticeText: noticeText,
     rehydrate: rehydrate,
+    // "Restore original words on copy": role tokens to words, clipboard only.
+    forEhr: forEhr,
+    roleTokenRows: roleTokenRows,
+    withoutRoleWords: withoutRoleWords,
     persistMap: persistMap,
     installPHIHighlight: installPHIHighlight,
     /* The type-time screen list. screenAnswer records one of the two answers a

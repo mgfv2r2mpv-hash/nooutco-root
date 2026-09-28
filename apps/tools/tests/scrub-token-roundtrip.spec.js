@@ -129,12 +129,14 @@ test.describe('a word with no evidence of being a person comes back', () => {
        only while the FIRST person of a role got the bare word "Client" and a
        number meant a false positive. Role tokens are minted "Client--1" now, so
        no space form can exist at all, the old pattern could never match, and the
-       test would have gone on passing while proving nothing.
+       test would have gone on passing while proving nothing. REWRITTEN AGAIN
+       on 2026-09-28 for the same reason: the mint is [CLIENT] now, and a second
+       client [CLIENT-2], so the pattern follows it and keeps the old shape out.
 
        INTAKE names exactly one person with client evidence, so the note is
-       entitled to Client--1 and to nothing above it. A build that numbers
+       entitled to [CLIENT] and to nothing above it. A build that numbers
        colours as clients still fails here, which is what this test is for. */
-    expect(noteText).not.toMatch(/\bClient--(?:[2-9]|\d{2,})\b/);
+    expect(noteText).not.toMatch(/\[CLIENT-\d+\]|Client--\d/);
   });
 
   test('none of those words reached the model in the clear', async ({ page }) => {
@@ -190,8 +192,8 @@ test.describe('the map itself', () => {
     }, INTAKE);
     const byName = Object.fromEntries(map.map((e) => [e.name, e]));
     expect(byName['Jacob'], 'a cued name should be a kept role token').toMatchObject({ restore: false });
-    expect(byName['Jacob'].token).toMatch(/^Client/);
-    expect(byName['Sarah'].token).toMatch(/^Caregiver/);
+    expect(byName['Jacob'].token).toBe('[CLIENT]');
+    expect(byName['Sarah'].token).toBe('[CAREGIVER]');
     expect(byName['Red'], 'a colour should round-trip').toMatchObject({ restore: true });
     expect(byName['Red'].token).toMatch(/^\[\[T\d+\]\]$/);
   });
@@ -643,7 +645,7 @@ test.describe('the ledger outlives the page', () => {
 
 /* THE ROLE TOKEN STAYS IN THE NOTE AND LEAVES ON THE CLIPBOARD.
  *
- * "Client--1" is deliberately never restored into the draft: its oddness is what
+ * [CLIENT] is deliberately never restored into the draft: its oddness is what
  * stops a technician signing a note with a code word still in it. The cost was
  * retyping every token in every EHR field, and the maintainer asked for that
  * back on 2026-09-19 - "local on-page find/replace would help to rehydrate for
@@ -683,7 +685,7 @@ async function copyTokenSection(page) {
 test.describe('putting the clinician’s own words back on the way to the EHR', () => {
   test('the clipboard carries the real name while the page keeps the token', async ({ page }) => {
     const { noteText, calls } = await draft(page);
-    expect(noteText, 'the note under test never carried a role token').toMatch(/Client--\d/);
+    expect(noteText, 'the note under test never carried a role token').toMatch(/\[CLIENT(?:-\d+)?\]/);
 
     await stubClipboard(page);
     await page.getByTestId('put-back-toggle').check();
@@ -691,7 +693,7 @@ test.describe('putting the clinician’s own words back on the way to the EHR', 
 
     const copied = await copiedText(page);
     expect(copied, 'the clinician’s own word did not reach the clipboard').toContain('Jacob');
-    expect(copied, 'a token rode out to the EHR anyway').not.toMatch(/Client--\d/);
+    expect(copied, 'a token rode out to the EHR anyway').not.toMatch(/\[CLIENT(?:-\d+)?\]/);
 
     /* THE HALF THAT MATTERS MOST. Substituting at the clipboard is only safe
        while the name cannot travel any other way, so this asserts the wire for
@@ -708,7 +710,7 @@ test.describe('putting the clinician’s own words back on the way to the EHR', 
     const onPage = await page.getByTestId('generated-note').evaluate((el) =>
       [el.innerText, ...[...el.querySelectorAll('textarea')].map((t) => t.value)].join('\n')
     );
-    expect(onPage, 'the substitution was written into the note itself').toMatch(/Client--\d/);
+    expect(onPage, 'the substitution was written into the note itself').toMatch(/\[CLIENT(?:-\d+)?\]/);
     expect(onPage).not.toContain('Jacob');
   });
 
@@ -718,7 +720,7 @@ test.describe('putting the clinician’s own words back on the way to the EHR', 
     await copyTokenSection(page);
 
     const copied = await copiedText(page);
-    expect(copied).toMatch(/Client--\d/);
+    expect(copied).toMatch(/\[CLIENT(?:-\d+)?\]/);
     expect(copied).not.toContain('Jacob');
   });
 
@@ -726,7 +728,7 @@ test.describe('putting the clinician’s own words back on the way to the EHR', 
     await draft(page);
     await stubClipboard(page);
     await page.getByTestId('put-back-toggle').check();
-    await page.getByTestId('put-back-input-Client--1').fill('the client');
+    await page.getByTestId('put-back-input-[CLIENT]').fill('the client');
     await copyTokenSection(page);
 
     const copied = await copiedText(page);

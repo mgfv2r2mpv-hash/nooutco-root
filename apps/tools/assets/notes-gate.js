@@ -1974,8 +1974,10 @@
    * the model is free to mangle.
    *
    * ROLE TOKENS ARE UNTOUCHED. The index is built only from tokens shaped
-   * [[Tn]], so Client--1 cannot reach this even when a caller passes a map that
-   * restores names, which the bench does.
+   * [[Tn]], so [CLIENT] (or a saved draft's Client--1) cannot reach this even
+   * when a caller passes a map that restores names, which the bench does. And
+   * no role tag carries a T followed by a digit, so the tolerant patterns below
+   * cannot read [TEACHER-2] or [BT] as one.
    */
   /* THE DELIMITERS A MODEL REACHES FOR. Measured 2026-09-18 by running the
      plausible reshapings of [[T3]] through this function and through the check

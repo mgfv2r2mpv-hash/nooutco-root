@@ -100,8 +100,8 @@ test.describe('the scrub does not ask first', () => {
     // "Client" for the unlabelled name, "Caregiver" for the one behind "Mom".
     // This is the half a scrub-shaped no-op would fail: proving the names are
     // absent says nothing about whether anything readable replaced them.
-    expect(sent).toContain('Client');
-    expect(sent).toContain('Caregiver');
+    expect(sent).toContain('[CLIENT]');
+    expect(sent).toContain('[CAREGIVER]');
     expect(sent).not.toMatch(/\[NAME_\d\]/);
   });
 
@@ -121,13 +121,13 @@ test.describe('the notice carries the escape the dialog used to own', () => {
     // directly in front of her, so she is the Caregiver. A build whose role
     // inference reads the whole sentence rather than the word next to the name
     // makes Jacob a Caregiver too, which is what this pins.
-    await expect(notice).toContainText('Jacob → Client');
-    await expect(notice).toContainText('Sarah → Caregiver');
+    await expect(notice).toContainText('Jacob → [CLIENT]');
+    await expect(notice).toContainText('Sarah → [CAREGIVER]');
   });
 
   test('"not a name" certifies the term so the next scrub keeps it', async ({ page }) => {
     await draft(page);
-    const chip = page.locator('span', { hasText: /^Jacob → Client/ }).locator('button', { hasText: 'not a name' });
+    const chip = page.locator('span', { hasText: /^Jacob → \[CLIENT\]/ }).locator('button', { hasText: 'not a name' });
     await chip.click();
     await expect(page.getByText('✓ kept next time').first()).toBeVisible();
 
