@@ -1203,7 +1203,8 @@ function TermFinding({ finding }) {
  * the swap instead, which was the best that could be done while a role token was
  * the bare word "Client"; NotesScrub.rehydrate sets out at length why the
  * substitution is safe now and was not then, and the short version is that the
- * token is "Client--1" and no model writes that on its own account.
+ * token is [CLIENT] (or, in a draft saved before 2026-09-28, "Client--1") and
+ * no model writes that on its own account.
  *
  * Opaque tokens need nothing here - restoreOutput already round-trips them, and
  * that runs before this does.
@@ -1564,7 +1565,7 @@ function App() {
     setCopied(null);
     setCopiedPrompt(false);
     setCopyMarks((prev) => Object.assign({}, prev, { [tool.id]: {} }));
-    /* The put-back table is keyed by token, and "Client--1" means a different
+    /* The put-back table is keyed by token, and [CLIENT] means a different
        person on the next tool. Carrying it across would quietly paste one
        client's name into another's note. */
     setPutBack({});
@@ -1664,7 +1665,7 @@ function App() {
   /* ── Putting his own words back, on the way out ─────────────────────
    *
    * A role token is deliberately not restored into the note: NotesScrub mints
-   * "Client--1" precisely so the technician cannot forget to substitute their
+   * [CLIENT] precisely so the technician cannot forget to substitute their
    * own word before signing, and restoreOutput leaves it alone on purpose.
    * That trade costs a retype of every token on every section, which is what
    * the maintainer asked to remove on 2026-09-19: "local on-page find/replace
@@ -1683,27 +1684,21 @@ function App() {
    *     already hold in the scrub map.
    *
    * The replacement is pre-filled with what they actually typed and is theirs
-   * to edit, because "Client--1" may want to be "Mom" in one field and the
-   * child's name in another. */
+   * to edit, because [CAREGIVER] may want to be "Mom" in one field and her
+   * name in another. The substitution itself is NotesScrub.forEhr, the same one
+   * rehydrate() uses, so both read [CLIENT] and a saved draft's "Client--1". */
   const [putBack, setPutBack] = React.useState({});
   const [putBackOn, setPutBackOn] = React.useState(false);
 
   // Role tokens only. Identifiers restore themselves, and opaque tokens were
   // already round-tripped before the draft reached the page.
-  const roleTokens = (S.scrubMap || []).filter((m) => !m.restore && m.name && m.token);
+  // One row per token: a name and the role word typed for the same person
+  // share one, and the name is what the row is pre-filled with.
+  const roleTokens = NotesScrub.roleTokenRows(S.scrubMap || []);
 
   const forEhr = (text) => {
     if (!putBackOn || !roleTokens.length) return text;
-    let t = String(text || "");
-    // Longest token first: "Client--1" is a prefix of "Client--12".
-    roleTokens
-      .slice()
-      .sort((a, b) => String(b.token).length - String(a.token).length)
-      .forEach((e) => {
-        const rep = (putBack[e.token] === undefined ? e.name : putBack[e.token]).trim();
-        if (rep) t = t.split(e.token).join(rep);
-      });
-    return t;
+    return NotesScrub.forEhr(text, roleTokens, putBack);
   };
 
   /* THE READER'S COPY OF A SECTION IS NOT THE MODEL'S COPY.
@@ -1840,7 +1835,13 @@ function App() {
      corrections.js finds a mark by its quote in the restored text. */
   const correctionsRound = async (opts) => {
     const map = scrubMapRef.current || [];
-    const out = (text) => NotesScrub.applyMap(String(text || ""), map);
+    /* The draft is the MODEL's prose, and the pass's answer is diffed against
+       it as it stands on the page. A role word he typed ("Client" to [CLIENT])
+       is his, not the model's: turning the model's own "Client" into [CLIENT]
+       on the way out would come back as a mark on every one of them. Names and
+       identifiers still go out tokenised. */
+    const noteMap = NotesScrub.withoutRoleWords(map);
+    const out = (text) => NotesScrub.applyMap(String(text || ""), noteMap);
     const pass = await NotesGate.correctionsPass({
       ...opts,
       draft: (opts.draft || []).map((d) => ({ ...d, text: out(d.text) })),
@@ -1848,7 +1849,7 @@ function App() {
       // `about` quotes the note, so it goes out under the map with the note.
       // `text` is what they typed. sendAsks has already run it through the
       // scrub gate, so any new name in it is in the map by now.
-      asks: (opts.asks || []).map((a) => ({ ...a, about: out(a.about), text: out(a.text) })),
+      asks: (opts.asks || []).map((a) => ({ ...a, about: out(a.about), text: NotesScrub.applyMap(String(a.text || ""), map) })),
     });
     if (!pass) return pass;
     return { ...pass, corrections: NotesScrub.restoreOutput(pass.corrections, scrubMapRef.current || []) };
@@ -2694,7 +2695,7 @@ function App() {
        * passed through - NotesScrub.review() replaced every name with the role
        * token before either call was made. The role token is what the clinician
        * wants left in the NOTE, so nothing puts a name back there and the note
-       * says "Client--1 hit the table". The expert's quote of their own sentence
+       * says "[CLIENT] hit the table". The expert's quote of their own sentence
        * is the one place that is wrong, because a quote is theirs rather than the
        * model's, and expertForReader substitutes their word back for display
        * only. The string that goes anywhere near the model is still the token.
@@ -5112,7 +5113,9 @@ function App() {
             {NotesScrub.ACK_NOTICE}
           </div>
 
-          {S.scrubMap.some((m) => !m.restore) && (
+          {/* A role word he typed on purpose is not a removal to warn about.
+              It is listed in the put-back table, which is where it is used. */}
+          {S.scrubMap.some((m) => !m.restore && !m.roleWord) && (
             <div style={{ margin: "0 0 16px", borderRadius: 10, border: "2px solid #c8962a", overflow: "hidden" }}>
               <div style={{ padding: "8px 14px", background: "#fdf3dc", color: "#5a3d00", fontSize: 12, lineHeight: 1.5 }}>
                 <strong>Removed before sending.</strong><br />
@@ -5122,7 +5125,7 @@ function App() {
                       clinician what to substitute back in their EHR, and a word
                       that comes back on its own needs no substituting: listing it
                       would send them looking for a change that is not there. */}
-                  {S.scrubMap.filter((m) => !m.restore).map((m) => {
+                  {S.scrubMap.filter((m) => !m.restore && !m.roleWord).map((m) => {
                     const done = (S.certified || []).includes(m.name);
                     return (
                       <span key={m.name} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#fff", border: "1px solid #e0cb9a", borderRadius: 999, padding: "3px 4px 3px 10px", fontSize: 12 }}>
@@ -5274,8 +5277,8 @@ function App() {
                   <div style={{ padding: "10px 14px 12px" }}>
                     {/* A GRID, NOT A WRAPPING FLEX ROW. On a 390px screen the flex
                         version wrapped the input under the wider tokens and not
-                        under the narrow ones, so "Client--1" sat beside its box
-                        while "Caregiver--1" sat above its own. A three-column grid
+                        under the narrow ones, so "[CLIENT]" sat beside its box
+                        while "[CAREGIVER-2]" sat above its own. A three-column grid
                         with a minmax(0,1fr) input shrinks instead of wrapping, so
                         every row keeps one baseline at any width. No test sees
                         this; a screenshot did. */}

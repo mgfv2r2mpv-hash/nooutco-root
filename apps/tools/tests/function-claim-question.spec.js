@@ -277,14 +277,14 @@ test.describe('answering it once is answering it', () => {
  * fails the second, and the second is the one that matters.
  */
 test.describe('the displayed quote and the sent quote are not the same string', () => {
-  const TOKEN_CLAIM = { quote: 'Client--1 wanted attention', action: 'reframe', why: 'A function claim.', move: 'Say what happened and who responded.' };
+  const TOKEN_CLAIM = { quote: '[CLIENT] wanted attention', action: 'reframe', why: 'A function claim.', move: 'Say what happened and who responded.' };
   const tokenExpert = { ...EXPERT, register: [TOKEN_CLAIM] };
 
   test('the row shows the word the clinician actually typed', async ({ page }) => {
     await draft(page, { expert: tokenExpert });
     const row = page.getByTestId('expert-register-row').first();
     await expect(row).toContainText('Jacob wanted attention');
-    await expect(row).not.toContainText('Client--1');
+    await expect(row).not.toContainText('[CLIENT]');
   });
 
   test('and answering it sends the token, never the name', async ({ page }) => {
@@ -293,6 +293,6 @@ test.describe('the displayed quote and the sent quote are not the same string', 
     await expect.poll(() => llm.filter((b) => !isTriageCall(b)).length).toBe(2);
     const sent = JSON.stringify(llm.filter((b) => !isTriageCall(b)).slice(-1)[0]);
     expect(sent, 'a client name reached the model').not.toContain('Jacob');
-    expect(sent).toContain('Client--1');
+    expect(sent).toContain('[CLIENT]');
   });
 });

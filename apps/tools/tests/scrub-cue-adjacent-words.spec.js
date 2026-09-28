@@ -47,12 +47,18 @@ const names = (page, text) =>
 
 /* The map the drafting path actually builds, split the way the harm splits: an
    entry that restores costs the note nothing, and an entry that does not is
-   permanent in what the technician signs. */
+   permanent in what the technician signs.
+
+   A ROLE WORD IS LEFT OUT OF `stays` since 2026-09-28. His ruling: "Client"
+   typed in place of a name becomes [CLIENT], on purpose, because that is where
+   the name goes back. What these tests guard is a WORD that is not a person
+   being minted as one, which a role word never is. `roleWords` carries them. */
 const scrubOf = (page, text) =>
   page.evaluate(async (t) => {
     const rev = await window.NotesScrub.review({ freeText: t });
     return {
-      stays: rev.map.filter((e) => !e.restore).map((e) => `${e.name} -> ${e.token}`),
+      stays: rev.map.filter((e) => !e.restore && !e.roleWord).map((e) => `${e.name} -> ${e.token}`),
+      roleWords: rev.map.filter((e) => e.roleWord).map((e) => `${e.name} -> ${e.token}`),
       restores: rev.map.filter((e) => e.restore).map((e) => `${e.name} -> ${e.token}`),
       scrubbed: window.NotesScrub.applyMap(t, rev.map),
     };
@@ -140,7 +146,7 @@ test.describe('and the names are still taken', () => {
   test('a capitalised name after a cue still gets a role token that stays', async ({ page }) => {
     await loggedIn(page);
     const r = await scrubOf(page, 'Client Jacob eloped twice. Mom Sarah called. Peer Ethan joined.');
-    expect(r.stays.sort()).toEqual(['Ethan -> Peer--1', 'Jacob -> Client--1', 'Sarah -> Caregiver--1']);
+    expect(r.stays.sort()).toEqual(['Ethan -> [PEER]', 'Jacob -> [CLIENT]', 'Sarah -> [CAREGIVER]']);
   });
 
   test('a name typed in lowercase is still taken, which is what the guard could have cost', async ({ page }) => {
@@ -152,7 +158,7 @@ test.describe('and the names are still taken', () => {
        and if that pass is ever narrowed, this fails rather than a name reaching
        the model in the clear. */
     const r = await scrubOf(page, 'mom sarah called about thursday and client jacob eloped.');
-    expect(r.stays.sort()).toEqual(['jacob -> Client--1', 'sarah -> Caregiver--1']);
+    expect(r.stays.sort()).toEqual(['jacob -> [CLIENT]', 'sarah -> [CAREGIVER]']);
     expect(r.scrubbed).not.toMatch(/sarah|jacob/i);
   });
 

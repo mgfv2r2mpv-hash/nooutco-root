@@ -1,7 +1,13 @@
 import { test, expect } from '@playwright/test';
 import { isTriageCall } from './helpers/llm-call.js';
 
-/* THE ROLE TOKEN IS "Client--1" NOW, AND THAT ODDNESS BUYS SOMETHING SPECIFIC.
+/* THE ROLE TOKEN IS [CLIENT] NOW, AND THAT ODDNESS BUYS SOMETHING SPECIFIC.
+ *
+ * UPDATED 2026-09-28. It was "Client--1" from 2026-09-02; his ruling that day
+ * made it [CLIENT], and [CLIENT-2] for a second person of a role, so he can
+ * audit a note for tokens at a glance. The reasoning below is unchanged: a
+ * bracketed capital word is no more English than the double hyphen was. The
+ * old shape is still READ, and role-token-brackets.spec.js pins that.
  *
  * WHAT HE READ ON 2026-09-02, in his words: "that expert block has 'Client at
  * session start' because the expert got 'happy' as 'client' and it didn't pass
@@ -71,31 +77,30 @@ const mapFor = (page, text) =>
     return r.map.map((e) => ({ name: e.name, token: e.token, restore: !!e.restore }));
   }, text);
 
-test.describe('every role token is numbered, and the separator is two hyphens', () => {
-  test('the first person of a role is Client--1, not Client', async ({ page }) => {
+test.describe('every role token is bracketed, and a second person is numbered', () => {
+  test('the first person of a role is [CLIENT], not Client', async ({ page }) => {
     await loggedIn(page);
     const map = await mapFor(page, INTAKE);
     const jacob = map.find((e) => e.name === 'Jacob');
     expect(jacob).toBeTruthy();
-    // The old mint dropped the number on the first of each role. A bare word is
-    // exactly what the model writes on its own account, and it is what made the
-    // rehydration below unsafe.
-    expect(jacob.token).toBe('Client--1');
+    // A bare word is exactly what the model writes on its own account, and it
+    // is what made the rehydration below unsafe.
+    expect(jacob.token).toBe('[CLIENT]');
     expect(jacob.restore).toBe(false);
   });
 
   test('a second role gets its own counter, also from one', async ({ page }) => {
     await loggedIn(page);
     const map = await mapFor(page, INTAKE);
-    expect(map.find((e) => e.name === 'Sarah').token).toBe('Caregiver--1');
-    expect(map.find((e) => e.name === 'Ethan').token).toBe('Peer--1');
+    expect(map.find((e) => e.name === 'Sarah').token).toBe('[CAREGIVER]');
+    expect(map.find((e) => e.name === 'Ethan').token).toBe('[PEER]');
   });
 
   test('a second person of the SAME role numbers on rather than colliding', async ({ page }) => {
     await loggedIn(page);
     const map = await mapFor(page, 'Client Jacob and client Marcus both eloped.');
-    const clients = map.filter((e) => /^Client--/.test(e.token)).map((e) => e.token).sort();
-    expect(clients).toEqual(['Client--1', 'Client--2']);
+    const clients = map.filter((e) => e.name !== 'Client' && /^\[CLIENT/.test(e.token)).map((e) => e.token).sort();
+    expect(clients).toEqual(['[CLIENT-2]', '[CLIENT]']);
   });
 
   test('a carried map seeds the counter, so a later scrub cannot reuse a number', async ({ page }) => {
@@ -108,10 +113,10 @@ test.describe('every role token is numbered, and the separator is two hyphens', 
       window.NotesScrub._defaultTokens(
         ['Marcus'],
         'Client Marcus arrived.',
-        [{ name: 'Jacob', token: 'Client--2', restore: false }]
+        [{ name: 'Jacob', token: '[CLIENT-2]', restore: false }]
       )[0].token
     );
-    expect(token).toBe('Client--3');
+    expect(token).toBe('[CLIENT-3]');
   });
 
   test('the odd token is what actually crosses the wire', async ({ page }) => {
@@ -140,7 +145,8 @@ test.describe('every role token is numbered, and the separator is two hyphens', 
     await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 30000 });
 
     const sent = JSON.stringify(calls);
-    expect(sent).toContain('Client--1');
+    expect(sent).toContain('[CLIENT]');
+    expect(sent).not.toMatch(/Client--\d/);
     expect(sent).not.toContain('Jacob');
   });
 });

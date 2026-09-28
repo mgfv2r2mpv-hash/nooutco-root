@@ -86,6 +86,51 @@
     return "";
   }
 
+  /* A SUBSTITUTION IS ONE CHANGE, and it has two marks.
+
+     What he read on 2026-09-28, in a SAP: "Once [CLIENT]Client--1 demonstrates
+     mastery". The pass had swapped [CLIENT] for Client--1, the word diff drew
+     that as a removal of [CLIENT] beside an addition of Client--1, and Restore
+     put the removal back while the addition stayed. Both words, no space.
+
+     So a removal and an addition standing directly against each other, with
+     unchanged text (or the edge of the section) on both outer sides, are one
+     substitution, and toggling either end toggles both, the way a move's two
+     ends do. Restore then means what it says: the original words, in place of
+     the new ones, never beside them. */
+  /* The first index of the substitution the op at `index` belongs to, or -1.
+     A del directly followed by an ins, with unchanged text or the section's
+     edge on both outer sides. */
+  function substitutionAt(ops, index) {
+    var op = ops[index];
+    if (!op || (op.type !== "del" && op.type !== "ins")) return -1;
+    var start = op.type === "del" ? index : index - 1;
+    if (!ops[start] || ops[start].type !== "del") return -1;
+    if (!ops[start + 1] || ops[start + 1].type !== "ins") return -1;
+    var isChange = function (o) { return o && o.type !== "same"; };
+    if (isChange(ops[start - 1]) || isChange(ops[start + 2])) return -1;
+    return start;
+  }
+
+  /* AND THE SAME SWAP ELSEWHERE IN THE SECTION GOES WITH IT. The pass swaps a
+     token everywhere it appears, and he read the doubling "at every
+     occurrence". Restoring one [CLIENT] restores every [CLIENT] that same pass
+     replaced with the same words in that section, so one click undoes one
+     decision. */
+  function substitutionKeys(sections, id, index) {
+    var ops = (sections || {})[id] || [];
+    var start = substitutionAt(ops, index);
+    if (start === -1) return [];
+    var from = ops[start].text, to = ops[start + 1].text;
+    var keys = [];
+    for (var i = 0; i < ops.length; i++) {
+      if (substitutionAt(ops, i) !== i) continue;
+      if (ops[i].text !== from || ops[i + 1].text !== to) continue;
+      keys.push(keyOf(id, i), keyOf(id, i + 1));
+    }
+    return keys;
+  }
+
   // Every mark belonging to the same move, by key. Both ends of a move share a
   // moveId; anything else is only ever itself.
   function pairedKeys(sections, op) {
@@ -195,7 +240,7 @@
     var op = ((sections || {})[id] || [])[index];
     if (!op) return next;
 
-    var keys = pairedKeys(sections, op);
+    var keys = pairedKeys(sections, op).concat(substitutionKeys(sections, id, index));
     if (keys.indexOf(key) === -1) keys.push(key);
     var reverted = !(next[key] && next[key].reverted);
     keys.forEach(function (k) {

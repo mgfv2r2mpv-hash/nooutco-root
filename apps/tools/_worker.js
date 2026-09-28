@@ -1486,6 +1486,14 @@ const CORRECTIONS_ADDENDUM = [
   "CHANGE NOTHING ELSE. Not the tense, not the vocabulary, not the sentence rhythm, not a word you would have written differently. Every difference you return is shown to the technician as a mark against their own draft, so a change you cannot justify is one they have to read and undo.",
   "",
   "RETURN A SECTION ONLY IF YOU ARE CHANGING IT. A section you return unchanged is noise in that list. Returning nothing at all is a real answer and often the right one.",
+  "",
+  /* THE ROLE-TOKEN RULE FOR A PASS THAT WRITES INTO THE NOTE, and it is here
+     rather than only in the stored prompt because the stored prompt still
+     named the old shape on 2026-09-28. His SAP input named nobody, and this
+     pass handed back "Client--1" anyway: told a client reads that way, it
+     turned the bare word "Client" into a token. The addendum comes second, so
+     it is the last word on the shape until the store is re-deployed. */
+  "PEOPLE ARE ROLE TOKENS IN SQUARE BRACKETS: [CLIENT], [CAREGIVER], [BT], [BCBA], [TEACHER], [STAFF], and [CLIENT-2] for a second person of one role. Where the notes or the draft carry one, copy it exactly, brackets and number included. Never write one they do not already carry, and never turn a plain word such as Client or the client into one. Any other token shape for a person, including a role word joined to a number by two hyphens, is retired: never write it.",
 ].join("\n");
 
 /* Exported so the composition order is pinned by a test rather than inferred.

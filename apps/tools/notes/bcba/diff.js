@@ -244,6 +244,21 @@
     return hit / Math.max(ax.length, by.length);
   }
 
+  // The length of a run of two or more plain deletions at `at`, followed by as
+  // many plain insertions, each a rewrite of the deletion in the same place.
+  // Zero when there is no such run; a single pair is left to the loop below.
+  function rewriteRun(ops, at) {
+    let p = 0;
+    while (ops[at + p] && ops[at + p].type === "del") p++;
+    if (p < 2) return 0;
+    for (let k = 0; k < p; k++) {
+      const ins = ops[at + p + k];
+      if (!ins || ins.type !== "ins") return 0;
+      if (overlap(ops[at + k].text, ins.text) < REWRITE_OVERLAP) return 0;
+    }
+    return p;
+  }
+
   function sections(before, after) {
     const out = {};
     const dels = [];
@@ -286,6 +301,20 @@
       const ops = out[id];
       const merged = [];
       for (let n = 0; n < ops.length; n++) {
+        /* A RUN OF REWRITTEN SENTENCES, paired in order. Two sentences that
+           each had one word swapped come out of the sentence LCS as del, del,
+           ins, ins, and only the middle pair is adjacent, so the first sentence
+           was drawn as a wholesale replacement and Restore on it put the old
+           sentence back beside the new one. Where the runs are the same length
+           and every pair in order is a rewrite, each pair gets its word diff. */
+        const run = rewriteRun(ops, n);
+        if (run) {
+          for (let k = 0; k < run; k++) {
+            words(ops[n + k].text, ops[n + run + k].text).forEach(function (op) { merged.push(op); });
+          }
+          n += 2 * run - 1;
+          continue;
+        }
         const cur = ops[n], next = ops[n + 1];
         if (cur && next && cur.type === "del" && next.type === "ins" &&
             overlap(cur.text, next.text) >= REWRITE_OVERLAP) {
