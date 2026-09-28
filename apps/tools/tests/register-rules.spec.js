@@ -534,12 +534,73 @@ test.describe('the analysis rules reach the technician tool and no other', () =>
      analysis however it is spelled, and require the permission to be stated
      rather than merely not contradicted. assess.js:124 is where that permission
      was already written; this is the same shape on the other two BCBA tools. */
-  const BANS_THE_ANALYSIS = [
-    /[Cc]ut .{0,60}clinical hypotheses/,
-    /[Cc]ut .{0,60}causal claims/,
-    /[Nn]o causal claims/,
-    /[Aa]void .{0,40}clinical hypothes/,
-  ];
+  /* WHY A CLASSIFIER AND NOT A LIST OF PHRASES. The first version of this guard
+     was four regexes over three verbs and a plural noun, and castor-cfae8acd
+     walked two rewordings straight through it: "Omit causal claims and clinical
+     hypotheses." and "Leave out staff opinion, statements about why a behavior
+     occurred, and hypotheses about function." Worse, the PLURAL was the only
+     thing keeping it off parent's own permission sentence, which is luck.
+
+     The thing that actually distinguishes a ban from a permission is not the
+     noun, it is the verb and whether the verb is negated. Removing verbs banned
+     the analysis; negate one and it grants it. Keeping verbs grant it; negate one
+     and it bans it. So permission is tested FIRST, because "do not cut a causal
+     claim" contains "cut". */
+  const ANALYSIS = String.raw`(?:causal (?:claim|reasoning)|clinical hypothes|hypothes[ei]s about function|statements? about why|why a behaviou?r (?:occur|happen)|staff opinion|motivation and diagnosis)`;
+  const REMOVE = String.raw`(?:cut|omit|remove|exclude|strip|drop|leave out|leave off|take out)`;
+  const KEEP = String.raw`(?:include|write|state|assert|name|document|make|report|record|offer|draw)`;
+  const NOT = String.raw`(?:do not|don't|never|rather than)`;
+
+  const GRANTS = new RegExp(
+    `(?:${NOT}\\s+${REMOVE}|is entitled to the analysis|belong in the note|are their own work|theirs to state)`, 'i');
+  const REMOVES = new RegExp(`\\b${REMOVE}\\b`, 'i');
+  const BANS_KEEPING = new RegExp(`\\b${NOT}\\s+${KEEP}\\b|\\bavoid\\b|\\bno\\s+(?:causal|clinical)\\b`, 'i');
+  const MENTIONS = new RegExp(ANALYSIS, 'i');
+
+  /* Sentence by sentence, because a whole prompt holds both a ban and a
+     permission and a document-wide regex cannot tell which one it matched. */
+  function bansTheAnalysis(text) {
+    return String(text)
+      .split(/\n|(?<=\.)\s+(?=[A-Z"'*-])/)
+      .map((s) => s.trim())
+      .filter((s) => MENTIONS.test(s))
+      .filter((s) => !GRANTS.test(s))
+      .filter((s) => REMOVES.test(s) || BANS_KEEPING.test(s));
+  }
+
+  /* THE FIXTURE, and it is the load-bearing part. A classifier with no self-test
+     is the defect this file exists to catch, one layer up: the previous guard
+     passed every tool and every test in this file while letting two rewordings
+     through. Both lists below are real sentences. The bans are the two
+     castor-cfae8acd wrote to break the old guard plus the original clause; the
+     permissions are the sentences assess and parent actually carry, and a
+     classifier that flags one of those would fail every tool below forever. */
+  test('the ban classifier catches a reworded ban and clears a real permission', () => {
+    const BANS = [
+      'Objective, observable language. Cut staff opinion, causal claims and clinical hypotheses.',
+      'Omit causal claims and clinical hypotheses.',
+      'Leave out staff opinion, statements about why a behavior occurred, and hypotheses about function.',
+      'Avoid clinical hypotheses in this section.',
+      'Do not state why a behavior occurred.',
+      'Never include a causal claim.',
+      'Remove any clinical hypothesis from the narrative.',
+      'Drop staff opinion from the summary.',
+    ];
+    const PERMISSIONS = [
+      'So do not cut a causal claim or a clinical hypothesis out of this note.',
+      'THE BCBA IS ENTITLED TO THE ANALYSIS. This author is the Behavior Analyst documenting their own training session.',
+      'Function, motivation and causal reasoning are their own work and belong in the note.',
+      "Naming why a behavior occurs is the assessment's finding, not an overreach, provided it is hedged to the evidence that supports it.",
+      'Where a function was assessed, report it condition by condition before naming it.',
+      'A light judgment sitting on something actually seen is not value-laden phrasing and stays as written.',
+    ];
+    for (const s of BANS) {
+      expect(bansTheAnalysis(s), `a ban walked through the classifier: ${s}`).not.toEqual([]);
+    }
+    for (const s of PERMISSIONS) {
+      expect(bansTheAnalysis(s), `a real permission was flagged as a ban: ${s}`).toEqual([]);
+    }
+  });
 
   /* All three BCBA-authored tools carried the clause, in the same words, in their
      own cores: assess.js:135, sup.js:185 and parent.js:125 before this change.
@@ -550,9 +611,8 @@ test.describe('the analysis rules reach the technician tool and no other', () =>
       await page.goto('/notes/bcba/index.html');
       await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length));
       const system = await page.evaluate((t) => window.NOTE_TOOLS.find((x) => x.id === t).buildSystem(), id);
-      for (const re of BANS_THE_ANALYSIS) {
-        expect(system, `${id} takes the analysis back with ${re}`).not.toMatch(re);
-      }
+      expect(bansTheAnalysis(system),
+        `${id} takes the analysis back`).toEqual([]);
       // The sentence the clause was cut out of stays whole, so this is not a
       // licence to editorialise.
       expect(system).toContain('A light judgment sitting on something actually seen');
@@ -605,8 +665,68 @@ test.describe('the analysis rules reach the technician tool and no other', () =>
     // caveat on the percentage. The rule carries the stage; it must never hedge
     // the number.
     expect(system).toMatch(/never hedge, qualify or reinterpret a percentage/);
+    // Both halves of that ruling, pinned rather than paraphrased, because an
+    // edit that softened either one would still pass the line above.
+    expect(system).toContain('accuracy and independence are different measures');
+    expect(system).toContain('name the teaching stage the trials ran under');
     // It dropped his parenthetical describing the precursor to the tantrum.
     expect(system).toContain('A parenthetical in the notes is load-bearing');
+  });
+
+  /* A quote introduced by a negator is a PROHIBITION, not an example, and the
+     polarity carries across a bare conjunction because `Never "A" or "B"`
+     forbids both. Only the tail of the gap counts, so a "not" forty characters
+     upstream in an unrelated clause does not silence the next example. */
+  function articledExamples(text) {
+    const s = String(text);
+    const out = [];
+    let prevEnd = 0;
+    let negated = false;
+    for (const m of s.matchAll(/"([^"]{12,200})"/g)) {
+      const tail = s.slice(prevEnd, m.index).slice(-20);
+      if (/\b(?:never|not|rather than)\b/i.test(tail)) negated = true;
+      else if (!/^[\s,]*(?:or|and)[\s,]*$/i.test(tail)) negated = false;
+      if (!negated && /\b[Tt]he (?:caregiver|[Bb]ehavior [Aa]nalyst)\b/.test(m[1])) out.push(m[1]);
+      prevEnd = m.index + m[0].length;
+    }
+    return out;
+  }
+
+  /* THE WORKED EXAMPLES, which is where the model actually learns the voice.
+     castor-cfae8acd, reviewing this PR: :112 told it to name the actor bare
+     while :113 and :126 still showed it "The caregiver's inconsistent prompt
+     delivery" and "the caregiver was praised for". This PR's whole diagnosis is
+     that the model copies the core's examples, so an example carrying the
+     article teaches the article whatever the rule above it says. */
+  test("parent's own worked examples obey its bare-actor rule", async ({ page }) => {
+    await page.goto('/notes/bcba/index.html');
+    await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length));
+    const system = await page.evaluate(() => window.NOTE_TOOLS.find((t) => t.id === 'parent').buildSystem());
+    expect(articledExamples(system),
+      'a worked example names the actor with an article, and the model copies its examples').toEqual([]);
+  });
+
+  /* The fixture for the guard above, for the same reason the ban classifier has
+     one. My first cut flagged the bare-actor RULE, because the rule has to quote
+     "The Behavior Analyst" in order to forbid it, and a guard that fires on the
+     fix is a guard nobody can satisfy.
+
+     sup and assess each still carry one articled example. That is deliberate and
+     it is Kaleb's open question, so the test above names parent only. */
+  test('the example guard reads a prohibition as a prohibition', () => {
+    const forbids = 'Never "The Behavior Analyst" or "the behavior analyst": the article is the tell.';
+    expect(articledExamples(forbids), 'the rule forbidding the phrase was read as using it').toEqual([]);
+
+    const teaches = 'Example: "The caregiver was praised for pacing the prompt."';
+    expect(articledExamples(teaches), 'a worked example carrying the article went unflagged').toHaveLength(1);
+
+    // A negator far upstream must not silence the example after it.
+    const far = 'fold rationale inline, not as a separate rationale sentence. Example: "The caregiver rehearsed the chain."';
+    expect(articledExamples(far), 'a distant "not" silenced a real example').toHaveLength(1);
+
+    // And the positive half of a this-not-that pair is still checked.
+    const pair = 'Example: "The caregiver implemented the plan" - not "Modeling was provided."';
+    expect(articledExamples(pair), 'the positive half of a contrast pair was skipped').toHaveLength(1);
   });
 
   /* sap takes only the constructions block and never took these rules, so it is
