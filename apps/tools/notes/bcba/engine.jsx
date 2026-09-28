@@ -240,19 +240,38 @@ function copyBlocks(tool, output, values) {
   if (!Array.isArray(tool.copyGroups) || !tool.copyGroups.length) {
     return tool.formSections.map((sec) => sectionBlock(sec, output, values));
   }
+  return tool.copyGroups.map((group) => `${group.heading}\n${copyGroupBody(tool, group, output, values)}`);
+}
+
+/* ONE EHR FIELD, AS IT IS TYPED INTO ITS BOX.
+ *
+ * His words, 2026-09-28: "I do expect that I can copy for an entire section,
+ * not each of the subsections that we had to break it down into for the expert
+ * to understand the shape of the response." Copy All already built each field
+ * from its parts; this is that same builder for one field, so a field's own
+ * Copy and Copy All cannot disagree about what the field holds.
+ *
+ * The group heading is left off here and kept by Copy All: it names the box on
+ * the form, and Copy All is the only path where one paste carries all four
+ * boxes and so needs the names as separators. */
+function copyGroupBody(tool, group, output, values) {
   const byId = new Map(tool.formSections.map((sec) => [sectionId(sec), sec]));
-  return tool.copyGroups.map((group) => {
-    const body = group.parts
-      .map((part) => {
-        const sec = byId.get(part.id);
-        const text = sec ? sectionBody(sec, output, values) : "";
-        if (!text.trim()) return "";
-        return part.label ? `${part.label}:\n${text}` : text;
-      })
-      .filter(Boolean)
-      .join("\n\n");
-    return `${group.heading}\n${body}`;
-  });
+  return group.parts
+    .map((part) => {
+      const sec = byId.get(part.id);
+      const text = sec ? sectionBody(sec, output, values) : "";
+      if (!text.trim()) return "";
+      return part.label ? `${part.label}:\n${text}` : text;
+    })
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+/* The group whose FIRST part is this section, so a field's Copy sits above the
+   first card it covers. Any other section, grouped or not, gets null. */
+function groupStartingAt(tool, id) {
+  if (!Array.isArray(tool.copyGroups)) return null;
+  return tool.copyGroups.find((g) => g.parts.length && g.parts[0].id === id) || null;
 }
 
 function valuesEqual(a, b) {
@@ -4426,6 +4445,19 @@ function App() {
     recordNoteLeft();
   };
 
+  /* One EHR field. It goes out through handleCopy, the same door as a card's
+     Copy, so whatever put-back that door applies applies here too. The field's
+     parts are then marked copied one by one, against state text, for the same
+     reason handleCopy marks a card against state text. */
+  const handleCopyGroup = (group) => {
+    if (!S.output) return;
+    handleCopy("grp-" + group.heading, copyGroupBody(tool, group, S.output, S.values));
+    const byId = new Map(tool.formSections.map((sec) => [sectionId(sec), sec]));
+    markCopied(group.parts
+      .filter((part) => byId.has(part.id))
+      .map((part) => ({ id: part.id, text: sectionBody(byId.get(part.id), S.output, S.values) })));
+  };
+
   /* ── Clear / reset ─────────────────────────────────────────────────── */
 
   // True when the active tool holds anything worth confirming before wiping -
@@ -5331,9 +5363,33 @@ function App() {
                 // Facts echo the clinician's own quick-picks - there is nothing
                 // for the model to revise, so they are not a revision target.
                 const revisable = isModelSection(sec) && !S.proposal;
+                // A tool with copyGroups gets one Copy per EHR field, above the
+                // first card that field covers. The cards keep their own Copy.
+                const group = groupStartingAt(tool, id);
                 return (
+                  <React.Fragment key={id}>
+                  {group && (
+                    <div
+                      className="full-row"
+                      data-testid="copy-group"
+                      data-group={group.heading}
+                      style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginTop: i === 0 ? 0 : 10, paddingBottom: 6, borderBottom: "1.5px solid #c0d4a8" }}
+                    >
+                      <span style={{ fontSize: 13, fontWeight: 700, color: "#2d3a1f", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                        {group.heading}
+                        <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 600, color: "#7a9460", textTransform: "none", letterSpacing: 0 }}>
+                          EHR field
+                        </span>
+                      </span>
+                      <button
+                        onClick={() => handleCopyGroup(group)}
+                        style={{ ...smallBtn, border: "1.5px solid #374528", background: copied === "grp-" + group.heading ? "#374528" : "white", color: copied === "grp-" + group.heading ? "white" : "#374528" }}
+                      >
+                        {copied === "grp-" + group.heading ? "Copied!" : "Copy " + group.heading}
+                      </button>
+                    </div>
+                  )}
                   <div
-                    key={id}
                     // Point mode resolves a click on anything inside a section
                     // back to the section itself, so it needs the id and the
                     // heading on the card rather than only in this closure.
@@ -5393,6 +5449,7 @@ function App() {
                     />
                     <ExpertNotes expert={S.expert} section={sec} />
                   </div>
+                  </React.Fragment>
                 );
               })}
             </div>
