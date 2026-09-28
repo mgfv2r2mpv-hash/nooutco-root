@@ -534,90 +534,107 @@ test.describe('the analysis rules reach the technician tool and no other', () =>
      analysis however it is spelled, and require the permission to be stated
      rather than merely not contradicted. assess.js:124 is where that permission
      was already written; this is the same shape on the other two BCBA tools. */
-  /* WHY A CLASSIFIER AND NOT A LIST OF PHRASES. The first version of this guard
-     was four regexes over three verbs and a plural noun, and castor-cfae8acd
-     walked two rewordings straight through it: "Omit causal claims and clinical
-     hypotheses." and "Leave out staff opinion, statements about why a behavior
-     occurred, and hypotheses about function." Worse, the PLURAL was the only
-     thing keeping it off parent's own permission sentence, which is luck.
+  /* WHY THIS IS AN ALLOW-LIST AND NOT A MATCHER, third attempt.
 
-     The thing that actually distinguishes a ban from a permission is not the
-     noun, it is the verb and whether the verb is negated. Removing verbs banned
-     the analysis; negate one and it grants it. Keeping verbs grant it; negate one
-     and it bans it. So permission is tested FIRST, because "do not cut a causal
-     claim" contains "cut". */
-  const ANALYSIS = String.raw`(?:causal (?:claim|reasoning)|clinical hypothes|hypothes[ei]s about function|statements? about why|why a behaviou?r (?:occur|happen)|staff opinion|motivation and diagnosis)`;
-  const REMOVE = String.raw`(?:cut|omit|remove|exclude|strip|drop|leave out|leave off|take out)`;
-  const KEEP = String.raw`(?:include|write|state|assert|name|document|make|report|record|offer|draw)`;
-  const NOT = String.raw`(?:do not|don't|never|rather than)`;
+     First attempt: four regexes over three verbs and a plural noun.
+     castor-cfae8acd walked two rewordings through it.
+     Second attempt: a verb-polarity classifier with a fourteen sentence fixture.
+     They walked NINE more through it, including "Keep causal claims out of the
+     note.", "Causal claims do not belong in this note." and "Describe only what
+     was seen, never why it happened." It also missed the one real ban in the
+     repo, bt's technician list, because the removing verb sits on the header
+     line rather than on the bullet, and it flagged "It is fine to leave in
+     clinical hypotheses; only cut filler."
 
-  const GRANTS = new RegExp(
-    `(?:${NOT}\\s+${REMOVE}|is entitled to the analysis|belong in the note|are their own work|theirs to state)`, 'i');
-  const REMOVES = new RegExp(`\\b${REMOVE}\\b`, 'i');
-  const BANS_KEEPING = new RegExp(`\\b${NOT}\\s+${KEEP}\\b|\\bavoid\\b|\\bno\\s+(?:causal|clinical)\\b`, 'i');
-  const MENTIONS = new RegExp(ANALYSIS, 'i');
+     That is the #55 lesson twice over: every control I write puts the thing in
+     the position I already thought of. A matcher cannot win this, because the
+     set of ways to say "do not do the analysis" is not enumerable and the set
+     of people who will add one is not either.
 
-  /* Sentence by sentence, because a whole prompt holds both a ban and a
-     permission and a document-wide regex cannot tell which one it matched. */
-  function bansTheAnalysis(text) {
+     So this stops trying to recognise a ban. Every sentence in a composed BCBA
+     prompt that touches the analysis vocabulary has to be a sentence somebody
+     READ and listed below. A new one fails until it is read, whatever it says,
+     and the failure prints it so reading it is the fix. That is closed-enum
+     behaviour on prose: unknown input fails, rather than being waved through
+     because no pattern happened to match it. */
+  const ANALYSIS_VOCAB = /caus|\bwhy\b|hypothes|function|motivat|speculat|explanation|diagnos/i;
+
+  function analysisSentences(text) {
     return String(text)
-      .split(/\n|(?<=\.)\s+(?=[A-Z"'*-])/)
+      .split(/\n|(?<=[.:])\s+(?=[A-Z"'*-])/)
       .map((s) => s.trim())
-      .filter((s) => MENTIONS.test(s))
-      .filter((s) => !GRANTS.test(s))
-      .filter((s) => REMOVES.test(s) || BANS_KEEPING.test(s));
+      .filter(Boolean)
+      .filter((s) => ANALYSIS_VOCAB.test(s));
   }
 
-  /* THE FIXTURE, and it is the load-bearing part. A classifier with no self-test
-     is the defect this file exists to catch, one layer up: the previous guard
-     passed every tool and every test in this file while letting two rewordings
-     through. Both lists below are real sentences. The bans are the two
-     castor-cfae8acd wrote to break the old guard plus the original clause; the
-     permissions are the sentences assess and parent actually carry, and a
-     classifier that flags one of those would fail every tool below forever. */
-  test('the ban classifier catches a reworded ban and clears a real permission', () => {
-    const BANS = [
-      'Objective, observable language. Cut staff opinion, causal claims and clinical hypotheses.',
-      'Omit causal claims and clinical hypotheses.',
-      'Leave out staff opinion, statements about why a behavior occurred, and hypotheses about function.',
-      'Avoid clinical hypotheses in this section.',
-      'Do not state why a behavior occurred.',
-      'Never include a causal claim.',
-      'Remove any clinical hypothesis from the narrative.',
-      'Drop staff opinion from the summary.',
-    ];
-    const PERMISSIONS = [
-      'So do not cut a causal claim or a clinical hypothesis out of this note.',
-      'THE BCBA IS ENTITLED TO THE ANALYSIS. This author is the Behavior Analyst documenting their own training session.',
-      'Function, motivation and causal reasoning are their own work and belong in the note.',
-      "Naming why a behavior occurs is the assessment's finding, not an overreach, provided it is hedged to the evidence that supports it.",
-      'Where a function was assessed, report it condition by condition before naming it.',
-      'A light judgment sitting on something actually seen is not value-laden phrasing and stays as written.',
-    ];
-    for (const s of BANS) {
-      expect(bansTheAnalysis(s), `a ban walked through the classifier: ${s}`).not.toEqual([]);
-    }
-    for (const s of PERMISSIONS) {
-      expect(bansTheAnalysis(s), `a real permission was flagged as a ban: ${s}`).toEqual([]);
-    }
-  });
+  /* Read one by one on 2026-09-28. Every one is a permission, a terminology rule
+     or a structural instruction, and not one of them bans the analysis. Adding a
+     line here is the review: do not paste a failing sentence in to make the
+     suite green. */
+  const REVIEWED = new Set([
+    'For training strategies and programming decisions, fold rationale inline - "[caregiver skill level or observed barrier], so [approach] was selected to [functional target or generalization outcome]" - not as a separate rationale sentence.',
+    'This author is the Behavior Analyst documenting their own training session, so function, motivation and causal reasoning are their own work and belong in the note.',
+    '- So do not cut a causal claim or a clinical hypothesis out of this note, and do not flatten a ranking.',
+    'Where they wrote that one function drove the behavior MORE than another, the note says the same thing in the same order, hedged to the evidence they gave and no further.',
+    'Prompt and stage codes (RI, M, I and the like, read against the legend they gave) are data too, so name the teaching stage the trials ran under, because the author uses it to plan the next fade.',
+    'This is faithfulness and not a caveat: accuracy and independence are different measures, so never hedge, qualify or reinterpret a percentage because prompting was in place.',
+    'No loose synonyms (rewarded, encouraged, motivated).',
+    '\'decreased the motivation for attention\' not \'altered the motivational state\'.',
+    '* Participial causals of the form \'by ensuring\', \'by providing\', \'by allowing\'.',
+    'Use a comma and \'because\', or start a new sentence.',
+    '* Form before function.',
+    'Where only the function is available and the form is genuinely not recoverable, write the function alone and emit the hint.',
+    'NEVER invent a topography, because an invented one reads exactly like an observed one.',
+    'PROCEDURES GO IN THE ORDER THEY RUN, BECAUSE THAT ORDER IS THE DESIGN.',
+    'This is not a preference, because it is wrong in a record rather than merely unwanted:',
+    'Embed clinical purpose inline - "[instrument] was administered to identify [deficit or function], [how findings inform planning]" - not as a separate purpose sentence.',
+    'Purpose belongs here ("administered to assess X", "to eliminate confounds for behavioral function").',
+    '- Report strengths and deficits BY DOMAIN and carry the boundary, because the boundary is the finding.',
+    '"Imitation showed generalized instances but not across functional tasks or vocal instruction to imitate" is a finding.',
+    '- Where a function was assessed, report it condition by condition before naming it: what the behavior looked like, what occasioned it, what was delivered in each condition, and which conditions did and did not resolve it.',
+    'A handful of trials does not license a flat assertion of function.',
+    'Assigning a function, naming an establishing operation and identifying an intervention target is what an assessment is for, and it is this author\'s own work.',
+    '- So do not cut a causal claim or a clinical hypothesis out of this note.',
+    'Naming why a behavior occurs is the assessment\'s finding, not an overreach, provided it is hedged to the evidence that supports it.',
+    '- Precise verbs: administered [instrument], conducted a preference assessment, conducted FBA/FA, ran probes, established baseline, observed, interviewed, scored, identified function.',
+    '- progress (Summary of Progress and Findings): up to 10 sentences narrating the session arc - what data or trends were reviewed, which goals were focused on and why, what was observed during the session, what was modified in response to those observations, and any probes or assessments run.',
+  ]);
 
-  /* All three BCBA-authored tools carried the clause, in the same words, in their
-     own cores: assess.js:135, sup.js:185 and parent.js:125 before this change.
-     assess was the worst of them, granting the permission on line 124 and taking
-     it back eleven lines later. */
   for (const id of ['parent', 'assess', 'sup']) {
-    test(`${id} has no wording anywhere that takes the analysis back`, async ({ page }) => {
+    test(`every analysis sentence in ${id} is one somebody reviewed`, async ({ page }) => {
       await page.goto('/notes/bcba/index.html');
       await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length));
       const system = await page.evaluate((t) => window.NOTE_TOOLS.find((x) => x.id === t).buildSystem(), id);
-      expect(bansTheAnalysis(system),
-        `${id} takes the analysis back`).toEqual([]);
-      // The sentence the clause was cut out of stays whole, so this is not a
-      // licence to editorialise.
+      const unreviewed = analysisSentences(system).filter((s) => !REVIEWED.has(s));
+      expect(unreviewed,
+        `${id} carries a sentence about the analysis that nobody has read. Read it, and if it `
+        + 'does not take the analysis away from the BCBA, add it to REVIEWED above').toEqual([]);
+      /* All three carried "Cut staff opinion, causal claims and clinical
+         hypotheses" in their own cores before this change, at assess.js:135,
+         sup.js:185 and parent.js:125. Only the clause went: the sentence around
+         it stays whole, so this is not a licence to editorialise. */
       expect(system).toContain('A light judgment sitting on something actually seen');
     });
   }
+
+  /* THE POSITIVE CONTROL, and the allow-list is worth nothing without it. An
+     allow-list passes trivially when the vocabulary never matches anything, so
+     this proves the same check FIRES on a real ban. bt is the one tool that is
+     supposed to carry one: its author is a technician and the analysis is not
+     theirs to make. */
+  test('the same check fires on the one real ban in the repo, in bt', async ({ page }) => {
+    await page.goto('/notes/bt/');
+    await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length));
+    const system = await page.evaluate(() => window.NOTE_TOOLS.find((t) => t.id === 'bt').buildSystem());
+    const found = analysisSentences(system);
+    // The ban is really there, so the vocabulary is not the thing doing the work.
+    expect(found).toContain('* Claims about WHY a behavior happened.');
+    expect(found).toContain('* Clinical hypotheses.');
+    // And it is NOT reviewed, so the same check applied to a BCBA tool would
+    // fail on it rather than pass it through.
+    const unreviewed = found.filter((s) => !REVIEWED.has(s));
+    expect(unreviewed).toContain('* Claims about WHY a behavior happened.');
+  });
 
   /* Only two of the three STATE the permission. sup is left neutral, which is
      what register-rules.js intends; asserting a permission there would be
