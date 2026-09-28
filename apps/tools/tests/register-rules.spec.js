@@ -520,6 +520,95 @@ test.describe('the analysis rules reach the technician tool and no other', () =>
     });
   }
 
+  /* THE HOLE THE TWO TESTS ABOVE LEFT OPEN, found 2026-09-28 from a real note.
+     ANALYSIS_LINES are the shared block's sentences, matched verbatim, so a tool
+     that says the same thing in its OWN core passes both loops while taking the
+     analysis away again. parent.js did exactly that: its core carried "Cut staff
+     opinion, causal claims and clinical hypotheses", which is the removal this
+     file exists to protect, in different words. Kaleb's function analysis - he
+     ranked attention over escape - came back out of the narrative and reappeared
+     in follow-up as a tie, then as escape-maintained, backwards from what he
+     wrote.
+
+     So these assertions read the COMPOSED prompt for a phrase that bans the
+     analysis however it is spelled, and require the permission to be stated
+     rather than merely not contradicted. assess.js:124 is where that permission
+     was already written; this is the same shape on the other two BCBA tools. */
+  const BANS_THE_ANALYSIS = [
+    /[Cc]ut .{0,60}clinical hypotheses/,
+    /[Cc]ut .{0,60}causal claims/,
+    /[Nn]o causal claims/,
+    /[Aa]void .{0,40}clinical hypothes/,
+  ];
+
+  /* All three BCBA-authored tools carried the clause, in the same words, in their
+     own cores: assess.js:135, sup.js:185 and parent.js:125 before this change.
+     assess was the worst of them, granting the permission on line 124 and taking
+     it back eleven lines later. */
+  for (const id of ['parent', 'assess', 'sup']) {
+    test(`${id} has no wording anywhere that takes the analysis back`, async ({ page }) => {
+      await page.goto('/notes/bcba/index.html');
+      await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length));
+      const system = await page.evaluate((t) => window.NOTE_TOOLS.find((x) => x.id === t).buildSystem(), id);
+      for (const re of BANS_THE_ANALYSIS) {
+        expect(system, `${id} takes the analysis back with ${re}`).not.toMatch(re);
+      }
+      // The sentence the clause was cut out of stays whole, so this is not a
+      // licence to editorialise.
+      expect(system).toContain('A light judgment sitting on something actually seen');
+    });
+  }
+
+  /* Only two of the three STATE the permission. sup is left neutral, which is
+     what register-rules.js intends; asserting a permission there would be
+     inventing a ruling nobody made. */
+  test('parent states the permission, in the words assess already used', async ({ page }) => {
+    await page.goto('/notes/bcba/index.html');
+    await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length));
+    const system = await page.evaluate(() => window.NOTE_TOOLS.find((t) => t.id === 'parent').buildSystem());
+    expect(system).toContain('THE BCBA IS ENTITLED TO THE ANALYSIS');
+    expect(system).toContain('do not cut a causal claim or a clinical hypothesis out of this note');
+    // The measured defect, not a restatement of the rule: his ranking of attention
+    // over escape came back as a tie, then inverted in follow-up.
+    expect(system).toMatch(/do not flatten a ranking/);
+  });
+
+  test('assess keeps the permission it already had', async ({ page }) => {
+    await page.goto('/notes/bcba/index.html');
+    await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length));
+    const system = await page.evaluate(() => window.NOTE_TOOLS.find((t) => t.id === 'assess').buildSystem());
+    expect(system).toContain('THE BEHAVIOR ANALYST IS ENTITLED TO THE ANALYSIS');
+    expect(system).toContain('do not cut a causal claim or a clinical hypothesis out of this note');
+  });
+
+  /* The four rules the same note earned, each anchored on what it produced.
+     Every one of them is a sentence the model wrote that Kaleb did not. */
+  test("parent carries the four rules his own note earned", async ({ page }) => {
+    await page.goto('/notes/bcba/index.html');
+    await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length));
+    const system = await page.evaluate(() => window.NOTE_TOOLS.find((t) => t.id === 'parent').buildSystem());
+    // It wrote "The Behavior Analyst modeled" three times, because the prompt's
+    // own worked example was that phrase.
+    expect(system).not.toContain('The Behavior Analyst modeled');
+    expect(system).toContain('name the actor by role, bare, with no article');
+    // It was asked for "polished" prose against a register block that asks for
+    // the opposite.
+    expect(system).not.toContain('polished third-person');
+    // It wrote "met criterion" and "implemented skills with fidelity". He took
+    // neither measurement.
+    expect(system).toMatch(/Never assert criterion, mastery, generalization or fidelity/);
+    // It turned his "8/0" into "(8 correct)" and dropped the RI/M stage codes.
+    expect(system).toContain('DATA IS QUOTED, NEVER PARAPHRASED');
+    expect(system).toContain('8/0 stays 8/0');
+    // His ruling, 2026-09-28: accuracy and independence are different axes, and
+    // staged prompting is a facet of the teaching interaction rather than a
+    // caveat on the percentage. The rule carries the stage; it must never hedge
+    // the number.
+    expect(system).toMatch(/never hedge, qualify or reinterpret a percentage/);
+    // It dropped his parenthetical describing the precursor to the tantrum.
+    expect(system).toContain('A parenthetical in the notes is load-bearing');
+  });
+
   /* sap takes only the constructions block and never took these rules, so it is
      unaffected either way. Asserted so a future reader does not "fix" it. */
   test('sap is untouched, because it never took the session-record block at all', async ({ page }) => {
