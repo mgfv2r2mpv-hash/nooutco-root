@@ -231,42 +231,30 @@ body {
   text-align: center;
 }
 
-/* Skipping the questions is a legitimate choice, not a failure state, but it is
-   also the one the technician should notice they are making. Amber reads as
-   "your call" where the dashed grey outline read as disabled. */
-.revision-skip {
-  display: block; width: 100%;
-  padding: 9px 12px; border-radius: 8px;
-  border: 1.5px solid #e3c26a;
-  background: #fbeec4;
-  color: #8a3b2c;
-  font-family: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer;
+/* The note over the composer while Send is locked. Amber, the colour this page
+   spends on a live state wanting a look, and quiet rather than a warning: it
+   reads as a moment passing, not as something broken. The drain is a plain
+   width transition so it stays on the compositor and keeps running if the tab
+   is busy generating. */
+.send-lock {
+  margin: 0 0 6px;
+  color: #8a6b2f; font-size: 12px; line-height: 1.45;
 }
-.revision-skip:hover:not(:disabled) { background: #f7e6b8; border-color: #c9962a; }
-.revision-skip:disabled { opacity: 0.55; cursor: not-allowed; }
-
-/* The bar under the skip button while it is counting down. This state is
-   deliberately NOT the flat 0.55 "unavailable" look above: the button is
-   working exactly as intended, so it should read as a moment passing rather
-   than as something broken. The drain is a plain width transition so it stays
-   on the compositor and keeps running if the tab is busy generating. */
-.skip-cooldown .revision-skip:disabled { opacity: 1; color: #9a7b3d; background: #fdf6e0; border-color: #ecdca6; }
-.skip-cooldown-bar {
-  height: 3px; margin-top: 5px; border-radius: 2px;
+.send-lock-bar {
+  height: 3px; margin-top: 4px; border-radius: 2px;
   background: #f0e3bb; overflow: hidden;
 }
-.skip-cooldown-bar > span {
+.send-lock-bar > span {
   display: block; height: 100%; border-radius: 2px;
   background: #c9962a;
   transition: width 260ms linear;
 }
 @media (prefers-reduced-motion: reduce) {
-  .skip-cooldown-bar > span { transition: none; }
+  .send-lock-bar > span { transition: none; }
 }
 
-/* Where the skip button is while the bar holds it. A line rather than a
-   disabled control, and quiet rather than a warning: nothing is wrong, the
-   note is simply not written yet. */
+/* Why an empty Send is held by the bar, in one line, and quiet rather than a
+   warning: nothing is wrong, the note is simply not written yet. */
 .skip-held {
   padding: 8px 12px; border-radius: 8px;
   border: 1px dashed #e3c26a;
@@ -1379,6 +1367,8 @@ body.is-pointing, body.is-pointing * { cursor: crosshair !important; }
   padding-bottom: 8px;
   overflow: visible;
 }
+/* Nothing left in it: the composer is the bar. */
+.revision-panel-bar .revision-panel-body:empty { display: none; }
 
 .revision-panel-foot.is-bar {
   padding-top: 8px;

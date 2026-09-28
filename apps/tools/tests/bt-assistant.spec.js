@@ -222,7 +222,7 @@ test.describe('triage questions before drafting', () => {
     expect(noteCall.system, 'no migrated call sends prompt text').toBeUndefined();
   });
 
-  test('skipping generates anyway', async ({ page }) => {
+  test('an empty Send generates anyway', async ({ page }) => {
     const posted = [];
     await page.route('**/api/llm-call**', async (route) => {
       posted.push(JSON.parse(route.request().postData() || '{}'));
@@ -241,34 +241,26 @@ test.describe('triage questions before drafting', () => {
     await page.goto('/notes/bt/');
     await fillRequiredAndGenerate(page);
 
-    // The escape hatch has to be present, and it now COSTS A MOMENT. It used to
-    // be one click, and the audit trail is why it is not: two technicians, ten
-    // gap-question rounds, zero revisions ever. Skipping was cheaper than
-    // reading. So the button locks briefly, shows the wait, and then works.
-    const skip = page.getByRole('button', { name: /Nothing to add|Generate without adding answers/i });
-    await expect(skip).toBeVisible();
-    await expect(skip).toBeDisabled();
-    await expect(skip).toHaveText(/\(\d+s\)/);
-    await expect(page.locator('.skip-cooldown-bar')).toBeVisible();
-
-    // Still a delay and NOT a trap: the tired technician at 7pm gets out, just
-    // a few seconds later than before.
-    await page.clock.runFor(31_000);
-    await expect(skip).toBeEnabled();
-    await expect(page.locator('.skip-cooldown-bar')).toHaveCount(0);
-    await skip.click();
+    /* The escape hatch is Send itself since his 2026-09-28 ruling folded "Use
+       these and generate" into it. A round with no candidate answers has no
+       revisions to read first, so nothing locks it. */
+    await expect(page.getByText('How many times?')).toBeVisible();
+    const send = page.locator('.revision-send');
+    await expect(send).toBeEnabled();
+    await expect(page.locator('[data-send-lock]')).toHaveCount(0);
+    await send.click();
 
     await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 15000 });
     expect(posted).toHaveLength(2);
   });
 
-  test('the cooldown drains rather than sitting still', async ({ page }) => {
+  test('the lock drains rather than sitting still', async ({ page }) => {
     // Guards the thing that makes the wait tolerable instead of infuriating:
     // it has to visibly be going somewhere. A frozen disabled button with no
     // countdown reads as a broken page, and a technician reloads it.
     await page.route('**/api/llm-call**', (route) => route.fulfill(reply({
       sufficient: false,
-      questions: [{ field: 'fBehavior', question: 'How many times?' }],
+      questions: [{ field: 'fBehavior', question: 'How many times?', suggestions: ['He eloped twice.'] }],
     })));
 
     await page.clock.install();
@@ -277,37 +269,28 @@ test.describe('triage questions before drafting', () => {
     await page.goto('/notes/bt/');
     await fillRequiredAndGenerate(page);
 
-    const skip = page.getByRole('button', { name: /Nothing to add|Generate without adding answers/i });
-    await expect(skip).toHaveText(/\(30s\)/);
+    const lock = page.locator('[data-send-lock]');
+    await expect(lock).toHaveText(/\b60s\b/, { timeout: 2000 });
 
-    const width = () => page.locator('.skip-cooldown-bar > span').evaluate((el) => el.style.width);
+    const width = () => page.locator('.send-lock-bar > span').evaluate((el) => el.style.width);
     const before = await width();
     await page.clock.runFor(10_000);
-    await expect(skip).toHaveText(/\(20s\)/);
+    await expect(lock).toHaveText(/\b50s\b/, { timeout: 2000 });
     const after = await width();
     expect(parseFloat(after)).toBeGreaterThan(parseFloat(before));
   });
 
-  /* The second half of what he asked for: "the closer the note is to being
-     ready, the shorter the button emptying is." The readiness number is the
-     model's, returned by the same triage call, which is the version he picked
-     over counting questions - "the readiness number determination can be
-     adjusted as needed", meaning it stays a line of prompt rather than becoming
-     arithmetic in the code.
+  /* THE LOCK AND THE READING. The minute is his 2026-09-28 ruling and it is
+     flat: the old ramp from readiness is gone. What stays is his 2026-08-06
+     floor, "the floor is 0 for 85% or better", and the fallback: a triage reply
+     with no readiness gets the full minute, never the free pass.
 
-     These pin the mapping in both directions and, more importantly, pin the
-     fallback: a triage reply with no readiness must get the LONGER wait, not
-     the shorter one.
-
-     THE GATE HOLDS ROUND ONE BELOW THE BAR, so a wait on a button that is not
-     drawn yet is not a reading of anything. The middling readings are taken in
-     round two, which is where their button first exists. The readings that
-     never gate - 85 and over, and a reply carrying no readiness at all - are
-     still taken in round one, which is where they arrive. */
-  test.describe('the wait scales with how ready the note already is', () => {
+     Every round here carries a candidate answer, because a round without one
+     has no revisions and never locks. */
+  test.describe('the Send lock reads how ready the note already is', () => {
     const triageWith = (extra) => ({
       sufficient: false,
-      questions: [{ field: 'fBehavior', question: 'How many times?' }],
+      questions: [{ field: 'fBehavior', question: 'How many times?', suggestions: ['He eloped twice.'] }],
       ...extra,
     });
 
@@ -318,49 +301,47 @@ test.describe('triage questions before drafting', () => {
       await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), tokenFor());
       await page.goto('/notes/bt/');
       await fillRequiredAndGenerate(page);
-      return page.getByRole('button', { name: /Nothing to add|Generate without adding answers/i });
+      await expect(page.getByText('How many times?')).toBeVisible();
+      return page.locator('.revision-send');
     }
 
     /* READ THE COUNTDOWN FAST. The clock is installed but not paused, so it
-       ticks in real time - and a toHaveText that FAILS keeps retrying while the
-       number drains. The first version of this file expected 25s from a
-       readiness of 20, and it passed against the build with no readiness at all,
-       because that build's 30 drifted down to 25 inside the five-second retry
-       window. A tight timeout is what makes the read a measurement rather than
-       a race the wrong answer can win. */
-    const startsAt = (skip, seconds) =>
-      expect(skip).toHaveText(new RegExp(`\\(${seconds}s\\)`), { timeout: 2000 });
+       ticks in real time, and a toHaveText that FAILS keeps retrying while the
+       number drains. A tight timeout makes the read a measurement rather than a
+       race the wrong answer can win. */
+    const startsAt = (page, seconds) =>
+      expect(page.locator('[data-send-lock]')).toHaveText(new RegExp(`\\b${seconds}s\\b`), { timeout: 2000 });
 
     test('a ready note does not wait at all', async ({ page }) => {
-      // His ruling, 2026-08-06: "the floor is 0 for 85% or better." It reverses
-      // the five second floor I built and argued for. The wait exists because
-      // skipping was cheaper than reading; on a note the model calls complete
-      // there is nothing to read, so the price would land on the person who did
-      // the work properly.
-      const skip = await openQuestions(page, triageWith({ readiness: 90 }));
-      await expect(skip).toBeEnabled();
-      await expect(skip).toHaveText(/Generate without adding answers/i);
+      // His ruling, 2026-08-06: "the floor is 0 for 85% or better." The wait
+      // exists because skipping was cheaper than reading; on a note the model
+      // calls complete there is nothing to read.
+      const send = await openQuestions(page, triageWith({ readiness: 90 }));
+      await expect(send).toBeEnabled();
       // No bar either. A drained bar on a button that was never locked is a
       // progress indicator for nothing.
-      await expect(page.locator('.skip-cooldown-bar')).toHaveCount(0);
+      await expect(page.locator('.send-lock-bar')).toHaveCount(0);
     });
 
-    test('85 is the threshold, and 84 does not fall off a cliff', async ({ page }) => {
-      // Ramped to zero AT his threshold rather than stepping there, so a single
-      // readiness point is never the difference between free and a long wait.
-      const skip = await openQuestions(page, triageWith({ readiness: 85 }));
-      await expect(skip).toBeEnabled();
+    test('85 is the threshold', async ({ page }) => {
+      const send = await openQuestions(page, triageWith({ readiness: 85 }));
+      await expect(send).toBeEnabled();
+    });
+
+    test('84 waits the full minute', async ({ page }) => {
+      const send = await openQuestions(page, triageWith({ readiness: 84 }));
+      await startsAt(page, 60);
+      await expect(send).toBeDisabled();
     });
 
     const nextRound = (extra) => ({
       ...triageWith(extra),
-      questions: [{ field: 'fBehavior', question: 'For how long?' }],
+      questions: [{ field: 'fBehavior', question: 'For how long?', suggestions: ['About a minute each time.'] }],
     });
 
-    /* Answer round one, then hand back the skip button round two draws. The
-       assertions on the way through are the gate's, and they are here rather
-       than in a test of their own so that a gate that stopped holding could
-       not quietly turn these into round one readings again. */
+    /* Round one asks with nothing to pick, so the gate holds it until an answer
+       and there is no lock. Round two arrives with a candidate, which is a fresh
+       set of revisions nobody has answered. */
     async function secondRound(page, first, second) {
       let calls = 0;
       await page.route('**/api/llm-call**', (route) => {
@@ -373,51 +354,38 @@ test.describe('triage questions before drafting', () => {
       await page.goto('/notes/bt/');
       await fillRequiredAndGenerate(page);
       await expect(page.locator('[data-skip-held]')).toBeVisible();
-      await expect(page.locator('.revision-skip')).toHaveCount(0);
+      await expect(page.locator('.revision-send')).toBeDisabled();
       await page.locator('.revision-input').fill('twice');
       await page.locator('.revision-send').click();
       await expect(page.getByText(/for how long/i)).toBeVisible();
-      return page.getByRole('button', { name: /Nothing to add|Generate without adding answers/i });
+      return page.locator('.revision-send');
     }
 
-    test('a middling note still waits', async ({ page }) => {
-      const skip = await secondRound(page, triageWith({ readiness: 40 }), nextRound({ readiness: 40 }));
-      await startsAt(skip, 16);
-      // The moment that separates the two: the ready note above was through
-      // immediately and this one is not.
-      await page.clock.runFor(9_000);
-      await expect(skip).toBeDisabled();
-      await page.clock.runFor(8_000);
-      await expect(skip).toBeEnabled();
+    test('a new round of revisions locks again', async ({ page }) => {
+      const noPicks = { sufficient: false, readiness: 40, questions: [{ field: 'fBehavior', question: 'How many times?', suggestions: [] }] };
+      const send = await secondRound(page, noPicks, nextRound({ readiness: 40 }));
+      await startsAt(page, 60);
+      await page.clock.runFor(55_000);
+      await expect(send).toBeDisabled();
+      await page.clock.runFor(6_000);
+      await expect(send).toBeEnabled();
     });
 
-    test('a triage reply with no readiness gets the full wait, not the short one', async ({ page }) => {
+    test('a triage reply with no readiness gets the full wait, not the free pass', async ({ page }) => {
       // The fallback has to fail toward the longer wait. A dropped field, a
       // malformed reply or an older tool must never hand out the shortcut that
       // a genuinely ready note earns.
-      //
-      // This one is a one-sided guard and cannot be otherwise: the full thirty
-      // is exactly what the build before this change did on every note, so no
-      // assertion here can tell them apart. What it pins is the future - the
-      // day someone makes the fallback the SHORT wait for convenience.
-      const skip = await openQuestions(page, triageWith({}));
-      await startsAt(skip, 30);
-      await page.clock.runFor(29_000);
-      await expect(skip).toBeDisabled();
+      const send = await openQuestions(page, triageWith({}));
+      await startsAt(page, 60);
+      await page.clock.runFor(55_000);
+      await expect(send).toBeDisabled();
     });
 
-    test('answering shortens the next round, because the note got closer', async ({ page }) => {
-      // Readiness is re-read every round rather than carried forward. Answering
-      // two of three questions is exactly the case where the note improved, and
-      // the wait has to move with it or the number is decorative.
-      //
-      // The same two rounds as the test above, and the second reading is the
-      // only difference between them: 90 rather than 40, and the sixteen
-      // seconds are gone.
-      const skip = await secondRound(page, triageWith({ readiness: 40 }), nextRound({ readiness: 90 }));
-      // Answering carried it over his threshold, so the second round is free.
-      await expect(skip).toBeEnabled();
-      await expect(page.locator('.skip-cooldown-bar')).toHaveCount(0);
+    test('answering can carry the next round over the bar, and then it is free', async ({ page }) => {
+      const noPicks = { sufficient: false, readiness: 40, questions: [{ field: 'fBehavior', question: 'How many times?', suggestions: [] }] };
+      const send = await secondRound(page, noPicks, nextRound({ readiness: 90 }));
+      await expect(send).toBeEnabled();
+      await expect(page.locator('.send-lock-bar')).toHaveCount(0);
     });
   });
 

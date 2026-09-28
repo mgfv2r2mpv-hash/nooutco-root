@@ -69,6 +69,8 @@ async function ask(page, triage) {
     return route.fulfill(reply(note()));
   });
 
+  // Faked so the minute Send waits on unanswered revisions can be skipped over.
+  await page.clock.install();
   await page.goto('/notes/bt/');
   await page.evaluate((tok) => localStorage.setItem('notes_auth_token', tok), tokenFor());
   await page.goto('/notes/bt/');
@@ -111,6 +113,16 @@ const press = async (page, id) => {
 /* DECLINING, his way, 2026-09-22: the own-words field is option N + 1, keying it
    is ipso facto the choice and deselects what was offered, and clearing it again
    leaves the question with no answer. There is no drop control on a chosen row. */
+/* ENDING THE ROUND WITH NOTHING TYPED. His 2026-09-28 ruling folded "Use these
+   and generate" into Send, and Send waits a minute on revisions nobody has
+   answered, so the minute is run off the fake clock first. */
+const sendEmpty = async (page) => {
+  await page.clock.runFor(61_000);
+  const send = page.locator('.revision-send');
+  await expect(send).toBeEnabled();
+  await send.click();
+};
+
 const declineByOwnWords = async (page, qi) => {
   const own = page.locator(`[data-suggestion-own="${qi}:own"]`);
   await own.fill('my own answer');
@@ -301,9 +313,7 @@ test.describe('the button flow', () => {
     await own.fill('It was in the plan, we added floor seating last month.');
     await own.press('Enter');
 
-    const skip = page.locator('.revision-skip');
-    await expect(skip).toBeEnabled({ timeout: 40000 });
-    await skip.click();
+    await sendEmpty(page);
     await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 20000 });
     expect(seen.noteAsk).toContain('we added floor seating last month');
   });
@@ -323,9 +333,8 @@ test.describe('the button flow', () => {
 /* ── THE BOTTOM SEND MUST CARRY THE PICKS ─────────────────────────────────
    His report, 2026-09-22: "when I use the text field at the bottom of NoMe near
    the send, and then send, it doesn't send the multiple choice options above;
-   just my typed text in the bottom field." Every existing test reaches the model
-   through the SKIP button, which is documented as the accept path. Nothing pinned
-   the other door. These two do: one asks the wire, one asks the screen. */
+   just my typed text in the bottom field." These two pin that door: one asks the
+   wire, one asks the screen. Since 2026-09-28 it is the only door. */
 test.describe('the bottom Send carries the picked option', () => {
   test('a picked row AND the typed text both reach the model, and the unpicked row does not', async ({ page }) => {
     const seen = await ask(page, TWO);
@@ -372,9 +381,7 @@ test.describe('the own field is an option like the others', () => {
     await expect(page.locator('[data-suggestion="0:0"]')).toHaveAttribute('data-suggestion-accepted', '0');
     await expect(page.locator('[data-suggestion-pencil="0:own"]')).toBeVisible();
 
-    const skip = page.locator('.revision-skip');
-    await expect(skip).toBeEnabled({ timeout: 40000 });
-    await skip.click();
+    await sendEmpty(page);
     await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 20000 });
     expect(seen.noteAsk).toContain('It was in the plan, added last month.');
     expect(seen.noteAsk).not.toContain('Moving to the floor settled him faster than the break did.');
@@ -427,12 +434,9 @@ test.describe('what the technician does with them', () => {
     await expect(page.locator('[data-suggestion-tick="0:1"]')).toBeVisible();
     await expect(page.locator('[data-suggestion-pencil="0:1"]')).toHaveCount(0);
 
-    // The skip button is the accept path, because sending needs typed text and
-    // agreeing with a suggestion needs none.
-    const skip = page.locator('.revision-skip');
-    await expect(skip).toHaveText(/Use these and generate/);
-    await expect(skip).toBeEnabled({ timeout: 40000 });
-    await skip.click();
+    // An empty Send is the accept path: agreeing with a suggestion needs no
+    // typing.
+    await sendEmpty(page);
 
     await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 20000 });
     expect(seen.noteAsk).toContain('Moving to the floor settled him faster than the break did.');
@@ -449,9 +453,7 @@ test.describe('what the technician does with them', () => {
     await expect(page.locator('[data-suggestion="0:0"]')).toHaveAttribute('data-suggestion-accepted', '0');
     await expect(page.locator('[data-suggestion-accepted="1"]')).toHaveCount(1);
 
-    const skip = page.locator('.revision-skip');
-    await expect(skip).toBeEnabled({ timeout: 40000 });
-    await skip.click();
+    await sendEmpty(page);
     await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 20000 });
 
     expect(seen.noteAsk).toContain('The first-then board worked better once we were down there.');
@@ -468,22 +470,23 @@ test.describe('what the technician does with them', () => {
     await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
     await declineByOwnWords(page, 0);
     await expect(page.locator('[data-suggestion-accepted="1"]')).toHaveCount(0);
-    /* The button was the accept path, so leaving nothing standing leaves it
+    /* An empty Send was the accept path, so leaving nothing standing leaves it
        nothing to carry. This note reads 70, and a technician carrying nothing
-       and answering nothing is exactly who the gate holds, so below the bar
-       there is no button here at all. The line names both ways out rather than
-       leaving them to work out which one the tool wanted. */
-    await expect(page.locator('.revision-skip')).toHaveCount(0);
+       and answering nothing is exactly who the gate holds, so below the bar an
+       empty Send is held. The line names both ways out rather than leaving them
+       to work out which one the tool wanted. */
+    await expect(page.locator('.revision-send')).toBeDisabled();
     await expect(page.locator('[data-skip-held]')).toHaveText(/Generates after one kept suggestion/);
   });
 
-  test('and on a note already at the bar the button goes back to nothing to add', async ({ page }) => {
-    // The same drop where the gate never closes. The label describes what the
-    // button carries, and with nothing left to carry it is a plain skip again.
+  test('and on a note already at the bar an empty Send is a plain skip again', async ({ page }) => {
+    // The same drop where the gate never closes: nothing to carry, and nothing
+    // holding it.
     await ask(page, { ...TWO, readiness: 90 });
     await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
     await declineByOwnWords(page, 0);
-    await expect(page.locator('.revision-skip')).toHaveText(/Generate without adding answers/);
+    await expect(page.locator('[data-skip-held]')).toHaveCount(0);
+    await expect(page.locator('.revision-send')).toBeEnabled();
   });
 
   test('rewording one sends the reworded sentence, not the one it was offered as', async ({ page }) => {
@@ -501,9 +504,7 @@ test.describe('what the technician does with them', () => {
     await expect(page.locator('[data-suggestion-pencil="0:0"]')).toHaveAttribute('data-suggestion-dirty', '0');
     await expect(field).toHaveValue('Floor seating settled him within a minute.');
 
-    const skip = page.locator('.revision-skip');
-    await expect(skip).toBeEnabled({ timeout: 40000 });
-    await skip.click();
+    await sendEmpty(page);
     await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 20000 });
 
     expect(seen.noteAsk).toContain('Floor seating settled him within a minute.');
@@ -547,10 +548,7 @@ test.describe('a lone suggestion is untouched by the exclusive rule', () => {
     await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
     await expect(page.locator('[data-suggestion-accepted="1"]')).toHaveCount(1);
 
-    const skip = page.locator('.revision-skip');
-    await expect(skip).toHaveText(/Use these and generate/);
-    await expect(skip).toBeEnabled({ timeout: 40000 });
-    await skip.click();
+    await sendEmpty(page);
     await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 20000 });
     expect(seen.noteAsk).toContain('Moving to the floor settled him faster than the break did.');
   });

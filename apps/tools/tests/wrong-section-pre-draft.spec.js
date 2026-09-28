@@ -233,23 +233,22 @@ test.describe('a finding on its own never holds the draft back', () => {
       .toBeVisible({ timeout: 15000 });
   };
 
-  test('a thin note plus a finding still gets its skip button, with no wait on it', async ({ page }) => {
+  test('a thin note plus a finding can still Send empty, with no wait on it', async ({ page }) => {
     // Readiness 40 is well under the bar, and triage itself asked nothing.
     await setup(page, { sufficient: true, readiness: 40, questions: [] });
 
     await expect(page.locator('[data-skip-held]')).toHaveCount(0);
-    const skip = page.getByRole('button', { name: /Generate without adding answers/i });
-    await expect(skip).toBeVisible({ timeout: 5000 });
-    await expect(skip).toBeEnabled();
+    await expect(page.locator('.revision-send')).toBeEnabled({ timeout: 5000 });
+    await expect(page.locator('[data-send-lock]')).toHaveCount(0);
   });
 
   test('and a triage that failed outright imposes no wait either', async ({ page }) => {
-    /* The worst version: no reading at all, so skipSecondsFor would hand back
-       the longest wait there is for a panel holding nothing but a regex match. */
+    /* The worst version: no reading at all, which gets the full minute on a
+       round of revisions, for a panel holding nothing but a regex match. */
     await setup(page, 'fail');
 
     await expect(page.locator('[data-skip-held]')).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /Generate without adding answers/i })).toBeEnabled({ timeout: 5000 });
+    await expect(page.locator('.revision-send')).toBeEnabled({ timeout: 5000 });
   });
 
   test('but a real question beside it still holds the gate, which is his ruling', async ({ page }) => {
@@ -260,6 +259,6 @@ test.describe('a finding on its own never holds the draft back', () => {
     });
 
     await expect(page.locator('[data-skip-held]')).toHaveCount(1);
-    await expect(page.getByRole('button', { name: /Generate without adding answers/i })).toHaveCount(0);
+    await expect(page.locator('.revision-send')).toBeDisabled();
   });
 });

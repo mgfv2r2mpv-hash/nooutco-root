@@ -2414,13 +2414,13 @@ function App() {
     const parsed = NotesScrub.restoreOutput(r.parsed || {}, scrubMapRef.current);
     const questions = Array.isArray(parsed.questions) ? parsed.questions : [];
     // Absent or unparseable stays null rather than becoming a number, so the
-    // wait falls back to the full thirty seconds and the ceiling to three. A
+    // Send lock falls back to the full minute and the ceiling to three. A
     // missing reading must not hand out the shortcut a ready note earns.
     //
     // Clamped here rather than trusted, because the schema cannot carry the
     // bound. One clamp at the boundary means every consumer reads the same
-    // number - the audit trail included, which the clamp inside
-    // skipSecondsFor never covered.
+    // number - the audit trail included, which the clamp inside the old skip
+    // cooldown never covered.
     const readiness = Number.isFinite(parsed.readiness) ? clampReadiness(parsed.readiness) : null;
     return {
       questions: parsed.sufficient
@@ -3058,26 +3058,28 @@ function App() {
     await draftNote(scrubbed, "");
   };
 
-  /* How long "generate anyway" stays locked while gap questions are on screen.
-     The same wait on every tool, which is his ruling and not the default I
-     reached for. I had scoped it to bt, reasoning that the price existed
-     because skipping was cheaper than reading for someone still learning what a
-     note needs, and that a BCBA already knows. He overruled it: "yeah, it
-     should lock my drafters as well." A thin note is thin whoever wrote it.
+  /* HOW LONG SEND STAYS LOCKED on a round of revisions nobody has answered.
+     His ruling, 2026-09-28, replacing the drain on the old "Use these and
+     generate" button: "Just have the send one be the one that times out for a
+     minute if the note had revisions and no round of feedback has been provided
+     yet. They cannot send until the timer is done, or if they type at least 25
+     characters in the large bottom text field."
 
-     The wait scales with the note: a nearly-ready note drains fast, a thin one
-     drains slow.
+     Revisions are the candidate answers a model-asked question carries: the
+     rows the aid flag labels "Added to the note by NoMe". A round of feedback is
+     the technician's Send on that round. Each new round of questions carrying
+     candidates is a fresh set nobody has answered, so the lock comes back with
+     it. A round with no candidates has nothing to read first and never locks.
 
-     A READY NOTE WAITS NOT AT ALL, which is his ruling of 2026-08-06 and the
-     opposite of what I built. I had set a five second floor, arguing the pause
-     had to stay a pause. He overruled it - "the floor is 0 for 85% or better" -
-     and he is right about who the price is for. The wait exists because the
-     audit trail showed skipping was cheaper than reading. On a note the model
-     says is already complete there is nothing to read, so the price is charged
-     for nothing and lands on the person who did the work properly.
+     The same wait on every tool, his earlier ruling: "yeah, it should lock my
+     drafters as well." And still a wait, NOT a block: a tired technician at 7pm
+     with eight notes left must never be trapped, so it ends on its own.
 
-     A missing reading still gets the full thirty. */
-  const SKIP_COOLDOWN_MAX_SECONDS = 30;
+     A READY NOTE WAITS NOT AT ALL, his ruling of 2026-08-06 ("the floor is 0
+     for 85% or better"), kept: the price exists because skipping was cheaper
+     than reading, and on a note the model calls complete there is nothing to
+     read. A missing reading gets the full minute. */
+  const SEND_LOCK_SECONDS = 60;
   const SKIP_FREE_AT_READINESS = 85;
 
   /* Below the bar the tool refuses to draft until one round is answered. His
@@ -3138,15 +3140,15 @@ function App() {
     acceptedSuggestions().length === 0 &&
     !answeredInPlace();
 
-  const skipSecondsFor = (readiness) => {
-    if (!Number.isFinite(readiness)) return SKIP_COOLDOWN_MAX_SECONDS;
-    const pct = Math.min(100, Math.max(0, readiness));
-    if (pct >= SKIP_FREE_AT_READINESS) return 0;
-    // Ramped across the range that still waits, so it reaches zero AT his
-    // threshold rather than stepping off a cliff there. 84 is very nearly free,
-    // which is the same thing 85 is, and a one-point difference should not be
-    // the difference between no wait and a long one.
-    return Math.round(SKIP_COOLDOWN_MAX_SECONDS * (1 - pct / SKIP_FREE_AT_READINESS));
+  // Injected rows are the tool's own findings, not the model's wording, so they
+  // are never revisions to read.
+  const hasUnansweredRevisions = () =>
+    (S.questions || []).some((q) => !q.injected && (q.suggestions || []).length > 0);
+
+  const sendLockSeconds = () => {
+    if (!hasUnansweredRevisions()) return 0;
+    if (Number.isFinite(S.readiness) && S.readiness >= SKIP_FREE_AT_READINESS) return 0;
+    return SEND_LOCK_SECONDS;
   };
 
   /* ── The candidate answers under each question ────────────────────────────
@@ -3294,13 +3296,13 @@ function App() {
     patchS({ suggestState: next });
   };
 
-  /* Skip is also the ACCEPT path for the suggestions, and that is deliberate.
+  /* An empty Send is the ACCEPT path for the suggestions, and that is
+     deliberate. It used to be its own button, "Use these and generate"; his
+     ruling of 2026-09-28 folded it into the paper airplane (sendFromPanel).
 
-     Sending requires typed text, so a technician whose only answer is "yes,
-     those two are right" has nowhere else to go. Dropping their suggestions
-     here would mean the one interaction cheap enough to actually get used is
-     the one that throws itself away. The button says so when there is something
-     to carry: "Nothing to add" becomes "Use these and generate".
+     A technician whose only answer is "yes, those two are right" has nothing to
+     type. Dropping their suggestions here would mean the one interaction cheap
+     enough to actually get used is the one that throws itself away.
 
      The gate runs over them rather than around them, because a technician who
      reworded one may have typed a name into it. An untouched suggestion came
@@ -3912,7 +3914,7 @@ function App() {
           audit("gap_questions", { asked: more.length, round, readiness, ...barsFor(more) });
           // Re-read each round rather than carried forward: answering two of
           // three questions is exactly the case where the note got closer, and
-          // the wait should shorten to match.
+          // a reading over the bar lifts the Send lock.
           patchS({ questions: more, readiness, triageAnswers: answered, triageRound: round, suggestState: {} });
           return;
         }
@@ -3926,6 +3928,18 @@ function App() {
       return;
     }
     await sendRevision(text);
+  };
+
+  /* THE ONE SEND, his ruling of 2026-09-28. The paper airplane now does what
+     "Use these and generate" did: with questions on screen and nothing typed in
+     either place, it finishes the round with the picks and the own-words rows
+     that are standing (skipQuestions, gated as before). With anything typed it
+     is the Send it always was, and that path already carries the picks. The
+     lock itself is drawn in the panel and read from sendLockSeconds. */
+  const sendFromPanel = () => {
+    const typed = String(S.panelDraft || "").trim() || answeredInPlace();
+    if (S.questions && S.questions.length && !typed) return skipQuestions();
+    return handlePanelSend();
   };
 
   /* Only the owner ever captures, so for everyone else this stays 0 and the
@@ -4980,7 +4994,7 @@ function App() {
         onClearAnnotation={() => patchS({ annotation: null })}
         draft={S.panelDraft}
         onDraft={(v) => patchS({ panelDraft: v })}
-        onSend={handlePanelSend}
+        onSend={sendFromPanel}
         onAskAdvice={askWhatWouldYouDo}
         canAsk={!!S.output}
         pairCount={pairCount}
@@ -5019,15 +5033,8 @@ function App() {
         }, {})}
         onApproveSuggestion={approveSuggestion}
         acceptedSuggestions={acceptedSuggestions().length}
-        /* "Use these and generate" means finish this round with what is
-           standing. Once answers can be typed on the page rather than into the
-           panel, what is standing includes them, and a button that quietly
-           threw away three sentences a technician had just typed would be the
-           worst bug in this feature. So it sends when there is something to
-           send and skips when there is not. */
-        onSkipQuestions={() => (answeredInPlace() ? handlePanelSend() : skipQuestions())}
         pendingAnswers={!!answeredInPlace()}
-        skipCooldown={modelAsked() ? skipSecondsFor(S.readiness) : 0}
+        sendLockSeconds={sendLockSeconds()}
         skipHeld={gateHolds()}
         unread={S.questions ? S.questions.length : 0}
         quality={noteQuality()}

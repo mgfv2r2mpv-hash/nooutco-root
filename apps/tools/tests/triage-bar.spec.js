@@ -271,21 +271,22 @@ const oneQuestion = (readiness, suggestions = []) => ({
 });
 
 test.describe('below the bar the tool will not draft yet', () => {
-  test('there is no skip button at all, and a line saying what unlocks it', async ({ page }) => {
+  /* Send is the one control now (his 2026-09-28 ruling), so "no skip button"
+     reads as: an empty Send is held, and a line names what opens it. */
+  test('an empty Send is held, and a line says what unlocks it', async ({ page }) => {
     await ask(page, oneQuestion(55));
     await expect(page.getByText(/Question number 1 /)).toBeVisible({ timeout: 20000 });
-    // Not a disabled button. A dead control invites hunting for the state that
-    // enables it, and there is exactly one.
-    await expect(page.locator('.revision-skip')).toHaveCount(0);
+    await expect(page.locator('.revision-send')).toBeDisabled();
     await expect(page.locator('[data-skip-held]')).toContainText('Generates after one answer');
   });
 
   test('a kept suggestion is an answer, so it opens the gate', async ({ page }) => {
     await ask(page, oneQuestion(55, ['Moving to the floor settled him faster than the break did.']));
     await expect(page.getByText(/Question number 1 /)).toBeVisible({ timeout: 20000 });
-    // Suggestions arrive accepted, so the way out is already taken and the
-    // button is the one that carries them.
-    await expect(page.locator('.revision-skip')).toHaveText(/Use these and generate/);
+    // Suggestions arrive accepted, so the way out is already taken. What stands
+    // between it and Send is the minute on unanswered revisions, not the gate.
+    await expect(page.locator('[data-skip-held]')).toHaveCount(0);
+    await expect(page.locator('[data-send-lock]')).toBeVisible();
 
     /* Decline it and the gate closes again, because now nothing would reach
        the note. His way, 2026-09-22: key your own words (which deselects the
@@ -296,15 +297,14 @@ test.describe('below the bar the tool will not draft yet', () => {
     await own.press('Enter');
     await own.fill('');
     await own.press('Enter');
-    await expect(page.locator('.revision-skip')).toHaveCount(0);
     await expect(page.locator('[data-skip-held]')).toContainText('Generates after one kept suggestion');
   });
 
-  test('at the bar the button is there, with no wait on it', async ({ page }) => {
+  test('at the bar Send is open, with no wait on it', async ({ page }) => {
     await ask(page, oneQuestion(85));
     await expect(page.getByText(/Question number 1 /)).toBeVisible({ timeout: 20000 });
     // 85 is the line, and his ruling is that a ready note waits not at all.
-    await expect(page.locator('.revision-skip')).toBeEnabled();
+    await expect(page.locator('.revision-send')).toBeEnabled();
   });
 
   test('a reading the model left out never holds anyone', async ({ page }) => {
@@ -314,17 +314,19 @@ test.describe('below the bar the tool will not draft yet', () => {
     await expect(page.getByText(/Question number 1 /)).toBeVisible({ timeout: 20000 });
     // Triage that failed is an assist that failed. Refusing to draft over it
     // turns a lost question into a lost note.
-    await expect(page.locator('.revision-skip')).toHaveCount(1);
+    await expect(page.locator('[data-skip-held]')).toHaveCount(0);
+    await expect(page.locator('.revision-send')).toBeEnabled();
   });
 
   test('the second round never holds, however thin it still reads', async ({ page }) => {
     await ask(page, [oneQuestion(40), oneQuestion(30)]);
     await expect(page.getByText(/Question number 1 /)).toBeVisible({ timeout: 20000 });
-    await expect(page.locator('.revision-skip')).toHaveCount(0);
+    await expect(page.locator('[data-skip-held]')).toHaveCount(1);
     await answer(page, 'He needed full physical through most of the money program.');
 
-    // Round two, still below the bar, and now skippable. One mandatory round is
-    // what he asked for; a gate that can hold twice can hold forever.
-    await expect(page.locator('.revision-skip')).toHaveCount(1, { timeout: 20000 });
+    // Round two, still below the bar, and now an empty Send goes. One mandatory
+    // round is what he asked for; a gate that can hold twice can hold forever.
+    await expect(page.locator('[data-skip-held]')).toHaveCount(0, { timeout: 20000 });
+    await expect(page.locator('.revision-send')).toBeEnabled();
   });
 });

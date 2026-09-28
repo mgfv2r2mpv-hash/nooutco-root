@@ -104,12 +104,12 @@ async function ask(page, triage, { aid = true, onCall } = {}) {
   if (await scrubGo.isVisible({ timeout: 2000 }).catch(() => false)) await scrubGo.click();
 }
 
-/* One button ends the round, and in bar mode it is the only one on the panel.
-   It waits out its own cooldown first, which is the tool charging for a skip
-   and is not something a test should route around. */
+/* Send ends the round (his 2026-09-28 ruling folded the old button into it),
+   and in bar mode the composer row is what the panel still carries. These
+   rounds offer no candidate answers, so there is no minute to wait out. */
 async function finishTheRound(page) {
-  const finish = page.locator('.skip-cooldown button').first();
-  await expect(finish).toBeEnabled({ timeout: 40000 });
+  const finish = page.locator('.revision-send');
+  await expect(finish).toBeEnabled({ timeout: 10000 });
   await finish.click();
   const scrubGo = page.locator('#notes-scrub-go');
   if (await scrubGo.isVisible({ timeout: 3000 }).catch(() => false)) await scrubGo.click();
@@ -206,11 +206,11 @@ test.describe('what the answers do', () => {
 
     // Held, and saying so in words rather than with a dead button.
     await expect(page.locator('[data-skip-held="1"]')).toBeVisible();
-    await expect(page.locator('.skip-cooldown button')).toHaveCount(0);
+    await expect(page.locator('.revision-send')).toBeDisabled();
 
     await page.locator('[data-question-answer="0"]').fill('It was in the plan.');
     await expect(page.locator('[data-skip-held="1"]')).toHaveCount(0);
-    await expect(page.locator('.skip-cooldown button').first()).toBeVisible();
+    await expect(page.locator('.revision-send')).toBeEnabled();
   });
 
   /* The trap this feature could easily have set: type three sentences under the
@@ -260,8 +260,8 @@ test.describe('on the phone he actually hands them', () => {
   });
 
   /* The panel measured 465px of a 664px viewport while it held the questions.
-     With every question on the page it has one job left, so it is the size of
-     one job. */
+     With every question on the page it has one job left, ending the round, so
+     it is the size of the composer row and its fine print. */
   test('the panel gives the screen back once it has handed the questions over', async ({ page }) => {
     await ask(page, ONE_PLACED);
     await expect(page.locator('[data-question-inline="fAntecedent"]')).toBeVisible({ timeout: 25000 });

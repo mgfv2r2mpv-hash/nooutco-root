@@ -468,22 +468,24 @@ function SuggestionRow({ id, text, original, accepted, alternatives, own, onTogg
    technicians are using today and nothing is being taken off them mid-shift.
    This is the ?aid=1 replacement, and the only thing it adds to DispositionRow
    is the open and editing state that the old row kept inside itself. */
-/* ── Skipping the gap questions costs a moment ─────────────────────────────
+/* ── Send waits on revisions nobody has answered ───────────────────────────
    His idea, 2026-08-05, after the audit trail showed something worth acting on:
    two technicians, 22 sessions, ten gap-question rounds, and ZERO revisions ever
-   made. They generate and copy. The questions are the one moment the session is
-   still in their head, and skipping them is currently one frictionless click.
+   made. They generate and copy. So finishing a round without reading it costs a
+   moment. That moment lived on a button of its own, "Use these and generate",
+   until his ruling of 2026-09-28 folded the button into Send: "Just have the
+   send one be the one that times out for a minute ... They cannot send until
+   the timer is done, or if they type at least 25 characters in the large bottom
+   text field."
 
-   So the escape stays, and it costs a few seconds. The bar drains, then the
-   button works. This is deliberately a delay and NOT a block: the engine's own
-   comment says a tired technician at 7pm with eight notes left must never be
-   trapped behind a question, and that is still right. A wait they can watch end
-   is not a trap; a wait with no exit would be.
+   Still a delay and NOT a block: a wait they can watch end is not a trap. The
+   duration comes from the engine, which can see the note; the typed-length exit
+   lives here, beside the box it measures. */
+const SEND_UNLOCK_CHARS = 25;
 
-   The duration is passed in rather than fixed here, because his next step is to
-   scale it - the closer the note is to ready, the shorter the drain - and that
-   judgement belongs to whatever can see the note, not to a button. */
-function SkipAfterCooldown({ seconds, onSkip, loading, carrying }) {
+/* Seconds left on the lock. It restarts when a new round of questions arrives,
+   which is why the round is its key. */
+function useSendLock(seconds, round) {
   const total = Math.max(0, Number(seconds) || 0);
   const [left, setLeft] = React.useState(total);
 
@@ -499,37 +501,9 @@ function SkipAfterCooldown({ seconds, onSkip, loading, carrying }) {
       if (remaining <= 0) clearInterval(id);
     }, 250);
     return () => clearInterval(id);
-  }, [total]);
+  }, [total, round]);
 
-  const ready = left <= 0;
-  const pct = total ? ((total - left) / total) * 100 : 100;
-
-  return (
-    <div className="skip-cooldown">
-      <button
-        type="button"
-        onClick={onSkip}
-        disabled={loading || !ready}
-        className="revision-skip"
-        title={ready
-          ? (carrying ? "Generate with the kept suggestions" : "Generate without answers")
-          : "Available momentarily."}
-      >
-        {/* This button is the ACCEPT path when suggestions are on screen, since
-            sending needs typed text and agreeing with a suggestion needs none.
-            Calling that "nothing to add" while it carries two sentences into
-            the note would describe the wrong thing entirely. */}
-        {carrying
-          ? (ready ? "Use these and generate" : `Use these and generate (${left}s)`)
-          : (ready ? "Generate without adding answers :(" : `Nothing to add (${left}s)`)}
-      </button>
-      {!ready && (
-        <div className="skip-cooldown-bar" aria-hidden="true">
-          <span style={{ width: pct + "%" }} />
-        </div>
-      )}
-    </div>
-  );
+  return { left: total ? left : 0, total };
 }
 
 /* ── The two glyphs ───────────────────────────────────────────────────────
@@ -564,7 +538,7 @@ function SendGlyph() {
 
 function RevisionPanel({
   open, onToggle, thread, annotation, onClearAnnotation,
-  draft, onDraft, onSend, onAskAdvice, canAsk, onExportPairs, pairCount, loading, questions, onSkipQuestions, skipCooldown, skipHeld, unread, quality, suggestionDisposition, onApproveSuggestion, placedQuestions, pendingAnswers,
+  draft, onDraft, onSend, onAskAdvice, canAsk, onExportPairs, pairCount, loading, questions, sendLockSeconds, skipHeld, unread, quality, suggestionDisposition, onApproveSuggestion, placedQuestions, pendingAnswers,
   suggestState, suggestionAccepted, onToggleSuggestion, onEditSuggestion, acceptedSuggestions,
   loggedIn,
   intro,
@@ -577,6 +551,7 @@ function RevisionPanel({
 }) {
   const scrollRef = React.useRef(null);
   const inputRef = React.useRef(null);
+  const sendLock = useSendLock(sendLockSeconds, questions);
 
   /* THE PILL'S NUMBER CHANGES MEANING, and that is the whole redesign in one
      word. It used to carry the count of things wanting something from the
@@ -695,16 +670,26 @@ function RevisionPanel({
   const aidOn = !!(window.authorAidEnabled && window.authorAidEnabled() && window.DispositionRow);
   const awaitingQuestions = !!(questions && questions.length);
 
+  /* WHEN SEND WORKS. Locked while the engine's wait runs, unless the bottom box
+     already holds SEND_UNLOCK_CHARS of writing. With questions on screen an
+     empty Send finishes the round with what is standing, so it needs text only
+     where the gate is holding; after the draft it needs something to send. */
+  const typedChars = String(draft || "").trim().length;
+  const sendLocked = sendLock.left > 0 && typedChars < SEND_UNLOCK_CHARS;
+  const hasWords = typedChars > 0 || !!pendingAnswers;
+  const canSend = !loading && !sendLocked &&
+    (awaitingQuestions ? (hasWords || !skipHeld) : hasWords);
+  const sendIfAllowed = () => { if (canSend) onSend(); };
+
   /* THE FLOOR PLAN'S OTHER HALF. Moving the questions onto the page is only
      half the fix: measured on an iPhone 14 profile, this panel is 465px of a
      664px viewport, so with the questions gone it was still a tall empty box
      sitting on top of the question it had just handed over.
 
      When every question is drawn on the page, the panel has exactly one thing
-     left that the page cannot do, which is the button that ends the round. So
-     it becomes that button. The answer box goes too: with an answer box under
-     every question, a second one here labelled "answer here" is a second place
-     to type the same thing. */
+     left that the page cannot do, which is ending the round. That was a button
+     of its own until his 2026-09-28 ruling made Send the one that ends it, so
+     in bar mode the panel is the composer row and its fine print. */
   const everyQuestionPlaced = awaitingQuestions
     && questions.every((q, i) => placedQuestions && placedQuestions[i]);
   const barMode = awaitingQuestions && everyQuestionPlaced;
@@ -953,7 +938,9 @@ function RevisionPanel({
             </div>
           </div>
         ))}
-        {awaitingQuestions && (
+        {/* Only drawn when it holds something. In bar mode every question is
+            on the page, and an empty block here would cost the phone a row. */}
+        {awaitingQuestions && (skipHeld || !everyQuestionPlaced) && (
           <div style={{ margin: "4px 0 10px" }}>
             {/* A question already drawn on the page beside the box it asks about
                 is not drawn again here. Asking the same thing twice, in two
@@ -1026,22 +1013,14 @@ function RevisionPanel({
                 )}
               </React.Fragment>
             ))}
-            {skipHeld ? (
-              /* No button rather than a dead one. A disabled control invites
-                 hunting for the state that enables it, and there is only one:
+            {skipHeld && (
+              /* Send stays, and this line names the one state that opens it:
                  answer something. */
               <div className="skip-held" data-skip-held="1">
                 {hasSuggestions && !acceptedSuggestions
                   ? "Generates after one kept suggestion or one answer."
                   : "Generates after one answer."}
               </div>
-            ) : (
-              <SkipAfterCooldown
-                seconds={skipCooldown}
-                onSkip={onSkipQuestions}
-                loading={loading}
-                carrying={acceptedSuggestions || 0}
-              />
             )}
           </div>
         )}
@@ -1052,7 +1031,7 @@ function RevisionPanel({
 
       <form
         className={"revision-panel-foot" + (barMode ? " is-bar" : "")}
-        onSubmit={(e) => { e.preventDefault(); onSend(); }}
+        onSubmit={(e) => { e.preventDefault(); sendIfAllowed(); }}
       >
         {signedOut && <div className="revision-report-row revision-report-only">{reportButton}</div>}
         {!signedOut && annotation && (
@@ -1123,24 +1102,23 @@ function RevisionPanel({
             <p className="revision-asks-foot">Not sent. Sends as one request.</p>
           </div>
         )}
-        {!signedOut && !barMode && <div className="revision-compose">
-          <textarea
-            ref={inputRef}
-            value={draft}
-            onChange={(e) => onDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSend(); }
-            }}
-            rows={2}
-            placeholder={
-              awaitingQuestions
-                ? "Answer, or skip above"
-                : annotation
-                  ? "Change to make"
-                  : "Change or added detail"
-            }
-            className="revision-input"
-          />
+        {/* THE LOCK, AS A NOTE ON STATE. His UI rule: plain notes on state,
+            condition and consequence, never talking to the person. The bar
+            drains so the wait visibly goes somewhere. */}
+        {!signedOut && sendLocked && (
+          <div className="send-lock" id="revision-send-lock" data-send-lock={sendLock.left}>
+            <span>{"Send locked · " + sendLock.left + "s · opens at " + SEND_UNLOCK_CHARS + " characters typed"}</span>
+            <div className="send-lock-bar" aria-hidden="true">
+              <span style={{ width: ((sendLock.total - sendLock.left) / sendLock.total) * 100 + "%" }} />
+            </div>
+          </div>
+        )}
+        {/* MIC, BOX, SEND, in that order on screen and in the DOM, so Tab walks
+            it the way it is drawn. His ruling, 2026-09-28: "Move microphone to
+            be left of that text field, leave send on the right, text field in
+            the middle." Drawn in bar mode too: with the old button gone, Send is
+            the one control that ends a round. */}
+        {!signedOut && <div className="revision-compose">
           {/* HIS RULING IS ON THE AFFORDANCE. He allowed the audio path and asked
               staff to keep names off it: "Staff should still avoid using client
               names on this surface so they should not be dictating it to Apple as
@@ -1188,14 +1166,32 @@ function RevisionPanel({
               </span>
             </button>
           )}
+          <textarea
+            ref={inputRef}
+            value={draft}
+            onChange={(e) => onDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendIfAllowed(); }
+            }}
+            rows={2}
+            placeholder={
+              awaitingQuestions
+                ? "Answer"
+                : annotation
+                  ? "Change to make"
+                  : "Change or added detail"
+            }
+            className="revision-input"
+          />
           <button
             type="submit"
             /* An answer typed under the question it answers is still an
-               answer. This used to read the panel's own box only, so the floor
-               plan's boxes could be full and Send dead. */
-            disabled={loading || (!draft.trim() && !pendingAnswers)}
+               answer, and with questions on screen an empty Send is the accept
+               path. canSend holds all of it, including the lock. */
+            disabled={!canSend}
             className="icon-btn revision-send"
-            title="Send"
+            title={sendLocked ? "Locked " + sendLock.left + "s" : "Send"}
+            aria-describedby={sendLocked ? "revision-send-lock" : undefined}
           >
             {loading ? <span className="icon-btn-wait" aria-hidden="true">…</span> : <SendGlyph />}
             <span className="icon-btn-say">{loading ? "Sending" : "Send"}</span>
@@ -1211,7 +1207,7 @@ function RevisionPanel({
             itself carries the definition. Click as well as hover, because on a
             tablet - which is what a lot of sessions are written on - there is
             no hover. */}
-        {!signedOut && !barMode && <p className="revision-foot-note">
+        {!signedOut && <p className="revision-foot-note">
           {/* The hint half swaps to the live state, because a microphone that
               is listening has to say so somewhere a person is already looking,
               and the icon alone cannot. The RULE half never swaps: his ruling
