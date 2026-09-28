@@ -110,7 +110,10 @@ function pairedAddition(removed, ops, state, id) {
   return bestScore >= 2 ? best : null;
 }
 
-function CorrectionsView({ id, ops, marks, state, onToggle, onEdit, onGoToOrigin, headings, quiet, queue, onAsk, onDropAsk }) {
+function CorrectionsView({ id, ops, marks, state, onToggle, onEdit, onGoToOrigin, headings, quiet, queue, onAsk, onDropAsk, hydrate }) {
+  // His words from the put-back table, on screen only. The ops and the state
+  // stay in tokens, and an edit goes back through the engine to be dehydrated.
+  const show = (t) => (hydrate ? hydrate(t) : t);
   const [openKey, setOpenKey] = React.useState(null);
   const [editKey, setEditKey] = React.useState(null);
   const [buffer, setBuffer] = React.useState("");
@@ -189,7 +192,7 @@ function CorrectionsView({ id, ops, marks, state, onToggle, onEdit, onGoToOrigin
     <React.Fragment>
       <div className="cx-view" data-corrections-section={id}>
         {plan.map((p) => {
-          if (p.kind === "text") return <span key={p.index}>{p.text}</span>;
+          if (p.kind === "text") return <span key={p.index}>{show(p.text)}</span>;
 
           if (p.kind === "restored") {
             /* His ruling: a rejection keeps a faint neutral underline, so that
@@ -203,7 +206,7 @@ function CorrectionsView({ id, ops, marks, state, onToggle, onEdit, onGoToOrigin
                 data-correction-restored="true"
                 title="Original wording; restored"
               >
-                {p.text}
+                {show(p.text)}
               </span>
             );
           }
@@ -282,7 +285,7 @@ function CorrectionsView({ id, ops, marks, state, onToggle, onEdit, onGoToOrigin
                   if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpenKey(openKey === p.key ? null : p.key); }
                 }}
               >
-                {p.text}
+                {show(p.text)}
               </span>
               {!quiet && p.op.type === "move-in" && p.op.from && (
                 <button
@@ -302,7 +305,7 @@ function CorrectionsView({ id, ops, marks, state, onToggle, onEdit, onGoToOrigin
                           onClick={() => { onToggle(p.key); setOpenKey(null); }}>Remove</button>
                   <button type="button" className="cx-ck" data-correction-pencil={p.key}
                           title="Edit wording"
-                          onClick={() => startEdit(p.key, p.text)}>Reword</button>
+                          onClick={() => startEdit(p.key, show(p.text))}>Reword</button>
                   {/* His fourth answer: keep the content, ask for different
                       wording. It queues rather than sending, because the send
                       is one move for the whole note and it lives in the panel. */}
@@ -364,11 +367,11 @@ function CorrectionsView({ id, ops, marks, state, onToggle, onEdit, onGoToOrigin
               <span className="cx-cut-text">
                 {r.split ? (
                   <React.Fragment>
-                    <span className="cx-cut-kept">{r.split.head}</span>
-                    {r.split.mid}
-                    <span className="cx-cut-kept">{r.split.tail}</span>
+                    <span className="cx-cut-kept">{show(r.split.head)}</span>
+                    {show(r.split.mid)}
+                    <span className="cx-cut-kept">{show(r.split.tail)}</span>
                   </React.Fragment>
-                ) : r.text.trim()}
+                ) : show(r.text.trim())}
                 {r.why ? <span className="cx-cut-why">{r.why}</span> : null}
               </span>
               {!quiet && (

@@ -643,17 +643,14 @@ test.describe('the ledger outlives the page', () => {
   });
 });
 
-/* THE ROLE TOKEN STAYS IN THE NOTE AND LEAVES ON THE CLIPBOARD.
+/* THE ROLE TOKEN IS IN THE NOTE'S STATE, AND HIS WORD IS ONLY ON THE SCREEN.
  *
- * [CLIENT] is deliberately never restored into the draft: its oddness is what
- * stops a technician signing a note with a code word still in it. The cost was
- * retyping every token in every EHR field, and the maintainer asked for that
- * back on 2026-09-19 - "local on-page find/replace would help to rehydrate for
- * client and caregiver".
- *
- * These pin the three properties that make doing it at the clipboard safe rather
- * than convenient: the page keeps the token, the clipboard gets the word, and
- * the model is never told either way.
+ * [CLIENT] is never restored into the draft's state. From 2026-09-19 a
+ * checkbox put the scrubbed word back on the clipboard only. From 2026-09-28
+ * the put-back table is a field per token: what he types is drawn in the note
+ * and copied with it, a blank field keeps the token, and the model is only
+ * ever sent the token. putback-table.spec.js pins the wire and the daily reset;
+ * these pin the clipboard.
  */
 async function stubClipboard(page) {
   await page.evaluate(() => {
@@ -683,38 +680,28 @@ async function copyTokenSection(page) {
 }
 
 test.describe('putting the clinician’s own words back on the way to the EHR', () => {
-  test('the clipboard carries the real name while the page keeps the token', async ({ page }) => {
+  test('a word typed for the token reaches the clipboard, and never the wire', async ({ page }) => {
     const { noteText, calls } = await draft(page);
     expect(noteText, 'the note under test never carried a role token').toMatch(/\[CLIENT(?:-\d+)?\]/);
 
     await stubClipboard(page);
-    await page.getByTestId('put-back-toggle').check();
+    await page.getByTestId('put-back-input-[CLIENT]').fill('Jacob');
     await copyTokenSection(page);
 
     const copied = await copiedText(page);
     expect(copied, 'the clinician’s own word did not reach the clipboard').toContain('Jacob');
     expect(copied, 'a token rode out to the EHR anyway').not.toMatch(/\[CLIENT(?:-\d+)?\]/);
-
-    /* THE HALF THAT MATTERS MOST. Substituting at the clipboard is only safe
-       while the name cannot travel any other way, so this asserts the wire for
-       the same note rather than trusting that it did not change. */
     expect(JSON.stringify(calls)).not.toContain('Jacob');
   });
 
-  test('the note on the page is untouched, so the banner above it stays true', async ({ page }) => {
+  test('the field starts blank, with the taken word as its hint', async ({ page }) => {
     await draft(page);
-    await stubClipboard(page);
-    await page.getByTestId('put-back-toggle').check();
-    await copyTokenSection(page);
-
-    const onPage = await page.getByTestId('generated-note').evaluate((el) =>
-      [el.innerText, ...[...el.querySelectorAll('textarea')].map((t) => t.value)].join('\n')
-    );
-    expect(onPage, 'the substitution was written into the note itself').toMatch(/\[CLIENT(?:-\d+)?\]/);
-    expect(onPage).not.toContain('Jacob');
+    const field = page.getByTestId('put-back-input-[CLIENT]');
+    await expect(field).toHaveValue('');
+    await expect(field).toHaveAttribute('placeholder', 'Jacob');
   });
 
-  test('with the control off the clipboard is exactly what is on the page', async ({ page }) => {
+  test('with the field blank the clipboard is exactly what is on the page', async ({ page }) => {
     await draft(page);
     await stubClipboard(page);
     await copyTokenSection(page);
@@ -724,15 +711,14 @@ test.describe('putting the clinician’s own words back on the way to the EHR', 
     expect(copied).not.toContain('Jacob');
   });
 
-  test('a replacement the clinician types wins over the name they typed', async ({ page }) => {
+  test('whatever he types is what is copied', async ({ page }) => {
     await draft(page);
     await stubClipboard(page);
-    await page.getByTestId('put-back-toggle').check();
     await page.getByTestId('put-back-input-[CLIENT]').fill('the client');
     await copyTokenSection(page);
 
     const copied = await copiedText(page);
     expect(copied).toContain('the client');
-    expect(copied, 'the pre-filled name was used instead of the edit').not.toContain('Jacob');
+    expect(copied).not.toContain('Jacob');
   });
 });
