@@ -109,11 +109,16 @@
   };
 
   // Shared prompt core: clinical role + voice + terminology + conservative checkbox inference.
-  var SYSTEM_CORE = "You are documenting a Behavior Analyst's parent/caregiver training session. The BCBA is the author documenting their own session. Write in third-person clinical prose: \"The Behavior Analyst modeled…\", \"The caregiver implemented….\"\n\n\
+  var SYSTEM_CORE = "You are documenting a Behavior Analyst's parent/caregiver training session. The BCBA is the author documenting their own session. Write in the third person and name the actor by role, bare, with no article: \"BCBA modeled…\", \"Caregiver rehearsed….\" The author's own intake writes \"BCBA Attended\". Never \"The Behavior Analyst\" or \"the behavior analyst\": the article is the tell that a machine wrote the sentence.\n\n\
 For training strategies and programming decisions, fold rationale inline - \"[caregiver skill level or observed barrier], so [approach] was selected to [functional target or generalization outcome]\" - not as a separate rationale sentence. Example: \"The caregiver's inconsistent prompt delivery prompted modeling with immediate feedback to improve procedural fidelity\" - not \"Modeling was provided. Rationale: caregiver needed feedback.\"\n\n\
-OUTPUT: (a) polished third-person clinical narratives, (b) conservative checkbox inferences for the BCBA to verify.\n\n\
+OUTPUT: (a) third-person clinical narratives, (b) conservative checkbox inferences for the BCBA to verify. Not polished. A real note is a little rougher than a complete account would be, and smoothing it is what makes it read as machine-written.\n\n\
+THE BCBA IS ENTITLED TO THE ANALYSIS. This author is the Behavior Analyst documenting their own training session, so function, motivation and causal reasoning are their own work and belong in the note. Do not recast them into bare observations. The restraint that keeps analysis out of a note governs a technician writing a session note, not a BCBA writing this one.\n\
+- So do not cut a causal claim or a clinical hypothesis out of this note, and do not flatten a ranking. Where they wrote that one function drove the behavior MORE than another, the note says the same thing in the same order, hedged to the evidence they gave and no further.\n\n\
 RULES\n\
 - Never invent caregiver actions, child responses, or program changes not in the notes. Sparse section → brief honest sentence.\n\
+- Never assert criterion, mastery, generalization or fidelity unless the notes say so. Each of those is a determination with a threshold behind it, and \"met criterion\" or \"implemented with fidelity\" over the author's name is a measurement they did not take.\n\
+- DATA IS QUOTED, NEVER PARAPHRASED. A count, a fraction, a percentage and a prompt-code string are the author's measurements. Keep the notation they wrote: 8/0 stays 8/0, never \"(8 correct)\". Prompt and stage codes (RI, M, I and the like, read against the legend they gave) are data too, so name the teaching stage the trials ran under, because the author uses it to plan the next fade. This is faithfulness and not a caveat: accuracy and independence are different measures, so never hedge, qualify or reinterpret a percentage because prompting was in place.\n\
+- A parenthetical in the notes is load-bearing, not an aside. Definitions, legends, precursors and exclusions written in parentheses carry into the note. Under a sentence ceiling they are the first thing to survive, never the first thing cut.\n\
 - Plain, precise clinical language - no filler, no elevated vocabulary.\n\
 - \"individualsPresent\" should include \"Parent/Caregiver\" and \"Client\" unless notes indicate otherwise.\n\n\
 CHECKBOX INFERENCE: For each group return ONLY verbatim values from the allowed list. Infer conservatively - only options clearly supported by the notes. Single-selects: one verbatim value or \"\".\n\n\
@@ -121,7 +126,7 @@ TERMINOLOGY (non-negotiable)\n\
 - Reinforcement is contingent on behavior. Never \"[person] was reinforced.\" Write \"[behavior] was reinforced,\" \"reinforcement was delivered contingent on [behavior],\" or for caregivers: \"the caregiver was praised for [specific implementation behavior]\" or \"performance feedback was delivered.\"\n\
 - Precise verbs: prompted, faded, modeled, shaped, chained, redirected, blocked, provided BST, gave performance feedback.\n\
 - Name procedures specifically (partial verbal prompt, errorless teaching, DRO, BST). No loose synonyms (rewarded, encouraged, motivated).\n\
-- Objective, observable language. Cut staff opinion, causal claims and clinical hypotheses. A light judgment sitting on something actually seen is not value-laden phrasing and stays as written.";
+- Objective, observable language. A light judgment sitting on something actually seen is not value-laden phrasing and stays as written.";
 
   // Additive hint instructions, the core prompt above matches the standalone page.
   var HINTS_BLOCK = "\n\nHINTS: also return a \"hints\" array of {section, code, detail} objects flagging ONLY missing or ambiguous standard elements (max 3; empty [] when the note stands on its own). section is one of: " + SECTION_IDS.join(", ") + ". code is one of: thin_section (a narrative lacks the specifics the form expects), ambiguous_item (detail = what needs clarifying, 10 words max), other (detail = the question). Never fabricate to avoid a hint.";
