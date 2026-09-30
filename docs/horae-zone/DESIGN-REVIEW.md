@@ -101,3 +101,72 @@ It never holds a vault key, a session key, vault data or PHI.
 - Horae Zone itself (A2 onward).
 - Any deploy.
 - Any change to Sass or JanusMirror (A7, A8).
+
+---
+
+## A2: Horae Zone skeleton (`apps/horae-zone`)
+
+**Commits:** `05c75bf` (RED: 3 test files failing on missing modules), then `4c98674` (GREEN: 21 tests). Engine 41/41 and profile-api 195/195 are unchanged.
+
+**Pattern:** `apps/profile-api`. It uses `workers_dev = false`, `schema.sql`, `node --test`, and the real-SQLite D1 helper `apps/profile-api/test/helpers/d1-sqlite.js`, which is reused by relative import rather than copied.
+
+### What is in the app
+
+| File | Does |
+|---|---|
+| `src/routes.js` | The plan §3.6 route table as data. Each route names its checks: `open`, `device`, `signed` or `admin`. Only `/nonce` has a handler; every other route answers `not-built` (501), but only after its checks pass |
+| `src/checks.js` | Body rules (POST, `application/json`, a JSON object, at most 16 KB). Device lookup (the id is shape-checked before any query; a removed device is refused). The single-use nonce. The ECDSA P-256 signature check. The admin role check |
+| `src/index.js` | `createHandler({now, routes})`: checks → handler → JSON (`no-store`). Every request writes one audit row. Every refusal is a closed word. It never calls `console` |
+| `schema.sql` | Only the tables A2 uses: `device`, `nonce`, `role`, `audit` |
+| `wrangler.toml` | No route, no environment, no secret. The D1 id is a zero placeholder that the plan §4 deploy script replaces |
+
+**Refusal words:**
+
+| Word | Status |
+|---|---|
+| `method` | 405 |
+| `shape` | 400 |
+| `too-large` | 413 |
+| `no-route` | 404 |
+| `no-device` | 401 |
+| `stale-nonce` | 401 |
+| `bad-signature` | 401 |
+| `not-admin` | 403 |
+| `not-built` | 501 |
+| `failed` | 500 |
+| `unavailable` | 503 |
+
+### Decisions
+
+1. **The signed-bytes format devices must match:**
+   - The message is `lv("horae-zone-v1") | lv(nonce) | lv(path) | lv(body)`. Each part carries a 4-byte big-endian length prefix, and the body is the exact bytes sent.
+   - The signature is ECDSA P-256 over SHA-256.
+   - The headers are `x-hz-device`, `x-hz-nonce` and `x-hz-sig` (base64url).
+   - Both DER signatures (the Secure Enclave's `ecdsaSignatureMessageX962SHA256`) and raw r‖s signatures (WebCrypto) are accepted.
+2. **Nonces:**
+   - A nonce is 32 random bytes, bound to the device it was issued to, lives 60 s, and can be used once.
+   - It is spent before the signature is checked, so one nonce allows exactly one try.
+   - The spend is atomic: `UPDATE … RETURNING`.
+3. **Audit rows are shape-only:** each holds the route name from the table (or `unknown`), the reason word and the time. The path as sent is never stored, because it is attacker-controlled text.
+4. **No console output anywhere in `src/`.** A static test enforces this.
+5. **An audit write that fails does not stop the answer.** The error carries no value worth reporting.
+
+### Open points for the reviewer
+
+| # | Point | Where | Proposed resolution |
+|---|---|---|---|
+| 1 | `/device/register` is `open`: a device has no key before it registers | `src/routes.js` | A4 must require the ticket from `/signin` before building a handler. A RED test for that goes first in A4 |
+| 2 | `/nonce` needs only a known device id. Anyone holding an id can mint nonces, and spent or expired rows are never purged | `src/checks.js` `issueNonce` | A per-device cap on live nonces (for example 5). A purge on a cron trigger. The WAF rate rule at the first deploy |
+| 3 | The `audit` table grows without limit | `schema.sql` | The owner sets retention (for example 90 days) and the cron purges older rows |
+| 4 | The signed-bytes builder lives in the service, but Sass and JanusMirror must build the same bytes | `src/checks.js` `signedBytes` | Move it into `packages/account-engine` in A4, with a shared test vector |
+| 5 | The size check trusts `content-length` only as a fast path. The body is still buffered before the real size is known (the Workers platform caps request bodies) | `src/checks.js` `readBody` | Accept, or stream-read with a byte counter |
+| 6 | The tests import the profile-api helper by relative path, which couples the two apps | `test/helpers.mjs` | Move it to `packages/shared/worker` if a third app needs it |
+| 7 | The D1 id is a zero placeholder | `wrangler.toml` | The deploy script writes the real id. Deploy only on the owner's word |
+| 8 | Not yet run under `wrangler dev --local`, because wrangler is not installed in the authoring environment. A `workerd` smoke test with no D1 bound loaded the Worker, which answered `unavailable` and printed nothing | — | The reviewer runs the `wrangler dev` smoke test in the test plan |
+| 9 | There is no CI workflow | `.github/workflows/` | `horae-zone-test.yml` on the `profile-api-test.yml` pattern. It needs the owner's word |
+
+### Out of scope for A2
+
+- Every route handler except `/nonce`.
+- Accounts, email, codes and PINs.
+- Any deploy.
