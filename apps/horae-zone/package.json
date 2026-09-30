@@ -1,0 +1,13 @@
+{
+  "name": "horae-zone",
+  "private": true,
+  "type": "module",
+  "version": "0.0.0",
+  "description": "Horae Zone, the nooutco account service (Worker + D1). Holds accounts, the one authenticator seed (sealed), PIN keyed hashes and device public keys; never a vault key, session key or PHI.",
+  "engines": { "node": ">=22.13" },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "dev": "wrangler dev --local",
+    "db:local": "wrangler d1 execute horae-zone --local --file schema.sql"
+  }
+}
