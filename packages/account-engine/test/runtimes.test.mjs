@@ -79,13 +79,13 @@ test('the engine\'s pake runs unchanged in a Worker', async (t) => {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'engine-workerd-'));
   const modules = engineFiles().map((f) => {
     const name = path.relative(ROOT, f).split(path.sep).join('/');
-    return `(name = "${name}", esModule = embed "${f}")`;
+    return `(name = "${name}", esModule = embed "${path.relative(dir, f)}")`;
   });
   writeFileSync(path.join(dir, 'worker.mjs'), [
     "import { probe } from './src/probe.mjs';",
     'export default { fetch: () => Response.json(probe()) };',
   ].join('\n'));
-  modules.unshift(`(name = "worker.mjs", esModule = embed "${path.join(dir, 'worker.mjs')}")`);
+  modules.unshift(`(name = "worker.mjs", esModule = embed "worker.mjs")`);
   // workerd resolves module names from the main module's folder, so it sits at the root.
   writeFileSync(path.join(dir, 'config.capnp'), `using Workerd = import "/workerd/workerd.capnp";
 const config :Workerd.Config = (
