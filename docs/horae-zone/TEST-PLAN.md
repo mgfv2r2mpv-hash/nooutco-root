@@ -68,3 +68,61 @@ These belong to later slices, each with its own RED tests:
 - email codes (A3);
 - the PIN lifecycle — reuse lock, reset, review, offline block (A5b);
 - admin (A5c).
+
+---
+
+## A2: Horae Zone skeleton (`apps/horae-zone`)
+
+### Run
+
+```
+cd apps/horae-zone
+npm test
+```
+
+- **Needs:** Node 22.13 or later (for `node:sqlite`). No `npm ci` is needed, because the app has no dependencies.
+- **Expected result:** 21 tests, 21 pass.
+
+**RED evidence.**
+1. Run `git checkout 05c75bf -- apps/horae-zone && (cd apps/horae-zone && npm test)`.
+2. Expect 3 files failing on missing modules.
+3. Restore with `git checkout HEAD -- apps/horae-zone`.
+
+### What each file proves
+
+| File | Proves | Negative controls |
+|---|---|---|
+| `test/checks.test.mjs` | Every plan route is in the table, and each declares one of the four check kinds; admin routes, and only they, are `admin`. For **every** signed and admin route: an unsigned request is `no-device`, a wrong signature is `bad-signature`, and a reused nonce is `stale-nonce`. A DER and a raw signature verify alike. A signature for another path fails. A nonce expires and belongs to one device. A removed device is refused. A non-admin is `not-admin`. Open routes answer `not-built`. Method, content type, non-JSON, non-object and oversized bodies are each refused with their word and status. An unknown path is `no-route` and audited as `unknown`. Each request writes one audit row. No database gives `unavailable`. Answers are JSON and `no-store` | `NEGATIVE CONTROL: a correctly signed request with a fresh nonce passes the checks`; the admin test then grants the role and passes |
+| `test/leak.test.mjs` | Canaries (a body marker, a 6-digit code, a base32 seed, a PIN, an `example.test` address) are sent in bodies, headers and paths to every route, signed and unsigned, plus a truncated JSON body. None appears in any response status, header or body, in any audit row, in any bound D1 value, or in console output. `src/` has no `console.` call | `NEGATIVE CONTROL: the canary check catches a planted echo` (a test-only route that echoes its body) |
+| `test/config.test.mjs` | `wrangler.toml` has `workers_dev = false`, no route and no environment, and no `[vars]` or secret-looking assignment. The `schema.sql` column names are content-free | `NEGATIVE CONTROL: a planted route line fails` (a planted route, and `workers_dev = true`) |
+
+### Manual checks for the reviewer
+
+1. **No console calls.** `grep -rn "console\." apps/horae-zone/src` must print nothing.
+2. **Local smoke test.** This needs wrangler, which is not a dependency; use `npx wrangler@4`.
+   1. Start the local database and server:
+      ```
+      cd apps/horae-zone
+      npx wrangler d1 execute horae-zone --local --file schema.sql
+      npx wrangler dev --local
+      ```
+   2. Then check each request answers as expected:
+
+      | Request | Expected |
+      |---|---|
+      | `curl -s -X POST -H 'content-type: application/json' -d '{}' localhost:8787/signin` | `{"error":"not-built"}` |
+      | `curl -s localhost:8787/signin` | `{"error":"method"}` |
+      | `curl -s -X POST -H 'content-type: application/json' -d '{}' localhost:8787/nonce` | `{"error":"no-device"}` |
+
+   3. The wrangler terminal must show nothing but its own request lines.
+3. **Nothing is deployed.** Confirm that no `wrangler deploy` was run, and that the database id is still the zero placeholder.
+
+### Not in A2 (do not add here)
+
+These belong to later slices, each RED first:
+- device registration and removal (A4);
+- account and email (A3);
+- codes and tickets (A5);
+- the PIN lifecycle (A5b);
+- admin actions (A5c);
+- recovery (A6).
