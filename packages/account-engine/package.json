@@ -1,0 +1,18 @@
+{
+  "name": "@nooutco/account-engine",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "description": "The nooutco account engine shared by Horae Zone, Sass C. Assistant and JanusMirror: the authenticator code, CPace, sealed envelopes, lockout rules and PIN rules. Runs unchanged in Node, a browser and a Worker.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "blocklist": "node bin/build-blocklist.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.56.1",
+    "workerd": "1.20260930.2"
+  }
+}
