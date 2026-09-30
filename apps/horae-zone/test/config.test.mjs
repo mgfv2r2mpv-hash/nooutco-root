@@ -24,7 +24,7 @@ test('wrangler.toml keeps workers_dev off and declares no route', () => {
 
 test('NEGATIVE CONTROL: a planted route line fails', () => {
   assert.deepEqual(ingressProblems(`${TOML}\nroute = "horae-zone.nooutco.me/*"\n`), ['a route is declared']);
-  assert.deepEqual(ingressProblems(TOML.replace(/workers_dev\s*=\s*false/, 'workers_dev = true')), ['workers_dev is not false']);
+  assert.deepEqual(ingressProblems(TOML.replace(/^workers_dev\s*=\s*false/m, 'workers_dev = true')), ['workers_dev is not false']);
 });
 
 test('wrangler.toml holds no secret value', () => {
