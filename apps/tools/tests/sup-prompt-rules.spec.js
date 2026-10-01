@@ -15,7 +15,7 @@ const ROOT = join(__dirname, '..', 'notes/bcba');
 // Composed sup prompt (SYSTEM_CORE + register rules + JSON block). The tuning met
 // the one-owner-per-facet rules on dev, so this is the merged prompt: the
 // voice-module store holds the older text until it is re-extracted from here.
-const SUP_SYSTEM_SHA256 = 'a1a61a1bb6ed17dece25e1109c65e704c15633615d34a92cfbdc17ac92503ce9';
+const SUP_SYSTEM_SHA256 = 'dc09f94706bd60e21a5d2100ee123daaa315e08034f0ee97bcad4f317e22fa21';
 
 function compose() {
   const win = {};
@@ -84,11 +84,12 @@ test.describe('sup SYSTEM_CORE: parity with the voice-module prompt', () => {
     expect(b).toMatch(/its Next Steps is one sentence/);
   });
 
-  test('the who-writes-this paragraph defines floor and ceiling and never calls a range a bare ceiling', () => {
-    const b = block('WHO WRITES THIS AND WHEN');
-    expect(b).not.toMatch(/any sentence range given below is a CEILING/);
-    expect(b).toMatch(/floor is the minimum for a section that has content, the ceiling is the stated maximum/);
-    expect(b).toMatch(/never pads/i);
+  test('the who-writes-this paragraph keeps the shared ceiling sentence, and the floor/ceiling meaning lives in SENTENCE BUDGETS', () => {
+    const w = block('WHO WRITES THIS AND WHEN');
+    expect(w).toMatch(/any sentence range given below is a CEILING, never a target/);
+    expect(w).not.toMatch(/SENTENCE BUDGETS/);
+    const b = block('SENTENCE BUDGETS');
+    expect(b).toMatch(/The ranges in this block are ceilings, and a stated minimum is a floor only for a section that has content/);
   });
 
   test('goal names are copied verbatim, punctuation included', () => {
