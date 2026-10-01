@@ -260,3 +260,45 @@ test.describe('goal picker: reworded rows (second review MED 3)', () => {
     await expect(page.locator('[data-goal-update]')).toBeVisible();
   });
 });
+
+test.describe('goal picker: popover anchors to its chip (second review LOW-MED 5)', () => {
+  test.describe('desktop', () => {
+    test.use({ viewport: { width: 1280, height: 800 } });
+    test('the popover opens under the clicked chip, not at the strip edge', async ({ page }) => {
+      await open(page, NOTES, [row('Mand training'), row('Elopement'), row('Tolerate Waiting')]);
+      await chip(page, 'Tolerate Waiting').getByRole('button', { name: /came from/ }).click();
+      const c = await chip(page, 'Tolerate Waiting').boundingBox();
+      const p = await page.locator('[data-goal-pop]').boundingBox();
+      expect(Math.abs(p.x - c.x)).toBeLessThanOrEqual(2);
+      expect(p.y).toBeGreaterThanOrEqual(c.y + c.height);
+      expect(p.y).toBeLessThanOrEqual(c.y + c.height + 12);
+    });
+  });
+
+  test.describe('at 375px with wrapped rows', () => {
+    test.use({ viewport: { width: 375, height: 800 } });
+    test('the popover sits directly under the clicked chip row and stays inside the strip', async ({ page }) => {
+      const names = ['Alpha Skill', 'Bravo Skill', 'Charlie Skill', 'Delta Skill', 'Echo Skill', 'Foxtrot Skill'];
+      const notes = names.map((n) => `- ${n} goal: 2 of 5`).join('\n');
+      await open(page, notes, names.map((n) => row(n)));
+      const c = await chip(page, 'Alpha Skill').boundingBox();
+      const s = await page.getByTestId('goal-picker').boundingBox();
+      expect(s.height).toBeGreaterThan(c.height * 2);
+      await chip(page, 'Alpha Skill').getByRole('button', { name: /came from/ }).click();
+      const p = await page.locator('[data-goal-pop]').boundingBox();
+      const c2 = await chip(page, 'Alpha Skill').boundingBox();
+      expect(p.y).toBeGreaterThanOrEqual(c2.y + c2.height);
+      expect(p.y).toBeLessThanOrEqual(c2.y + c2.height + 12);
+      expect(p.x).toBeGreaterThanOrEqual(s.x - 1);
+      expect(p.x + p.width).toBeLessThanOrEqual(s.x + s.width + 1);
+      await page.keyboard.press('Escape');
+      const last = chip(page, 'Foxtrot Skill');
+      await last.getByRole('button', { name: /came from/ }).click();
+      const l = await last.boundingBox();
+      const q = await page.locator('[data-goal-pop]').boundingBox();
+      expect(q.y).toBeGreaterThanOrEqual(l.y + l.height);
+      expect(q.y).toBeLessThanOrEqual(l.y + l.height + 12);
+      expect(q.x + q.width).toBeLessThanOrEqual(s.x + s.width + 1);
+    });
+  });
+});
