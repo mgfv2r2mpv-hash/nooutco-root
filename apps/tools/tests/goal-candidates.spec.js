@@ -250,7 +250,6 @@ test.describe('goal candidates: sentence fragments are never names (review HIGH 
   const FRAGMENTS = [
     '- He did not meet his goal of staying at the table.',
     '- BT ran the program for 3 of 5 trials.',
-    '- Client engaged in elopement, a behavior of concern.',
     '- Mom reported 2 episodes at home.',
     '- Client ate 4/5 bites independently.',
   ];
@@ -296,5 +295,38 @@ test.describe('goal candidates: preselect keeps reduction targets on top of six 
     const chosen = GC.preselect(GC.score(lines.join('\n')));
     expect(chosen.filter((c) => c.kind === 'skill')).toHaveLength(6);
     expect(chosen.filter((c) => c.kind === 'reduction').map((c) => c.name).sort()).toEqual(['Aggression', 'Elopement']);
+  });
+});
+
+test.describe('goal candidates: marker names keep narrative words (second review HIGH 1)', () => {
+  test('real goals with did/not/said/Parent/Session/Feedback in the name are found', () => {
+    for (const n of ['Feedback Acceptance', 'Parent Training', 'Session Transitions', 'Said Hello', 'Tolerating Not Getting Item', 'Tolerating No']) {
+      const out = GC.score(`- ${n} goal`);
+      expect(find(out, n), n).toBeTruthy();
+    }
+  });
+
+  test('labels and data rows keep such names too', () => {
+    expect(find(GC.score('- Parent Training: 80% over 10 trials'), 'Parent Training')).toBeTruthy();
+    expect(find(GC.score('- Notes Review: 3/5 independent'), 'Notes Review')).toBeTruthy();
+    expect(find(GC.score('[Said Hello | Peer | 3/2 | 60% | I P I]'), 'Said Hello')).toBeTruthy();
+  });
+
+  test('the sentence fragments stay rejected and the plain names stay found', () => {
+    expect(GC.score('He did not meet his goal today')).toEqual([]);
+    expect(GC.score('BT ran the program with fidelity')).toEqual([]);
+    expect(GC.score('Client ate 3 of 4 bites at lunch')).toEqual([]);
+    expect(GC.score('Mom reported behavior of concern: hitting').map((c) => c.name)).toEqual(['hitting']);
+    for (const l of ['- Alternative to Denied Item/Activity: 80%', '- Elopement goal', '- Waiting for Turn: 3/5', '- Asking for Help: 80%', '- Receptive ID of Items: 4/5']) {
+      expect(GC.score(l).length, l).toBe(1);
+    }
+  });
+});
+
+test.describe('goal candidates: reduction noun phrase fallback (second review MED 2)', () => {
+  test('"Client engaged in elopement, a behavior of concern" yields elopement verbatim', () => {
+    const out = GC.score('Client engaged in elopement, a behavior of concern');
+    expect(out.map((c) => c.name)).toEqual(['elopement']);
+    expect(out[0].kind).toBe('reduction');
   });
 });

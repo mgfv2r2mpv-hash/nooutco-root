@@ -75,17 +75,21 @@
 
   function wordCount(s) { return s.split(/\s+/).filter(Boolean).length; }
 
-  // A name is not a sentence fragment: it does not open with a subject word,
-  // end on a connector or article, or carry narrative verbs ("did not", "ran").
+  // A name is not a sentence fragment. Shape signals count only together: a
+  // subject word AND a narrative verb ("He did not ..."), or a trailing
+  // connector or article ("... meet his"). One signal alone is a real name:
+  // "Said Hello", "Parent Training", "Tolerating Not Getting Item". A name that
+  // is nothing but a subject or note word ("Plan", "Notes") is not a name.
   function isUsableName(name) {
     if (name === "" || wordCount(name) > NAME_WORDS_MAX || !/[A-Za-z0-9]/.test(name)) return false;
     var words = name.split(/\s+/);
     var first = words[0].replace(/[^A-Za-z]/g, "");
     var last = words[words.length - 1].replace(/[^A-Za-z]/g, "");
-    if (NOT_A_NAME.test(first)) return false;
+    var subjectFirst = NOT_A_NAME.test(first);
+    if (subjectFirst && words.length === 1) return false;
     // Lowercase only: "Target Number A" ends on a letter, "he did not meet his" on a word.
     if (last === last.toLowerCase() && (CONNECTORS.test(last) || LEADING_FILLER.test(last) || NOT_A_NAME.test(last))) return false;
-    return !NARRATIVE_WORDS.test(name);
+    return !(subjectFirst && NARRATIVE_WORDS.test(name));
   }
 
   // The part of `s` before the first delimiter that ends a name.
@@ -187,7 +191,18 @@
     if (isUsableName(name)) return name;
     var rest = body.slice(frame.index + frame[0].length).replace(/^[\s):\-\u2013\u2014]+/, "");
     name = cleanName(untilDelimiter(rest));
-    return isUsableName(name) ? name : "";
+    if (isUsableName(name)) return name;
+    return nounPhraseBefore(lead);
+  }
+
+  // "Client engaged in elopement, a behavior of concern": the lead is garbled,
+  // so the name is the noun phrase ahead of the comma, after its last
+  // preposition. Verbatim casing, nothing added.
+  function nounPhraseBefore(lead) {
+    var head = lead.split(/[,;]/)[0];
+    var after = /^(?:.*\s)?(?:in|with|of|for|during|to|by|from|at|on)\s+(.+)$/i.exec(head);
+    var phrase = cleanName(after ? after[1] : head);
+    return isUsableName(phrase) ? phrase : "";
   }
 
   function dataName(body) {
@@ -214,7 +229,9 @@
     if (!m) return "";
     var words = m[1].split(/\s+/);
     while (words.length && CONNECTORS.test(words[words.length - 1])) words.pop();
-    if (!words.length || NOT_A_NAME.test(words[0]) || /^[A-Za-z]+ed$/.test(words[0])) return "";
+    var hasColon = /^\s*:/.test(body.slice(m[1].length));
+    if (!words.length || /^[A-Za-z]+ed$/.test(words[0])) return "";
+    if (!hasColon && NOT_A_NAME.test(words[0])) return "";
     var name = words.join(" ");
     return isUsableName(name) ? name : "";
   }
