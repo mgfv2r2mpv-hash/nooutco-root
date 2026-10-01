@@ -330,6 +330,8 @@ TERMINOLOGY (non-negotiable)\n\
     ],
     groupOptions: GROUP_OPTIONS,
     formSections: FORM_SECTIONS,
+    // The narrative sections the repeat check compares, in note order.
+    repeatSections: ["progress", "programming", "behavior", "feedback"],
     hintCatalog: HINT_CATALOG,
     responseSchema: RESPONSE_SCHEMA,
     validate: function (values) {
