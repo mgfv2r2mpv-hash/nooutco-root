@@ -11,9 +11,30 @@
  */
 function GoalPicker({ candidates, picked, canUpdate, busy, onToggle, onUpdate }) {
   const [open, setOpen] = React.useState(null);
+  const eyes = React.useRef({});
+  const stripRef = React.useRef(null);
+  // Escape and a press anywhere outside the strip put the popover away.
+  React.useEffect(() => {
+    if (open === null) return undefined;
+    const onKey = (e) => {
+      if (e.key !== "Escape") return;
+      const eye = eyes.current[open];
+      setOpen(null);
+      if (eye) eye.focus();
+    };
+    const onPress = (e) => {
+      if (stripRef.current && !stripRef.current.contains(e.target)) setOpen(null);
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onPress);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onPress);
+    };
+  }, [open]);
   if (!candidates || !candidates.length) return null;
   return (
-    <div className="gp-strip" data-testid="goal-picker">
+    <div className="gp-strip" data-testid="goal-picker" ref={stripRef}>
       <div className="gp-chips">
         {candidates.map((c) => {
           const on = picked.indexOf(c.name) !== -1;
@@ -26,6 +47,7 @@ function GoalPicker({ candidates, picked, canUpdate, busy, onToggle, onUpdate })
               <button
                 type="button"
                 className="gp-eye"
+                ref={(el) => { eyes.current[c.name] = el; }}
                 aria-label={"Where " + (c.shown || c.name) + " came from"}
                 aria-expanded={open === c.name}
                 title={"Where this came from"}

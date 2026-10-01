@@ -4717,6 +4717,9 @@ function App() {
   const dismissDeletion = (key) => {
     if (!S.corrections) return;
     audit("corrections_mark", { approved: 1 });
+    // A dismissed row is out of the rail, so an ask queued about it would
+    // go out with nothing on the page to say it was there.
+    dropAsk(key);
     applyMarkState({ ...(S.markState || {}), [key]: { ...((S.markState || {})[key] || {}), approved: true, dismissed: true } });
   };
 
@@ -5419,7 +5422,7 @@ function App() {
       const picker = (gp && window.GoalPicker)
         ? (
           <window.GoalPicker
-            candidates={gp.candidates.map((c) => ({ ...c, shown: shownGoal(c.name) }))}
+            candidates={gp.candidates.map((c) => ({ ...c, shown: shownGoal(c.name), source: shownGoal(c.source), why: shownGoal(c.why) }))}
             picked={window.GoalPicks.checked(gp.picks)}
             canUpdate={window.GoalPicks.differs(gp.picks, goalGridNames(gp, v))}
             busy={loading}

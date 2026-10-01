@@ -142,6 +142,7 @@ function CorrectionsView({ id, ops, marks, state, onToggle, onEdit, onGoToOrigin
   const [tellBuffer, setTellBuffer] = React.useState("");
   const [stripHover, setStripHover] = React.useState(false);
   const [stripPinned, setStripPinned] = React.useState(false);
+  const stripBtn = React.useRef(null);
   const asks = Object.keys(queue || {}).map(function (k) { return queue[k]; }).filter(function (a) { return a.id === id; });
 
   /* What an op puts in the note right now, given what the technician has done
@@ -219,6 +220,17 @@ function CorrectionsView({ id, ops, marks, state, onToggle, onEdit, onGoToOrigin
     onAsk(r.key, head + (r.why ? " (Deleted because: " + r.why + ")" : ""));
     setTellKey(null);
   };
+
+  /* The strip's pinned state belongs to the strip. When the last dismissed row
+     is reopened the strip unmounts, and a pin left behind would open the next
+     strip the moment it appears. */
+  const stripCount = dismissedRows.length;
+  React.useEffect(() => {
+    if (!stripCount) { setStripPinned(false); setStripHover(false); }
+  }, [stripCount]);
+  const closeStrip = () => { setStripPinned(false); setStripHover(false); };
+  const stripOpen = stripHover || stripPinned;
+  const stripPopId = "cx-dismissed-pop-" + id;
 
   const dim = (key) => (litKey && litKey !== key ? " is-dim" : "");
   const lit = (key) => (litKey === key ? " is-lit" : "");
@@ -394,14 +406,22 @@ function CorrectionsView({ id, ops, marks, state, onToggle, onEdit, onGoToOrigin
             <div
               className="cx-dismissed"
               data-rail-dismissed={id}
-              onMouseEnter={() => setStripHover(true)}
-              onMouseLeave={() => setStripHover(false)}
+              onPointerEnter={(e) => { if (e.pointerType === "mouse") setStripHover(true); }}
+              onPointerLeave={(e) => { if (e.pointerType === "mouse") setStripHover(false); }}
+              onKeyDown={(e) => {
+                if (e.key !== "Escape" || !stripOpen) return;
+                e.preventDefault();
+                closeStrip();
+                if (stripBtn.current) stripBtn.current.focus();
+              }}
             >
               <button
                 type="button"
+                ref={stripBtn}
                 className="cx-dismissed-btn"
-                aria-expanded={stripHover || stripPinned}
-                onClick={() => setStripPinned(!stripPinned)}
+                aria-expanded={stripOpen}
+                aria-controls={stripPopId}
+                onClick={() => setStripPinned(!stripOpen)}
               >
                 {dismissedRows.map((r) => (
                   <svg key={r.key} className="cx-dismissed-glyph" data-rail-dismissed-glyph="" viewBox="0 0 16 16" aria-hidden="true">
@@ -410,13 +430,14 @@ function CorrectionsView({ id, ops, marks, state, onToggle, onEdit, onGoToOrigin
                 ))}
                 <span>{dismissedRows.length} dismissed</span>
               </button>
-              {(stripHover || stripPinned) && (
-                <div className="cx-dismissed-pop" data-rail-dismissed-pop={id}>
+              {stripOpen && (
+                <div className="cx-dismissed-pop" id={stripPopId} data-rail-dismissed-pop={id}>
                   {dismissedRows.map((r) => (
                     <div key={r.key} className="cx-dismissed-item">
                       <span className="cx-dismissed-text">{show(r.text.trim())}</span>
                       <button type="button" className="cx-ck" data-rail-reopen={r.key}
-                              title="Put this row back in the list" onClick={() => onReopen(r.key)}>Reopen</button>
+                              title="Put this row back in the list"
+                              onClick={() => { onReopen(r.key); if (stripCount > 1 && stripBtn.current) stripBtn.current.focus(); }}>Reopen</button>
                     </div>
                   ))}
                 </div>
@@ -449,7 +470,7 @@ function CorrectionsView({ id, ops, marks, state, onToggle, onEdit, onGoToOrigin
                   <RailIcon kind="tell" label="Tell NoMe about this deletion" attr={{ "data-rail-tell": r.key }}
                             onClick={() => { setTellKey(tellKey === r.key ? null : r.key); setTellChip(""); setTellBuffer(""); }} />
                   <RailIcon kind="dismiss" label="Dismiss, keep it deleted" attr={{ "data-rail-dismiss": r.key }}
-                            onClick={() => onDismiss(r.key)} />
+                            onClick={() => { if (tellKey === r.key) setTellKey(null); onDismiss(r.key); }} />
                 </span>
               )}
               {!quiet && tellKey === r.key && (

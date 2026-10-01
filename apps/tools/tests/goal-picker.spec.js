@@ -201,3 +201,49 @@ test.describe('goal picker: review defects', () => {
     await expect(page.getByTestId('goal-picker')).toHaveCount(0);
   });
 });
+
+test.describe('goal picker: popover defects', () => {
+  const MASKED_NOTES = [
+    '- Mand training goal: 3 of 5 independent, Request Attn each time',
+    '- Elopement goal: targeted for reduction, 0 occurrences',
+    '- Tolerate Waiting goal: 2 of 4 with one prompt',
+  ].join('\n');
+
+  test('MED 6: the popover shows the words, never a token', async ({ page }) => {
+    await open(page, MASKED_NOTES, [row('Mand training'), row('Elopement'), row('Tolerate Waiting')]);
+    await chip(page, 'Mand training').getByRole('button', { name: /came from/ }).click();
+    const pop = page.locator('[data-goal-pop="Mand training"]');
+    await expect(pop).toContainText('Request Attn');
+    await expect(pop).not.toContainText('[[T');
+  });
+
+  test('MED 8: Escape and a click elsewhere both close the popover', async ({ page }) => {
+    await open(page, NOTES, [row('Mand training'), row('Elopement'), row('Tolerate Waiting')]);
+    const eye = chip(page, 'Elopement').getByRole('button', { name: /came from/ });
+    await eye.click();
+    await expect(page.locator('[data-goal-pop]')).toHaveCount(1);
+    await page.keyboard.press('Escape');
+    await expect(page.locator('[data-goal-pop]')).toHaveCount(0);
+    await expect(eye).toBeFocused();
+    await eye.click();
+    await expect(page.locator('[data-goal-pop]')).toHaveCount(1);
+    await page.locator('h1, header, body').first().click({ position: { x: 2, y: 2 }, force: true });
+    await expect(page.locator('[data-goal-pop]')).toHaveCount(0);
+  });
+
+  test.describe('at 375px', () => {
+    test.use({ viewport: { width: 375, height: 700 } });
+    test('MED 8: the popover stays inside the strip and the page', async ({ page }) => {
+      await open(page, NOTES, [row('Mand training'), row('Elopement'), row('Tolerate Waiting')]);
+      for (const name of ['Mand training', 'Tolerate Waiting']) {
+        await chip(page, name).getByRole('button', { name: /came from/ }).click();
+        const pop = page.locator('[data-goal-pop]');
+        const p = await pop.boundingBox();
+        const s = await page.getByTestId('goal-picker').boundingBox();
+        expect(p.x).toBeGreaterThanOrEqual(s.x - 1);
+        expect(p.x + p.width).toBeLessThanOrEqual(s.x + s.width + 1);
+        await page.keyboard.press('Escape');
+      }
+    });
+  });
+});
