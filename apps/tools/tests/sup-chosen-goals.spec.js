@@ -75,3 +75,27 @@ test.describe('sup tool: chosen goals', () => {
     expect(prompt).not.toContain('PARSED DATA ROWS');
   });
 });
+
+test.describe('sup tool: goalsAnalyzed cap (review HIGH 3)', () => {
+  test('normalizeOutput keeps six skill rows plus every reduction-target row', async ({ page }) => {
+    await tool(page);
+    const goals = await page.evaluate(() => {
+      const t = window.NOTE_TOOLS.find((x) => x.id === 'sup');
+      const skill = (n) => ({ goal: `Skill ${n}`, progress: 'Responded to most trials with one prompt.', nextSteps: 'Continue current teaching.' });
+      const red = (n) => ({ goal: n, progress: 'Zero occurrences of the behavior today.', nextSteps: 'Continue the reduction plan.' });
+      const rows = [skill(1), skill(2), red('Elopement'), skill(3), skill(4), skill(5), skill(6), skill(7), red('Aggression'), skill(8)];
+      return t.normalizeOutput({ goalsAnalyzed: rows }).goalsAnalyzed.map((r) => r.goal);
+    });
+    expect(goals).toEqual(['Skill 1', 'Skill 2', 'Elopement', 'Skill 3', 'Skill 4', 'Skill 5', 'Skill 6', 'Aggression']);
+  });
+
+  test('seven skill rows and no reduction row still cap at six', async ({ page }) => {
+    await tool(page);
+    const n = await page.evaluate(() => {
+      const t = window.NOTE_TOOLS.find((x) => x.id === 'sup');
+      const rows = [1, 2, 3, 4, 5, 6, 7].map((i) => ({ goal: `Skill ${i}`, progress: 'Went well.', nextSteps: 'Continue.' }));
+      return t.normalizeOutput({ goalsAnalyzed: rows }).goalsAnalyzed.length;
+    });
+    expect(n).toBe(6);
+  });
+});

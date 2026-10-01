@@ -118,3 +118,38 @@ test.describe('goal picks: held row text', () => {
     expect(GP.recall({}, 'B2', 'n')).toBeNull();
   });
 });
+
+test.describe('goal picks: reduction targets are extra (review HIGH 3)', () => {
+  const withFree = (list, preselected, free) => ({ order: list, preselected, free });
+
+  test('six skills plus a reduction target are all checked', () => {
+    const s = GP.init(withFree(['R1', ...eight.slice(0, 6)], ['R1', ...eight.slice(0, 6)], ['R1']));
+    expect(GP.checked(s)).toHaveLength(7);
+  });
+
+  test('a seventh skill evicts a skill, never the reduction target', () => {
+    let s = GP.init(withFree(['R1', ...eight], ['R1', ...eight.slice(0, 6)], ['R1']));
+    s = GP.toggle(s, 'G7');
+    expect(GP.checked(s)).toContain('R1');
+    expect(GP.checked(s).filter((n) => n !== 'R1')).toEqual(['B2', 'C3', 'D4', 'E5', 'F6', 'G7']);
+  });
+
+  test('checking a reduction target never evicts a skill', () => {
+    let s = GP.init(withFree(['R1', 'R2', ...eight], eight.slice(0, 6), ['R1', 'R2']));
+    s = GP.toggle(s, 'R1');
+    s = GP.toggle(s, 'R2');
+    expect(GP.checked(s)).toHaveLength(8);
+  });
+
+  test('capRows keeps every free row and the first six others, and names what it dropped', () => {
+    const rows = ['A1', 'B2', 'R1', 'C3', 'D4', 'E5', 'F6', 'G7'].map((goal) => ({ goal }));
+    const out = GP.capRows(rows, (r) => r.goal === 'R1');
+    expect(out.rows.map((r) => r.goal)).toEqual(['A1', 'B2', 'R1', 'C3', 'D4', 'E5', 'F6']);
+    expect(out.dropped.map((r) => r.goal)).toEqual(['G7']);
+  });
+
+  test('capRows drops nothing when the skill rows fit', () => {
+    const rows = [{ goal: 'A1' }, { goal: 'R1' }];
+    expect(GP.capRows(rows, (r) => r.goal === 'R1')).toEqual({ rows, dropped: [] });
+  });
+});

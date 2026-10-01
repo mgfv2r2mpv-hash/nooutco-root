@@ -31,6 +31,7 @@
   var SOURCE_MAX = 160;
   var NAME_WORDS_MAX = 6;
   var REPEAT_BONUS = 0.5;
+  var LINE_MAX = 400;
 
   var TIER = { goalWord: 6, reduction: 5, data: 4, label: 3, defined: 2, heading: 1 };
 
@@ -48,6 +49,7 @@
 
   // Words that start a sentence about the session rather than name a goal.
   var NOT_A_NAME = /^(?:client|he|she|they|we|mom|dad|mother|father|parent|caregiver|bt|rbt|bcba|staff|today|session|notes?|summary|plan|overall|feedback|the|a|an|his|her|their)$/i;
+  var NARRATIVE_WORDS = /\b(?:did|didn't|not|ran|ate|was|were|had|has|met|engaged|reported|played|said|asked)\b/i;
   var CONNECTORS = /^(?:to|of|for|with|in|and|the|a|on|at|or|from|by)$/;
   var LEADING_FILLER = /^(?:the|a|an|his|her|their|our|this|that|new|current|per|and)$/i;
 
@@ -73,8 +75,17 @@
 
   function wordCount(s) { return s.split(/\s+/).filter(Boolean).length; }
 
+  // A name is not a sentence fragment: it does not open with a subject word,
+  // end on a connector or article, or carry narrative verbs ("did not", "ran").
   function isUsableName(name) {
-    return name !== "" && wordCount(name) <= NAME_WORDS_MAX && /[A-Za-z0-9]/.test(name);
+    if (name === "" || wordCount(name) > NAME_WORDS_MAX || !/[A-Za-z0-9]/.test(name)) return false;
+    var words = name.split(/\s+/);
+    var first = words[0].replace(/[^A-Za-z]/g, "");
+    var last = words[words.length - 1].replace(/[^A-Za-z]/g, "");
+    if (NOT_A_NAME.test(first)) return false;
+    // Lowercase only: "Target Number A" ends on a letter, "he did not meet his" on a word.
+    if (last === last.toLowerCase() && (CONNECTORS.test(last) || LEADING_FILLER.test(last) || NOT_A_NAME.test(last))) return false;
+    return !NARRATIVE_WORDS.test(name);
   }
 
   // The part of `s` before the first delimiter that ends a name.
@@ -136,9 +147,15 @@
   function goalWordName(body) {
     // A goal word can itself open the name ("Target Number A goal"), so every
     // marker is tried and the first one with a usable name before it wins.
-    var marker = new RegExp("\\b(?<!behaviou?r )(?:" + GOAL_WORDS + ")s?\\b", "gi");
+    var marker = new RegExp("\\b(?:" + GOAL_WORDS + ")s?\\b", "gi");
     var hit = marker.exec(body);
     while (hit) {
+      // "behavior goal" is a reduction frame, so its goal word is not a marker
+      // here. A post-match check, because lookbehind throws on Safari < 16.4.
+      if (/behaviou?r\s$/i.test(body.slice(0, hit.index))) {
+        hit = marker.exec(body);
+        continue;
+      }
       var lead = body.slice(0, hit.index).split(/[:;,.()]|\s[-\u2013\u2014]\s/).pop();
       var words = lead.trim().split(/\s+/).filter(Boolean).slice(-5);
       while (words.length && LEADING_FILLER.test(words[0])) words.shift();
@@ -155,6 +172,11 @@
   }
 
   function reductionName(body, frame) {
+    var afterColon = /^\s*:\s*(.+)$/.exec(body.slice(frame.index + frame[0].length));
+    if (afterColon) {
+      var colonName = cleanName(untilDelimiter(afterColon[1]));
+      if (isUsableName(colonName)) return colonName;
+    }
     var lead = body.slice(0, frame.index).replace(/[\s(:\-\u2013\u2014]+$/, "");
     var name = cleanName(lead);
     if (isUsableName(name)) return name;
@@ -264,7 +286,7 @@
     var byKey = {};
     var order = [];
     input.split(/\r?\n/).forEach(function (raw) {
-      var line = raw.trim();
+      var line = raw.trim().slice(0, LINE_MAX);
       if (line === "") return;
       fromLine(line).forEach(function (c) {
         var key = normalizeKey(c.name);
@@ -296,10 +318,16 @@
     return list.map(function (x) { return x.c; });
   }
 
+  // At most PRESELECT_CAP skills. A reduction target is extra: it always gets
+  // its row, so it never uses up a skill place.
   function preselect(candidates) {
-    return (candidates || [])
-      .filter(function (c) { return c.kind !== "probe" && c.score >= PRESELECT_MIN; })
-      .slice(0, PRESELECT_CAP);
+    var skills = 0;
+    return (candidates || []).filter(function (c) {
+      if (c.kind === "probe" || c.score < PRESELECT_MIN) return false;
+      if (c.kind === "reduction") return true;
+      skills += 1;
+      return skills <= PRESELECT_CAP;
+    });
   }
 
   window.GoalCandidates = {

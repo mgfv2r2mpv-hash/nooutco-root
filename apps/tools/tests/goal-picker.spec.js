@@ -28,7 +28,7 @@ const note = (rows) => ({
   behavior: '', feedback: '', reviewedNotes: 'No', followup: '', hints: [],
 });
 
-async function open(page, notes, rows, { delayMs = 0 } = {}) {
+async function open(page, notes, rows, { delayMs = 0, noPicker = false } = {}) {
   const calls = { draft: 0, update: 0, bodies: [] };
   await page.route('**/api/llm-call**', async (route) => {
     const b = JSON.parse(route.request().postData() || '{}');
@@ -58,7 +58,7 @@ async function open(page, notes, rows, { delayMs = 0 } = {}) {
   }
   const rev = page.locator('#notes-scrub-go');
   if (await rev.isVisible({ timeout: 1500 }).catch(() => false)) await rev.click();
-  await expect(page.getByTestId('goal-picker')).toBeVisible({ timeout: 30000 });
+  if (!noPicker) await expect(page.getByTestId('goal-picker')).toBeVisible({ timeout: 30000 });
   return calls;
 }
 
@@ -161,5 +161,43 @@ test.describe('goal picker on the phone', () => {
     const sizes = await page.locator('[data-goal-chip] .gp-eye, [data-goal-chip] .gp-label').evaluateAll(
       (els) => els.map((e) => e.getBoundingClientRect().height));
     sizes.forEach((h) => expect(h).toBeGreaterThanOrEqual(30));
+  });
+});
+
+test.describe('goal picker: review defects', () => {
+  test('HIGH 1: notes edited before the drop never get the old row text back', async ({ page }) => {
+    const calls = await open(page, NOTES, [row('Mand training'), row('Elopement', 'Written from old notes.'), row('Tolerate Waiting')]);
+    await page.getByRole('textbox', { name: /Session Notes/i }).fill(NOTES + '\n- Extra bullet with new detail');
+    await chip(page, 'Elopement').locator('input').uncheck();
+    await page.locator('[data-goal-update]').click();
+    await expect(page.locator('[data-goal-update]')).toHaveCount(0);
+    await chip(page, 'Elopement').locator('input').check();
+    await page.locator('[data-goal-update]').click();
+    await expect.poll(() => cells(page), { timeout: 15000 }).toContain('Fresh row.');
+    expect(calls.update).toBe(1);
+    expect(await cells(page)).not.toContain('Written from old notes.');
+  });
+
+  test('HIGH 3: six skills and a reduction target are all kept and checked', async ({ page }) => {
+    const skills = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot'];
+    const notes = skills.map((n) => `- ${n} goal: 2 of 5`).join('\n')
+      + '\n- Elopement goal: targeted for reduction, 0 occurrences';
+    await open(page, notes, [...skills.map((n) => row(n)), row('Elopement', 'No occurrences of elopement today.')]);
+    await expect(page.locator('[data-goal-chip] input:checked')).toHaveCount(7);
+    await expect(page.locator('[data-goal-update]')).toHaveCount(0);
+  });
+
+  test('HIGH 4: a scoring error cannot lose the draft', async ({ page }) => {
+    await page.addInitScript(() => {
+      let held;
+      Object.defineProperty(window, 'GoalCandidates', {
+        configurable: true,
+        get: () => held,
+        set: (v) => { held = { ...v, score: () => { throw new Error('boom'); } }; },
+      });
+    });
+    await open(page, NOTES, [row('Mand training', 'Kept draft.'), row('Elopement'), row('Tolerate Waiting')], { noPicker: true });
+    await expect.poll(() => cells(page), { timeout: 15000 }).toContain('Kept draft.');
+    await expect(page.getByTestId('goal-picker')).toHaveCount(0);
   });
 });
