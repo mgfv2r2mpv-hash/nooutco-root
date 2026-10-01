@@ -41,90 +41,140 @@
     return !!ctor();
   }
 
+  /* WHAT EACH FAILURE SAYS. Chrome reports most failures as an error event after
+     start() has already returned, so a caller that only resets its button leaves
+     a person pressing a mic that does nothing and says nothing. Each kind that
+     can actually happen gets a sentence that names the cause and the next move;
+     a kind nobody planned for is shown by name rather than hidden. */
+  var MESSAGES = {
+    "not-allowed": "The microphone is blocked for this site. Allow it in the browser's site settings, then tap the mic again.",
+    "service-not-allowed": "The browser's speech service is blocked for this site. Allow the microphone in the site settings, then tap the mic again.",
+    "network": "Speech recognition could not reach its service. Check the connection, then tap the mic again.",
+    "audio-capture": "No microphone was found. Plug one in or check the system input, then tap the mic again.",
+    "language-not-supported": "This browser has no speech recognition for this language on this device. Type instead, or use the keyboard's dictation key.",
+    "busy": "The microphone is already in use. Stop the other recording, then tap the mic again.",
+    "unavailable": "Speech recognition could not start in this browser. Type instead, or use the keyboard's dictation key."
+  };
+
+  function describe(kind) {
+    return MESSAGES[kind] || ("Speech recognition stopped (" + kind + "). Tap the mic to try again, or type instead.");
+  }
+
   /* Start listening. Returns a stop function, always, even on the paths that
      fail: a caller holding a button down needs something to call on the way up
-     and should not have to find out whether we got as far as a recogniser. */
+     and should not have to find out whether we got as far as a recogniser.
+
+     ON-DEVICE RECOGNITION IS A HINT. Where the engine has a processLocally
+     property it is set to true first, so audio stays on the device when it can.
+     Chrome without the language pack answers that with language-not-supported
+     after start() has returned, which used to leave the mic dead. That one kind,
+     and only when the hint was in play, is retried once on a fresh recogniser
+     with the hint left off, so dictation still works over the network path his
+     ruling accepts. Anything else is reported as it happened. */
   function listen(opts) {
     var o = opts || {};
     var Ctor = ctor();
     if (!Ctor) return function () {};
 
-    var rec;
-    try {
-      rec = new Ctor();
-    } catch (e) {
-      if (o.onError) o.onError("unavailable");
-      return function () {};
+    var current = null;     // the recogniser a stop should reach
+    var wantStop = false;   // the caller let go; no retry, no restart
+    var gen = 0;            // which attempt's events still count
+
+    function fail(kind) {
+      if (o.onError) o.onError(kind, describe(kind));
     }
 
-    rec.continuous = true;
-    // Interim results are what make it feel like it is listening rather than
-    // thinking. Only the final ones are kept.
-    rec.interimResults = true;
-    rec.lang = o.lang || document.documentElement.lang || navigator.language || "en-US";
-
-    /* WHERE THE PLATFORM CAN DO THIS WITHOUT THE NETWORK, ASK FOR THAT. It is a
-       request the platform may ignore, not a guarantee, and nothing here is
-       gated on it: he has ruled the network path acceptable, so a phone that
-       cannot do it locally still gets to talk. Feature-detected rather than set
-       blind, so an engine that has never heard of the property is not handed
-       one it will carry around. */
-    try {
-      if ("processLocally" in rec) rec.processLocally = true;
-    } catch (e) { /* the request is optional by design */ }
-
-    var stopped = false;
-    var stop = function () {
-      if (stopped) return;
-      stopped = true;
-      try { rec.stop(); } catch (e) { /* already ended */ }
-    };
-
-    rec.onresult = function (ev) {
-      var settled = "";
-      var pending = "";
-      for (var i = ev.resultIndex; i < ev.results.length; i++) {
-        var r = ev.results[i];
-        var said = (r[0] && r[0].transcript) || "";
-        if (r.isFinal) settled += said;
-        else pending += said;
+    function attempt(useHint) {
+      var mine = ++gen;
+      var rec;
+      try {
+        rec = new Ctor();
+      } catch (e) {
+        fail("unavailable");
+        if (o.onEnd) o.onEnd();
+        return false;
       }
-      if (settled && o.onText) o.onText(settled);
-      if (o.onPartial) o.onPartial(pending);
-    };
+      current = rec;
 
-    rec.onerror = function (ev) {
-      /* "no-speech" and "aborted" are a person changing their mind, not a
-         failure, and reporting them would put a warning in front of somebody
-         who simply let go of the button. */
-      var kind = (ev && ev.error) || "error";
-      if (kind !== "no-speech" && kind !== "aborted" && o.onError) o.onError(kind);
-      stopped = true;
-    };
+      rec.continuous = true;
+      // Interim results are what make it feel like it is listening rather than
+      // thinking. Only the final ones are kept.
+      rec.interimResults = true;
+      rec.lang = o.lang || document.documentElement.lang || navigator.language || "en-US";
 
-    rec.onend = function () {
-      stopped = true;
-      if (o.onEnd) o.onEnd();
-    };
+      var hinted = false;
+      try {
+        if (useHint && "processLocally" in rec) { rec.processLocally = true; hinted = true; }
+      } catch (e) { /* the request is optional by design */ }
 
-    try {
-      rec.start();
-    } catch (e) {
-      // start() throws if one is already running. Ending that one is the
-      // honest recovery: two recognisers would race for the same microphone.
-      stopped = true;
-      try { rec.abort(); } catch (e2) {}
-      if (o.onError) o.onError("busy");
-      if (o.onEnd) o.onEnd();
-      return function () {};
+      rec.onresult = function (ev) {
+        if (mine !== gen) return;
+        var settled = "";
+        var pending = "";
+        for (var i = ev.resultIndex; i < ev.results.length; i++) {
+          var r = ev.results[i];
+          var said = (r[0] && r[0].transcript) || "";
+          if (r.isFinal) settled += said;
+          else pending += said;
+        }
+        if (settled && o.onText) o.onText(settled);
+        if (o.onPartial) o.onPartial(pending);
+      };
+
+      rec.onerror = function (ev) {
+        if (mine !== gen) return;
+        /* "no-speech" and "aborted" are a person changing their mind, not a
+           failure, and reporting them would put a warning in front of somebody
+           who simply let go of the button. */
+        var kind = (ev && ev.error) || "error";
+        if (kind === "no-speech" || kind === "aborted") return;
+        if (kind === "language-not-supported" && hinted && !wantStop) {
+          // Supersede this attempt so its end event is not reported, then go
+          // again without the hint.
+          gen += 1;
+          attempt(false);
+          return;
+        }
+        gen += 1;
+        wantStop = true;
+        fail(kind);
+        if (o.onEnd) o.onEnd();
+      };
+
+      rec.onend = function () {
+        if (mine !== gen) return;
+        wantStop = true;
+        if (o.onEnd) o.onEnd();
+      };
+
+      try {
+        rec.start();
+      } catch (e) {
+        // start() throws if one is already running. Ending that one is the
+        // honest recovery: two recognisers would race for the same microphone.
+        gen += 1;
+        wantStop = true;
+        try { rec.abort(); } catch (e2) {}
+        fail("busy");
+        if (o.onEnd) o.onEnd();
+        return false;
+      }
+      return true;
     }
 
-    return stop;
+    attempt(true);
+
+    return function stop() {
+      if (wantStop) return;
+      wantStop = true;
+      try { if (current) current.stop(); } catch (e) { /* already ended */ }
+    };
   }
 
   window.NoteSpeech = {
     available: available,
     listen: listen,
+    describe: describe,
     // The sentence that carries his ruling into the interface. Exported rather
     // than typed into the component, so the rule has one home.
     RULE: "Say roles, not names.",
