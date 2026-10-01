@@ -15,7 +15,7 @@ const ROOT = join(__dirname, '..', 'notes/bcba');
 // Composed sup prompt (SYSTEM_CORE + register rules + JSON block). The tuning met
 // the one-owner-per-facet rules on dev, so this is the merged prompt: the
 // voice-module store holds the older text until it is re-extracted from here.
-const SUP_SYSTEM_SHA256 = 'eb3a112682a184fabbe5a82c9e29bf228d103f74c111e4a416168135404ed6d0';
+const SUP_SYSTEM_SHA256 = 'ff6c25be169f3ddc8efe68e06c06e362d52bcaff0400d5e2fd0d4fd684e2930b';
 
 function compose() {
   const win = {};
@@ -135,7 +135,7 @@ test.describe('sup SYSTEM_CORE: parity with the voice-module prompt', () => {
     expect(b).toMatch(/using only what the notes contain, even when that material is scant or scattered/);
     expect(b).toMatch(/Cut the opinion only when the notes hold nothing observable to recast it from/);
     expect(b).toMatch(/never invent an observation the notes do not support/i);
-    expect(b).toMatch(/overrides FLAG, DO NOT REMOVE/);
+    expect(b).toMatch(/overrides the keep-and-flag paragraph below/);
     expect(b).toContain('BT felt Client was frustrated');
     expect(b).toContain('Client threw the card and said no');
   });

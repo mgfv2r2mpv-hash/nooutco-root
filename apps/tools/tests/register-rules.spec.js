@@ -579,6 +579,10 @@ test.describe('the analysis rules reach the technician tool and no other', () =>
      line here is the review: do not paste a failing sentence in to make the
      suite green. */
   const REVIEWED = new Set([
+    // Sup only, by Kaleb's ruling (relayed 2026-10-01): staff opinion is limited to objective
+    // observations, so it is recast from what the notes hold. It is a recast rule with a
+    // never-invent guard, not a ban on the BCBA's own analysis.
+    'Staff opinion, a causal claim or a clinical hypothesis is recast as what happened, using only what the notes contain, even when that material is scant or scattered.',
     'For training strategies and programming decisions, fold rationale inline - "[caregiver skill level or observed barrier], so [approach] was selected to [functional target or generalization outcome]" - not as a separate rationale sentence.',
     'This author is the Behavior Analyst documenting their own training session, so function, motivation and causal reasoning are their own work and belong in the note.',
     '- So do not cut a causal claim or a clinical hypothesis out of this note, and do not flatten a ranking.',
