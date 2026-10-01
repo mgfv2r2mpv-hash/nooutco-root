@@ -1726,7 +1726,5 @@ body.is-pointing, body.is-pointing * { cursor: crosshair !important; }
 .gp-update { min-height: 30px; padding: 0 14px; cursor: pointer; font: inherit; font-size: 13px; font-weight: 600; color: #fff; background: #6f8a56; border: 0; border-radius: 15px; }
 .gp-update:disabled { opacity: .6; cursor: default; }
 
-/* Phone width: every control in the rail, its tell box and the queued asks. */
-@media (max-width: 640px) {
-  .cx-tell .cx-ck, .cx-asks .cx-ck, .cx-dismissed .cx-ck { min-height: 30px; }
-}
+/* Every control in the rail, its tell box and the queued asks, at all widths. */
+.cx-tell .cx-ck, .cx-tell .cx-chip, .cx-asks .cx-ck, .cx-dismissed .cx-ck { min-height: 30px; }
