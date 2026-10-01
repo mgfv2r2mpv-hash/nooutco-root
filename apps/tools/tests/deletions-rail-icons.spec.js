@@ -305,6 +305,8 @@ test.describe('review defects: dismissed strip, queued asks, phone targets', () 
       await btn.click();
       await expect(btn).toHaveAttribute('aria-expanded', 'true');
       await page.mouse.move(0, 0);
+      // Safari does not focus a button on click, so Escape needs focus put there.
+      await btn.focus();
       await page.keyboard.press('Escape');
       await expect(page.locator('[data-rail-dismissed-pop]')).toHaveCount(0);
       await expect(btn).toHaveAttribute('aria-expanded', 'false');
