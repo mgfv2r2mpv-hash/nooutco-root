@@ -2028,7 +2028,17 @@ function App() {
     const effectGaps = window.NoteHollow && window.NoteHollow.effectUnstated && tool.strategyOwnership
       ? window.NoteHollow.effectUnstated(restored, tool.strategyOwnership)
       : [];
-    const injected = misplaced.concat(effectGaps);
+    /* THE THIRD, the repeat check: one fact in one section. It only ever adds
+       a hint, so a repeat the technician means to keep stays theirs to keep. */
+    const repeats = window.RepeatedFacts && tool.repeatSections
+      ? window.RepeatedFacts.check(restored, {
+          order: tool.repeatSections,
+          labels: Object.fromEntries(
+            (tool.formSections || []).filter((f) => f.key).map((f) => [f.key, f.heading])
+          ),
+        })
+      : [];
+    const injected = misplaced.concat(effectGaps, repeats);
     const withHints = injected.length
       ? { ...restored, hints: (Array.isArray(restored.hints) ? restored.hints : []).concat(injected) }
       : restored;
