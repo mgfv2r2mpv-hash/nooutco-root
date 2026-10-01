@@ -119,11 +119,11 @@ test.describe('it asks again when something is still missing', () => {
     const { triageCount } = await run(page, [
       { sufficient: false, questions: [{ field: 'fBehavior', question: 'Round one question?' }] },
     ]);
-    await expect(page.getByText(/Round one question/i)).toBeVisible({ timeout: 20000 });
+    await expect(page.locator('[data-thread-turn="NoMe"]').filter({ hasText: /Round one question/i }).last()).toBeVisible({ timeout: 20000 });
     await answer(page, 'a');
-    await expect(page.getByText(/Round one question/i)).toBeVisible({ timeout: 20000 });
+    await expect(page.locator('[data-thread-turn="NoMe"]').filter({ hasText: /Round one question/i }).last()).toBeVisible({ timeout: 20000 });
     await answer(page, 'b');
-    await expect(page.getByText(/Round one question/i)).toBeVisible({ timeout: 20000 });
+    await expect(page.locator('[data-thread-turn="NoMe"]').filter({ hasText: /Round one question/i }).last()).toBeVisible({ timeout: 20000 });
     await answer(page, 'c');
 
     await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 20000 });
@@ -221,11 +221,11 @@ test.describe('the round reaches the model, not just the audit trail', () => {
     const { triageBodies } = await run(page, [
       { sufficient: false, questions: [{ field: 'fBehavior', question: 'Round one question?' }] },
     ]);
-    await expect(page.getByText(/Round one question/i)).toBeVisible({ timeout: 20000 });
+    await expect(page.locator('[data-thread-turn="NoMe"]').filter({ hasText: /Round one question/i }).last()).toBeVisible({ timeout: 20000 });
     await answer(page, 'a');
-    await expect(page.getByText(/Round one question/i)).toBeVisible({ timeout: 20000 });
+    await expect(page.locator('[data-thread-turn="NoMe"]').filter({ hasText: /Round one question/i }).last()).toBeVisible({ timeout: 20000 });
     await answer(page, 'b');
-    await expect(page.getByText(/Round one question/i)).toBeVisible({ timeout: 20000 });
+    await expect(page.locator('[data-thread-turn="NoMe"]').filter({ hasText: /Round one question/i }).last()).toBeVisible({ timeout: 20000 });
     await answer(page, 'c');
     await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 20000 });
 

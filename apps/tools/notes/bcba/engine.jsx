@@ -1438,6 +1438,10 @@ function freshSession(tool) {
        else. A section still under marks is read off the marks instead, because
        an undo changes it without a keystroke. See retypeBaseline. */
     nomeText: null,
+    /* The goal picker (sup only): candidates scored from the masked intake,
+       the picks state from GoalPicks, the rows of dropped goals held with a
+       stamp of the notes they were written from. Null until a draft lands. */
+    goalPicker: null,
 
     // ── Assistant panel ──────────────────────────────────────────────────
     // What the clinician sees, which is not what the model sees: `conversation`
@@ -2195,6 +2199,112 @@ function App() {
   const pushThread = (role, kind, text) =>
     patchS((s) => ({ thread: [...s.thread, { role, kind, text }] }));
 
+  /* ── Goal picker (sup) ────────────────────────────────────────────────
+     Scored on the masked intake with no model call. The rules are in
+     goal-picks.js; this is the state and the one Update turn. */
+  const goalKey = (n) => String(n || "").toLowerCase().replace(/\s+/g, " ").trim();
+  // Same text, same stamp. Held rows are only handed back on an equal stamp, and
+  // the stamp is a hash so no note text is kept beside the row.
+  const notesStamp = (text) => {
+    let h = 5381;
+    const t = String(text || "");
+    for (let i = 0; i < t.length; i++) h = ((h * 33) ^ t.charCodeAt(i)) >>> 0;
+    return t.length + ":" + h;
+  };
+  const buildGoalPicker = (maskedIntake) => {
+    if (tool.id !== "sup" || !window.GoalCandidates || !window.GoalPicks) return null;
+    const candidates = window.GoalCandidates.score(maskedIntake);
+    if (!candidates.length) return null;
+    const pre = window.GoalCandidates.preselect(candidates).map((c) => c.name);
+    return {
+      candidates,
+      picks: window.GoalPicks.init({ order: candidates.map((c) => c.name), preselected: pre }),
+      held: {},
+    };
+  };
+  // The grid row a candidate name is already shown as, by equal or contained
+  // wording, so a reworded row is not read as a missing goal.
+  // A candidate name is masked like the text it came from; the grid holds what
+  // the technician reads, so the name is restored before the two are compared.
+  const shownGoal = (name) =>
+    String(NotesScrub.restoreOutput(String(name || ""), scrubMapRef.current || []));
+  const rowForGoal = (rows, name) => {
+    const k = goalKey(shownGoal(name));
+    return (rows || []).findIndex((r) => {
+      const g = goalKey(r && r.goal);
+      return g && (g === k || g.includes(k) || k.includes(g));
+    });
+  };
+  const goalGridNames = (gp, rows) =>
+    gp.candidates.map((c) => c.name).filter((n) => rowForGoal(rows, n) !== -1);
+  const toggleGoalPick = (name) =>
+    patchS((s) => (s.goalPicker
+      ? { goalPicker: { ...s.goalPicker, picks: window.GoalPicks.toggle(s.goalPicker.picks, name) } }
+      : {}));
+  const goalUpdateBusy = React.useRef(false);
+  const updateGoals = async () => {
+    const gp = S.goalPicker;
+    if (!gp || !S.output || goalUpdateBusy.current) return;
+    const rows = Array.isArray(S.output.goalsAnalyzed) ? S.output.goalsAnalyzed : [];
+    const plan = window.GoalPicks.plan(gp.picks, goalGridNames(gp, rows));
+    if (!plan.added.length && !plan.removed.length) return;
+    goalUpdateBusy.current = true;
+    const stamp = notesStamp(intakeBody(S.values));
+    try {
+      let held = gp.held;
+      const dropped = new Set();
+      plan.removed.forEach((n) => {
+        const at = rowForGoal(rows, n);
+        if (at === -1) return;
+        held = window.GoalPicks.hold(held, n, rows[at], stamp);
+        dropped.add(at);
+      });
+      const kept = rows.filter((_, i) => !dropped.has(i));
+      const recalled = [];
+      const fresh = [];
+      plan.added.forEach((n) => {
+        const row = window.GoalPicks.recall(held, n, stamp);
+        if (row) recalled.push(row); else fresh.push(n);
+      });
+      let made = [];
+      let conversation = S.conversation;
+      let calls = 0;
+      if (fresh.length) {
+        setLoading(true);
+        calls = 1;
+        const userMsg = [
+          `GOAL UPDATE`,
+          `Add one row to goalsAnalyzed for each of these goals, using the goal name verbatim: ${fresh.map((n) => `"${n}"`).join(", ")}.`,
+          `Write each new row from the notes only. Do not add rows for any other goal.`,
+          returnRule(`Never fabricate beyond what is stated.`),
+        ].join("\n");
+        conversation = [...S.conversation, { role: "user", content: userMsg }];
+        const r = await runTurn(conversation, S.convStyleBlock || "", false);
+        conversation = [...conversation, { role: "assistant", content: r.rawText }];
+        const got = (finalOutput(r.parsed).goalsAnalyzed || []);
+        // Only rows for the goals asked about are taken. Every other row in the
+        // model's reply is ignored, so the rows already shown stay byte-identical.
+        made = fresh
+          .map((n) => got[rowForGoal(got, n)])
+          .filter(Boolean)
+          .map((row, i) => ({ ...row, goal: row.goal || fresh[i] }));
+      }
+      const next = [...kept, ...recalled, ...made].slice(0, 6);
+      patchS((s) => ({
+        output: { ...s.output, goalsAnalyzed: next },
+        conversation,
+        lastCallAt: calls ? Date.now() : s.lastCallAt,
+        goalPicker: s.goalPicker ? { ...s.goalPicker, held } : null,
+      }));
+      pushThread("assistant", "status", "Goals updated.");
+    } catch (e) {
+      pushThread("assistant", "status", "Goal update failed.\nNothing changed; try again.");
+    } finally {
+      goalUpdateBusy.current = false;
+      setLoading(false);
+    }
+  };
+
   /* ── Usage signal ─────────────────────────────────────────────────────
      Counts only, never a word of the note. What a supervisor needs to answer
      is not "what did this technician write" but "is the tool being worked with
@@ -2818,7 +2928,7 @@ function App() {
      intake and confirmations go with it, so a confirmed name on the last note
      never stands on the next one. */
   const forgetNote = () => {
-    patchS({ output: null, proposal: null, conversation: [], questions: null, readiness: null, pendingValues: null, expert: null, corrections: null, markState: {}, askQueue: {}, heldOut: [], nomeText: null, draftIntake: null, goalConfirmed: {} });
+    patchS({ output: null, proposal: null, conversation: [], questions: null, readiness: null, pendingValues: null, expert: null, corrections: null, markState: {}, askQueue: {}, heldOut: [], nomeText: null, draftIntake: null, goalConfirmed: {}, goalPicker: null });
     /* Again here, because the follow-up questions sit between Generate and this
        call with the last note still on screen, and a word typed into its table
        in that gap would otherwise be drawn into this new note. */
@@ -3040,6 +3150,7 @@ function App() {
         markState: {},
         askQueue: {},
         heldOut: [],
+        goalPicker: buildGoalPicker(intakeBody(scrubbedValues)),
         // Read off the draft rather than off `corrected`: the corrections pass
         // rewrites prose and never touches these, and reading the post-pass
         // copy would make a tool that has no design channel clear one it never
@@ -5308,18 +5419,34 @@ function App() {
         : <p style={{ fontSize: 13, color: "#9aab86", fontStyle: "italic" }}>{sec.emptyNote || "No options suggested."}</p>;
     }
     if (sec.kind === "table") {
+      const gp = id === "goalsAnalyzed" ? S.goalPicker : null;
+      const picker = (gp && window.GoalPicker)
+        ? (
+          <window.GoalPicker
+            candidates={gp.candidates.map((c) => ({ ...c, shown: shownGoal(c.name) }))}
+            picked={window.GoalPicks.checked(gp.picks)}
+            canUpdate={window.GoalPicks.differs(gp.picks, goalGridNames(gp, v))}
+            busy={loading}
+            onToggle={toggleGoalPick}
+            onUpdate={updateGoals}
+          />
+        )
+        : null;
       return (
-        <GoalsTable
-          columns={sec.columns}
-          rows={mapCells(v, hydrate)}
-          onChange={(rows) => patchS((s) => ({ output: { ...s.output, [id]: mapCells(rows, dehydrate) } }))}
-          onCopyCell={handleCopy}
-          copiedId={copied}
-          idPrefix={id}
-          checkColumn={sec.checkAgainstIntake}
-          flagged={goalFlags(sec, v)}
-          onConfirm={confirmGoal}
-        />
+        <React.Fragment>
+          {picker}
+          <GoalsTable
+            columns={sec.columns}
+            rows={mapCells(v, hydrate)}
+            onChange={(rows) => patchS((s) => ({ output: { ...s.output, [id]: mapCells(rows, dehydrate) } }))}
+            onCopyCell={handleCopy}
+            copiedId={copied}
+            idPrefix={id}
+            checkColumn={sec.checkAgainstIntake}
+            flagged={goalFlags(sec, v)}
+            onConfirm={confirmGoal}
+          />
+        </React.Fragment>
       );
     }
     if (sec.kind === "facts") {
