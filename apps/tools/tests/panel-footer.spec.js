@@ -124,7 +124,7 @@ test.describe('the assistant footer is three rows, not six', () => {
        actually announces - not by the class, which would pass on a button
        announcing nothing. */
     await expect(page.getByRole('button', { name: /^Send$/ })).toBeVisible();
-    await expect(page.getByRole('button', { name: /hold to talk/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /tap to talk/i })).toBeVisible();
   });
 
   /* PUTTING THE TWO CONTROLS ON ONE ROW CREATED A WAY FOR THEM TO COLLIDE that
@@ -154,6 +154,7 @@ test.describe('the assistant footer is three rows, not six', () => {
     expect(c.disabled, 'send is live, so this compares two live controls').toBe(false);
     expect(c.mic, 'a listening mic and a live send must not be the same swatch').not.toBe(c.send);
 
+    await page.waitForTimeout(400);
     await mic.dispatchEvent('pointerup');
   });
 

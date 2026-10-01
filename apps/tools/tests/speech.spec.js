@@ -135,10 +135,13 @@ async function ready(page, { speech = true } = {}) {
     .toBe(true);
 }
 
+// A press longer than the tap window is push to talk, so it stops on release.
+const HOLD_MS = 450;
 const holdAndSay = async (page, words) => {
   const btn = page.locator('[data-speak]');
   await btn.dispatchEvent('pointerdown');
   await hear(page, words);
+  await page.waitForTimeout(HOLD_MS);
   await btn.dispatchEvent('pointerup');
 };
 
@@ -213,7 +216,53 @@ test.describe('the control to talk', () => {
     const btn = page.locator('[data-speak]');
     await btn.dispatchEvent('pointerdown');
     await expect(page.locator('[data-speak-rule]')).toHaveText(/say roles, not names/i);
+    await page.waitForTimeout(HOLD_MS);
     await btn.dispatchEvent('pointerup');
+  });
+
+  test('a quick tap turns listening on and leaves it on, the next tap stops it', async ({ page }) => {
+    await ready(page);
+    const btn = page.locator('[data-speak]');
+    await btn.dispatchEvent('pointerdown');
+    await btn.dispatchEvent('pointerup');
+    await expect(btn).toHaveAttribute('aria-pressed', 'true');
+    await expect(btn).toContainText('Listening. Tap to stop.');
+    await expect(page.locator('[data-speak-rule]')).toContainText('Listening. Tap to stop.');
+    await expect(page.locator('[data-speak-rule]')).toContainText('Say roles, not names.');
+    expect(await page.evaluate(() => window.__speech)).toMatchObject({ started: 1, stopped: 0 });
+    // Words still land while it is toggled on.
+    await hear(page, 'tapped words');
+    await expect(page.locator('.revision-input')).toHaveValue(/tapped words/);
+    await btn.dispatchEvent('pointerdown');
+    await btn.dispatchEvent('pointerup');
+    await expect(btn).toHaveAttribute('aria-pressed', 'false');
+    await expect(btn).toContainText('Tap to talk');
+    expect(await page.evaluate(() => window.__speech)).toMatchObject({ started: 1, stopped: 1 });
+  });
+
+  test('a long press is hold to talk and says Release to stop', async ({ page }) => {
+    await ready(page);
+    const btn = page.locator('[data-speak]');
+    await btn.dispatchEvent('pointerdown');
+    await expect(btn).toContainText('Release to stop');
+    await btn.dispatchEvent('pointerup');
+    await expect(btn).toHaveAttribute('aria-pressed', 'false');
+    expect(await page.evaluate(() => window.__speech)).toMatchObject({ started: 1, stopped: 1 });
+  });
+
+  test('a keyboard tap toggles and a keyboard hold stops on release', async ({ page }) => {
+    await ready(page);
+    const btn = page.locator('[data-speak]');
+    await btn.focus();
+    await page.keyboard.press('Space');
+    await expect(btn).toHaveAttribute('aria-pressed', 'true');
+    await page.keyboard.press('Enter');
+    await expect(btn).toHaveAttribute('aria-pressed', 'false');
+    await page.keyboard.down('Space');
+    await page.waitForTimeout(HOLD_MS);
+    await expect(btn).toHaveAttribute('aria-pressed', 'true');
+    await page.keyboard.up('Space');
+    await expect(btn).toHaveAttribute('aria-pressed', 'false');
   });
 
   test('holding it listens, and letting go stops', async ({ page }) => {
@@ -227,6 +276,7 @@ test.describe('the control to talk', () => {
     await btn.dispatchEvent('pointerdown');
     await expect.poll(() => page.evaluate(() => window.__speech), { timeout: 10000 })
       .toMatchObject({ started: 1, stopped: 0 });
+    await page.waitForTimeout(HOLD_MS);
     await btn.dispatchEvent('pointerup');
     await expect.poll(() => page.evaluate(() => window.__speech), { timeout: 10000 })
       .toMatchObject({ started: 1, stopped: 1 });
@@ -240,6 +290,8 @@ test.describe('the control to talk', () => {
     await expect(btn).toHaveAttribute('aria-pressed', 'true');
     const listening = (await btn.textContent()).trim();
     expect(listening).not.toBe(resting);
+    expect(resting).toBe('Tap to talk');
+    await page.waitForTimeout(HOLD_MS);
     await btn.dispatchEvent('pointerup');
     await expect(btn).toHaveAttribute('aria-pressed', 'false');
   });
@@ -264,6 +316,7 @@ test.describe('the control to talk', () => {
     const btn = page.locator('[data-speak]');
     await btn.dispatchEvent('pointerdown');
     await expect.poll(() => page.evaluate(() => window.__speech.local)).toBe(true);
+    await page.waitForTimeout(HOLD_MS);
     await btn.dispatchEvent('pointerup');
     // And it listened anyway, which is the half his ruling settles.
     expect(await page.evaluate(() => window.__speech.started)).toBe(1);
