@@ -287,14 +287,21 @@ test.describe('goal candidates: old Safari (review HIGH 4)', () => {
   });
 });
 
-test.describe('goal candidates: preselect keeps reduction targets on top of six skills (review HIGH 3)', () => {
-  test('six skills and two reduction targets are all preselected', () => {
+test.describe('goal candidates: preselect is six in all, reduction targets first', () => {
+  test('seven skills and two reduction targets preselect six, both reduction targets among them', () => {
     const lines = ['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((l) => `- Target Number ${l} goal`);
     lines.push('- Elopement (behavior of concern): none today');
     lines.push('- Aggression (behavior targeted for reduction): 0 occurrences');
     const chosen = GC.preselect(GC.score(lines.join('\n')));
-    expect(chosen.filter((c) => c.kind === 'skill')).toHaveLength(6);
+    expect(chosen).toHaveLength(6);
+    expect(chosen.filter((c) => c.kind === 'skill')).toHaveLength(4);
     expect(chosen.filter((c) => c.kind === 'reduction').map((c) => c.name).sort()).toEqual(['Aggression', 'Elopement']);
+  });
+
+  test('eight reduction targets preselect six of them', () => {
+    const lines = [1, 2, 3, 4, 5, 6, 7, 8].map((i) => `- Behavior ${i} (behavior of concern): none today`);
+    const chosen = GC.preselect(GC.score(lines.join('\n')));
+    expect(chosen).toHaveLength(6);
   });
 });
 

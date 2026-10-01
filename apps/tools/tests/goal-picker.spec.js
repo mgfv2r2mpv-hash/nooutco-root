@@ -178,12 +178,15 @@ test.describe('goal picker: review defects', () => {
     expect(await cells(page)).not.toContain('Written from old notes.');
   });
 
-  test('HIGH 3: six skills and a reduction target are all kept and checked', async ({ page }) => {
+  test('six is the master cap: five skills and a reduction target are checked, a sixth skill is not', async ({ page }) => {
     const skills = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot'];
     const notes = skills.map((n) => `- ${n} goal: 2 of 5`).join('\n')
       + '\n- Elopement goal: targeted for reduction, 0 occurrences';
-    await open(page, notes, [...skills.map((n) => row(n)), row('Elopement', 'No occurrences of elopement today.')]);
-    await expect(page.locator('[data-goal-chip] input:checked')).toHaveCount(7);
+    await open(page, notes, [...skills.slice(0, 5).map((n) => row(n)), row('Elopement', 'No occurrences of elopement today.')]);
+    await expect(page.locator('[data-goal-chip] input:checked')).toHaveCount(6);
+    await expect(chip(page, 'Elopement').locator('input')).toBeChecked();
+    await expect(chip(page, 'Foxtrot').locator('input')).not.toBeChecked();
+    await expect(page.locator('[data-goal-count]')).toHaveText('6 of 6');
     await expect(page.locator('[data-goal-update]')).toHaveCount(0);
   });
 

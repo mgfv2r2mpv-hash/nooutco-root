@@ -10,6 +10,7 @@
  * file only draws them. Defines window.GoalPicker. Loaded before engine.jsx.
  */
 const POP_MAX_WIDTH = 280;
+const GOAL_PICK_MAX = 6;
 
 function GoalPicker({ candidates, picked, canUpdate, busy, onToggle, onUpdate }) {
   const [open, setOpen] = React.useState(null);
@@ -49,6 +50,9 @@ function GoalPicker({ candidates, picked, canUpdate, busy, onToggle, onUpdate })
   if (!candidates || !candidates.length) return null;
   return (
     <div className="gp-strip" data-testid="goal-picker" ref={stripRef}>
+      <div className="gp-count" data-goal-count title="Six goals at most, skills and behavior reduction together. A seventh check unchecks the leftmost preselected goal, then the oldest one you checked.">
+        {picked.length} of {GOAL_PICK_MAX}
+      </div>
       <div className="gp-chips">
         {candidates.map((c) => {
           const on = picked.indexOf(c.name) !== -1;

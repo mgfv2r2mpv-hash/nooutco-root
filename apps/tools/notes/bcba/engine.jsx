@@ -2147,10 +2147,9 @@ function App() {
       const candidates = window.GoalCandidates.score(maskedIntake);
       if (!candidates.length) return null;
       const pre = window.GoalCandidates.preselect(candidates).map((c) => c.name);
-      const free = candidates.filter((c) => c.kind === "reduction").map((c) => c.name);
       return {
         candidates,
-        picks: window.GoalPicks.init({ order: candidates.map((c) => c.name), preselected: pre, free }),
+        picks: window.GoalPicks.init({ order: candidates.map((c) => c.name), preselected: pre }),
         held: {},
         // The notes this draft was written from. A dropped row is stamped with
         // this, so it is handed back only while the notes still match it.
@@ -2175,10 +2174,15 @@ function App() {
   };
   const goalGridNames = (gp, rows) =>
     gp.candidates.map((c) => c.name).filter((n) => rowForGoal(rows, n) !== -1);
-  const toggleGoalPick = (name) =>
-    patchS((s) => (s.goalPicker
-      ? { goalPicker: { ...s.goalPicker, picks: window.GoalPicks.toggle(s.goalPicker.picks, name) } }
-      : {}));
+  const toggleGoalPick = (name) => {
+    const gp = S.goalPicker;
+    if (!gp) return;
+    const picks = window.GoalPicks.toggle(gp.picks, name);
+    const gone = window.GoalPicks.evicted(gp.picks, picks, name);
+    patchS((s) => (s.goalPicker ? { goalPicker: { ...s.goalPicker, picks } } : {}));
+    // The cap unchecks a chip on its own; the thread says which one went.
+    if (gone.length) pushThread("assistant", "status", `Six goals at most, skills and behavior reduction together. Unchecked: ${gone.map(shownGoal).join(", ")}.`);
+  };
   const goalUpdateBusy = React.useRef(false);
   const updateGoals = async () => {
     const gp = S.goalPicker;
@@ -2230,8 +2234,8 @@ function App() {
           .map((x) => ({ ...x.row, goal: x.row.goal || x.n }));
       }
       const missing = fresh.filter((n) => rowForGoal(made, n) === -1);
-      // Six picked skills at most; a reduction target is extra and is never the
-      // row that gets dropped. Anything that does not fit is named in the thread.
+      // Six rows in all, skills and reduction targets together. A reduction
+      // target keeps its row first. Anything that does not fit is named in the thread.
       const reductionNames = gp.candidates.filter((c) => c.kind === "reduction").map((c) => c.name);
       const fit = window.GoalPicks.capRows(
         [...kept, ...recalled, ...made],
@@ -2246,7 +2250,7 @@ function App() {
       }));
       const notes = [];
       if (missing.length) notes.push(`No row came back for: ${missing.join(", ")}.`);
-      if (fit.dropped.length) notes.push(`Not kept (six skill rows at most): ${fit.dropped.map((r) => r.goal).join(", ")}.`);
+      if (fit.dropped.length) notes.push(`Not kept (six rows at most, reduction targets first): ${fit.dropped.map((r) => r.goal).join(", ")}.`);
       pushThread("assistant", "status", notes.length ? `Goals updated, with gaps.\n${notes.join("\n")}` : "Goals updated.");
     } catch (e) {
       pushThread("assistant", "status", "Goal update failed.\nNothing changed; try again.");
