@@ -236,3 +236,56 @@ test.describe('goal candidates: bracket rows', () => {
     expect(rows.map((r) => r.program)).toEqual(['Receptive ID', 'Tact']);
   });
 });
+
+test.describe('goal candidates: sentence fragments are never names (review HIGH 2)', () => {
+  const FRAGMENTS = [
+    '- He did not meet his goal of staying at the table.',
+    '- BT ran the program for 3 of 5 trials.',
+    '- Client engaged in elopement, a behavior of concern.',
+    '- Mom reported 2 episodes at home.',
+    '- Client ate 4/5 bites independently.',
+  ];
+
+  for (const line of FRAGMENTS) {
+    test(`no fragment name from: ${line}`, () => {
+      for (const c of GC.score(line)) {
+        expect(c.name, c.name).not.toMatch(/^(?:he|she|bt|client|mom|they)\b/i);
+        expect(c.name, c.name).not.toMatch(/\b(?:the|his|her|a|an|of|to|ran|ate|did)$/i);
+      }
+      expect(GC.preselect(GC.score(line))).toEqual([]);
+    });
+  }
+
+  test('a name after the colon wins over a sentence before the frame', () => {
+    const out = GC.score('- Client engaged in elopement, a behavior of concern: Elopement');
+    expect(out.map((c) => c.name)).toContain('Elopement');
+    expect(out.every((c) => !/^client/i.test(c.name))).toBe(true);
+  });
+
+  test('the same fragments mid-note do not poison a real goal line', () => {
+    const out = GC.score(FRAGMENTS.join('\n') + '\n- Elopement goal: reduce to zero');
+    expect(GC.preselect(out).map((c) => c.name)).toEqual(['Elopement']);
+  });
+});
+
+test.describe('goal candidates: old Safari (review HIGH 4)', () => {
+  test('the source holds no lookbehind, which throws on Safari before 16.4', () => {
+    expect(SRC).not.toMatch(/\(\?<[!=]/);
+  });
+
+  test('"behavior goal" is still a reduction frame, not a goal word', () => {
+    const out = GC.score('- Behavior goal: Elopement');
+    expect(find(out, 'Elopement').kind).toBe('reduction');
+  });
+});
+
+test.describe('goal candidates: preselect keeps reduction targets on top of six skills (review HIGH 3)', () => {
+  test('six skills and two reduction targets are all preselected', () => {
+    const lines = ['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((l) => `- Target Number ${l} goal`);
+    lines.push('- Elopement (behavior of concern): none today');
+    lines.push('- Aggression (behavior targeted for reduction): 0 occurrences');
+    const chosen = GC.preselect(GC.score(lines.join('\n')));
+    expect(chosen.filter((c) => c.kind === 'skill')).toHaveLength(6);
+    expect(chosen.filter((c) => c.kind === 'reduction').map((c) => c.name).sort()).toEqual(['Aggression', 'Elopement']);
+  });
+});

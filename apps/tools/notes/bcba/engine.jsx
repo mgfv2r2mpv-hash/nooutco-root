@@ -2118,16 +2118,27 @@ function App() {
     for (let i = 0; i < t.length; i++) h = ((h * 33) ^ t.charCodeAt(i)) >>> 0;
     return t.length + ":" + h;
   };
+  // The picker is a convenience over a draft the technician has already paid
+  // for, so a throw here (an old browser, an odd line of notes) returns null
+  // and never reaches the draft.
   const buildGoalPicker = (maskedIntake) => {
-    if (tool.id !== "sup" || !window.GoalCandidates || !window.GoalPicks) return null;
-    const candidates = window.GoalCandidates.score(maskedIntake);
-    if (!candidates.length) return null;
-    const pre = window.GoalCandidates.preselect(candidates).map((c) => c.name);
-    return {
-      candidates,
-      picks: window.GoalPicks.init({ order: candidates.map((c) => c.name), preselected: pre }),
-      held: {},
-    };
+    try {
+      if (tool.id !== "sup" || !window.GoalCandidates || !window.GoalPicks) return null;
+      const candidates = window.GoalCandidates.score(maskedIntake);
+      if (!candidates.length) return null;
+      const pre = window.GoalCandidates.preselect(candidates).map((c) => c.name);
+      const free = candidates.filter((c) => c.kind === "reduction").map((c) => c.name);
+      return {
+        candidates,
+        picks: window.GoalPicks.init({ order: candidates.map((c) => c.name), preselected: pre, free }),
+        held: {},
+        // The notes this draft was written from. A dropped row is stamped with
+        // this, so it is handed back only while the notes still match it.
+        stamp: notesStamp(maskedIntake),
+      };
+    } catch (e) {
+      return null;
+    }
   };
   // The grid row a candidate name is already shown as, by equal or contained
   // wording, so a reworded row is not read as a missing goal.
@@ -2139,7 +2150,7 @@ function App() {
     const k = goalKey(shownGoal(name));
     return (rows || []).findIndex((r) => {
       const g = goalKey(r && r.goal);
-      return g && (g === k || g.includes(k) || k.includes(g));
+      return g && g === k;
     });
   };
   const goalGridNames = (gp, rows) =>
@@ -2156,21 +2167,23 @@ function App() {
     const plan = window.GoalPicks.plan(gp.picks, goalGridNames(gp, rows));
     if (!plan.added.length && !plan.removed.length) return;
     goalUpdateBusy.current = true;
-    const stamp = notesStamp(intakeBody(S.values));
+    // Held text is stamped with the notes it was written from (gp.stamp) and
+    // handed back only against the notes as they stand now.
+    const nowStamp = notesStamp(intakeBody(scrubValues(scrubMapRef.current || [])));
     try {
       let held = gp.held;
       const dropped = new Set();
       plan.removed.forEach((n) => {
         const at = rowForGoal(rows, n);
         if (at === -1) return;
-        held = window.GoalPicks.hold(held, n, rows[at], stamp);
+        held = window.GoalPicks.hold(held, n, rows[at], gp.stamp);
         dropped.add(at);
       });
       const kept = rows.filter((_, i) => !dropped.has(i));
       const recalled = [];
       const fresh = [];
       plan.added.forEach((n) => {
-        const row = window.GoalPicks.recall(held, n, stamp);
+        const row = window.GoalPicks.recall(held, n, nowStamp);
         if (row) recalled.push(row); else fresh.push(n);
       });
       let made = [];
@@ -2181,7 +2194,7 @@ function App() {
         calls = 1;
         const userMsg = [
           `GOAL UPDATE`,
-          `Add one row to goalsAnalyzed for each of these goals, using the goal name verbatim: ${fresh.map((n) => `"${n}"`).join(", ")}.`,
+          `Add one row to goalsAnalyzed for each of these goals, using the goal name verbatim: ${fresh.map((n) => JSON.stringify(n)).join(", ")}.`,
           `Write each new row from the notes only. Do not add rows for any other goal.`,
           returnRule(`Never fabricate beyond what is stated.`),
         ].join("\n");
@@ -2192,18 +2205,29 @@ function App() {
         // Only rows for the goals asked about are taken. Every other row in the
         // model's reply is ignored, so the rows already shown stay byte-identical.
         made = fresh
-          .map((n) => got[rowForGoal(got, n)])
-          .filter(Boolean)
-          .map((row, i) => ({ ...row, goal: row.goal || fresh[i] }));
+          .map((n) => ({ n, row: got[rowForGoal(got, n)] }))
+          .filter((x) => x.row)
+          .map((x) => ({ ...x.row, goal: x.row.goal || x.n }));
       }
-      const next = [...kept, ...recalled, ...made].slice(0, 6);
+      const missing = fresh.filter((n) => rowForGoal(made, n) === -1);
+      // Six picked skills at most; a reduction target is extra and is never the
+      // row that gets dropped. Anything that does not fit is named in the thread.
+      const reductionNames = gp.candidates.filter((c) => c.kind === "reduction").map((c) => c.name);
+      const fit = window.GoalPicks.capRows(
+        [...kept, ...recalled, ...made],
+        (r) => reductionNames.some((n) => rowForGoal([r], n) !== -1),
+      );
+      const next = fit.rows;
       patchS((s) => ({
         output: { ...s.output, goalsAnalyzed: next },
         conversation,
         lastCallAt: calls ? Date.now() : s.lastCallAt,
         goalPicker: s.goalPicker ? { ...s.goalPicker, held } : null,
       }));
-      pushThread("assistant", "status", "Goals updated.");
+      const notes = [];
+      if (missing.length) notes.push(`No row came back for: ${missing.join(", ")}.`);
+      if (fit.dropped.length) notes.push(`Not kept (six skill rows at most): ${fit.dropped.map((r) => r.goal).join(", ")}.`);
+      pushThread("assistant", "status", notes.length ? `Goals updated, with gaps.\n${notes.join("\n")}` : "Goals updated.");
     } catch (e) {
       pushThread("assistant", "status", "Goal update failed.\nNothing changed; try again.");
     } finally {
