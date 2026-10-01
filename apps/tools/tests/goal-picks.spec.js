@@ -169,3 +169,30 @@ test.describe('goal picks: six is the master cap across skills and reduction tar
     expect(GP.capRows(rows, (r) => r.goal === 'R1')).toEqual({ rows, dropped: [] });
   });
 });
+
+test.describe('goal picks: chips follow the table after a swap', () => {
+  test('sync unchecks a name whose row is not in the table', () => {
+    const s = GP.toggle(GP.init(cand(eight, ['A1', 'B2'])), 'C3');
+    expect(GP.checked(GP.sync(s, ['A1', 'B2'], ['C3']))).toEqual(['A1', 'B2']);
+  });
+
+  test('sync checks a name whose row is still in the table', () => {
+    const s = GP.toggle(GP.init(cand(eight, ['A1', 'B2'])), 'B2');
+    expect(GP.checked(GP.sync(s, ['A1', 'B2'], ['B2']))).toEqual(['A1', 'B2']);
+  });
+
+  test('sync leaves names it was not asked about alone and never mutates', () => {
+    const s = GP.init(cand(eight, ['A1', 'B2']));
+    const before = JSON.stringify(s);
+    const out = GP.sync(s, [], ['C3']);
+    expect(GP.checked(out)).toEqual(['A1', 'B2']);
+    expect(JSON.stringify(s)).toBe(before);
+  });
+
+  test('sync never checks past six', () => {
+    const s = GP.init(cand(eight, eight.slice(0, 6)));
+    const off = GP.toggle(s, 'A1');
+    const on = GP.toggle(off, 'G7');
+    expect(GP.checked(GP.sync(on, ['A1'], ['A1']))).toHaveLength(6);
+  });
+});

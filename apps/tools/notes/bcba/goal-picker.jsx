@@ -3,8 +3,10 @@
  * Each chip is a checkbox, the goal name and an eye. The eye opens a small
  * popover with the line of the notes the name came from and why it scored.
  * Both come from the masked text, so nothing here ever holds a raw name.
- * Unchecked chips stay in the strip. The Update goals button shows only while
- * the picks differ from the grid, and is disabled while its turn runs.
+ * Unchecked chips stay in the strip. A toggle applies by itself (the engine
+ * waits out a short pause and runs one turn), so there is no button; the strip
+ * only reports where that is, in data-swap (idle, waiting or pending), and marks
+ * the chips a running turn is changing with data-pending.
  *
  * The rules (cap of six, eviction order, held text) live in goal-picks.js. This
  * file only draws them. Defines window.GoalPicker. Loaded before engine.jsx.
@@ -12,7 +14,7 @@
 const POP_MAX_WIDTH = 280;
 const GOAL_PICK_MAX = 6;
 
-function GoalPicker({ candidates, picked, canUpdate, busy, onToggle, onUpdate }) {
+function GoalPicker({ candidates, picked, pending, state, onToggle }) {
   const [open, setOpen] = React.useState(null);
   const eyes = React.useRef({});
   const stripRef = React.useRef(null);
@@ -49,15 +51,17 @@ function GoalPicker({ candidates, picked, canUpdate, busy, onToggle, onUpdate })
   }, [open]);
   if (!candidates || !candidates.length) return null;
   return (
-    <div className="gp-strip" data-testid="goal-picker" ref={stripRef}>
+    <div className="gp-strip" data-testid="goal-picker" data-swap={state || "idle"} ref={stripRef}>
       <div className="gp-count" data-goal-count title="Six goals at most, skills and behavior reduction together. A seventh check unchecks the leftmost preselected goal, then the oldest one you checked.">
         {picked.length} of {GOAL_PICK_MAX}
       </div>
       <div className="gp-chips">
         {candidates.map((c) => {
           const on = picked.indexOf(c.name) !== -1;
+          const isPending = (pending || []).indexOf(c.name) !== -1;
           return (
             <span key={c.name} className={"gp-chip" + (on ? " gp-on" : "")} data-goal-chip={c.shown || c.name}
+                  data-pending={isPending ? "true" : undefined}
                   ref={(el) => { chipEls.current[c.name] = el; }}>
               <label className="gp-label">
                 <input type="checkbox" checked={on} onChange={() => onToggle(c.name)} aria-label={c.shown || c.name} />
@@ -85,11 +89,6 @@ function GoalPicker({ candidates, picked, canUpdate, busy, onToggle, onUpdate })
           );
         })}
       </div>
-      {canUpdate && (
-        <button type="button" className="gp-update" data-goal-update disabled={busy} onClick={onUpdate}>
-          {busy ? "Updating goals" : "Update goals"}
-        </button>
-      )}
     </div>
   );
 }
