@@ -188,6 +188,21 @@ test.describe('deletions rail icons', () => {
     await expect(strip(page)).toHaveCount(0);
   });
 
+  test('a mouse click pins the popover open after the pointer leaves, and a second click unpins it', async ({ page }) => {
+    await act(page, 0, 'dismiss').click();
+    const btn = strip(page).locator('button').first();
+    const pop = page.locator('[data-rail-dismissed-pop]');
+    await btn.hover();
+    await expect(pop).toBeVisible();
+    await btn.click();
+    await page.mouse.move(2, 2);
+    await expect(pop).toBeVisible();
+    await expect(btn).toHaveAttribute('aria-expanded', 'true');
+    await btn.click();
+    await page.mouse.move(2, 2);
+    await expect(pop).toHaveCount(0);
+  });
+
   test('dismissing does not change what Copy gives', async ({ page }) => {
     const before = await copied(page);
     await act(page, 0, 'dismiss').click();
