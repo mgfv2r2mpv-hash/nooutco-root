@@ -278,6 +278,26 @@ test.describe('review defects: dismissed strip, queued asks, phone targets', () 
   test.describe('with a mouse', () => {
     test.beforeEach(async ({ page }) => { await generate(page); });
 
+    test('LOW 7: the tell box, the queue and the dismissed popover are 30px tall at desktop width too', async ({ page }) => {
+      await act(page, 0, 'tell').click();
+      const box = page.locator('[data-rail-tell-box]');
+      await box.getByRole('button', { name: 'Restore part of it' }).click();
+      await box.locator('input').fill('keep the word');
+      const heights = async (loc) => loc.evaluateAll((els) => els.map((e) => e.getBoundingClientRect().height));
+      const tell = await heights(box.locator('button'));
+      expect(tell.length).toBeGreaterThan(2);
+      tell.forEach((h) => expect(h).toBeGreaterThanOrEqual(30));
+      await box.locator('[data-rail-tell-save]').click();
+      const asks = await heights(page.locator(`[data-corrections-asks="${SEC}"] button`));
+      expect(asks.length).toBeGreaterThan(0);
+      asks.forEach((h) => expect(h).toBeGreaterThanOrEqual(30));
+      await act(page, 1, 'dismiss').click();
+      await strip(page).locator('button').first().click();
+      const pop = await heights(page.locator('[data-rail-dismissed-pop] button'));
+      expect(pop.length).toBeGreaterThan(0);
+      pop.forEach((h) => expect(h).toBeGreaterThanOrEqual(30));
+    });
+
     test('MED 9: Escape closes the pinned strip and focus stays on its button', async ({ page }) => {
       await act(page, 0, 'dismiss').click();
       const btn = strip(page).locator('button').first();
