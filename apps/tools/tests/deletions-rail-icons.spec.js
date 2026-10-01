@@ -192,6 +192,7 @@ test.describe('deletions rail icons', () => {
     await act(page, 0, 'dismiss').click();
     const btn = strip(page).locator('button').first();
     const pop = page.locator('[data-rail-dismissed-pop]');
+    await page.mouse.move(2, 2);
     await btn.hover();
     await expect(pop).toBeVisible();
     await btn.click();
