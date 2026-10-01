@@ -606,11 +606,16 @@ test.describe('the analysis rules reach the technician tool and no other', () =>
     '- Precise verbs: administered [instrument], conducted a preference assessment, conducted FBA/FA, ran probes, established baseline, observed, interviewed, scored, identified function.',
     // sup's one-owner-per-facet specs, read 2026-10-02. Each says which section
     // owns a facet and asks for the reason to be kept, so none takes the
-    // analysis away from the BCBA. The progress line replaces its older form.
-    '- progress (Summary of Progress and Findings; owns the session arc): up to 10 sentences on what data or trends were reviewed, which goals were the focus and why, what was observed that the goal rows do not carry, and any probes or assessments run.',
-    '"nextSteps" = what happens to that goal next (continue, modify, hold, mastered or discontinued) with the reason from that goal\'s own data folded in, in the BCBA\'s terms.',
+    // analysis away from the BCBA. The progress line replaces its older form,
+    // and now carries the sup tuning's SENTENCE BUDGETS in place of a count.
+    '- progress (Summary of Progress and Findings; owns the session arc): sized by SENTENCE BUDGETS, on what data or trends were reviewed, which goals were the focus and why, what was observed that the goal rows do not carry, and any probes or assessments run.',
+    '"nextSteps" = what happens to that goal next (continue, modify, hold, mastered or discontinued) with the reason from that goal\'s own data folded in, in the BCBA\'s terms, 1 sentence.',
     'Write it from what the notes say about that goal, so two goals with the same disposition still read differently because their reasons differ.',
     'Each change is stated here once, with its data reason folded into the sentence, and this includes a change to a behavior plan.',
+    // sup tuning, section A, read 2026-10-01. Each limits restating or guessing and bans none of the BCBA's analysis.
+    'Do not assume a rule such as "two errors in a row, then a more intrusive prompt", because it varies by skill, child and clinician.',
+    'Give a reason only when the notes give one.',
+    'Escape each one as \\" so the JSON stays valid.',
     // Surfaced by the widening, read 2026-09-28. Output specs, checkbox
     // inference, one worked example, and the opinion carve-out, which flags
     // rather than removes and is the opposite of a ban.
