@@ -229,3 +229,91 @@ test.describe('quiet mode', () => {
     await expect(rail(page).locator('[data-rail-restore], [data-rail-tell], [data-rail-dismiss]')).toHaveCount(0);
   });
 });
+
+test.describe('review defects: dismissed strip, queued asks, phone targets', () => {
+  test.describe('on a touch screen', () => {
+    test.use({ viewport: { width: 375, height: 700 }, hasTouch: true });
+
+    test('MED 9: a tap opens the strip and the next tap closes it', async ({ page }) => {
+      await generate(page);
+      await act(page, 0, 'dismiss').tap();
+      const btn = strip(page).locator('button').first();
+      await btn.tap();
+      await expect(page.locator('[data-rail-dismissed-pop]')).toBeVisible();
+      await btn.tap();
+      await expect(page.locator('[data-rail-dismissed-pop]')).toHaveCount(0);
+    });
+
+    test('MED 12: every control in the rail, the tell box and the queue is 30px tall', async ({ page }) => {
+      await generate(page);
+      await act(page, 0, 'tell').tap();
+      const box = page.locator('[data-rail-tell-box]');
+      await box.getByRole('button', { name: 'Restore part of it' }).tap();
+      await box.locator('input').fill('keep the word');
+      const heights = async (loc) => loc.evaluateAll((els) => els.map((e) => e.getBoundingClientRect().height));
+      (await heights(box.locator('button'))).forEach((h) => expect(h).toBeGreaterThanOrEqual(30));
+      await box.locator('[data-rail-tell-save]').tap();
+      (await heights(page.locator(`[data-corrections-asks="${SEC}"] button`))).forEach((h) => expect(h).toBeGreaterThanOrEqual(30));
+      await act(page, 1, 'dismiss').tap();
+      await strip(page).locator('button').first().tap();
+      (await heights(page.locator('[data-rail-dismissed-pop] button'))).forEach((h) => expect(h).toBeGreaterThanOrEqual(30));
+    });
+  });
+
+  test.describe('with a mouse', () => {
+    test.beforeEach(async ({ page }) => { await generate(page); });
+
+    test('MED 9: Escape closes the pinned strip and focus stays on its button', async ({ page }) => {
+      await act(page, 0, 'dismiss').click();
+      const btn = strip(page).locator('button').first();
+      await btn.click();
+      await expect(btn).toHaveAttribute('aria-expanded', 'true');
+      await page.mouse.move(0, 0);
+      await page.keyboard.press('Escape');
+      await expect(page.locator('[data-rail-dismissed-pop]')).toHaveCount(0);
+      await expect(btn).toHaveAttribute('aria-expanded', 'false');
+      await expect(btn).toBeFocused();
+    });
+
+    test('MED 9: the button names the popover it controls', async ({ page }) => {
+      await act(page, 0, 'dismiss').click();
+      const btn = strip(page).locator('button').first();
+      await btn.click();
+      const id = await btn.getAttribute('aria-controls');
+      expect(id).toBeTruthy();
+      await expect(page.locator(`#${id}`)).toHaveAttribute('data-rail-dismissed-pop', SEC);
+    });
+
+    test('MED 9: a strip that unmounts does not come back already open', async ({ page }) => {
+      await act(page, 0, 'dismiss').click();
+      await strip(page).locator('button').first().click();
+      await page.locator('[data-rail-reopen]').first().click();
+      await expect(strip(page)).toHaveCount(0);
+      await page.mouse.move(0, 0);
+      await act(page, 0, 'dismiss').click();
+      await page.mouse.move(0, 0);
+      await expect(strip(page).locator('button').first()).toHaveAttribute('aria-expanded', 'false');
+      await expect(page.locator('[data-rail-dismissed-pop]')).toHaveCount(0);
+    });
+
+    test('MED 10: dismissing a row drops the ask queued for it', async ({ page }) => {
+      await act(page, 0, 'tell').click();
+      const box = page.locator('[data-rail-tell-box]');
+      await box.getByRole('button', { name: 'Restore part of it' }).click();
+      await box.locator('[data-rail-tell-save]').click();
+      await expect(page.locator(`[data-corrections-asks="${SEC}"]`)).toBeVisible();
+      await act(page, 0, 'dismiss').click();
+      await expect(page.locator(`[data-corrections-asks="${SEC}"]`)).toHaveCount(0);
+    });
+
+    test('MED 10: dismissing a row with its tell box open leaves no box when it is reopened', async ({ page }) => {
+      await act(page, 0, 'tell').click();
+      await expect(page.locator('[data-rail-tell-box]')).toHaveCount(1);
+      await act(page, 0, 'dismiss').click();
+      await strip(page).locator('button').first().click();
+      await page.locator('[data-rail-reopen]').first().click();
+      await expect(cuts(page)).toHaveCount(3);
+      await expect(page.locator('[data-rail-tell-box]')).toHaveCount(0);
+    });
+  });
+});

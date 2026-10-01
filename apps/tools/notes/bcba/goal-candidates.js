@@ -114,7 +114,12 @@
     var sequence = [];
     if (fields.length === 5 && details !== "") {
       var tokens = details.split(/[\s,]+/).filter(Boolean);
-      var isCodes = tokens.every(function (t) { return /^[A-Za-z0-9+\-]{1,4}$/.test(t); });
+      // A code is a known one in any case, or an unexplained one written the
+      // way codes are (capitals and digits, or a bare + or -). A lowercase or
+      // capitalised word such as "Did well" is free text.
+      var isCodes = tokens.every(function (t) {
+        return KNOWN_CODES.indexOf(t.toUpperCase()) !== -1 || /^(?:[A-Z]{1,4}\d?|[A-Z]?\d{1,3}|[+\-])$/.test(t);
+      });
       if (isCodes) sequence = tokens;
     }
     var unexplained = [];

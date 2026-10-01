@@ -204,6 +204,15 @@ test.describe('goal candidates: bracket rows', () => {
     expect(r.sequence).toEqual([]);
   });
 
+  test('MED 11: short free text in Details is not a prompt-code sequence', () => {
+    for (const text of ['Did well', 'Did well today', 'tired', 'Ok then']) {
+      const r = GC.parseRow(`[Receptive ID | Animals | 5/3 | 62% | ${text}]`);
+      expect(r.sequence, text).toEqual([]);
+      expect(r.unexplained, text).toEqual([]);
+      expect(r.details).toBe(text);
+    }
+  });
+
   test('8: extra pipes inside Details stay in the details', () => {
     const r = GC.parseRow('[Receptive ID | Animals | 5/3 | 62% | tired | out of seat | I I M]');
     expect(r.details).toBe('tired | out of seat | I I M');

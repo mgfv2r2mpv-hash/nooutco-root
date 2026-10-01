@@ -1712,16 +1712,21 @@ body.is-pointing, body.is-pointing * { cursor: crosshair !important; }
 .cx-dismissed-item .cx-ck { min-height: 30px; }
 
 /* sup-tuning D: goal picker strip above the Goals Analyzed grid */
-.gp-strip { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; margin: 0 0 10px; }
+.gp-strip { position: relative; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; margin: 0 0 10px; }
 .gp-chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1 1 auto; min-width: 0; }
-.gp-chip { position: relative; display: inline-flex; align-items: center; max-width: 100%; min-height: 30px; border: 1.5px solid #cfe0bd; border-radius: 15px; background: #fff; }
+.gp-chip { display: inline-flex; align-items: center; max-width: 100%; min-height: 30px; border: 1.5px solid #cfe0bd; border-radius: 15px; background: #fff; }
 .gp-chip.gp-on { border-color: #6f8a56; background: #f3f8ec; }
 .gp-label { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 4px 0 10px; cursor: pointer; font-size: 13px; color: #2f3b25; min-width: 0; }
 .gp-label input { width: 18px; height: 18px; flex: 0 0 auto; }
 .gp-name { overflow-wrap: anywhere; }
 .gp-eye { min-width: 30px; min-height: 30px; padding: 0; cursor: pointer; font-size: 14px; background: transparent; border: 0; border-radius: 15px; }
-.gp-pop { position: absolute; top: 100%; left: 0; z-index: 20; width: min(280px, 80vw); margin-top: 4px; padding: 8px 10px; background: #fff; border: 1.5px solid #cfe0bd; border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,.12); font-size: 12px; line-height: 1.45; color: #2f3b25; overflow-wrap: anywhere; }
+.gp-pop { position: absolute; top: 100%; left: 0; max-width: 100%; box-sizing: border-box; z-index: 20; width: min(280px, 100%); margin-top: 4px; padding: 8px 10px; background: #fff; border: 1.5px solid #cfe0bd; border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,.12); font-size: 12px; line-height: 1.45; color: #2f3b25; overflow-wrap: anywhere; }
 .gp-src { font-style: italic; margin-bottom: 4px; }
 .gp-why { color: #55603f; }
 .gp-update { min-height: 30px; padding: 0 14px; cursor: pointer; font: inherit; font-size: 13px; font-weight: 600; color: #fff; background: #6f8a56; border: 0; border-radius: 15px; }
 .gp-update:disabled { opacity: .6; cursor: default; }
+
+/* Phone width: every control in the rail, its tell box and the queued asks. */
+@media (max-width: 640px) {
+  .cx-tell .cx-ck, .cx-asks .cx-ck, .cx-dismissed .cx-ck { min-height: 30px; }
+}

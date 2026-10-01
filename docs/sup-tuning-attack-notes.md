@@ -80,3 +80,9 @@ Items 1 (seven reduction goals, floor wins), 2 (no reduction goals, empty Behavi
 - 3: "Elopement goal: 0 occurrences, first-then schedule used before transitions"; expected Behavior carries the strategy sentence.
 - 13: BT toggle "No" with notes "BT was present"; toggle "Yes" with notes "BCBA only"; expected a hint, not a silent pick.
 - 14 (quotes): the repeat check handles quoted lines inside the sentence splitter (see E); apostrophe and nested quote handling in the prompt is section A.
+
+## Review follow-up: LOW items (gnhf run read-dev-lavish-sup-e3af6a)
+
+- `chosenGoals` is intentionally unwired from the picker. `buildUserPrompt` reads `values.chosenGoals` and `migrateDraft` carries it, but nothing sets it from `S.goalPicker.picks`: the picker acts on the grid after a draft (Update goals), and a pick made before the draft would need a masked name and a place on the form to hold it. Wiring it is a separate change; the prompt side is already in place and tested in `sup-chosen-goals.spec.js`.
+- Fixed with specs: scored line length is capped (400 characters); the `fresh[i]` fallback index after `filter(Boolean)`; goal names in the GOAL UPDATE message are JSON-escaped; rows match on normalized equal text, not `includes`; "Goals updated." is said only when every requested goal got a row, otherwise the thread lists the goals that got none.
+- Short free-text Details such as "Did well" are no longer read as a prompt-code sequence; a code is a known one or is written in capitals and digits.
