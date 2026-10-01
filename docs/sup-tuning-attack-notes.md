@@ -57,3 +57,26 @@ Gaps (no test yet):
 
 - `notes/bcba/goal-picks.js` (window.GoalPicks) holds the cap rule, Update-button state and held row text with no DOM. `tests/goal-picks.spec.js` covers attack item 9 (seventh check, uncheck, recheck, eviction order), the pure half of item 10 (held text returns only while the notes text is unchanged) and the state half of item 11 (`differs` false means the button stays hidden).
 - Still untested until the picker UI exists: item 11 double press, item 10 through the real grid, the eye popover masked-text check (item 17), and 375px for the chip strip (item 18).
+
+## D. Picker UI result (attack items 9 to 11, 17 and 18 for D)
+
+Spec: `apps/tools/tests/goal-picker.spec.js` (8 cases, stubbed model). `goal-picker.jsx` draws the strip above Goals Analyzed; the state is `S.goalPicker` in engine.jsx, built after a draft from the masked intake. Covered: chips with preselected ones checked and no Update while picks match the grid; the eye popover shows the masked source line and why; uncheck then Update drops the row with no model call and the other rows stay; recheck restores the held row with no model call; after a notes edit a recheck makes exactly one revision turn and only that goal's row is taken from the reply (every other row stays byte-identical); a double press makes one turn; a seventh check unchecks the leftmost preselected chip; 375px with no horizontal scroll and 30px targets.
+
+Decisions to confirm:
+- The Update turn is one `GOAL UPDATE` revision turn through the untargeted path, not the edits contract (sup has none). Only rows whose goal matches the asked names are taken from the reply, so the model cannot reword the other rows.
+- Held rows are keyed by candidate name and stamped with a hash of the intake text, so no note text is kept beside them.
+
+Gaps (no test yet):
+- The chip name is the masked name, and a masked name hides its own words. In the harness the scrub turned "Color Probe" into a token, so the line no longer reads as a probe and the chip started checked. Real notes with a roster behave differently; failing input: a probe goal whose name the scrub masks.
+- A grid row the model worded differently from the chip (no shared words) is read as no row for that goal, so Update would add a second row. Matching is equal or contained text only.
+- The picker is not persisted: a reload shows no strip until the next draft.
+- The held row survives only while the intake text is equal; a revision turn that changes the grid without touching the intake does not clear it.
+
+## Attack items owned by section A (prompt text, not part of this run)
+
+Items 1 (seven reduction goals, floor wins), 2 (no reduction goals, empty Behavior), 3 (zero occurrences with antecedent strategies) and 13 (BT toggle against the notes) depend on SYSTEM_CORE and the voice-module prompt, which this run may not edit. No fixture can assert them without a live model, so they are recorded as gaps with these failing inputs:
+- 1: seven bullets each "targeted for reduction"; expected Behavior draft includes one clause saying the floor won.
+- 2: notes with only skill rows; expected Behavior empty and the empty note shown, no invented behavior.
+- 3: "Elopement goal: 0 occurrences, first-then schedule used before transitions"; expected Behavior carries the strategy sentence.
+- 13: BT toggle "No" with notes "BT was present"; toggle "Yes" with notes "BCBA only"; expected a hint, not a silent pick.
+- 14 (quotes): the repeat check handles quoted lines inside the sentence splitter (see E); apostrophe and nested quote handling in the prompt is section A.
