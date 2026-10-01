@@ -122,6 +122,8 @@ function placeChip(anchor, touch) {
 // selection. Long enough that a drag does not repaint on every pixel, short
 // enough that a technician who has stopped dragging is not waiting on it.
 const SELECTION_SETTLE_MS = 200;
+// A press shorter than this on the mic toggles listening; a longer one is push to talk.
+const MIC_TAP_MS = 350;
 
 function useTextSelection(onSelect) {
   const [chip, setChip] = React.useState(null); // {top, left, id, text}
@@ -824,6 +826,39 @@ function RevisionPanel({
     if (stop) stop();
   };
 
+  /* TAP TOGGLES, HOLD IS PUSH TO TALK. A click is a press and a release in the
+     same instant, so a pure hold-to-talk button started and stopped in one
+     breath and did nothing. A press shorter than MIC_TAP_MS now leaves the
+     recogniser running and the next press stops it; a longer press stops on
+     release as before. pressRef is a ref because pointerup, pointercancel and
+     lostpointercapture all report the same release and only the first counts. */
+  const [holding, setHolding] = React.useState(false);
+  const pressRef = React.useRef(null);
+  const holdTimerRef = React.useRef(null);
+  const clearHoldTimer = () => {
+    if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+    holdTimerRef.current = null;
+    setHolding(false);
+  };
+  const pressMic = () => {
+    if (pressRef.current) return;
+    const wasOn = !!stopRef.current;
+    if (!wasOn) startTalking();
+    if (!stopRef.current) return;
+    pressRef.current = { at: Date.now(), wasOn };
+    if (!wasOn) holdTimerRef.current = setTimeout(() => setHolding(true), MIC_TAP_MS);
+  };
+  const releaseMic = (cancelled) => {
+    const press = pressRef.current;
+    if (!press) return;
+    pressRef.current = null;
+    clearHoldTimer();
+    const isTap = Date.now() - press.at < MIC_TAP_MS;
+    if (press.wasOn || cancelled || !isTap) stopTalking();
+  };
+  React.useEffect(() => () => { if (holdTimerRef.current) clearTimeout(holdTimerRef.current); }, []);
+  const micSay = listening ? (holding ? "Listening. Release to stop." : "Listening. Tap to stop.") : "Tap to talk";
+
   // Let go of a button that is gone and the recogniser would keep the
   // microphone open with nothing left to put the words into.
   React.useEffect(() => () => { if (stopRef.current) stopRef.current(); }, []);
@@ -1407,22 +1442,23 @@ function RevisionPanel({
               data-speak="true"
               className={"icon-btn speak-btn" + (listening ? " is-on" : "")}
               aria-pressed={listening ? "true" : "false"}
-              title={listening ? "Listening. Release to stop." : "Hold to talk"}
+              title={listening ? micSay : "Tap to talk, or hold to talk while pressed"}
+              aria-label={micSay}
               /* Capturing the pointer means a thumb that slides off the button
                  while talking still ends the recording on the way up, rather
                  than leaving the microphone open. */
               onPointerDown={(e) => {
                 try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) { /* synthetic pointer */ }
-                startTalking();
+                pressMic();
               }}
-              onPointerUp={stopTalking}
-              onPointerCancel={stopTalking}
-              onLostPointerCapture={stopTalking}
+              onPointerUp={() => releaseMic(false)}
+              onPointerCancel={() => releaseMic(true)}
+              onLostPointerCapture={() => releaseMic(true)}
               onKeyDown={(e) => {
-                if (e.key === " " || e.key === "Enter") { e.preventDefault(); startTalking(); }
+                if (e.key === " " || e.key === "Enter") { e.preventDefault(); if (!e.repeat) pressMic(); }
               }}
               onKeyUp={(e) => {
-                if (e.key === " " || e.key === "Enter") { e.preventDefault(); stopTalking(); }
+                if (e.key === " " || e.key === "Enter") { e.preventDefault(); releaseMic(false); }
               }}
             >
               <MicGlyph />
@@ -1431,7 +1467,7 @@ function RevisionPanel({
                   in. Sighted people read the same thing off the colour and off
                   the line under the row. */}
               <span className="icon-btn-say">
-                {listening ? "Listening. Release to stop." : "Hold to talk"}
+                {micSay}
               </span>
             </button>
           )}
@@ -1512,7 +1548,7 @@ function RevisionPanel({
               somebody is actually speaking into it. */}
           {window.NoteSpeech && window.NoteSpeech.available() && (
             <span data-speak-rule="true" className={listening ? "is-listening" : undefined}>
-              {listening ? "Listening. Release to stop." : "Hold the mic to talk."}
+              {listening ? micSay : "Tap the mic to talk, or hold it."}
               {" "}{window.NoteSpeech.RULE}{" "}
             </span>
           )}
