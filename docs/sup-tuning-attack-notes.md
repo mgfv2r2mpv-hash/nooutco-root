@@ -52,3 +52,8 @@ Gaps (no test yet):
 - A repeat inside Goals Analyzed rows or against Follow-Up Items is not checked, only the four narrative sections.
 - The hint detail is a heading, not a sentence quote, so a note with three repeats in one section shows only the first matching section.
 - Sentence budgets (item A1) are not enforced by this file; `countSentences` is the helper for tests on canned model outputs, and no budget test exists here because the prompt rules are section A, which is not part of this run.
+
+## D (picker rules, pure half) result
+
+- `notes/bcba/goal-picks.js` (window.GoalPicks) holds the cap rule, Update-button state and held row text with no DOM. `tests/goal-picks.spec.js` covers attack item 9 (seventh check, uncheck, recheck, eviction order), the pure half of item 10 (held text returns only while the notes text is unchanged) and the state half of item 11 (`differs` false means the button stays hidden).
+- Still untested until the picker UI exists: item 11 double press, item 10 through the real grid, the eye popover masked-text check (item 17), and 375px for the chip strip (item 18).
