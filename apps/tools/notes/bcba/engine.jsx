@@ -2109,7 +2109,17 @@ function App() {
   /* ── Goal picker (sup) ────────────────────────────────────────────────
      Scored on the masked intake with no model call. The rules are in
      goal-picks.js; this is the state and the one Update turn. */
-  const goalKey = (n) => String(n || "").toLowerCase().replace(/\s+/g, " ").trim();
+  // Equality key for a goal name: case, a trailing "goal", a parenthetical and
+  // punctuation do not make a different goal ("Elopement (reduction)" is
+  // "Elopement"). Equality only, never contains: "Mand" is not "Demand".
+  const goalKey = (n) => String(n || "")
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\s+goal$/, "")
+    .trim();
   // Same text, same stamp. Held rows are only handed back on an equal stamp, and
   // the stamp is a hash so no note text is kept beside the row.
   const notesStamp = (text) => {

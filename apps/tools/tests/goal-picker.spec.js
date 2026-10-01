@@ -247,3 +247,16 @@ test.describe('goal picker: popover defects', () => {
     });
   });
 });
+
+test.describe('goal picker: reworded rows (second review MED 3)', () => {
+  test('a row the model reworded still counts as present, so no Update is offered', async ({ page }) => {
+    await open(page, NOTES, [row('Mand training'), row('Elopement (reduction)'), row('Tolerate Waiting goal')]);
+    await expect(page.locator('[data-goal-update]')).toHaveCount(0);
+  });
+
+  test('a longer word that merely contains the name is not the same row', async ({ page }) => {
+    await open(page, '- Mand goal: 3 of 5 independent\n- Elopement goal: targeted for reduction, 0 occurrences',
+      [row('Demand'), row('Elopement')]);
+    await expect(page.locator('[data-goal-update]')).toBeVisible();
+  });
+});
