@@ -167,7 +167,7 @@ YOUR JOB: put what the BCBA entered into the permitted format while preserving c
 For programming changes and clinical decisions, fold rationale into the decision sentence - \"[data observation or trend], so [decision] was made to [expected clinical outcome]\" - not as a separate rationale sentence. Example: \"Stalled progress data prompted a phase line addition to enable comparison before and after BST retraining\" - not \"A phase line was added. Rationale: to track BST impact.\"\n\n\
 SECTION SPECIFICATIONS\n\
 ONE OWNER PER FACET. A fact can have more than one facet, and each section below owns one facet. Write each section's own facet and nothing else, and never restate a fact in the same terms in a second section. A section may still cover a DIFFERENT facet of a fact that another section covers. A protocol change is the usual case: programming says what changes, and followup says who does what next. When two sections would say the same thing in the same words, keep it in the section that owns it and cut it from the other.\n\
-- goalsAnalyzed (owns each goal's data and its disposition): one row per goal/program per WHAT IS A GOAL ROW (up to 6 skill rows, and every reduction target gets its row in addition, so up to 6 plus the number of reduction targets; empty array if none - never pad or invent goals). \"goal\" = the program name copied verbatim from the bullet (see GOAL NAMES). \"progress\" = how the skill went over the session, per GOAL PROGRESS IS QUALITATIVE, 2 sentences at most. \"nextSteps\" = what happens to that goal next (continue, modify, hold, mastered or discontinued) with the reason from that goal's own data folded in, in the BCBA's terms, 1 sentence. There is no stock wording for it. Write it from what the notes say about that goal, so two goals with the same disposition still read differently because their reasons differ.\n\
+- goalsAnalyzed (owns each goal's data and its disposition): one row per goal/program per WHAT IS A GOAL ROW (six rows at most in total, skills and reduction targets together, and every reduction target keeps its row before any skill row; empty array if none - never pad or invent goals). \"goal\" = the program name copied verbatim from the bullet (see GOAL NAMES). \"progress\" = how the skill went over the session, per GOAL PROGRESS IS QUALITATIVE, 2 sentences at most. \"nextSteps\" = what happens to that goal next (continue, modify, hold, mastered or discontinued) with the reason from that goal's own data folded in, in the BCBA's terms, 1 sentence. There is no stock wording for it. Write it from what the notes say about that goal, so two goals with the same disposition still read differently because their reasons differ.\n\
 - overallProgress: EXACTLY one of the allowed strings, inferred conservatively from the progress data across goals. Mixed or unclear picture → choose the moderate option. Insufficient information → \"\".\n\
 - progress (Summary of Progress and Findings; owns the session arc): sized by SENTENCE BUDGETS, on what data or trends were reviewed, which goals were the focus and why, what was observed that the goal rows do not carry, and any probes or assessments run. Each goal's figures and disposition are already in goalsAnalyzed: name the goal and say what its data meant for the session, without repeating the row. A protocol change belongs to programming: say what observation led to it, and leave the change itself to programming. Anchor claims to the notes.\n\
 - programming (Summary of Protocol Modifications Made/Needed; owns what changes in the protocol): 4 sentences, never above 6. Explicitly separate modifications MADE this session from modifications still NEEDED/pending. Each change is stated here once, with its data reason folded into the sentence, and this includes a change to a behavior plan.\n\
@@ -293,21 +293,22 @@ TERMINOLOGY (non-negotiable)\n\
   // the goal picker marked as a reduction target (ctx.reductionGoals), or it
   // carries a reduction frame itself ("Aggression (behavior of concern)").
   var REDUCTION_NAME = /\breduc(?:e|ed|tion|ing)\b|\bbehaviou?rs? of concern\b|\bmaladaptive\b|\bchallenging behaviou?r\b|\binterfering behaviou?r\b|\bbehaviou?r goal\b/i;
-  var SKILL_ROW_MAX = 6;
+  var GOAL_ROW_MAX = 6;
 
   function goalKey(n) {
     return String(n || "").toLowerCase().replace(/\([^)]*\)/g, " ").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim().replace(/\s+goal$/, "").trim();
   }
 
-  // Up to six skill rows, plus every reduction-target row on top of them.
+  // Six rows in all. Reduction-target rows have first claim on the six, then
+  // skill rows in the order given; both keep their order in the table.
   function capGoalRows(rows, ctx) {
     var known = ((ctx && Array.isArray(ctx.reductionGoals)) ? ctx.reductionGoals : []).map(goalKey).filter(Boolean);
-    var skills = 0;
-    return rows.filter(function (r) {
-      if (REDUCTION_NAME.test(r.goal) || (goalKey(r.goal) !== "" && known.indexOf(goalKey(r.goal)) !== -1)) return true;
-      skills += 1;
-      return skills <= SKILL_ROW_MAX;
-    });
+    var isReduction = function (r) {
+      return REDUCTION_NAME.test(r.goal) || (goalKey(r.goal) !== "" && known.indexOf(goalKey(r.goal)) !== -1);
+    };
+    var reduction = rows.filter(isReduction).slice(0, GOAL_ROW_MAX);
+    var skills = rows.filter(function (r) { return !isReduction(r); }).slice(0, GOAL_ROW_MAX - reduction.length);
+    return rows.filter(function (r) { return reduction.indexOf(r) !== -1 || skills.indexOf(r) !== -1; });
   }
 
   function normalizeOutput(raw, ctx) {

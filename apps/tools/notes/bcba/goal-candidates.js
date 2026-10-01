@@ -340,16 +340,17 @@
     return list.map(function (x) { return x.c; });
   }
 
-  // At most PRESELECT_CAP skills. A reduction target is extra: it always gets
-  // its row, so it never uses up a skill place.
+  // At most PRESELECT_CAP in all, skills and reduction targets together.
+  // Reduction targets have first claim on the places; skills fill what is left,
+  // and the result keeps the strip order.
   function preselect(candidates) {
-    var skills = 0;
-    return (candidates || []).filter(function (c) {
-      if (c.kind === "probe" || c.score < PRESELECT_MIN) return false;
-      if (c.kind === "reduction") return true;
-      skills += 1;
-      return skills <= PRESELECT_CAP;
+    var eligible = (candidates || []).filter(function (c) {
+      return c.kind !== "probe" && c.score >= PRESELECT_MIN;
     });
+    var reduction = eligible.filter(function (c) { return c.kind === "reduction"; }).slice(0, PRESELECT_CAP);
+    var skills = eligible.filter(function (c) { return c.kind !== "reduction"; })
+      .slice(0, PRESELECT_CAP - reduction.length);
+    return eligible.filter(function (c) { return reduction.indexOf(c) !== -1 || skills.indexOf(c) !== -1; });
   }
 
   window.GoalCandidates = {

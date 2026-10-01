@@ -15,7 +15,7 @@ const ROOT = join(__dirname, '..', 'notes/bcba');
 // Composed sup prompt (SYSTEM_CORE + register rules + JSON block). The tuning met
 // the one-owner-per-facet rules on dev, so this is the merged prompt: the
 // voice-module store holds the older text until it is re-extracted from here.
-const SUP_SYSTEM_SHA256 = 'dc09f94706bd60e21a5d2100ee123daaa315e08034f0ee97bcad4f317e22fa21';
+const SUP_SYSTEM_SHA256 = '3f9fcb9307aab9a45f3e0315ae5c6a169f60514c5001cf5b6eb3f0b21174bf45';
 
 function compose() {
   const win = {};
@@ -72,8 +72,9 @@ test.describe('sup SYSTEM_CORE: parity with the voice-module prompt', () => {
     expect(b).toMatch(/anything told as a story with no program name and no data are NOT goal rows/);
   });
 
-  test('goalsAnalyzed cap: up to 6 skill rows, and every reduction target is a row on top of that', () => {
-    expect(system).toMatch(/goalsAnalyzed \(owns[^)]*\): [^\n]*up to 6 skill rows, and every reduction target gets its row in addition, so up to 6 plus the number of reduction targets/);
+  test('goalsAnalyzed cap: six rows in all, reduction targets first', () => {
+    expect(system).toMatch(/goalsAnalyzed \(owns[^)]*\): [^\n]*six rows at most in total, skills and reduction targets together, and every reduction target keeps its row before any skill row/);
+    expect(system).not.toMatch(/6 plus the number of reduction targets/);
     expect(system).not.toMatch(/max 6 skill rows/);
   });
 

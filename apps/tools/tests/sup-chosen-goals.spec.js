@@ -77,7 +77,7 @@ test.describe('sup tool: chosen goals', () => {
 });
 
 test.describe('sup tool: goalsAnalyzed cap (review HIGH 3)', () => {
-  test('normalizeOutput keeps six skill rows plus every reduction-target row', async ({ page }) => {
+  test('normalizeOutput caps all rows at six and keeps reduction-target rows first', async ({ page }) => {
     await tool(page);
     const goals = await page.evaluate(() => {
       const t = window.NOTE_TOOLS.find((x) => x.id === 'sup');
@@ -86,7 +86,7 @@ test.describe('sup tool: goalsAnalyzed cap (review HIGH 3)', () => {
       const rows = [skill(1), skill(2), red('Elopement'), skill(3), skill(4), skill(5), skill(6), skill(7), red('Aggression'), skill(8)];
       return t.normalizeOutput({ goalsAnalyzed: rows }, { reductionGoals: ['Elopement', 'Aggression'] }).goalsAnalyzed.map((r) => r.goal);
     });
-    expect(goals).toEqual(['Skill 1', 'Skill 2', 'Elopement', 'Skill 3', 'Skill 4', 'Skill 5', 'Skill 6', 'Aggression']);
+    expect(goals).toEqual(['Skill 1', 'Skill 2', 'Elopement', 'Skill 3', 'Skill 4', 'Aggression']);
   });
 
   test('seven skill rows and no reduction row still cap at six', async ({ page }) => {
@@ -114,19 +114,45 @@ test.describe('sup tool: reduction rows are classified by name and kind (second 
     expect(await run(page, rows)).toHaveLength(6);
   });
 
-  test('a row the picker marked as a reduction target is kept past six, whatever its wording', async ({ page }) => {
+  test('a row the picker marked as a reduction target displaces the last skill, whatever its wording', async ({ page }) => {
     await tool(page);
     const rows = [1, 2, 3, 4, 5, 6, 7].map((i) => ({ goal: `Skill ${i}`, progress: 'Went well.', nextSteps: 'Continue.' }));
     rows.push({ goal: 'elopement', progress: 'Went well.', nextSteps: 'Continue.' });
     const out = await run(page, rows, { reductionGoals: ['Elopement'] });
-    expect(out).toHaveLength(7);
-    expect(out[6]).toBe('elopement');
+    expect(out).toHaveLength(6);
+    expect(out[5]).toBe('elopement');
+    expect(out).not.toContain('Skill 6');
   });
 
   test('a goal name that carries a reduction frame is a reduction row without the picker', async ({ page }) => {
     await tool(page);
     const rows = [1, 2, 3, 4, 5, 6, 7].map((i) => ({ goal: `Skill ${i}`, progress: 'Went well.', nextSteps: 'Continue.' }));
     rows.push({ goal: 'Aggression (behavior targeted for reduction)', progress: '', nextSteps: 'Continue.' });
-    expect(await run(page, rows)).toHaveLength(7);
+    const out = await run(page, rows);
+    expect(out).toHaveLength(6);
+    expect(out).toContain('Aggression (behavior targeted for reduction)');
+  });
+});
+
+test.describe('sup tool: the master cap of six', () => {
+  test('eight reduction rows and two skill rows keep the first six reduction rows', async ({ page }) => {
+    await tool(page);
+    const out = await page.evaluate(() => {
+      const t = window.NOTE_TOOLS.find((x) => x.id === 'sup');
+      const mk = (g) => ({ goal: g, progress: 'Steady.', nextSteps: 'Continue.' });
+      const rows = [mk('Skill 1'), ...[1, 2, 3, 4, 5, 6, 7, 8].map((i) => mk(`Behavior ${i} (behavior of concern)`)), mk('Skill 2')];
+      return t.normalizeOutput({ goalsAnalyzed: rows }).goalsAnalyzed.map((r) => r.goal);
+    });
+    expect(out).toEqual([1, 2, 3, 4, 5, 6].map((i) => `Behavior ${i} (behavior of concern)`));
+  });
+
+  test('six or fewer rows pass through untouched', async ({ page }) => {
+    await tool(page);
+    const n = await page.evaluate(() => {
+      const t = window.NOTE_TOOLS.find((x) => x.id === 'sup');
+      const rows = [1, 2, 3, 4, 5, 6].map((i) => ({ goal: i === 3 ? 'Elopement (behavior of concern)' : `Skill ${i}`, progress: 'Fine.', nextSteps: 'Continue.' }));
+      return t.normalizeOutput({ goalsAnalyzed: rows }).goalsAnalyzed.length;
+    });
+    expect(n).toBe(6);
   });
 });

@@ -1714,6 +1714,7 @@ body.is-pointing, body.is-pointing * { cursor: crosshair !important; }
 /* sup-tuning D: goal picker strip above the Goals Analyzed grid */
 .gp-strip { position: relative; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; margin: 0 0 10px; }
 .gp-chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1 1 auto; min-width: 0; }
+.gp-count { display: inline-flex; align-items: center; min-height: 30px; font-size: 12px; font-weight: 600; color: #55603f; cursor: help; white-space: nowrap; }
 .gp-chip { display: inline-flex; align-items: center; max-width: 100%; min-height: 30px; border: 1.5px solid #cfe0bd; border-radius: 15px; background: #fff; }
 .gp-chip.gp-on { border-color: #6f8a56; background: #f3f8ec; }
 .gp-label { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 4px 0 10px; cursor: pointer; font-size: 13px; color: #2f3b25; min-width: 0; }
