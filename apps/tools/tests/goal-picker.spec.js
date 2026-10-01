@@ -62,16 +62,19 @@ async function open(page, notes, rows, { delayMs = 0, noPicker = false } = {}) {
   return calls;
 }
 
+// The picker says where a live swap is: idle, waiting out the pause, or pending.
+const idle = (page) => expect(page.getByTestId('goal-picker')).toHaveAttribute('data-swap', 'idle', { timeout: 20000 });
 const chip = (page, name) => page.locator(`[data-goal-chip="${name}"]`);
 // Grid cells are textareas, so their text lives in .value, not in the DOM text.
 const cells = (page) => page.$$eval('textarea, input[type="text"]',
   (els) => els.filter((e) => !e.closest('.diff-view')).map((e) => e.value));
 
 test.describe('goal picker', () => {
-  test('chips show, preselected ones are checked, no Update while picks match the grid', async ({ page }) => {
+  test('chips show, preselected ones are checked, nothing is pending while picks match the grid', async ({ page }) => {
     await open(page, NOTES, [row('Mand training'), row('Elopement'), row('Tolerate Waiting')]);
     await expect(page.locator('[data-goal-chip]')).toHaveCount(3);
     await expect(chip(page, 'Mand training').locator('input')).toBeChecked();
+    await idle(page);
     await expect(page.locator('[data-goal-update]')).toHaveCount(0);
   });
 
@@ -83,11 +86,11 @@ test.describe('goal picker', () => {
     await expect(pop.locator('.gp-why')).not.toBeEmpty();
   });
 
-  test('unchecking and Update drops the row, others stay, and no model call is made', async ({ page }) => {
+  test('unchecking drops the row by itself, others stay, and no model call is made', async ({ page }) => {
     const calls = await open(page, NOTES, [row('Mand training'), row('Elopement'), row('Tolerate Waiting')]);
     await chip(page, 'Elopement').locator('input').uncheck();
-    await expect(page.locator('[data-goal-update]')).toBeVisible();
-    await page.locator('[data-goal-update]').click();
+    await expect(page.getByTestId('goal-picker')).toHaveAttribute('data-swap', 'waiting');
+    await idle(page);
     await expect(page.locator('[data-goal-update]')).toHaveCount(0);
     expect(calls.update).toBe(0);
     expect(await cells(page)).not.toContain('Elopement progress.');
@@ -95,21 +98,21 @@ test.describe('goal picker', () => {
     await expect(chip(page, 'Elopement')).toBeVisible();
   });
 
-  test('rechecking a dropped goal restores its row from held text with no model call', async ({ page }) => {
+  test('rechecking a dropped goal restores its row at once from held text with no model call', async ({ page }) => {
     const calls = await open(page, NOTES, [row('Mand training', 'Mand progress kept.'), row('Elopement', 'Elopement progress kept.'), row('Tolerate Waiting')]);
     await chip(page, 'Elopement').locator('input').uncheck();
-    await page.locator('[data-goal-update]').click();
+    await idle(page);
     await chip(page, 'Elopement').locator('input').check();
-    await page.locator('[data-goal-update]').click();
+    // Faster than the pause: a held row needs no waiting and no model.
+    await expect.poll(() => cells(page), { timeout: 700 }).toContain('Elopement progress kept.');
+    await idle(page);
     expect(calls.update).toBe(0);
-    await expect.poll(() => cells(page)).toContain('Elopement progress kept.');
   });
 
   // A row with no held text: drop it, change the notes, then bring it back.
   async function dropThenEditNotes(page, name) {
     await chip(page, name).locator('input').uncheck();
-    await page.locator('[data-goal-update]').click();
-    await expect(page.locator('[data-goal-update]')).toHaveCount(0);
+    await idle(page);
     await page.getByRole('textbox', { name: /Session Notes/i }).fill(NOTES + '\n- Extra bullet with new detail');
     await chip(page, name).locator('input').check();
   }
@@ -117,20 +120,11 @@ test.describe('goal picker', () => {
   test('a goal with no held row makes one revision turn and adds only that row', async ({ page }) => {
     const calls = await open(page, NOTES, [row('Mand training', 'Mand progress kept.'), row('Elopement', 'Old elopement text.'), row('Tolerate Waiting')]);
     await dropThenEditNotes(page, 'Elopement');
-    await page.locator('[data-goal-update]').click();
     await expect.poll(() => cells(page), { timeout: 15000 }).toContain('Fresh row.');
     expect(calls.update).toBe(1);
     const now = await cells(page);
     expect(now).toContain('Mand progress kept.');
     expect(now).not.toContain('Old elopement text.');
-  });
-
-  test('a double press makes one turn only', async ({ page }) => {
-    const calls = await open(page, NOTES, [row('Mand training'), row('Elopement'), row('Tolerate Waiting')], { delayMs: 800 });
-    await dropThenEditNotes(page, 'Elopement');
-    await page.locator('[data-goal-update]').dblclick();
-    await expect.poll(() => cells(page), { timeout: 15000 }).toContain('Fresh row.');
-    expect(calls.update).toBe(1);
   });
 
   test('a seventh check unchecks the leftmost preselected chip', async ({ page }) => {
@@ -169,10 +163,8 @@ test.describe('goal picker: review defects', () => {
     const calls = await open(page, NOTES, [row('Mand training'), row('Elopement', 'Written from old notes.'), row('Tolerate Waiting')]);
     await page.getByRole('textbox', { name: /Session Notes/i }).fill(NOTES + '\n- Extra bullet with new detail');
     await chip(page, 'Elopement').locator('input').uncheck();
-    await page.locator('[data-goal-update]').click();
-    await expect(page.locator('[data-goal-update]')).toHaveCount(0);
+    await idle(page);
     await chip(page, 'Elopement').locator('input').check();
-    await page.locator('[data-goal-update]').click();
     await expect.poll(() => cells(page), { timeout: 15000 }).toContain('Fresh row.');
     expect(calls.update).toBe(1);
     expect(await cells(page)).not.toContain('Written from old notes.');
@@ -187,7 +179,7 @@ test.describe('goal picker: review defects', () => {
     await expect(chip(page, 'Elopement').locator('input')).toBeChecked();
     await expect(chip(page, 'Foxtrot').locator('input')).not.toBeChecked();
     await expect(page.locator('[data-goal-count]')).toHaveText('6 of 6');
-    await expect(page.locator('[data-goal-update]')).toHaveCount(0);
+    await idle(page);
   });
 
   test('HIGH 4: a scoring error cannot lose the draft', async ({ page }) => {
@@ -252,15 +244,19 @@ test.describe('goal picker: popover defects', () => {
 });
 
 test.describe('goal picker: reworded rows (second review MED 3)', () => {
-  test('a row the model reworded still counts as present, so no Update is offered', async ({ page }) => {
+  test('a row the model reworded still counts as present, so nothing is pending', async ({ page }) => {
     await open(page, NOTES, [row('Mand training'), row('Elopement (reduction)'), row('Tolerate Waiting goal')]);
-    await expect(page.locator('[data-goal-update]')).toHaveCount(0);
+    await idle(page);
   });
 
   test('a longer word that merely contains the name is not the same row', async ({ page }) => {
-    await open(page, '- Mand goal: 3 of 5 independent\n- Elopement goal: targeted for reduction, 0 occurrences',
+    const calls = await open(page, '- Mand goal: 3 of 5 independent\n- Elopement goal: targeted for reduction, 0 occurrences',
       [row('Demand'), row('Elopement')]);
-    await expect(page.locator('[data-goal-update]')).toBeVisible();
+    // Mand is not in the grid, so unchecking it and checking it again asks for a row.
+    await chip(page, 'Mand').locator('input').uncheck();
+    await chip(page, 'Mand').locator('input').check();
+    await expect.poll(() => cells(page), { timeout: 15000 }).toContain('Fresh row.');
+    expect(calls.update).toBe(1);
   });
 });
 

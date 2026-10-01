@@ -67,6 +67,20 @@
     return checked(before).filter(function (n) { return n !== toggled && now.indexOf(n) === -1; });
   }
 
+  // Put the chips back in line with the table for the named goals: checked when
+  // their row is in the table, unchecked when it is not. Used when a swap fails
+  // or a reply carries no row. A recheck never goes past the cap.
+  function sync(state, gridNames, names) {
+    var next = state;
+    names.forEach(function (n) {
+      var on = checked(next).indexOf(n) !== -1;
+      var inGrid = gridNames.indexOf(n) !== -1;
+      if (on && !inGrid) next = toggle(next, n);
+      if (!on && inGrid && checked(next).length < CAP) next = toggle(next, n);
+    });
+    return next;
+  }
+
   function sameSet(a, b) {
     return a.length === b.length && a.every(function (n) { return b.indexOf(n) !== -1; });
   }
@@ -119,5 +133,5 @@
     return { rows: kept, dropped: dropped };
   }
 
-  window.GoalPicks = { CAP: CAP, capRows: capRows, init: init, checked: checked, toggle: toggle, evicted: evicted, differs: differs, plan: plan, hold: hold, recall: recall };
+  window.GoalPicks = { CAP: CAP, capRows: capRows, init: init, checked: checked, toggle: toggle, evicted: evicted, sync: sync, differs: differs, plan: plan, hold: hold, recall: recall };
 })();

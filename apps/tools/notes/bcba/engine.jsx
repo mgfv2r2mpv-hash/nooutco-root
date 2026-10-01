@@ -625,7 +625,42 @@ function Checklist({ options, selected, single = false, sectionId: sid }) {
    edit re-checks it. */
 const GOAL_FLAG = { fg: "#9b1c1c", bg: "#fdf0ef", edge: "#eec4c0" };
 
-function GoalsTable({ columns, rows, onChange, onCopyCell, copiedId, idPrefix, checkColumn, flagged, onConfirm }) {
+// How long the live goal swap waits after the last toggle, how long a leaving
+// row fades, and how long a new row keeps its entrance class.
+const GOAL_SWAP_PAUSE_MS = 1200;
+const GOAL_FADE_MS = 200;
+const GOAL_ENTER_MS = 600;
+
+/* The element to hold still across a goal swap: the grid top while it is on
+   screen; otherwise, of the rows that are staying and the sections below the
+   grid, the one with the most of itself on screen (the first, on a tie). That
+   keeps a technician reading the sections below the grid where they were even
+   when the tail of a row peeks in at the top edge. Returns null when nothing
+   on screen can move. */
+function pickGoalAnchor(leavingKeys) {
+  const vh = window.innerHeight || 0;
+  const strip = document.querySelector("[data-testid='goal-picker']");
+  if (strip) {
+    const top = strip.getBoundingClientRect().top;
+    if (top >= 0 && top < vh) return { el: strip, top };
+  }
+  const rows = Array.from(document.querySelectorAll("[data-goal-key]"))
+    .filter((el) => leavingKeys.indexOf(el.getAttribute("data-goal-key")) === -1);
+  const card = document.querySelector("[data-section-key='goalsAnalyzed']");
+  const below = card
+    ? Array.from(document.querySelectorAll("[data-section-key]"))
+      .filter((c) => !card.contains(c) && (card.compareDocumentPosition(c) & Node.DOCUMENT_POSITION_FOLLOWING))
+    : [];
+  let best = null;
+  rows.concat(below).forEach((el) => {
+    const r = el.getBoundingClientRect();
+    const shown = Math.min(r.bottom, vh) - Math.max(r.top, 0);
+    if (shown > 0 && (!best || shown > best.shown)) best = { el, top: r.top, shown };
+  });
+  return best ? { el: best.el, top: best.top } : null;
+}
+
+function GoalsTable({ columns, rows, onChange, onCopyCell, copiedId, idPrefix, checkColumn, flagged, onConfirm, rowKeys, leaving, entering }) {
   const list = Array.isArray(rows) ? rows : [];
   if (!list.length) {
     return <p style={{ fontSize: 13, color: "#9aab86", fontStyle: "italic" }}>No goals identified in the notes.</p>;
@@ -638,7 +673,12 @@ function GoalsTable({ columns, rows, onChange, onCopyCell, copiedId, idPrefix, c
   return (
     <div style={{ display: "grid", gap: 10 }}>
       {list.map((row, ri) => (
-        <div key={ri} data-goal-row={ri} style={{ display: "grid", gap: 8, padding: 10, borderRadius: 8, border: `1px solid ${flags.has(ri) ? GOAL_FLAG.edge : "#ddecd0"}`, background: "white" }}>
+        <div
+          key={rowKeys ? rowKeys[ri] : ri}
+          data-goal-row={ri}
+          data-goal-key={rowKeys ? rowKeys[ri] : undefined}
+          className={(leaving && leaving.indexOf(rowKeys && rowKeys[ri]) !== -1 ? "gs-leaving" : "") + (entering && entering.indexOf(rowKeys && rowKeys[ri]) !== -1 ? " gs-entering" : "")}
+          style={{ display: "grid", gap: 8, padding: 10, borderRadius: 8, border: `1px solid ${flags.has(ri) ? GOAL_FLAG.edge : "#ddecd0"}`, background: "white" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
           {columns.map((c) => {
             const cellId = `${idPrefix}-r${ri}-${c.id}`;
@@ -2223,6 +2263,16 @@ function App() {
     .trim()
     .replace(/\s+goal$/, "")
     .trim();
+  // One unique key per table row, from the goal name. A repeated name gets a
+  // suffix, so a row keeps its key when its neighbours come and go.
+  const goalRowKeys = (rows) => {
+    const seen = {};
+    return (rows || []).map((r) => {
+      const base = goalKey(r && r.goal) || "row";
+      seen[base] = (seen[base] || 0) + 1;
+      return seen[base] > 1 ? base + "#" + seen[base] : base;
+    });
+  };
   // Same text, same stamp. Held rows are only handed back on an equal stamp, and
   // the stamp is a hash so no note text is kept beside the row.
   const notesStamp = (text) => {
@@ -2267,91 +2317,240 @@ function App() {
   };
   const goalGridNames = (gp, rows) =>
     gp.candidates.map((c) => c.name).filter((n) => rowForGoal(rows, n) !== -1);
+  /* ── Live goal swaps ──────────────────────────────────────────────────
+     Toggling a chip applies by itself. The pause (GOAL_SWAP_PAUSE_MS after the
+     last toggle) folds rapid toggles into one net change, and one revision turn
+     carries it: new goals get a row, removed ones drop, every other row stays
+     byte-identical. A held row comes back at once with no model call. Never two
+     turns at once: a toggle during a turn waits for it to land and then runs
+     once more.
+
+     Only goals the technician toggled are acted on (swapRef.touched), so a
+     candidate the draft simply did not write a row for never triggers a call
+     by itself.
+
+     THE PAGE MUST NOT JUMP. A leaving row fades in place and keeps its height
+     until the commit. At the commit one element the technician is looking at
+     (the grid top, else the nearest visible row, else the section below the
+     grid) is measured before and after, and the scroll position takes up the
+     difference in the same frame. */
+  const swapRef = React.useRef({ busy: false, lastToggleAt: 0, touched: new Map() });
+  const anchorRef = React.useRef(null);
+  const latestRef = React.useRef(null);
+  const [swap, setSwap] = React.useState({ names: [], leaving: [], entering: [] });
+
+  const touchGoals = (names) => {
+    const touched = new Map(swapRef.current.touched);
+    names.forEach((n) => touched.set(n, (touched.get(n) || 0) + 1));
+    swapRef.current = { ...swapRef.current, touched, lastToggleAt: Date.now() };
+  };
+  // Forget the names a swap has dealt with, unless they were toggled again since.
+  const settleGoals = (versions, names) => {
+    const touched = new Map(swapRef.current.touched);
+    names.forEach((n) => { if (touched.get(n) === versions.get(n)) touched.delete(n); });
+    swapRef.current = { ...swapRef.current, touched };
+  };
+  const swapPlan = (gp, rows) => {
+    const plan = window.GoalPicks.plan(gp.picks, goalGridNames(gp, rows));
+    const touched = swapRef.current.touched;
+    return {
+      added: plan.added.filter((n) => touched.has(n)),
+      removed: plan.removed.filter((n) => touched.has(n)),
+    };
+  };
+  const gridRows = (st) => (st.output && Array.isArray(st.output.goalsAnalyzed) ? st.output.goalsAnalyzed : []);
+  const currentNotesStamp = () => notesStamp(intakeBody(scrubValues(scrubMapRef.current || [])));
+  const heldStamp = (gp, name) => (gp.born && gp.born[goalKey(shownGoal(name))]) || gp.stamp;
+  const prefersReducedMotion = () => !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  /* The rows after a plan: removed goals leave (their text is held), held goals
+     come back, and any rows the model made are appended. Pure over its inputs. */
+  const planRows = (rows, gp, plan, nowStamp, made) => {
+    let held = gp.held;
+    const dropAt = new Set();
+    plan.removed.forEach((n) => {
+      const at = rowForGoal(rows, n);
+      if (at === -1) return;
+      held = window.GoalPicks.hold(held, n, rows[at], heldStamp(gp, n));
+      dropAt.add(at);
+    });
+    const recalled = [];
+    const fresh = [];
+    plan.added.forEach((n) => {
+      const row = window.GoalPicks.recall(held, n, nowStamp);
+      if (row) recalled.push(row); else fresh.push(n);
+    });
+    const kept = rows.filter((_, i) => !dropAt.has(i));
+    return { held, kept, recalled, fresh, merged: [...kept, ...recalled, ...made] };
+  };
+
+  const reductionNameList = (gp) => gp.candidates.filter((c) => c.kind === "reduction").map((c) => c.name);
+  const fitGoalRows = (gp, rows) => {
+    const reductionNames = reductionNameList(gp);
+    return window.GoalPicks.capRows(rows, (r) => reductionNames.some((n) => rowForGoal([r], n) !== -1));
+  };
+  const rowKeyOf = (rows, name) => {
+    const at = rowForGoal(rows, name);
+    return at === -1 ? null : goalRowKeys(rows)[at];
+  };
+
+  /* One commit for every way the table changes through the picker. The anchor
+     is captured here, before the state change, and the layout effect below
+     takes it up after the render. */
+  const commitGoalRows = ({ gp, rows, next, held, picksAfter, born, conversation, calledModel, addedKeys, leavingKeys }) => {
+    anchorRef.current = pickGoalAnchor(leavingKeys);
+    patchS((s) => ({
+      output: { ...s.output, goalsAnalyzed: next },
+      conversation: conversation || s.conversation,
+      lastCallAt: calledModel ? Date.now() : s.lastCallAt,
+      goalPicker: s.goalPicker ? { ...s.goalPicker, held, born, picks: picksAfter(s.goalPicker.picks) } : null,
+    }));
+    setSwap({ names: [], leaving: [], entering: addedKeys });
+    if (addedKeys.length) setTimeout(() => setSwap((w) => ({ ...w, entering: [] })), GOAL_ENTER_MS);
+  };
+
   const toggleGoalPick = (name) => {
     const gp = S.goalPicker;
     if (!gp) return;
     const picks = window.GoalPicks.toggle(gp.picks, name);
     const gone = window.GoalPicks.evicted(gp.picks, picks, name);
+    touchGoals([name, ...gone]);
     patchS((s) => (s.goalPicker ? { goalPicker: { ...s.goalPicker, picks } } : {}));
     // The cap unchecks a chip on its own; the thread says which one went.
     if (gone.length) pushThread("assistant", "status", `Six goals at most, skills and behavior reduction together. Unchecked: ${gone.map(shownGoal).join(", ")}.`);
+    // A held row needs no model, so it is back before the pause is over.
+    const rows = gridRows(S);
+    const comes = window.GoalPicks.checked(picks).indexOf(name) !== -1 && rowForGoal(rows, name) === -1;
+    if (comes && window.GoalPicks.recall(gp.held, name, currentNotesStamp()) && !swapRef.current.busy) {
+      restoreHeldGoals({ ...gp, picks }, rows);
+    }
   };
-  const goalUpdateBusy = React.useRef(false);
-  const updateGoals = async () => {
-    const gp = S.goalPicker;
-    if (!gp || !S.output || goalUpdateBusy.current) return;
-    const rows = Array.isArray(S.output.goalsAnalyzed) ? S.output.goalsAnalyzed : [];
-    const plan = window.GoalPicks.plan(gp.picks, goalGridNames(gp, rows));
+
+  // The no-model part of a plan: removals and held restores, applied now.
+  const restoreHeldGoals = (gp, rows) => {
+    const plan = swapPlan(gp, rows);
+    const nowStamp = currentNotesStamp();
+    const done = planRows(rows, gp, plan, nowStamp, []);
+    const restoredNames = plan.added.filter((n) => window.GoalPicks.recall(done.held, n, nowStamp));
+    const fit = fitGoalRows(gp, done.merged);
+    const handled = [...restoredNames, ...plan.removed];
+    const versions = new Map(swapRef.current.touched);
+    commitGoalRows({
+      gp, rows, next: fit.rows, held: done.held, born: gp.born,
+      picksAfter: (p) => window.GoalPicks.sync(p, goalGridNames(gp, fit.rows), fit.dropped.map((r) => gp.candidates.map((c) => c.name).find((n) => rowForGoal([r], n) !== -1)).filter(Boolean)),
+      calledModel: false,
+      addedKeys: restoredNames.map((n) => rowKeyOf(fit.rows, n)).filter(Boolean),
+      leavingKeys: plan.removed.map((n) => rowKeyOf(rows, n)).filter(Boolean),
+    });
+    settleGoals(versions, handled);
+    pushThread("assistant", "status", `Goals updated. Restored: ${restoredNames.map(shownGoal).join(", ") || "none"}.`);
+  };
+
+  const applyGoalSwap = async () => {
+    const cur = latestRef.current.S;
+    const gp = cur.goalPicker;
+    if (!gp || !cur.output || swapRef.current.busy) return;
+    const rows = gridRows(cur);
+    const plan = swapPlan(gp, rows);
     if (!plan.added.length && !plan.removed.length) return;
-    goalUpdateBusy.current = true;
-    // Held text is stamped with the notes it was written from (gp.stamp) and
-    // handed back only against the notes as they stand now.
-    const nowStamp = notesStamp(intakeBody(scrubValues(scrubMapRef.current || [])));
+    const versions = new Map(swapRef.current.touched);
+    const names = [...plan.added, ...plan.removed];
+    const nowStamp = currentNotesStamp();
+    swapRef.current = { ...swapRef.current, busy: true };
+    const leavingKeys = plan.removed.map((n) => rowKeyOf(rows, n)).filter(Boolean);
+    setSwap({ names, leaving: leavingKeys, entering: [] });
+    setLoading(true);
     try {
-      let held = gp.held;
-      const dropped = new Set();
-      plan.removed.forEach((n) => {
-        const at = rowForGoal(rows, n);
-        if (at === -1) return;
-        held = window.GoalPicks.hold(held, n, rows[at], gp.stamp);
-        dropped.add(at);
-      });
-      const kept = rows.filter((_, i) => !dropped.has(i));
-      const recalled = [];
-      const fresh = [];
-      plan.added.forEach((n) => {
-        const row = window.GoalPicks.recall(held, n, nowStamp);
-        if (row) recalled.push(row); else fresh.push(n);
-      });
+      const probe = planRows(rows, gp, plan, nowStamp, []);
       let made = [];
-      let conversation = S.conversation;
-      let calls = 0;
-      if (fresh.length) {
-        setLoading(true);
-        calls = 1;
+      let conversation = cur.conversation;
+      const fade = wait(prefersReducedMotion() || !leavingKeys.length ? 0 : GOAL_FADE_MS);
+      if (probe.fresh.length) {
         const userMsg = [
           `GOAL UPDATE`,
-          `Add one row to goalsAnalyzed for each of these goals, using the goal name verbatim: ${fresh.map((n) => JSON.stringify(n)).join(", ")}.`,
+          `Add one row to goalsAnalyzed for each of these goals, using the goal name verbatim: ${probe.fresh.map((n) => JSON.stringify(n)).join(", ")}.`,
           `Write each new row from the notes only. Do not add rows for any other goal.`,
           returnRule(`Never fabricate beyond what is stated.`),
         ].join("\n");
-        conversation = [...S.conversation, { role: "user", content: userMsg }];
-        const r = await runTurn(conversation, S.convStyleBlock || "", false);
+        conversation = [...cur.conversation, { role: "user", content: userMsg }];
+        const r = await runTurn(conversation, cur.convStyleBlock || "", false);
         conversation = [...conversation, { role: "assistant", content: r.rawText }];
         const got = (finalOutput(r.parsed).goalsAnalyzed || []);
         // Only rows for the goals asked about are taken. Every other row in the
         // model's reply is ignored, so the rows already shown stay byte-identical.
-        made = fresh
+        made = probe.fresh
           .map((n) => ({ n, row: got[rowForGoal(got, n)] }))
           .filter((x) => x.row)
           .map((x) => ({ ...x.row, goal: x.row.goal || x.n }));
       }
-      const missing = fresh.filter((n) => rowForGoal(made, n) === -1);
-      // Six rows in all, skills and reduction targets together. A reduction
-      // target keeps its row first. Anything that does not fit is named in the thread.
-      const reductionNames = gp.candidates.filter((c) => c.kind === "reduction").map((c) => c.name);
-      const fit = window.GoalPicks.capRows(
-        [...kept, ...recalled, ...made],
-        (r) => reductionNames.some((n) => rowForGoal([r], n) !== -1),
-      );
-      const next = fit.rows;
-      patchS((s) => ({
-        output: { ...s.output, goalsAnalyzed: next },
-        conversation,
-        lastCallAt: calls ? Date.now() : s.lastCallAt,
-        goalPicker: s.goalPicker ? { ...s.goalPicker, held } : null,
-      }));
+      await fade;
+      // Edits made to the table during the turn are kept: the plan is applied to
+      // the table as it stands now.
+      const live = latestRef.current.S;
+      const liveGp = live.goalPicker || gp;
+      const liveRows = gridRows(live);
+      const done = planRows(liveRows, liveGp, plan, nowStamp, made);
+      const missing = done.fresh.filter((n) => rowForGoal(made, n) === -1);
+      const fit = fitGoalRows(liveGp, done.merged);
+      const nameOf = (r) => liveGp.candidates.map((c) => c.name).find((n) => rowForGoal([r], n) !== -1);
+      const born = { ...(liveGp.born || {}) };
+      made.forEach((r) => { born[goalKey(r.goal)] = nowStamp; });
+      const unmet = [...missing, ...fit.dropped.map(nameOf).filter(Boolean)];
+      commitGoalRows({
+        gp: liveGp, rows: liveRows, next: fit.rows, held: done.held, born,
+        picksAfter: (p) => window.GoalPicks.sync(p, goalGridNames(liveGp, fit.rows), unmet),
+        conversation, calledModel: probe.fresh.length > 0,
+        addedKeys: [...done.recalled, ...made].map((r) => goalRowKeys(fit.rows)[fit.rows.indexOf(r)]).filter(Boolean),
+        leavingKeys,
+      });
       const notes = [];
-      if (missing.length) notes.push(`No row came back for: ${missing.join(", ")}.`);
+      if (missing.length) notes.push(`No row came back for: ${missing.map(shownGoal).join(", ")}. Unchecked.`);
       if (fit.dropped.length) notes.push(`Not kept (six rows at most, reduction targets first): ${fit.dropped.map((r) => r.goal).join(", ")}.`);
       pushThread("assistant", "status", notes.length ? `Goals updated, with gaps.\n${notes.join("\n")}` : "Goals updated.");
     } catch (e) {
-      pushThread("assistant", "status", "Goal update failed.\nNothing changed; try again.");
+      // Nothing was committed. The chips go back to what the table shows.
+      const live = latestRef.current.S;
+      const liveGp = live.goalPicker || gp;
+      patchS((s) => (s.goalPicker ? { goalPicker: { ...s.goalPicker, picks: window.GoalPicks.sync(s.goalPicker.picks, goalGridNames(liveGp, gridRows(live)), names) } } : {}));
+      setSwap({ names: [], leaving: [], entering: [] });
+      pushThread("assistant", "status", "Goal swap failed.\nNothing changed in the table, and the goal chips are back to match it. Check them again to retry.");
     } finally {
-      goalUpdateBusy.current = false;
+      settleGoals(versions, names);
+      swapRef.current = { ...swapRef.current, busy: false };
       setLoading(false);
+      setSwap((w) => ({ ...w, names: [], leaving: [] }));
     }
   };
+
+  latestRef.current = { S, applyGoalSwap };
+
+  // The pause, then the swap. Re-armed by every toggle; the wait is measured
+  // from the last toggle, so a turn that lands late runs its follow-up at once.
+  React.useEffect(() => {
+    const gp = S.goalPicker;
+    if (!gp || !S.output || swap.names.length || loading) return undefined;
+    const plan = swapPlan(gp, gridRows(S));
+    if (!plan.added.length && !plan.removed.length) return undefined;
+    const left = Math.max(0, GOAL_SWAP_PAUSE_MS - (Date.now() - swapRef.current.lastToggleAt));
+    const timer = setTimeout(() => latestRef.current.applyGoalSwap(), left);
+    return () => clearTimeout(timer);
+  }, [S.goalPicker && S.goalPicker.picks, S.output && S.output.goalsAnalyzed, swap.names.length, loading]);
+
+  // A new draft starts with nothing toggled.
+  React.useEffect(() => {
+    swapRef.current = { ...swapRef.current, touched: new Map(), lastToggleAt: 0 };
+  }, [S.goalPicker && S.goalPicker.candidates]);
+
+  // Take up the scroll difference the commit made, before the browser paints.
+  React.useLayoutEffect(() => {
+    const a = anchorRef.current;
+    if (!a) return;
+    anchorRef.current = null;
+    if (!a.el.isConnected) return;
+    const shift = a.el.getBoundingClientRect().top - a.top;
+    if (Math.abs(shift) >= 1) window.scrollBy({ top: shift, left: 0, behavior: "instant" });
+  });
 
   /* ── Usage signal ─────────────────────────────────────────────────────
      Counts only, never a word of the note. What a supervisor needs to answer
@@ -5478,15 +5677,16 @@ function App() {
     }
     if (sec.kind === "table") {
       const gp = id === "goalsAnalyzed" ? S.goalPicker : null;
+      const waiting = gp ? swapPlan(gp, Array.isArray(v) ? v : []) : null;
+      const swapState = swap.names.length ? "pending" : (waiting && (waiting.added.length || waiting.removed.length) ? "waiting" : "idle");
       const picker = (gp && window.GoalPicker)
         ? (
           <window.GoalPicker
             candidates={gp.candidates.map((c) => ({ ...c, shown: shownGoal(c.name), source: shownGoal(c.source), why: shownGoal(c.why) }))}
             picked={window.GoalPicks.checked(gp.picks)}
-            canUpdate={window.GoalPicks.differs(gp.picks, goalGridNames(gp, v))}
-            busy={loading}
+            pending={swap.names}
+            state={swapState}
             onToggle={toggleGoalPick}
-            onUpdate={updateGoals}
           />
         )
         : null;
@@ -5503,6 +5703,9 @@ function App() {
             checkColumn={sec.checkAgainstIntake}
             flagged={goalFlags(sec, v)}
             onConfirm={confirmGoal}
+            rowKeys={goalRowKeys(Array.isArray(v) ? v : [])}
+            leaving={swap.leaving}
+            entering={swap.entering}
           />
         </React.Fragment>
       );
