@@ -89,8 +89,10 @@ test.describe('register rules reach the tools', () => {
         .toMatch(/Abstract state nouns/);
       expect(prompts[id], `${id} is missing the tired staff register`)
         .toMatch(/end of a work block/);
-      expect(prompts[id], `${id} should treat sentence ranges as a ceiling`)
-        .toMatch(/CEILING, never a target/);
+      expect(prompts[id], `${id} should treat sentence ranges as a floor and a ceiling, never a target`)
+        .toMatch(/has a floor and a ceiling, and neither is a target/);
+      expect(prompts[id], `${id} should never pad to reach the floor`)
+        .toMatch(/the draft never pads to reach the floor/);
     }
   });
 
@@ -629,6 +631,7 @@ test.describe('the analysis rules reach the technician tool and no other', () =>
     'OUTPUT: (a) a up to 8 sentence third-person clinical narrative for the "Brief Summary of Activities Completed" field, (b) a up to 10 sentence third-person clinical narrative for the "Results of Assessment" field, (c) conservative checkbox inferences for the BCBA to verify.',
     '- "Brief Summary of Activities Completed" is what the Behavior Analyst DID: the instruments administered and the repertoire or domains each one covers, how data were collected, what was manipulated and in what order, and the clinical purpose of each.',
     '- Hedge the inference to the evidence behind it.',
+    'The floor is the minimum for a section that has content, the ceiling is the stated maximum, and the draft never pads to reach the floor, because a section with little to say stays short.',
     'YOUR JOB: put what the BCBA entered into the permitted format while preserving clinical intent - NOT to capture everything a session could contain.',
     'EXACTLY one of the allowed strings, inferred conservatively from the progress data across goals.',
   ]);
