@@ -15,7 +15,7 @@ const ROOT = join(__dirname, '..', 'notes/bcba');
 // Composed sup prompt (SYSTEM_CORE + register rules + JSON block). The tuning met
 // the one-owner-per-facet rules on dev, so this is the merged prompt: the
 // voice-module store holds the older text until it is re-extracted from here.
-const SUP_SYSTEM_SHA256 = '3f9fcb9307aab9a45f3e0315ae5c6a169f60514c5001cf5b6eb3f0b21174bf45';
+const SUP_SYSTEM_SHA256 = 'eb3a112682a184fabbe5a82c9e29bf228d103f74c111e4a416168135404ed6d0';
 
 function compose() {
   const win = {};
@@ -127,6 +127,23 @@ test.describe('sup SYSTEM_CORE: parity with the voice-module prompt', () => {
     const b = block('QUOTES');
     expect(b).toMatch(/spoken line and any scare quote uses double quotes/);
     expect(b).toMatch(/Escape each one as \\" so the JSON stays valid/);
+  });
+
+  test('staff opinion is recast as observation, and cut only when nothing observable exists', () => {
+    const b = block('STAFF OPINION BECOMES OBSERVATION');
+    expect(b).toMatch(/Staff opinion, a causal claim or a clinical hypothesis is recast as what happened/);
+    expect(b).toMatch(/using only what the notes contain, even when that material is scant or scattered/);
+    expect(b).toMatch(/Cut the opinion only when the notes hold nothing observable to recast it from/);
+    expect(b).toMatch(/never invent an observation the notes do not support/i);
+    expect(b).toMatch(/overrides FLAG, DO NOT REMOVE/);
+    expect(b).toContain('BT felt Client was frustrated');
+    expect(b).toContain('Client threw the card and said no');
+  });
+
+  test('the opinion clause is in the sup-only core, ahead of the shared register rules', () => {
+    expect(system.indexOf('STAFF OPINION BECOMES OBSERVATION')).toBeLessThan(system.indexOf('FLAG, DO NOT REMOVE'));
+    const src = readFileSync(join(ROOT, 'register-rules.js'), 'utf8');
+    expect(src).not.toContain('STAFF OPINION BECOMES OBSERVATION');
   });
 
   test('rules sit before the output format', () => {
