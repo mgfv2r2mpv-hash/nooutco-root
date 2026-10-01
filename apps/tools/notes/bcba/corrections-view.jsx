@@ -421,7 +421,7 @@ function CorrectionsView({ id, ops, marks, state, onToggle, onEdit, onGoToOrigin
                 className="cx-dismissed-btn"
                 aria-expanded={stripOpen}
                 aria-controls={stripPopId}
-                onClick={() => setStripPinned(!stripOpen)}
+                onClick={() => setStripPinned((pinned) => !pinned)}
               >
                 {dismissedRows.map((r) => (
                   <svg key={r.key} className="cx-dismissed-glyph" data-rail-dismissed-glyph="" viewBox="0 0 16 16" aria-hidden="true">
