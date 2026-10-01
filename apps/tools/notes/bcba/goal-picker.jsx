@@ -9,10 +9,24 @@
  * The rules (cap of six, eviction order, held text) live in goal-picks.js. This
  * file only draws them. Defines window.GoalPicker. Loaded before engine.jsx.
  */
+const POP_MAX_WIDTH = 280;
+
 function GoalPicker({ candidates, picked, canUpdate, busy, onToggle, onUpdate }) {
   const [open, setOpen] = React.useState(null);
   const eyes = React.useRef({});
   const stripRef = React.useRef(null);
+  const chipEls = React.useRef({});
+  // Where the open popover sits, measured from the strip: directly under the
+  // clicked chip, shifted left only as far as keeps it inside the strip.
+  const [pos, setPos] = React.useState({ left: 0, top: 0 });
+  React.useLayoutEffect(() => {
+    const chipEl = open === null ? null : chipEls.current[open];
+    const strip = stripRef.current;
+    if (!chipEl || !strip) return;
+    const popW = Math.min(POP_MAX_WIDTH, strip.clientWidth);
+    const left = Math.max(0, Math.min(chipEl.offsetLeft, strip.clientWidth - popW));
+    setPos({ left, top: chipEl.offsetTop + chipEl.offsetHeight });
+  }, [open, candidates]);
   // Escape and a press anywhere outside the strip put the popover away.
   React.useEffect(() => {
     if (open === null) return undefined;
@@ -39,7 +53,8 @@ function GoalPicker({ candidates, picked, canUpdate, busy, onToggle, onUpdate })
         {candidates.map((c) => {
           const on = picked.indexOf(c.name) !== -1;
           return (
-            <span key={c.name} className={"gp-chip" + (on ? " gp-on" : "")} data-goal-chip={c.shown || c.name}>
+            <span key={c.name} className={"gp-chip" + (on ? " gp-on" : "")} data-goal-chip={c.shown || c.name}
+                  ref={(el) => { chipEls.current[c.name] = el; }}>
               <label className="gp-label">
                 <input type="checkbox" checked={on} onChange={() => onToggle(c.name)} aria-label={c.shown || c.name} />
                 <span className="gp-name">{c.shown || c.name}</span>
@@ -56,7 +71,8 @@ function GoalPicker({ candidates, picked, canUpdate, busy, onToggle, onUpdate })
                 {"\u{1F441}"}
               </button>
               {open === c.name && (
-                <div className="gp-pop" role="dialog" data-goal-pop={c.shown || c.name}>
+                <div className="gp-pop" role="dialog" data-goal-pop={c.shown || c.name}
+                     style={{ left: pos.left + "px", top: pos.top + "px" }}>
                   <div className="gp-src">{c.source}</div>
                   <div className="gp-why">{c.why}</div>
                 </div>
