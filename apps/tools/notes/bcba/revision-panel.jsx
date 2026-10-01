@@ -746,6 +746,10 @@ function RevisionPanel({
      that fail, so a non-null ref means one is up. */
   const [listening, setListening] = React.useState(false);
   const stopRef = React.useRef(null);
+  // What the last failed start said, shown beside the mic until the next try.
+  // Without it a blocked microphone and a missing language pack looked identical
+  // to a dead button.
+  const [micError, setMicError] = React.useState("");
   const draftRef = React.useRef(draft);
   React.useEffect(() => { draftRef.current = draft; }, [draft]);
 
@@ -756,6 +760,7 @@ function RevisionPanel({
     if (stopRef.current) return;
     if (!window.NoteSpeech || !window.NoteSpeech.available()) return;
     let ended = false;
+    setMicError("");
     const done = () => { ended = true; stopRef.current = null; setListening(false); };
     const stop = window.NoteSpeech.listen({
       onText: (said) => {
@@ -769,7 +774,7 @@ function RevisionPanel({
         onDraft(joined);
       },
       onEnd: done,
-      onError: done,
+      onError: (kind, message) => { setMicError(message || ""); done(); },
     });
     // listen() reports a failed start through onError before it returns, so a
     // ref set here would be a stop function for a recogniser that never ran.
@@ -1384,6 +1389,14 @@ function RevisionPanel({
               onPointerUp={() => releaseMic(false)}
               onPointerCancel={() => releaseMic(true)}
               onLostPointerCapture={() => releaseMic(true)}
+              /* A click with detail 0 is not a mouse or a finger (those arrive as
+                 pointer events and carry detail 1 or more) and not the keyboard
+                 (its keys are handled below and cancel their own click). It is
+                 assistive technology activating the button, and it toggles. */
+              onClick={(e) => {
+                if (e.detail !== 0) return;
+                if (stopRef.current) stopTalking(); else startTalking();
+              }}
               onKeyDown={(e) => {
                 if (e.key === " " || e.key === "Enter") { e.preventDefault(); if (!e.repeat) pressMic(); }
               }}
@@ -1476,6 +1489,11 @@ function RevisionPanel({
               and the icon alone cannot. The RULE half never swaps: his ruling
               is that it is never not there, and "never" includes the seconds
               somebody is actually speaking into it. */}
+          {micError && (
+            <span data-speak-error="true" role="status" style={{ display: "block", color: "#9a3412", fontWeight: 600 }}>
+              {micError}
+            </span>
+          )}
           {window.NoteSpeech && window.NoteSpeech.available() && (
             <span data-speak-rule="true" className={listening ? "is-listening" : undefined}>
               {listening ? micSay : "Tap the mic to talk, or hold it."}
