@@ -84,7 +84,7 @@ test.describe('sup tool: goalsAnalyzed cap (review HIGH 3)', () => {
       const skill = (n) => ({ goal: `Skill ${n}`, progress: 'Responded to most trials with one prompt.', nextSteps: 'Continue current teaching.' });
       const red = (n) => ({ goal: n, progress: 'Zero occurrences of the behavior today.', nextSteps: 'Continue the reduction plan.' });
       const rows = [skill(1), skill(2), red('Elopement'), skill(3), skill(4), skill(5), skill(6), skill(7), red('Aggression'), skill(8)];
-      return t.normalizeOutput({ goalsAnalyzed: rows }).goalsAnalyzed.map((r) => r.goal);
+      return t.normalizeOutput({ goalsAnalyzed: rows }, { reductionGoals: ['Elopement', 'Aggression'] }).goalsAnalyzed.map((r) => r.goal);
     });
     expect(goals).toEqual(['Skill 1', 'Skill 2', 'Elopement', 'Skill 3', 'Skill 4', 'Skill 5', 'Skill 6', 'Aggression']);
   });
@@ -97,5 +97,36 @@ test.describe('sup tool: goalsAnalyzed cap (review HIGH 3)', () => {
       return t.normalizeOutput({ goalsAnalyzed: rows }).goalsAnalyzed.length;
     });
     expect(n).toBe(6);
+  });
+});
+
+test.describe('sup tool: reduction rows are classified by name and kind (second review LOW 6)', () => {
+  const run = (page, rows, ctx) => page.evaluate(({ rows, ctx }) => {
+    const t = window.NOTE_TOOLS.find((x) => x.id === 'sup');
+    return t.normalizeOutput({ goalsAnalyzed: rows }, ctx).goalsAnalyzed.map((r) => r.goal);
+  }, { rows, ctx });
+
+  test('a skill row whose progress says "reduced prompting" does not escape the cap', async ({ page }) => {
+    await tool(page);
+    const rows = [1, 2, 3, 4, 5, 6, 7].map((i) => ({
+      goal: `Skill ${i}`, progress: 'Prompting was reduced across trials; two episodes of refusal.', nextSteps: 'Continue.',
+    }));
+    expect(await run(page, rows)).toHaveLength(6);
+  });
+
+  test('a row the picker marked as a reduction target is kept past six, whatever its wording', async ({ page }) => {
+    await tool(page);
+    const rows = [1, 2, 3, 4, 5, 6, 7].map((i) => ({ goal: `Skill ${i}`, progress: 'Went well.', nextSteps: 'Continue.' }));
+    rows.push({ goal: 'elopement', progress: 'Went well.', nextSteps: 'Continue.' });
+    const out = await run(page, rows, { reductionGoals: ['Elopement'] });
+    expect(out).toHaveLength(7);
+    expect(out[6]).toBe('elopement');
+  });
+
+  test('a goal name that carries a reduction frame is a reduction row without the picker', async ({ page }) => {
+    await tool(page);
+    const rows = [1, 2, 3, 4, 5, 6, 7].map((i) => ({ goal: `Skill ${i}`, progress: 'Went well.', nextSteps: 'Continue.' }));
+    rows.push({ goal: 'Aggression (behavior targeted for reduction)', progress: '', nextSteps: 'Continue.' });
+    expect(await run(page, rows)).toHaveLength(7);
   });
 });

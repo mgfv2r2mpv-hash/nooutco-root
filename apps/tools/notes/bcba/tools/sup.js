@@ -288,22 +288,29 @@ TERMINOLOGY (non-negotiable)\n\
     ]).join("\n");
   }
 
-  // A row is a reduction target when its own text speaks of reduction or of
-  // occurrences. The reply carries no kind, so the wording is the only signal.
-  var REDUCTION_ROW = /\breduc(?:e|ed|tion|ing)\b|\boccurrences?\b|\bepisodes?\b|\binstances? of\b|\bbehaviou?rs? of concern\b|\bmaladaptive\b|\bchallenging behaviou?r\b|\binterfering behaviou?r\b/i;
+  // A row is a reduction target by its NAME, never by its progress text: a skill
+  // row that says "reduced prompting" is still a skill. The name is either one
+  // the goal picker marked as a reduction target (ctx.reductionGoals), or it
+  // carries a reduction frame itself ("Aggression (behavior of concern)").
+  var REDUCTION_NAME = /\breduc(?:e|ed|tion|ing)\b|\bbehaviou?rs? of concern\b|\bmaladaptive\b|\bchallenging behaviou?r\b|\binterfering behaviou?r\b|\bbehaviou?r goal\b/i;
   var SKILL_ROW_MAX = 6;
 
+  function goalKey(n) {
+    return String(n || "").toLowerCase().replace(/\([^)]*\)/g, " ").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim().replace(/\s+goal$/, "").trim();
+  }
+
   // Up to six skill rows, plus every reduction-target row on top of them.
-  function capGoalRows(rows) {
+  function capGoalRows(rows, ctx) {
+    var known = ((ctx && Array.isArray(ctx.reductionGoals)) ? ctx.reductionGoals : []).map(goalKey).filter(Boolean);
     var skills = 0;
     return rows.filter(function (r) {
-      if (REDUCTION_ROW.test(r.goal + " " + r.progress + " " + r.nextSteps)) return true;
+      if (REDUCTION_NAME.test(r.goal) || (goalKey(r.goal) !== "" && known.indexOf(goalKey(r.goal)) !== -1)) return true;
       skills += 1;
       return skills <= SKILL_ROW_MAX;
     });
   }
 
-  function normalizeOutput(raw) {
+  function normalizeOutput(raw, ctx) {
     var o = raw && typeof raw === "object" ? raw : {};
     var out = {};
     out.sessionChecks = (Array.isArray(o.sessionChecks) ? o.sessionChecks : []).filter(function (v) { return SESSION_CHECKS.indexOf(v) !== -1; });
@@ -317,7 +324,7 @@ TERMINOLOGY (non-negotiable)\n\
         };
       })
       .filter(function (r) { return (r.goal + r.progress + r.nextSteps).trim() !== ""; });
-    out.goalsAnalyzed = capGoalRows(out.goalsAnalyzed);
+    out.goalsAnalyzed = capGoalRows(out.goalsAnalyzed, ctx);
     out.overallProgress = PROGRESS_LEVELS.indexOf(o.overallProgress) !== -1 ? o.overallProgress : "";
     out.reviewedNotes = YES_NO.indexOf(o.reviewedNotes) !== -1 ? o.reviewedNotes : "";
     ["progress", "programming", "behavior", "feedback", "followup"].forEach(function (k) {

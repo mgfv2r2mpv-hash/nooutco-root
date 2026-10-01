@@ -2099,6 +2099,16 @@ function App() {
      stands. Everything either side of that call is the same work in the same
      order - restore, inject, strip, recast - which is the point of threading a
      function through instead of adding a second pipeline. */
+  /* The goal picker's reduction targets, as the technician reads them, so the
+     six-row cap classifies a row by its name and kind and never by its prose.
+     Before the first draft there is no picker; draftNote parks the names here. */
+  const draftReductionRef = React.useRef([]);
+  const reductionGoalNames = () => {
+    const gp = S.goalPicker;
+    const names = (gp ? gp.candidates.filter((c) => c.kind === "reduction").map((c) => c.name) : [])
+      .concat(draftReductionRef.current);
+    return names.map((n) => String(NotesScrub.restoreOutput(String(n || ""), scrubMapRef.current || [])));
+  };
   const finalize = (parsed, normalizer) => {
     /* RESTORE FIRST, before normalising and before the absence strip reads a
        word of it. A word with no evidence of being a person went out as an
@@ -2140,7 +2150,7 @@ function App() {
       ? { ...restored, hints: (Array.isArray(restored.hints) ? restored.hints : []).concat(injected) }
       : restored;
 
-    const normalized = (normalizer || tool.normalizeOutput)(withHints, { intake: draftIntakeRef.current });
+    const normalized = (normalizer || tool.normalizeOutput)(withHints, { intake: draftIntakeRef.current, reductionGoals: reductionGoalNames() });
     const stripped = window.NoteAbsence
       ? window.NoteAbsence.scrubNote(normalized)
       : { output: normalized, cut: 0, flagged: 0 };
@@ -3118,6 +3128,13 @@ function App() {
         }
       } catch (e) { /* keep the first draft */ }
 
+      draftReductionRef.current = (() => {
+        try {
+          return window.GoalCandidates
+            ? window.GoalCandidates.score(intakeBody(scrubbedValues)).filter((c) => c.kind === "reduction").map((c) => c.name)
+            : [];
+        } catch (e) { return []; }
+      })();
       const finalDraft = finalize(r.parsed);
 
       /* THE CORRECTIONS PASS, before the technician ever reads the draft.
