@@ -198,6 +198,45 @@ TERMINOLOGY (non-negotiable)\n\
 
   var LABELED_FORMAT_BLOCK = "\n\nOUTPUT FORMAT\nReturn labeled sections in the exact order below. For \"[tick]\" lines, list ONLY the values that apply, comma-separated and verbatim from the allowed list; if none apply write \"None selected.\" For \"[choose one]\" pick exactly one allowed value (or \"None\"). For GOALS ANALYZED write one block per goal: \"Goal: …\" / \"Progress: …\" / \"Next Steps: …\" on separate lines (or \"None identified\"). For each \"[narrative]\" follow the section specification. Do NOT output hints. No JSON, no preamble, no commentary.\n\nSESSION CHECKS COMPLETED [tick]\nGOALS ANALYZED [table]\nOVERALL CLIENT PROGRESS [choose one]\nSUMMARY OF PROGRESS AND FINDINGS [narrative]\nSUMMARY OF PROTOCOL MODIFICATIONS MADE/NEEDED [narrative]\nDESCRIPTION OF BEHAVIOR AND SUPPORT [narrative, omit if no behaviors of concern]\nFEEDBACK NOTES [narrative]\nBCBA REVIEWED ALL SESSION NOTES FOR LAST WEEK [choose one: Yes | No]\nFOLLOW-UP ITEMS [one per line]";
 
+  // The goal picker's choices, as plain names. Anything that is not a non-empty
+  // string is dropped, so a hand-edited draft cannot put an object in the prompt.
+  function cleanGoalNames(list) {
+    return (Array.isArray(list) ? list : []).filter(function (n) { return typeof n === "string" && n.trim() !== ""; });
+  }
+
+  function describeRow(row) {
+    var counts = row.correct === null ? "no counts" : row.correct + " correct, " + row.incorrect + " incorrect";
+    var parts = [row.program, row.target, counts];
+    if (row.sequence.length) parts.push("sequence: " + row.sequence.join(" "));
+    if (row.mismatch) parts.push("stated percent disagrees with the counts; the counts stand");
+    if (row.unexplained.length) parts.push("unexplained codes: " + row.unexplained.join(", "));
+    return parts.join(" | ");
+  }
+
+  // Goal names the technician chose, then the data rows the notes carry in
+  // bracket form, parsed so the model reads the trial sequence as a sequence.
+  // Both are reference: a goal row still never restates counts or a percent.
+  function goalBlocks(values) {
+    var blocks = [];
+    var chosen = cleanGoalNames(values.chosenGoals);
+    if (chosen.length) {
+      blocks.push([
+        "CHOSEN GOALS (one Goals Analyzed row each, names exactly as written here, in this order):",
+        chosen.map(function (n, i) { return (i + 1) + ". " + n; }).join("\n"),
+        "",
+      ].join("\n"));
+    }
+    var rows = window.GoalCandidates ? window.GoalCandidates.parseRows(values.clinicalNotes) : [];
+    if (rows.length) {
+      blocks.push([
+        "PARSED DATA ROWS (for reading the session only; do not restate counts or percents in a goal row):",
+        rows.map(describeRow).join("\n"),
+        "",
+      ].join("\n"));
+    }
+    return blocks;
+  }
+
   function buildUserPrompt(values) {
     var btPresent = values.btPresent;
     return [
@@ -209,6 +248,7 @@ TERMINOLOGY (non-negotiable)\n\
       "STAFF FEEDBACK, TRAINING & FIDELITY, feedback given to staff, skills trained or modeled, anything reviewed, IOA/procedural fidelity checks and results:",
       (values.staffNotes || "").trim() || "(none provided)",
       "",
+    ].concat(goalBlocks(values), [
       "ALLOWED VALUES (return only verbatim strings from these lists):",
       "- sessionChecks: " + menu(SESSION_CHECKS),
       "- overallProgress: " + menu(PROGRESS_LEVELS),
@@ -222,7 +262,7 @@ TERMINOLOGY (non-negotiable)\n\
       "Feedback section framing: " + (btPresent
         ? "Feedback provided to direct service staff (BT/RBT) regarding implementation, skill acquisition targets, or behavior intervention."
         : "No technician was present. Describe Behavior Analyst-only activities: what was run, evaluated, modeled, or explained. Begin with: 'No technician was present; Behavior Analyst performed…'. Staff-related hint codes do not apply."),
-    ].join("\n");
+    ]).join("\n");
   }
 
   function normalizeOutput(raw) {
@@ -297,12 +337,15 @@ TERMINOLOGY (non-negotiable)\n\
       if (values.btPresent === null || values.btPresent === undefined) return "BT / RBT Present is required.";
       return null;
     },
-    // Old single-textarea drafts carry over into the clinical notes box.
+    // Old single-textarea drafts carry over into the clinical notes box. Every
+    // draft leaves with a chosenGoals list, the picker's choices, empty when the
+    // technician has not picked.
     migrateDraft: function (saved) {
-      if (saved && saved.notes && !saved.clinicalNotes) {
-        return { btPresent: saved.btPresent, clinicalNotes: saved.notes, staffNotes: saved.staffNotes || "" };
-      }
-      return saved;
+      if (!saved) return saved;
+      var base = saved.notes && !saved.clinicalNotes
+        ? { btPresent: saved.btPresent, clinicalNotes: saved.notes, staffNotes: saved.staffNotes || "" }
+        : saved;
+      return Object.assign({}, base, { chosenGoals: cleanGoalNames(saved.chosenGoals) });
     },
     /* This tool's system prompt is composed inside the Worker, from the prompt
        store, and is not sent from here. buildSystem stays for now because the
