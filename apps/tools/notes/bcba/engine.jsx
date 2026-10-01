@@ -4596,6 +4596,23 @@ function App() {
     applyMarkState({ ...next, [key]: { ...prev, approved: true } });
   };
 
+  /* Dismissing a deletion counts as approving it, and the note is untouched: the
+     words were already out. Reopen puts the row back in the rail and takes the
+     approval with it, since reading it again is a new decision. Unlike
+     approveChange this never toggles, because a rail row is not in the note and
+     toggling would put its words back. */
+  const dismissDeletion = (key) => {
+    if (!S.corrections) return;
+    audit("corrections_mark", { approved: 1 });
+    applyMarkState({ ...(S.markState || {}), [key]: { ...((S.markState || {})[key] || {}), approved: true, dismissed: true } });
+  };
+
+  const reopenDeletion = (key) => {
+    if (!S.corrections) return;
+    const { approved, dismissed, ...rest } = (S.markState || {})[key] || {};
+    applyMarkState({ ...(S.markState || {}), [key]: rest });
+  };
+
   /* Clearing a section's marks does NOT revert anything. The note already reads
      the way the marks say it does, and this is the only way back to a plain
      editable textarea, which is what a technician wants the moment they would
@@ -5235,6 +5252,8 @@ function App() {
               queue={S.askQueue}
               onAsk={queueAsk}
               onDropAsk={dropAsk}
+              onDismiss={dismissDeletion}
+              onReopen={reopenDeletion}
             />
             <button
               type="button"

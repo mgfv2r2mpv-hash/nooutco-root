@@ -1679,3 +1679,34 @@ body.is-pointing, body.is-pointing * { cursor: crosshair !important; }
     font-size: 16px !important;
   }
 }
+
+/* ── sup-tuning B: Deletions rail icons and dismissed strip ─────────────── */
+.cx-cut-acts { display: inline-flex; gap: 4px; align-self: center; }
+.cx-ico {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 30px; min-height: 30px; padding: 0; cursor: pointer;
+  border: 1.5px solid #b7cba2; background: #fff; border-radius: 5px; color: #3c5029;
+}
+.cx-ico:hover, .cx-ico:focus-visible { background: #f0f6ea; border-color: #8aa473; }
+.cx-ico svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.cx-tell { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.cx-tell-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.cx-tell .cx-edit { flex: 1 1 140px; min-width: 0; }
+.cx-chip.is-on { background: #e2eed6; border-color: #6f9356; }
+.cx-dismissed { position: relative; margin: 0 0 6px; }
+.cx-dismissed-btn {
+  display: inline-flex; flex-wrap: wrap; align-items: center; gap: 2px; max-width: 100%;
+  min-height: 30px; padding: 2px 8px; cursor: pointer; font: inherit; font-size: 11px; color: #3c5029;
+  border: 1.5px solid #b7cba2; background: #f6faf1; border-radius: 5px;
+}
+.cx-dismissed-btn span { margin-left: 4px; font-weight: 600; }
+.cx-dismissed-glyph { width: 12px; height: 12px; fill: none; stroke: #4c7a2f; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.cx-dismissed-pop {
+  position: absolute; z-index: 5; left: 0; top: 100%; width: min(420px, 100%);
+  padding: 6px; background: #fff; border: 1.5px solid #b7cba2; border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(40, 60, 30, .15);
+}
+.cx-dismissed-item { display: flex; gap: 8px; align-items: center; padding: 3px 0; }
+.cx-dismissed-item + .cx-dismissed-item { border-top: 1px solid #e3ecd9; }
+.cx-dismissed-text { flex: 1 1 auto; min-width: 0; font-size: 12px; color: #55603f; overflow-wrap: anywhere; }
+.cx-dismissed-item .cx-ck { min-height: 30px; }

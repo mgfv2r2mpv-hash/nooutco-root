@@ -110,7 +110,24 @@ function pairedAddition(removed, ops, state, id) {
   return bestScore >= 2 ? best : null;
 }
 
-function CorrectionsView({ id, ops, marks, state, onToggle, onEdit, onGoToOrigin, headings, quiet, queue, onAsk, onDropAsk, hydrate }) {
+/* The three rail actions are icons, so each carries its own tooltip and name.
+   They sit in the rail, outside the box, and hold no text node a copy could
+   take. Word buttons stay everywhere else: the drawer and the pending popover. */
+const TELL_CHIPS = ["Restore part of it", "Restore it differently", "Clarify so it is not deleted"];
+const RAIL_ICON_PATHS = {
+  restore: "M6 3.5L3 6.5l3 3M3.5 6.5H10a3 3 0 010 6H7",
+  tell: "M3 13l.8-3L10.5 3.3a1.2 1.2 0 011.7 0l.5.5a1.2 1.2 0 010 1.7L6 12.2z",
+  dismiss: "M3 8.5l3.2 3.2L13 4.8",
+};
+function RailIcon({ kind, label, attr, onClick }) {
+  return (
+    <button type="button" className="cx-ico" title={label} aria-label={label} onClick={onClick} {...attr}>
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d={RAIL_ICON_PATHS[kind]} /></svg>
+    </button>
+  );
+}
+
+function CorrectionsView({ id, ops, marks, state, onToggle, onEdit, onGoToOrigin, headings, quiet, queue, onAsk, onDropAsk, onDismiss, onReopen, hydrate }) {
   // His words from the put-back table, on screen only. The ops and the state
   // stay in tokens, and an edit goes back through the engine to be dehydrated.
   const show = (t) => (hydrate ? hydrate(t) : t);
@@ -120,6 +137,11 @@ function CorrectionsView({ id, ops, marks, state, onToggle, onEdit, onGoToOrigin
   const [litKey, setLitKey] = React.useState(null);
   const [askKey, setAskKey] = React.useState(null);
   const [askBuffer, setAskBuffer] = React.useState("");
+  const [tellKey, setTellKey] = React.useState(null);
+  const [tellChip, setTellChip] = React.useState("");
+  const [tellBuffer, setTellBuffer] = React.useState("");
+  const [stripHover, setStripHover] = React.useState(false);
+  const [stripPinned, setStripPinned] = React.useState(false);
   const asks = Object.keys(queue || {}).map(function (k) { return queue[k]; }).filter(function (a) { return a.id === id; });
 
   /* What an op puts in the note right now, given what the technician has done
@@ -177,13 +199,26 @@ function CorrectionsView({ id, ops, marks, state, onToggle, onEdit, onGoToOrigin
     if (!elsewhere) {
       const shown = op.type === "ins" ? text : op.text;
       rail.push({
-        key, n, text: shown, why, kind: op.type,
+        key, n, text: shown, why, kind: op.type, dismissed: !!mark.dismissed,
         // Only a removal can have been rewritten into something. An addition the
         // technician took out was never in their draft to survive.
         split: op.type === "del" ? splitSurviving(shown, pairedAddition(shown, ops, state, id)) : null,
       });
     }
   });
+
+  /* A dismissed row leaves the rail and is counted in the strip above it. Quiet
+     mode has no controls to dismiss with or reopen from, so it draws every row. */
+  const dismissedRows = quiet ? [] : rail.filter((r) => r.dismissed);
+  const railRows = quiet ? rail : rail.filter((r) => !r.dismissed);
+
+  const sendTell = (r) => {
+    const said = tellBuffer.trim();
+    if (!tellChip && !said) return;
+    const head = tellChip + (tellChip && said ? ". " : "") + said;
+    onAsk(r.key, head + (r.why ? " (Deleted because: " + r.why + ")" : ""));
+    setTellKey(null);
+  };
 
   const dim = (key) => (litKey && litKey !== key ? " is-dim" : "");
   const lit = (key) => (litKey === key ? " is-lit" : "");
@@ -355,7 +390,40 @@ function CorrectionsView({ id, ops, marks, state, onToggle, onEdit, onGoToOrigin
               its lines are struck from nothing, so where it is already says
               what it is. */}
           <p className="cx-rail-head">Deletions</p>
-          {rail.map((r) => (
+          {dismissedRows.length > 0 && (
+            <div
+              className="cx-dismissed"
+              data-rail-dismissed={id}
+              onMouseEnter={() => setStripHover(true)}
+              onMouseLeave={() => setStripHover(false)}
+            >
+              <button
+                type="button"
+                className="cx-dismissed-btn"
+                aria-expanded={stripHover || stripPinned}
+                onClick={() => setStripPinned(!stripPinned)}
+              >
+                {dismissedRows.map((r) => (
+                  <svg key={r.key} className="cx-dismissed-glyph" data-rail-dismissed-glyph="" viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M3 8.5l3.2 3.2L13 4.8" />
+                  </svg>
+                ))}
+                <span>{dismissedRows.length} dismissed</span>
+              </button>
+              {(stripHover || stripPinned) && (
+                <div className="cx-dismissed-pop" data-rail-dismissed-pop={id}>
+                  {dismissedRows.map((r) => (
+                    <div key={r.key} className="cx-dismissed-item">
+                      <span className="cx-dismissed-text">{show(r.text.trim())}</span>
+                      <button type="button" className="cx-ck" data-rail-reopen={r.key}
+                              title="Put this row back in the list" onClick={() => onReopen(r.key)}>Reopen</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          {railRows.map((r) => (
             <div
               key={r.key}
               className={"cx-cut" + lit(r.key)}
@@ -375,15 +443,37 @@ function CorrectionsView({ id, ops, marks, state, onToggle, onEdit, onGoToOrigin
                 {r.why ? <span className="cx-cut-why">{r.why}</span> : null}
               </span>
               {!quiet && (
-                <button
-                  type="button"
-                  className="cx-ck cx-cut-act"
-                  data-correction-undo={r.key}
-                  title={r.kind === "ins" ? "Restore to note" : "Restore to note"}
-                  onClick={() => onToggle(r.key)}
-                >
-                  {r.kind === "ins" ? "Put it back" : "Restore"}
-                </button>
+                <span className="cx-cut-acts">
+                  <RailIcon kind="restore" label="Restore to note" attr={{ "data-correction-undo": r.key, "data-rail-restore": r.key }}
+                            onClick={() => onToggle(r.key)} />
+                  <RailIcon kind="tell" label="Tell NoMe about this deletion" attr={{ "data-rail-tell": r.key }}
+                            onClick={() => { setTellKey(tellKey === r.key ? null : r.key); setTellChip(""); setTellBuffer(""); }} />
+                  <RailIcon kind="dismiss" label="Dismiss, keep it deleted" attr={{ "data-rail-dismiss": r.key }}
+                            onClick={() => onDismiss(r.key)} />
+                </span>
+              )}
+              {!quiet && tellKey === r.key && (
+                <span className="cx-tell" data-rail-tell-box={r.key}>
+                  <span className="cx-tell-chips">
+                    {TELL_CHIPS.map((c) => (
+                      <button key={c} type="button" className={"cx-ck cx-chip" + (tellChip === c ? " is-on" : "")}
+                              aria-pressed={tellChip === c} onClick={() => setTellChip(tellChip === c ? "" : c)}>{c}</button>
+                    ))}
+                  </span>
+                  <input
+                    className="cx-edit"
+                    value={tellBuffer}
+                    placeholder="Anything to add"
+                    autoFocus
+                    onChange={(e) => setTellBuffer(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") { e.preventDefault(); sendTell(r); }
+                      if (e.key === "Escape") { e.preventDefault(); setTellKey(null); }
+                    }}
+                  />
+                  <button type="button" className="cx-ck" data-rail-tell-save={r.key} onClick={() => sendTell(r)}>Queue it</button>
+                  <button type="button" className="cx-ck" onClick={() => setTellKey(null)}>Cancel</button>
+                </span>
               )}
             </div>
           ))}

@@ -449,7 +449,7 @@ test.describe('restoring a swapped token in the SAP', () => {
     for (let i = await undo.count(); i > 0; i--) {
       const first = undo.first();
       if (!(await first.isVisible().catch(() => false))) break;
-      if ((await first.textContent()) !== 'Restore') break;
+      if ((await first.getAttribute('aria-label')) !== 'Restore to note') break;
       await first.click();
     }
     const all = await note.evaluate((el) => el.textContent);
