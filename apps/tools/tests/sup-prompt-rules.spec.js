@@ -15,7 +15,7 @@ const ROOT = join(__dirname, '..', 'notes/bcba');
 // Composed sup prompt (SYSTEM_CORE + register rules + JSON block). The tuning met
 // the one-owner-per-facet rules on dev, so this is the merged prompt: the
 // voice-module store holds the older text until it is re-extracted from here.
-const SUP_SYSTEM_SHA256 = '40ba42dbd5c124e4e502c4e7d46a6a0f6a2a4b84243778337021e440141a6e44';
+const SUP_SYSTEM_SHA256 = 'a1a61a1bb6ed17dece25e1109c65e704c15633615d34a92cfbdc17ac92503ce9';
 
 function compose() {
   const win = {};
@@ -70,6 +70,25 @@ test.describe('sup SYSTEM_CORE: parity with the voice-module prompt', () => {
     }
     expect(b).toMatch(/A reduction target gets its row even at zero occurrences/);
     expect(b).toMatch(/anything told as a story with no program name and no data are NOT goal rows/);
+  });
+
+  test('goalsAnalyzed cap: up to 6 skill rows, and every reduction target is a row on top of that', () => {
+    expect(system).toMatch(/goalsAnalyzed \(owns[^)]*\): [^\n]*up to 6 skill rows, and every reduction target gets its row in addition, so up to 6 plus the number of reduction targets/);
+    expect(system).not.toMatch(/max 6 skill rows/);
+  });
+
+  test('a reduction-target row says what it carries: trajectory or empty, never the count', () => {
+    const b = block('WHAT IS A GOAL ROW');
+    expect(b).toMatch(/reduction target's Progress is one sentence about the trajectory of the behavior across the session, with no pointer to another section, or is left empty/);
+    expect(b).toMatch(/never the occurrence count, which lives only in Description of Behavior and Support/);
+    expect(b).toMatch(/its Next Steps is one sentence/);
+  });
+
+  test('the who-writes-this paragraph defines floor and ceiling and never calls a range a bare ceiling', () => {
+    const b = block('WHO WRITES THIS AND WHEN');
+    expect(b).not.toMatch(/any sentence range given below is a CEILING/);
+    expect(b).toMatch(/floor is the minimum for a section that has content, the ceiling is the stated maximum/);
+    expect(b).toMatch(/never pads/i);
   });
 
   test('goal names are copied verbatim, punctuation included', () => {
