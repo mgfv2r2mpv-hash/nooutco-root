@@ -1764,6 +1764,13 @@ body.is-pointing, body.is-pointing * { cursor: crosshair !important; }
 .gs-leaving { opacity: 0; transition: opacity .18s ease; pointer-events: none; }
 .gs-entering { animation: gs-in .22s ease both; }
 @keyframes gs-in { from { opacity: 0; } to { opacity: 1; } }
+/* The grip at the left of a goal row. touch-action none keeps a finger drag from
+   scrolling the page; the row being dragged lifts with a shadow, no animation. */
+.gs-handle { flex: 0 0 auto; width: 28px; border: 1px solid #c0d4a8; border-radius: 8px; background: #f4f8ef; color: #7a9460; cursor: grab; touch-action: none; user-select: none; font-size: 14px; letter-spacing: -2px; padding: 0; }
+.gs-handle:hover { background: #eaf3df; }
+.gs-handle:focus-visible { outline: 2px solid #4d6b34; outline-offset: 2px; }
+.gs-dragging { opacity: .92; box-shadow: 0 6px 18px rgba(45, 58, 31, .22); border-radius: 8px; transition: none; }
+.gs-dragging .gs-handle { cursor: grabbing; background: #dcebc9; }
 @media (prefers-reduced-motion: reduce) {
   .gp-chip[data-pending="true"] { animation: none; border-style: dashed; }
   .gs-leaving { transition: none; }
