@@ -36,3 +36,19 @@ Gaps (no test yet):
 - A Title Case goal with no colon, no data and no marker (a bare "- Joint Attention") scores 3 as a label, but a lowercase goal in the same position ("- joint attention") is not a candidate.
 - A name followed by "target" as a noun ("the target was elopement") has no name before the marker, so the "after" route takes "was elopement" only if a colon follows; otherwise nothing.
 - Names longer than six words are dropped, not truncated.
+
+## E. Repeat check (attack items 12 and 14 in part)
+
+Spec: `apps/tools/tests/repeated-facts.spec.js` (11 cases, node vm) and `apps/tools/tests/sup-repeat-hint.spec.js` (2 cases, stubbed model). `repeated-facts.js` is pure, edits nothing, and is wired in `finalize` in engine.jsx as a third injected hint source, beside the misplaced-strategy and effect-unstated checks. The tool lists its sections in `repeatSections`. Hints land on the later section with the earlier section's heading in the detail.
+
+Covered: sentence counter (abbreviation, decimal, quoted line, bullets, empty and null); the same fact in different words flagged (token Jaccard on content words, threshold 0.5, at least 4 content words per sentence); a legitimate echo (the same goal name and the same antecedent strategy named in Behavior and Feedback Notes inside different sentences) does not flag; caregiver coaching restated in Progress flagged against Feedback Notes; one hint per section; short and stopword-only sentences never flag; a section repeating itself is not flagged; empty and non-string sections skipped; input not mutated; end to end, the hint shows on Feedback Notes only and the text is left as drafted.
+
+Decisions to confirm:
+- The 0.5 threshold and the 4-word floor were chosen against the invented fixtures in the spec, not against real notes. A real corpus run would tune them.
+
+Gaps (no test yet):
+- A repeat built from a paraphrase that shares few words ("did not leave the area" against "stayed in the room") is not caught; token overlap cannot see synonyms.
+- Numbers and names are ordinary content words, so two different facts about the same goal in two sections (same goal name, different counts) can score as a repeat when the sentences are short.
+- A repeat inside Goals Analyzed rows or against Follow-Up Items is not checked, only the four narrative sections.
+- The hint detail is a heading, not a sentence quote, so a note with three repeats in one section shows only the first matching section.
+- Sentence budgets (item A1) are not enforced by this file; `countSentences` is the helper for tests on canned model outputs, and no budget test exists here because the prompt rules are section A, which is not part of this run.
