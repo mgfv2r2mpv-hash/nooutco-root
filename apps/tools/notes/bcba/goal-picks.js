@@ -4,14 +4,13 @@
  * are checked, the cap of six, which chip a seventh check evicts, whether the
  * picks differ from the grid, and the last text of a row that was dropped.
  *
- * STATE. { order, pre, user, free }. `order` is the strip order of every candidate
+ * STATE. { order, pre, user }. `order` is the strip order of every candidate
  * name. `pre` is the preselected names still checked. `user` is the names the
  * technician checked, oldest first. Every function returns a new state.
  *
- * CAP. Six picked skills. A seventh skill check evicts the leftmost preselected
- * skill chip still checked, and once none is left, the oldest skill chip the
- * technician checked. `free` names the reduction targets: they sit on top of the
- * six, never count toward it and are never evicted.
+ * MASTER CAP. Six picks in all, skills and behavior reduction targets together.
+ * A seventh check evicts the leftmost preselected chip still checked, and once
+ * none is left, the oldest chip the technician checked.
  *
  * HELD TEXT. A dropped row's text is kept with the notes it was written from,
  * so rechecking restores it only while the notes are unchanged.
@@ -31,7 +30,6 @@
       order: order,
       pre: inOrder(order, candidates.preselected || []),
       user: [],
-      free: (candidates.free || []).slice(),
     };
   }
 
@@ -47,22 +45,26 @@
         order: state.order,
         pre: state.pre.filter(function (n) { return n !== name; }),
         user: state.user.filter(function (n) { return n !== name; }),
-        free: state.free,
       };
     }
     var pre = state.pre;
     var user = state.user.concat([name]);
-    var skill = function (n) { return state.free.indexOf(n) === -1; };
-    if (pre.filter(skill).length + user.filter(skill).length > CAP) {
-      var evictPre = pre.filter(skill)[0];
+    if (pre.length + user.length > CAP) {
+      var evictPre = inOrder(state.order, pre)[0];
       if (evictPre !== undefined) {
         pre = pre.filter(function (n) { return n !== evictPre; });
       } else {
-        var evictUser = user.filter(skill)[0];
-        user = user.filter(function (n) { return n !== evictUser; });
+        user = user.slice(1);
       }
     }
-    return { order: state.order, pre: pre, user: user, free: state.free };
+    return { order: state.order, pre: pre, user: user };
+  }
+
+  // The names a toggle unchecked besides the one the technician pressed, so the
+  // thread can say what the cap took away.
+  function evicted(before, after, toggled) {
+    var now = checked(after);
+    return checked(before).filter(function (n) { return n !== toggled && now.indexOf(n) === -1; });
   }
 
   function sameSet(a, b) {
@@ -93,18 +95,29 @@
     return h && h.notes === notesText ? h.text : null;
   }
 
-  // Fit a grid to the cap: every free (reduction) row stays, and the first CAP
-  // others stay in order. What does not fit is returned, never lost in silence.
+  // Fit a grid to the master cap of six rows. Free (reduction) rows have first
+  // claim on the six, in grid order; the others fill what is left, in grid
+  // order. What does not fit is returned, never lost in silence.
   function capRows(rows, isFree) {
+    var free = 0;
+    rows.forEach(function (r) { if (isFree(r)) free += 1; });
+    var freeRoom = Math.min(free, CAP);
+    var otherRoom = CAP - freeRoom;
+    var freeSeen = 0;
+    var otherSeen = 0;
     var kept = [];
     var dropped = [];
-    var skills = 0;
     rows.forEach(function (r) {
-      if (isFree(r)) { kept.push(r); return; }
-      if (skills < CAP) { skills += 1; kept.push(r); } else dropped.push(r);
+      if (isFree(r)) {
+        freeSeen += 1;
+        if (freeSeen <= freeRoom) kept.push(r); else dropped.push(r);
+      } else {
+        otherSeen += 1;
+        if (otherSeen <= otherRoom) kept.push(r); else dropped.push(r);
+      }
     });
     return { rows: kept, dropped: dropped };
   }
 
-  window.GoalPicks = { CAP: CAP, capRows: capRows, init: init, checked: checked, toggle: toggle, differs: differs, plan: plan, hold: hold, recall: recall };
+  window.GoalPicks = { CAP: CAP, capRows: capRows, init: init, checked: checked, toggle: toggle, evicted: evicted, differs: differs, plan: plan, hold: hold, recall: recall };
 })();
