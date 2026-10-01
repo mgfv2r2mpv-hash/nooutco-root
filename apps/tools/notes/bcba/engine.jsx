@@ -670,8 +670,106 @@ function pickGoalAnchor(leavingKeys) {
   return best ? { el: best.el, top: best.top } : null;
 }
 
-function GoalsTable({ columns, rows, onChange, onCopyCell, copiedId, idPrefix, checkColumn, flagged, onConfirm, rowKeys, leaving, entering }) {
+function GoalsTable({ columns, rows, onChange, onCopyCell, copiedId, idPrefix, checkColumn, flagged, onConfirm, rowKeys, leaving, entering, onReorder, orderLearned, onResetOrder }) {
   const list = Array.isArray(rows) ? rows : [];
+  const keys = rowKeys || list.map((_, i) => String(i));
+  const canMove = !!onReorder && list.length > 1;
+  /* A drag in progress: { key, order, origin, kbd, mids }. The ref mirrors the
+     state so the pointer handlers, which fire faster than renders, never read a
+     stale copy and so a release reported twice (pointerup, then lostpointercapture)
+     only counts once. */
+  const [drag, setDrag] = React.useState(null);
+  const dragRef = React.useRef(null);
+  const [say, setSay] = React.useState("");
+  const wrapRef = React.useRef(null);
+  const put = (d) => { dragRef.current = d; setDrag(d); };
+
+  const shownKeys = drag && drag.order.length === keys.length ? drag.order : keys;
+  const view = shownKeys.map((k) => keys.indexOf(k)).filter((i) => i !== -1);
+  const place = view.length === list.length ? view : list.map((_, i) => i);
+
+  // After a keyboard move React may have re-inserted the handle, which drops
+  // focus; put it back so the next arrow press lands.
+  React.useLayoutEffect(() => {
+    if (!drag || !drag.kbd || !wrapRef.current) return;
+    const el = Array.from(wrapRef.current.querySelectorAll("[data-goal-handle]"))
+      .find((h) => h.getAttribute("data-goal-handle") === drag.key);
+    if (el && document.activeElement !== el) el.focus();
+  }, [drag && drag.order.join("|")]);
+
+  const labelOf = (k) => {
+    const r = list[keys.indexOf(k)];
+    return (r && r.goal) || "this goal";
+  };
+  const finish = (commit) => {
+    const d = dragRef.current;
+    if (!d) return;
+    put(null);
+    const at = d.order.indexOf(d.key) + 1;
+    if (!commit) {
+      setSay(`Cancelled. ${labelOf(d.key)} is back at position ${d.origin.indexOf(d.key) + 1} of ${d.order.length}.`);
+      return;
+    }
+    if (d.order.join("|") !== d.origin.join("|")) onReorder(d.order, d.key);
+    setSay(`Dropped ${labelOf(d.key)} at position ${at} of ${d.order.length}.`);
+  };
+  const begin = (k, kbd) => {
+    const mids = kbd || !wrapRef.current ? [] : Array.from(wrapRef.current.querySelectorAll("[data-goal-key]"))
+      .filter((el) => el.getAttribute("data-goal-key") !== k)
+      .map((el) => { const r = el.getBoundingClientRect(); return r.top + window.scrollY + r.height / 2; });
+    put({ key: k, order: keys.slice(), origin: keys.slice(), kbd, mids });
+    if (kbd) setSay(`Picked up ${labelOf(k)}, position ${keys.indexOf(k) + 1} of ${keys.length}. Arrow keys move it, Space drops it, Escape cancels.`);
+  };
+  const moveTo = (d, at) => {
+    const rest = d.order.filter((x) => x !== d.key);
+    const order = [...rest.slice(0, at), d.key, ...rest.slice(at)];
+    if (order.join("|") === d.order.join("|")) return;
+    put({ ...d, order });
+    if (d.kbd) setSay(`${labelOf(d.key)}, position ${order.indexOf(d.key) + 1} of ${order.length}.`);
+  };
+  /* A pointer drag listens on the window rather than capturing the pointer:
+     reordering moves the handle's own DOM node, and a captured pointer is
+     released when its element is re-inserted. */
+  const latest = React.useRef(null);
+  latest.current = { finish, moveTo };
+  React.useEffect(() => {
+    if (!drag || drag.kbd) return undefined;
+    const move = (e) => {
+      const d = dragRef.current;
+      if (!d || d.kbd) return;
+      const y = e.clientY + window.scrollY;
+      latest.current.moveTo(d, d.mids.filter((m) => m < y).length);
+    };
+    const up = () => latest.current.finish(true);
+    const cancel = () => latest.current.finish(false);
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", cancel);
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", cancel);
+    };
+  }, [drag && drag.key, drag && drag.kbd]);
+  const onHandleKey = (e, k) => {
+    const d = dragRef.current;
+    if (e.key === " " || e.key === "Enter") {
+      e.preventDefault();
+      if (!d) begin(k, true);
+      else if (d.kbd) finish(true);
+      return;
+    }
+    if (!d || !d.kbd) return;
+    if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+      e.preventDefault();
+      moveTo(d, Math.max(0, Math.min(d.order.length - 1, d.order.indexOf(d.key) + (e.key === "ArrowUp" ? -1 : 1))));
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      finish(false);
+    }
+  };
+
   if (!list.length) {
     return <p style={{ fontSize: 13, color: "#9aab86", fontStyle: "italic" }}>No goals identified in the notes.</p>;
   }
@@ -681,49 +779,82 @@ function GoalsTable({ columns, rows, onChange, onCopyCell, copiedId, idPrefix, c
     onChange(next);
   };
   return (
-    <div style={{ display: "grid", gap: 10 }}>
-      {list.map((row, ri) => (
-        <div
-          key={rowKeys ? rowKeys[ri] : ri}
-          data-goal-row={ri}
-          data-goal-key={rowKeys ? rowKeys[ri] : undefined}
-          className={(leaving && leaving.indexOf(rowKeys && rowKeys[ri]) !== -1 ? "gs-leaving" : "") + (entering && entering.indexOf(rowKeys && rowKeys[ri]) !== -1 ? " gs-entering" : "")}
-          style={{ display: "grid", gap: 8, padding: 10, borderRadius: 8, border: `1px solid ${flags.has(ri) ? GOAL_FLAG.edge : "#ddecd0"}`, background: "white" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
-          {columns.map((c) => {
-            const cellId = `${idPrefix}-r${ri}-${c.id}`;
-            return (
-              <div key={c.id} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: "#7a9460", textTransform: "uppercase", letterSpacing: "0.03em" }}>{c.label}</span>
-                  {onCopyCell && (
-                    <button onClick={() => onCopyCell(cellId, row[c.id] || "")} style={{ ...smallBtn, padding: "1px 8px", fontSize: 11 }}>
-                      {copiedId === cellId ? "✓" : "Copy"}
-                    </button>
-                  )}
-                </div>
-                <textarea
-                  value={row[c.id] || ""}
-                  onChange={(e) => setCell(ri, c.id, e.target.value)}
-                  aria-invalid={flags.has(ri) && c.id === checkColumn ? true : undefined}
-                  style={{ width: "100%", minHeight: 66, padding: 8, borderRadius: 6, border: `1px solid ${flags.has(ri) && c.id === checkColumn ? GOAL_FLAG.edge : "#c0d4a8"}`, fontSize: 13, color: "#2d3a1f", lineHeight: 1.5, resize: "vertical", background: "#fafcf8" }}
-                />
-              </div>
-            );
-          })}
-        </div>
-        {flags.has(ri) && (
-          <p data-goal-unmatched={ri} role="status" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, margin: 0, fontSize: 12.5, color: GOAL_FLAG.fg, background: GOAL_FLAG.bg, border: `1px solid ${GOAL_FLAG.edge}`, borderRadius: 7, padding: "6px 10px", lineHeight: 1.5 }}>
-            <span style={{ flex: "1 1 220px" }}>⚠ This goal name is not in your notes. Correct it above, or confirm it if it is right.</span>
-            {onConfirm && (
-              <button data-goal-confirm={ri} onClick={() => onConfirm(row[checkColumn] || "")} style={{ ...smallBtn, padding: "2px 10px", fontSize: 12 }}>
-                Confirm
+    <div ref={wrapRef} style={{ display: "grid", gap: 10 }}>
+      {place.map((ri) => {
+        const row = list[ri];
+        const k = keys[ri];
+        return (
+          <div
+            key={k}
+            data-goal-row={ri}
+            data-goal-key={rowKeys ? k : undefined}
+            className={(leaving && leaving.indexOf(rowKeys && k) !== -1 ? "gs-leaving" : "") + (entering && entering.indexOf(rowKeys && k) !== -1 ? " gs-entering" : "") + (drag && drag.key === k ? " gs-dragging" : "")}
+            style={{ display: "flex", gap: 6, alignItems: "stretch" }}>
+            {canMove && (
+              <button
+                type="button"
+                data-goal-handle={k}
+                className="gs-handle"
+                aria-label={`Move ${(row && row.goal) || "goal"}. Press Space to pick up, arrow keys to move, Space to drop, Escape to cancel.`}
+                title="Drag to reorder"
+                onPointerDown={(e) => {
+                  if (e.button) return;
+                  e.preventDefault();
+                  begin(k, false);
+                }}
+                onKeyDown={(e) => onHandleKey(e, k)}
+              >
+                <span aria-hidden="true">⋮⋮</span>
               </button>
             )}
-          </p>
-        )}
+            <div style={{ flex: 1, minWidth: 0, display: "grid", gap: 8, padding: 10, borderRadius: 8, border: `1px solid ${flags.has(ri) ? GOAL_FLAG.edge : "#ddecd0"}`, background: "white" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+                {columns.map((c) => {
+                  const cellId = `${idPrefix}-r${ri}-${c.id}`;
+                  return (
+                    <div key={c.id} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: "#7a9460", textTransform: "uppercase", letterSpacing: "0.03em" }}>{c.label}</span>
+                        {onCopyCell && (
+                          <button onClick={() => onCopyCell(cellId, row[c.id] || "")} style={{ ...smallBtn, padding: "1px 8px", fontSize: 11 }}>
+                            {copiedId === cellId ? "✓" : "Copy"}
+                          </button>
+                        )}
+                      </div>
+                      <textarea
+                        value={row[c.id] || ""}
+                        onChange={(e) => setCell(ri, c.id, e.target.value)}
+                        aria-invalid={flags.has(ri) && c.id === checkColumn ? true : undefined}
+                        style={{ width: "100%", minHeight: 66, padding: 8, borderRadius: 6, border: `1px solid ${flags.has(ri) && c.id === checkColumn ? GOAL_FLAG.edge : "#c0d4a8"}`, fontSize: 13, color: "#2d3a1f", lineHeight: 1.5, resize: "vertical", background: "#fafcf8" }}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+              {flags.has(ri) && (
+                <p data-goal-unmatched={ri} role="status" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, margin: 0, fontSize: 12.5, color: GOAL_FLAG.fg, background: GOAL_FLAG.bg, border: `1px solid ${GOAL_FLAG.edge}`, borderRadius: 7, padding: "6px 10px", lineHeight: 1.5 }}>
+                  <span style={{ flex: "1 1 220px" }}>⚠ This goal name is not in your notes. Correct it above, or confirm it if it is right.</span>
+                  {onConfirm && (
+                    <button data-goal-confirm={ri} onClick={() => onConfirm(row[checkColumn] || "")} style={{ ...smallBtn, padding: "2px 10px", fontSize: 12 }}>
+                      Confirm
+                    </button>
+                  )}
+                </p>
+              )}
+            </div>
+          </div>
+        );
+      })}
+      {canMove && (
+        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, minHeight: 0 }}>
+          <span data-goal-order-say="true" role="status" aria-live="polite" style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)", whiteSpace: "nowrap" }}>{say}</span>
+          {orderLearned && onResetOrder && (
+            <button type="button" data-goal-order-reset="true" onClick={onResetOrder} style={{ ...smallBtn, padding: "2px 10px", fontSize: 11 }}>
+              Reset order
+            </button>
+          )}
         </div>
-      ))}
+      )}
     </div>
   );
 }
@@ -2056,6 +2187,21 @@ function App() {
       .concat(draftReductionRef.current);
     return names.map((n) => String(NotesScrub.restoreOutput(String(n || ""), scrubMapRef.current || [])));
   };
+  /* THE LEARNED CATEGORY ORDER. Dragging a row teaches the order of the four
+     categories (see goal-order.js); only that order is stored. The ref is what
+     the swap code reads, because its timers outlive the render that made them. */
+  const [goalOrder, setGoalOrder] = React.useState(() => (window.GoalOrder ? window.GoalOrder.load() : []));
+  const goalOrderRef = React.useRef(goalOrder);
+  const goalCategoryOf = (row, reductionNames) =>
+    window.GoalOrder.categoryOf(row && row.goal, reductionNames.some((n) => rowForGoal([row], n) !== -1));
+  // learnedOnly: a fresh draft keeps the model's order until the supervisor has
+  // taught one; a swap, which assembles rows itself, always applies the order.
+  const orderGoalRows = (rows, learnedOnly) => {
+    if (!window.GoalOrder || !Array.isArray(rows) || rows.length < 2) return rows;
+    if (learnedOnly && window.GoalOrder.isDefault(goalOrderRef.current)) return rows;
+    const names = reductionGoalNames();
+    return window.GoalOrder.sortRows(rows, goalOrderRef.current, (r) => goalCategoryOf(r, names));
+  };
   const finalize = (parsed, normalizer) => {
     /* RESTORE FIRST, before normalising and before the absence strip reads a
        word of it. A word with no evidence of being a person went out as an
@@ -2097,7 +2243,10 @@ function App() {
       ? { ...restored, hints: (Array.isArray(restored.hints) ? restored.hints : []).concat(injected) }
       : restored;
 
-    const normalized = (normalizer || tool.normalizeOutput)(withHints, { intake: draftIntakeRef.current, reductionGoals: reductionGoalNames() });
+    const unordered = (normalizer || tool.normalizeOutput)(withHints, { intake: draftIntakeRef.current, reductionGoals: reductionGoalNames() });
+    const normalized = Array.isArray(unordered && unordered.goalsAnalyzed)
+      ? { ...unordered, goalsAnalyzed: orderGoalRows(unordered.goalsAnalyzed, true) }
+      : unordered;
     const stripped = window.NoteAbsence
       ? window.NoteAbsence.scrubNote(normalized)
       : { output: normalized, cut: 0, flagged: 0 };
@@ -2307,14 +2456,40 @@ function App() {
      takes it up after the render. */
   const commitGoalRows = ({ gp, rows, next, held, picksAfter, born, conversation, calledModel, addedKeys, leavingKeys }) => {
     anchorRef.current = pickGoalAnchor(leavingKeys);
+    const ordered = orderGoalRows(next, false);
     patchS((s) => ({
-      output: { ...s.output, goalsAnalyzed: next },
+      output: { ...s.output, goalsAnalyzed: ordered },
       conversation: conversation || s.conversation,
       lastCallAt: calledModel ? Date.now() : s.lastCallAt,
       goalPicker: s.goalPicker ? { ...s.goalPicker, held, born, picks: picksAfter(s.goalPicker.picks) } : null,
     }));
     setSwap({ names: [], leaving: [], entering: addedKeys });
     if (addedKeys.length) setTimeout(() => setSwap((w) => ({ ...w, entering: [] })), GOAL_ENTER_MS);
+  };
+
+  // A drag or a keyboard move ended with the rows in `keys` order. The table
+  // takes that order, and the moved row's category is taught its new place.
+  const reorderGoalRows = (keys, movedKey) => {
+    const cur = latestRef.current.S;
+    const rows = gridRows(cur);
+    const have = goalRowKeys(rows);
+    const next = keys.map((k) => rows[have.indexOf(k)]).filter(Boolean);
+    if (next.length !== rows.length || !window.GoalOrder) return;
+    patchS((s) => ({ output: { ...s.output, goalsAnalyzed: next } }));
+    const names = reductionGoalNames();
+    const learned = window.GoalOrder.learn(goalOrderRef.current, next, keys.indexOf(movedKey), (r) => goalCategoryOf(r, names));
+    goalOrderRef.current = learned;
+    setGoalOrder(learned);
+    window.GoalOrder.save(learned);
+  };
+  const resetGoalOrder = () => {
+    if (!window.GoalOrder) return;
+    const fresh = window.GoalOrder.reset();
+    goalOrderRef.current = fresh;
+    setGoalOrder(fresh);
+    const rows = gridRows(latestRef.current.S);
+    const names = reductionGoalNames();
+    patchS((s) => ({ output: { ...s.output, goalsAnalyzed: window.GoalOrder.sortRows(rows, fresh, (r) => goalCategoryOf(r, names)) } }));
   };
 
   const toggleGoalPick = (name) => {
@@ -5678,6 +5853,9 @@ function App() {
             rowKeys={goalRowKeys(Array.isArray(v) ? v : [])}
             leaving={swap.leaving}
             entering={swap.entering}
+            onReorder={window.GoalOrder ? reorderGoalRows : undefined}
+            orderLearned={!!window.GoalOrder && !window.GoalOrder.isDefault(goalOrder)}
+            onResetOrder={resetGoalOrder}
           />
         </React.Fragment>
       );
