@@ -1755,8 +1755,20 @@ body.is-pointing, body.is-pointing * { cursor: crosshair !important; }
 .gp-pop { position: absolute; top: 100%; left: 0; max-width: 100%; box-sizing: border-box; z-index: 20; width: min(280px, 100%); margin-top: 4px; padding: 8px 10px; background: #fff; border: 1.5px solid #cfe0bd; border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,.12); font-size: 12px; line-height: 1.45; color: #2f3b25; overflow-wrap: anywhere; }
 .gp-src { font-style: italic; margin-bottom: 4px; }
 .gp-why { color: #55603f; }
-.gp-update { min-height: 30px; padding: 0 14px; cursor: pointer; font: inherit; font-size: 13px; font-weight: 600; color: #fff; background: #6f8a56; border: 0; border-radius: 15px; }
-.gp-update:disabled { opacity: .6; cursor: default; }
+/* A running goal swap shows on the chips it is changing without moving them: the
+   border pulses in place. Reduced motion gets a dashed border instead. */
+.gp-chip[data-pending="true"] { animation: gp-pulse 1s ease-in-out infinite; }
+@keyframes gp-pulse { 0%, 100% { border-color: #cfe0bd; } 50% { border-color: #6f8a56; } }
+/* A row leaving the table fades where it stands and keeps its height until the
+   commit; a row arriving fades in. Neither animates layout. */
+.gs-leaving { opacity: 0; transition: opacity .18s ease; pointer-events: none; }
+.gs-entering { animation: gs-in .22s ease both; }
+@keyframes gs-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .gp-chip[data-pending="true"] { animation: none; border-style: dashed; }
+  .gs-leaving { transition: none; }
+  .gs-entering { animation: none; }
+}
 
 /* Every control in the rail, its tell box and the queued asks, at all widths. */
 .cx-tell .cx-ck, .cx-tell .cx-chip, .cx-asks .cx-ck, .cx-dismissed .cx-ck { min-height: 30px; }
