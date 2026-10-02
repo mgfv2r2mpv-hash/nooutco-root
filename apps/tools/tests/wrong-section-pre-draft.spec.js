@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { FLOOR_PAD } from './helpers/bt-floor.js';
 import { isTriageCall } from './helpers/llm-call.js';
 
 /* HIS UPGRADE 01, ORDERED 2026-09-03 with a plain "yes".
@@ -158,9 +159,10 @@ test.describe('the finding reaches the technician before the draft', () => {
     await page.goto('/notes/bt/');
     await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), tokenFor());
     await page.goto('/notes/bt/');
-    await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT money 3 item array, 8 of 10 gestural');
-    await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('DRA alongside the token board');
-    await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement x2, blocked');
+    await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT money 3 item array, 8 of 10 gestural' + FLOOR_PAD.lesson);
+    await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('DRA alongside the token board' + FLOOR_PAD.antecedent);
+    await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement x2, blocked' + FLOOR_PAD.behavior);
+    await page.getByRole('textbox', { name: /Session Start/i }).fill(FLOOR_PAD.session);
     await page.getByRole('button', { name: 'Generate Note' }).click();
     const ack = page.locator('#notes-ack-go');
     if (await ack.isVisible({ timeout: 5000 }).catch(() => false)) {
@@ -220,9 +222,10 @@ test.describe('a finding on its own never holds the draft back', () => {
     await page.goto('/notes/bt/');
     await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), tokenFor());
     await page.goto('/notes/bt/');
-    await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT money 3 item array, 8 of 10 gestural');
-    await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('DRA alongside the token board');
-    await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement x2, blocked');
+    await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT money 3 item array, 8 of 10 gestural' + FLOOR_PAD.lesson);
+    await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('DRA alongside the token board' + FLOOR_PAD.antecedent);
+    await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement x2, blocked' + FLOOR_PAD.behavior);
+    await page.getByRole('textbox', { name: /Session Start/i }).fill(FLOOR_PAD.session);
     await page.getByRole('button', { name: 'Generate Note' }).click();
     const ack = page.locator('#notes-ack-go');
     if (await ack.isVisible({ timeout: 5000 }).catch(() => false)) {

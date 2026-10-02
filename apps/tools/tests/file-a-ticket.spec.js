@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { FLOOR_PAD } from './helpers/bt-floor.js';
 import { createHmac } from 'node:crypto';
 
 // "If I am logged in as an admin and I get feedback on something like hate, the
@@ -225,9 +226,10 @@ test.describe('the stub keyword', () => {
     await page.goto('/notes/bt/');
     await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), tokenFor('admin'));
     await page.goto('/notes/bt/');
-    await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT money 3-item array');
-    await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first-then board');
-    await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked');
+    await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT money 3-item array' + FLOOR_PAD.lesson);
+    await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first-then board' + FLOOR_PAD.antecedent);
+    await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked' + FLOOR_PAD.behavior);
+    await page.getByRole('textbox', { name: /Session Start/i }).fill(FLOOR_PAD.session);
     await page.getByRole('button', { name: 'Generate Note' }).click();
     const ack = page.locator('#notes-ack-go');
     if (await ack.isVisible({ timeout: 5000 }).catch(() => false)) {

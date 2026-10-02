@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { FLOOR_PAD } from './helpers/bt-floor.js';
 import { isTriageCall } from './helpers/llm-call.js';
 
 /* The corrections pass speaks tokens both ways, like every other model turn.
@@ -79,10 +80,11 @@ async function acceptScrubGate(page) {
 }
 
 async function draft(page) {
-  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT 3-item array, full physical faded to independent');
-  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first-then board before demands');
+  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT 3-item array, full physical faded to independent' + FLOOR_PAD.lesson);
+  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first-then board before demands' + FLOOR_PAD.antecedent);
   await page.getByRole('textbox', { name: /Behavior & Staff Response/i })
-    .fill('touching others, staff used Minimal Redirect (Request Attn) each time');
+    .fill('touching others, staff used Minimal Redirect (Request Attn) each time' + FLOOR_PAD.behavior);
+  await page.getByRole('textbox', { name: /Session Start/i }).fill(FLOOR_PAD.session);
   await page.getByRole('button', { name: 'Generate Note' }).click();
   await acceptScrubGate(page);
 }

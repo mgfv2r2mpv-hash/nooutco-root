@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { FLOOR_PAD } from './helpers/bt-floor.js';
 import { isTriageCall } from './helpers/llm-call.js';
 
 /* THE WORD AFTER A ROLE CUE IS NOT A PERSON JUST FOR SITTING THERE.
@@ -231,9 +232,10 @@ test.describe('what the technician actually signs', () => {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [{ text }] }) });
     });
     await loggedIn(page);
-    await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill(INTAKE);
-    await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first-then board before each demand');
-    await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked and redirected');
+    await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill(INTAKE + FLOOR_PAD.lesson);
+    await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first-then board before each demand' + FLOOR_PAD.antecedent);
+    await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked and redirected' + FLOOR_PAD.behavior);
+    await page.getByRole('textbox', { name: /Session Start/i }).fill(FLOOR_PAD.session);
     await page.getByRole('button', { name: 'Generate Note' }).click();
     await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 30000 });
     /* The note, not the page. The substitution banner beside the inputs is

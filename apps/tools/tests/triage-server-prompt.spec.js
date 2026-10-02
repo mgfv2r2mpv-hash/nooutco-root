@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { FLOOR_PAD } from './helpers/bt-floor.js';
 import { serverPromptRequest, serverPromptTools, promptKeyFor } from '../_worker.js';
 
 /* Triage is a call too, and the migration forgot it.
@@ -71,9 +72,10 @@ const FILL_BCBA = (label, text) => async (page) => {
 };
 
 const FILL_BT = async (page) => {
-  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT money 3 item array, 8 of 10 gestural');
-  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first then board, two minute warning');
-  await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement x2, blocked and redirected');
+  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT money 3 item array, 8 of 10 gestural' + FLOOR_PAD.lesson);
+  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first then board, two minute warning' + FLOOR_PAD.antecedent);
+  await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement x2, blocked and redirected' + FLOOR_PAD.behavior);
+  await page.getByRole('textbox', { name: /Session Start/i }).fill(FLOOR_PAD.session);
 };
 
 test.describe('the triage call obeys the same rule the note call does', () => {

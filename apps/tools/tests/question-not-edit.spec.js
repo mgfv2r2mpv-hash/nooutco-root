@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { FLOOR_PAD } from './helpers/bt-floor.js';
 
 // Two live faults he hit on the deployed tool, both of which lose work.
 //
@@ -54,9 +55,10 @@ async function drafted(page, onRevision) {
   await page.goto('/notes/bt/');
   await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), tokenFor());
   await page.goto('/notes/bt/');
-  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT money 3 item array faded to gestural, 8/12 correct');
-  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first then board, choice up front, 2 min warning');
-  await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement x2 blocked and redirected, no SIB');
+  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT money 3 item array faded to gestural, 8/12 correct' + FLOOR_PAD.lesson);
+  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first then board, choice up front, 2 min warning' + FLOOR_PAD.antecedent);
+  await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement x2 blocked and redirected, no SIB' + FLOOR_PAD.behavior);
+  await page.getByRole('textbox', { name: /Session Start/i }).fill(FLOOR_PAD.session);
   await page.getByRole('button', { name: 'Generate Note' }).click();
   const ack = page.locator('#notes-ack-go');
   if (await ack.isVisible({ timeout: 5000 }).catch(() => false)) {

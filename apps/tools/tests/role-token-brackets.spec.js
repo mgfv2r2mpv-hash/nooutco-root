@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { FLOOR_PAD } from './helpers/bt-floor.js';
 import { correctionsSystem } from '../_worker.js';
 import { isTriageCall } from './helpers/llm-call.js';
 
@@ -181,9 +182,10 @@ test.describe('the mint: [CLIENT], then [CLIENT-2]', () => {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [{ text }] }) });
     });
     await open(page);
-    await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT money array, 8 of 10 gestural');
-    await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('two minute warning before transitions');
-    await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('Client Jacob eloped twice.');
+    await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT money array, 8 of 10 gestural' + FLOOR_PAD.lesson);
+    await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('two minute warning before transitions' + FLOOR_PAD.antecedent);
+    await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('Client Jacob eloped twice.' + FLOOR_PAD.behavior);
+    await page.getByRole('textbox', { name: /Session Start/i }).fill(FLOOR_PAD.session);
     await page.getByRole('button', { name: 'Generate Note' }).click();
     await expect.poll(() => calls.length, { timeout: 30000 }).toBeGreaterThan(0);
     const sent = JSON.stringify(calls);
@@ -376,9 +378,10 @@ test('the corrections pass gets the model\'s own "Client" as written, and his ty
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ corrections: [], dropped: 0 }) });
   });
   await open(page);
-  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('Client did DTT money array, 8 of 10 gestural');
-  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('two minute warning before transitions');
-  await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked and redirected');
+  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('Client did DTT money array, 8 of 10 gestural' + FLOOR_PAD.lesson);
+  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('two minute warning before transitions' + FLOOR_PAD.antecedent);
+  await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked and redirected' + FLOOR_PAD.behavior);
+  await page.getByRole('textbox', { name: /Session Start/i }).fill(FLOOR_PAD.session);
   await page.getByRole('button', { name: 'Generate Note' }).click();
   await expect.poll(() => passes.length, { timeout: 30000 }).toBeGreaterThan(0);
   const body = passes[0];
