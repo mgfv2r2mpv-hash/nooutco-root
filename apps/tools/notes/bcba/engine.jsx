@@ -420,8 +420,17 @@ function HelpList({ intro, items }) {
 // Module-scope so the examples' open/closed state survives the parent re-render
 // that every keystroke causes - inlining this in App would slam it shut on the
 // first character typed.
-function TextareaField({ field: f, value, onChange }) {
+function TextareaField({ field: f, value, onChange, meter, revealed }) {
   const [helpOpen, setHelpOpen] = React.useState(false);
+  /* The outline waits to be asked for. A box nobody has been in yet is not
+     "short", it is untouched, and painting it red on arrival would scold a
+     technician for a note she has not started. It stays once she has been in it
+     (focus, or Generate pressed while it was short), and a draft restored with
+     words in it counts as visited. */
+  const [visited, setVisited] = React.useState(false);
+  const m = meter && meter.state !== "optional" ? meter : null;
+  const showRing = !!m && (visited || revealed || m.count > 0);
+  const ring = showRing ? m.color : null;
   // Tie the label to the box. Without this the field has a visible label and no
   // accessible name, so a screen reader announces an unlabelled text area.
   const fieldId = "field-" + f.id;
@@ -458,10 +467,20 @@ function TextareaField({ field: f, value, onChange }) {
         id={fieldId}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onFocus={() => setVisited(true)}
         placeholder={f.placeholder}
         rows={f.oneLine ? 1 : undefined}
+        aria-describedby={meter ? fieldId + "-words" : undefined}
+        data-word-state={ring ? m.state : undefined}
         style={{
           ...inputBase,
+          ...(ring ? {
+            border: "2px solid " + ring,
+            padding: "9.5px 13.5px",
+            boxShadow: "0 0 0 3px " + ring + "26",
+            background: m.state === "gold" ? "#fffaf0" : inputBase.background,
+            transition: "border-color .25s ease, box-shadow .25s ease, background .25s ease",
+          } : null),
           height: f.height || 160,
           /* Three words do not need a drag handle, and on a phone the handle is
              a target nobody meant to hit. */
@@ -470,6 +489,77 @@ function TextareaField({ field: f, value, onChange }) {
         }}
       />
       {f.charCount ? <p style={{ fontSize: 12, color: "#aaa", marginTop: 4 }}>{(value || "").length} characters</p> : null}
+      {meter ? <WordCount id={fieldId + "-words"} fieldId={f.id} meter={meter} ringed={showRing} /> : null}
+    </div>
+  );
+}
+
+/* The count under a box. The words and the glyph carry the state on their own,
+   so the outline's colour is never the only thing saying it: someone who cannot
+   tell the red from the green reads "9 more to go" and a check mark instead.
+   Text stays one neutral colour for the same reason the outline is solved to a
+   contrast ratio, since an amber sentence on pale green would fail 4.5:1. */
+function WordCount({ id, fieldId, meter: m, ringed }) {
+  let note = "";
+  let glyph = "";
+  if (m.state === "short") { note = m.remaining + " more to go"; glyph = "○"; }
+  else if (m.state === "met") { note = "enough to write from"; glyph = "✓"; }
+  else if (m.state === "gold") { note = "plenty to write from"; glyph = "★"; }
+  const label = m.state === "optional" ? m.count + " words" : m.count + " / " + m.min + " words";
+  return (
+    <p
+      id={id}
+      data-word-count={fieldId}
+      data-state={m.state}
+      aria-live="polite"
+      style={{ fontSize: 12, color: "#5a6b4a", marginTop: 5, display: "flex", gap: 8, alignItems: "baseline" }}
+    >
+      <span>{label}</span>
+      {note ? (
+        <span style={{ fontWeight: 600 }}>
+          <span aria-hidden="true" style={{ color: ringed ? m.color : "#5a6b4a", marginRight: 4 }}>{glyph}</span>
+          {note}
+        </span>
+      ) : null}
+    </p>
+  );
+}
+
+/* The bar that fills as the intake does. It is the same thin shape whether the
+   technician is at 3 words or 65, sticks to the bottom of the viewport so it is
+   in sight while she types in a box far from the button, and says in words what
+   it shows in colour. role=progressbar carries the figure to a screen reader. */
+function ReadyBar({ reading: r }) {
+  const pct = Math.round(r.progress * 100);
+  const word = r.remaining === 1 ? "word" : "words";
+  return (
+    <div
+      data-ready-bar
+      data-ready={r.ready ? "true" : "false"}
+      style={{
+        position: "sticky", bottom: 0, zIndex: 5, margin: "0 -2px 14px", padding: "8px 2px 6px",
+        background: "linear-gradient(to bottom, rgba(255,255,255,0), #fff 40%)",
+      }}
+    >
+      <div
+        role="progressbar"
+        aria-label="Words entered toward the minimum"
+        aria-valuemin={0}
+        aria-valuemax={r.total}
+        aria-valuenow={r.filled}
+        style={{ height: 6, borderRadius: 999, background: "#e3e9da", overflow: "hidden" }}
+      >
+        <div
+          data-ready-fill
+          style={{ width: pct + "%", height: "100%", background: r.color, borderRadius: 999, transition: "width .25s ease, background .25s ease" }}
+        />
+      </div>
+      <p aria-live="polite" style={{ fontSize: 12, color: "#5a6b4a", marginTop: 5, display: "flex", justifyContent: "space-between", gap: 8 }}>
+        <span style={{ fontWeight: 600 }}>
+          {r.ready ? "Ready to generate" : r.remaining + " more " + word + " to go"}
+        </span>
+        <span>{r.filled} / {r.total} words</span>
+      </p>
     </div>
   );
 }
@@ -1538,6 +1628,7 @@ function freshSession(tool) {
     promptText: "",
     scrubMap: Array.isArray(savedMap) ? savedMap : [], // [{name, token, identifier?}] - survives a reload
     certified: [],        // names the clinician has since marked "not a name"
+    wordsRevealed: false, // Generate was pressed while a box was short: show every outline
     error: "",
     lastCallAt: 0,
     proposal: null,        // pending revision, rendered as an inline diff
@@ -1699,6 +1790,13 @@ function App() {
 
   const tool = toolById(activeId) || TOOLS[0];
   const S = sessions[tool.id];
+  /* The intake's word floor, for a tool that declares one. Null for every other
+     tool, which is what keeps their intake byte for byte what it was. */
+  const wordPlan = React.useMemo(
+    () => (window.MinWords && tool.minWords ? MinWords.plan(tool.minWords) : null),
+    [tool.id],
+  );
+  const words = wordPlan ? MinWords.read(wordPlan, S.values) : null;
   const canUse = loggedIn && !!(window.NotesGate && NotesGate.canUseTool(tool.id));
 
   /* Preview or raw text, per tool. Seeded from storage the first time a tool is
@@ -3774,9 +3872,21 @@ function App() {
     bar: "B9",
   });
 
+  /* A refusal that comes from the word floor shows every short outline at once
+     and puts the cursor in the one that is furthest short, because the message
+     alone names sections and makes the technician hunt for them. */
+  const refuseGenerate = (err) => {
+    const short = wordPlan ? MinWords.shortfall(wordPlan, S.values, inputLabel) : [];
+    patchS({ error: err, wordsRevealed: short.length > 0 });
+    if (short.length > 0) {
+      const el = document.getElementById("field-" + short[0].id);
+      if (el) { el.focus(); if (el.scrollIntoView) el.scrollIntoView({ block: "center", behavior: "smooth" }); }
+    }
+  };
+
   const handleGenerate = async () => {
     const err = tool.validate(S.values);
-    if (err) { patchS({ error: err }); return; }
+    if (err) { refuseGenerate(err); return; }
     if (!NotesGate.isLoggedIn()) { NotesGate.openLogin(); return; }
     patchS({ error: "", thread: [], annotation: null, panelDraft: "" });
     // New generate, new tokens: the scrub below remints [CLIENT] for this
@@ -5518,7 +5628,7 @@ function App() {
      what makes it true that no authenticated output can bypass his voice. */
   const handleGeneratePrompt = async () => {
     const err = tool.validate(S.values);
-    if (err) { patchS({ error: err }); return; }
+    if (err) { refuseGenerate(err); return; }
     patchS({ error: "" });
     // Carries over so pressing this mid-note cannot clobber the live map and
     // strand the tokens already sitting in the open draft. On a fresh page there
@@ -5764,6 +5874,8 @@ function App() {
           field={f}
           value={S.values[f.id]}
           onChange={(val) => setValue(f.id, val)}
+          meter={words ? words.fields[f.id] : null}
+          revealed={!!S.wordsRevealed}
         />
         {asks && asks.length > 0 && window.QuestionInline && (
           <window.QuestionInline
@@ -6373,7 +6485,9 @@ function App() {
           )}
           {tool.inputs.map(renderInput)}
 
-          {S.error && <p style={{ color: "#c0392b", fontSize: 13, marginBottom: 12, whiteSpace: "pre-line" }}>{S.error}</p>}
+          {words ? <ReadyBar reading={words} /> : null}
+
+          {S.error &&<p style={{ color: "#c0392b", fontSize: 13, marginBottom: 12, whiteSpace: "pre-line" }}>{S.error}</p>}
           {/* The legal notice, which used to be a modal accepted once per page load
               and then never read again. It sits here instead, beside the box being
               typed into, where it is in front of the clinician every time rather
@@ -6432,12 +6546,18 @@ function App() {
             <button
               onClick={!loggedIn ? () => NotesGate.openLogin() : (canUse ? handleGenerate : undefined)}
               disabled={genDisabled}
+              /* Short of the word floor the button still takes the click, because
+                 the click is what reveals which boxes are short and moves the
+                 cursor to the first. It only looks and announces itself as not
+                 ready yet. */
+              aria-disabled={words && !words.ready ? "true" : undefined}
+              title={words && !words.ready ? words.remaining + " more words to go before this can generate" : undefined}
               className={"note-generate" + (regenerate ? " is-regenerate" : "")}
               style={{
                 padding: "11px 28px", borderRadius: 8, border: "none",
                 // The orange state takes its colours from notes-page.css, so its
                 // hover can work. Inline colour would win over the stylesheet.
-                ...(regenerate ? {} : { background: genDisabled ? "#a0b890" : "#374528", color: "white" }),
+                ...(regenerate ? {} : { background: (genDisabled || (words && !words.ready)) ? "#a0b890" : "#374528", color: "white" }),
                 fontSize: 15, fontWeight: 600,
                 cursor: genDisabled ? "not-allowed" : "pointer",
               }}

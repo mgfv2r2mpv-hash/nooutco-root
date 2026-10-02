@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { FLOOR_PAD } from './helpers/bt-floor.js';
 import { isTriageCall } from './helpers/llm-call.js';
 
 /* The hint channel gets an ordering, a severity and a ceiling it can defend.
@@ -201,9 +202,10 @@ async function draftWithHints(page, hints) {
   await page.goto('/notes/bt/');
   await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), tokenFor());
   await page.goto('/notes/bt/');
-  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT money 3 item array faded to gestural');
-  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first then board, choice up front');
-  await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement x2 blocked, not sure if it counts');
+  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT money 3 item array faded to gestural' + FLOOR_PAD.lesson);
+  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first then board, choice up front' + FLOOR_PAD.antecedent);
+  await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement x2 blocked, not sure if it counts' + FLOOR_PAD.behavior);
+  await page.getByRole('textbox', { name: /Session Start/i }).fill(FLOOR_PAD.session);
   await page.getByRole('button', { name: 'Generate Note' }).click();
   // The scrub gate stands between Generate and the draft: an acknowledgement
   // first, then the PHI review when the detector found anything.

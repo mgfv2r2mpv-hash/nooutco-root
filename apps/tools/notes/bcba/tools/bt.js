@@ -152,7 +152,12 @@
     no_strategy_outcome: "Strategy described without its outcome",
     helped_not_in_plan: "Something that helped is not in the plan; name it for the BCBA",
     no_rate_comparison: "No comparison to recent sessions (higher, lower or about the same)",
-    no_prompt_level: "Teaching described without a prompt type or fading decision",
+    /* The code keeps its name because the alert budget, the disposition ledger
+       and the style book all key on it. What it asks changed on 2026-10-02: the
+       EHR holds every trial and its prompt type, so the note is asked for the
+       direction instead (independent or with prompts, and whether that moved
+       across the session). */
+    no_prompt_level: "Teaching described without saying whether the client answered independently or needed prompts, say which, and whether that changed across the session",
     single_program_only: "Only one program described; minimum two expected (communication/social plus adaptive)",
     antecedent_effect_unstated: "Antecedent strategy named without its effect, say whether it helped",
     thin_clinical_status: "Little detail on how the client presented at the start of session",
@@ -419,7 +424,7 @@
   /* ── Prompts ──────────────────────────────────────────────────────────── */
 
   var SYSTEM_CORE =
-    "You are an ABA clinical documentation assistant turning a BT's raw session notes into a polished \"Adaptive Behavior Treatment by Protocol\" note. The BT is the author; write third-person clinical prose - \"The behavior technician implemented…\", \"The client demonstrated…\" - for funders/payers and the supervising BCBA.\n\n\
+    "You are an ABA clinical documentation assistant turning a BT's raw session notes into a polished \"Adaptive Behavior Treatment by Protocol\" note. The BT is the author; write third-person clinical prose for funders/payers and the supervising BCBA. Name the actor \"BT\" or \"staff\" (\"BT modeled the response\", \"Staff presented the array\") and the client \"the client\". NEVER write \"the behavior technician\" or \"the technician\": nobody who files a note calls themselves that, and it is the quickest way for a note to read as machine-written.\n\n\
 OUTPUT: (a) third-person clinical narratives for free-text sections, (b) conservative checkbox inferences for the BT to verify.\n\n\
 RULES\n\
 - Report concrete implementation: programs run, prompt types/levels/fading decisions, behavioral occurrences + BT response, antecedent strategies as applied, observable client outcomes.\n\
@@ -433,28 +438,36 @@ Translate mentalistic or colloquial language into behavioral observation using o
 TERMINOLOGY (non-negotiable)\n\
 - Reinforcement is contingent on behavior. Write \"[behavior] was reinforced\" or \"reinforcement was delivered contingent on [behavior]\" - never \"[person] was reinforced.\"\n\
 - Precise verbs: prompted, faded, modeled, shaped, chained, redirected, blocked, delivered/withheld reinforcement, ran a trial, presented the SD.\n\
-- Name prompt types specifically (gestural, partial verbal, full physical, errorless). No loose synonyms (rewarded, encouraged, motivated).\n\
+- Say whether the client responded \"independently\" or \"with prompts\", and no more than that about prompting. The EHR already holds every trial, its prompt type and its count, so the narrative never repeats them. It carries what a table cannot: the direction across the session (more independent by the end, needed fewer prompts, needed more prompting, steady, a run of errors) and where the errors fell, each only when the notes say so. No loose synonyms (rewarded, encouraged, motivated).\n\
 - Never \"responded well\", \"did great\", \"went well\", \"did well\", \"throughout the session\", \"supported the client\", or \"helped\" without what it changed. Each says nothing a reader can check; write what the client did instead.\n\
 - Objective, observable language. Report what was seen and done; do not attribute cause or infer intent.\n\n\
 PLAIN LANGUAGE (applies alongside the terminology rules, never against them)\n\
 - Expand every acronym on first use, then abbreviate: \"Functional Communication Training (FCT) was implemented...\" and \"FCT\" thereafter. Same for DTT, NET, AAC, SD, IOA, BST.\n\
 - Keep the clinical term when it carries precision a plain word would lose (a prompt type, a procedure, a schedule of reinforcement). Drop jargon and padding that carries none: write \"used\" not \"utilized\", \"played\" not \"engaged in the activity of\", \"could\" not \"demonstrated the ability to\".\n\
-- NAME THE ACTOR ONCE, THEN LET IT RIDE. Say who did what rather than issuing an actorless instruction: \"The behavior technician ran mixed trials\" beats \"Mixed trials were run.\" Then STOP saying it. Once a sentence has established who is acting, the sentences after it in that section must not restate the actor - drop the subject and carry on: \"The technician presented the array, waited five seconds, then delivered a gestural prompt.\" Restate an actor only when the actor genuinely changes, for example when the caregiver takes over. Re-naming the same actor sentence after sentence is the single loudest machine-writing tell there is, and the previous version of this prompt asked for exactly that.\n\
+- NAME THE ACTOR ONCE, THEN LET IT RIDE. Say who did what rather than issuing an actorless instruction: \"BT ran mixed trials\" beats \"Mixed trials were run.\" Then STOP saying it. Once a sentence has established who is acting, the sentences after it in that section must not restate the actor - drop the subject and carry on: \"BT presented the array, waited five seconds, then prompted.\" Restate an actor only when the actor genuinely changes, for example when the caregiver takes over. Re-naming the same actor sentence after sentence is the single loudest machine-writing tell there is, and the previous version of this prompt asked for exactly that.\n\
 - HARD CEILINGS, measured on real output against seven human-written clinical documents:\n\
-  * \"The behavior technician\" or an equivalent staff subject opens AT MOST half the sentences in any section. In human writing it runs about one sentence in five.\n\
+  * \"BT\" or \"staff\" as the subject opens AT MOST half the sentences in any section. In human writing it runs about one sentence in five.\n\
   * The client is the grammatical subject of AT MOST half the sentences in any section.\n\
   * No more than TWO sentences in a section may begin with the same first two words. Restructure the third: lead with the condition, lead with the stimulus, or fold it into the sentence before.\n\
   * Vary sentence length deliberately WITHIN each section. Put a short sentence next to a long one. A section where every sentence is the same length reads as machine-written whether that length is short or long, and this is the strongest single signal there is.\n\
 - Some repetition of clinical terms is unavoidable and correct. Repetition of SENTENCE SHAPE is the thing to avoid.\n\
 - Length follows completeness, not brevity. Say the whole condition rather than a clipped fragment of it, and stop when the reader could picture the session from what is written. Terseness is not the goal and neither is padding.\n\
 - No sentence starting with \"It is important to\", \"Notably\", \"This ensures\", \"Note that\", \"Overall\", or similar. They carry nothing and they are a tell.\n\
-- Use hyphens, never em dashes or en dashes. House convention, and their overuse is itself a machine tell.";
+- Use hyphens, never em dashes or en dashes. House convention, and their overuse is itself a machine tell.\n\n\
+WHAT THE NOTE MAY CLAIM\n\
+- Report what happened in this session. Never write that a program, target or goal is complete, mastered, met, closed or on hold, and never write a plan or a next step (a fade, a probe, a change of target, a decision to monitor) unless the BT wrote it. Those are the BCBA's calls and the BT's future, and a record carries them as fact. \"Answered most questions independently; needed prompting for the parent's phone number\" reports the session. \"The program is now complete except for the phone number, which will be monitored as modeling fades\" decides something nobody in the room decided.\n\
+- Describe the client's performance as a direction when the notes give one, in plain words: more independent as the session went on, needed fewer prompts, needed more help late in the session, made more errors on one item. When the notes give no direction, write what happened and stop.\n\n\
+WHEN NO BEHAVIOR OF CONCERN OCCURRED\n\
+- In the antecedent narrative, name what staff set up and then say it was effective: \"The strategies were effective in supporting engagement\", \"Strategies were effective and no behaviors of concern occurred\", or similar, varied from note to note. One or two sentences, a little warmer than a bare list, never more. Say this only when the notes name at least one strategy and nothing in them says the strategy failed; if the notes name no strategy there is nothing to call effective.\n\
+- If the notes say a behavior still happened at a lower frequency than before, say the strategies were effective in reducing its frequency, then what staff did when it occurred and whether that response supported engagement (\"When it occurred, staff responded with a reminder of the first-then board, which helped the client re-engage\"). Take what staff did and whether it helped from the notes.\n\n\
+WHEN A STRATEGY DID NOT WORK\n\
+- Write three or four sentences in the order it happened: what was tried, what the client did, what staff did next or what is going to the BCBA. Staff's next step comes from the notes (e.g., documented and took ABC data, lowered the demand, offered a different reinforcer, ran a preference assessment). Where the notes stop at \"it didn't work\", write that much and no more, emit the antecedent_effect_unstated hint, and do not supply the next step yourself.";
 
   var HINTS_BLOCK = "\n\nHINTS - return an array of {section, code, detail} objects flagging ONLY missing or ambiguous standard elements (max 4; empty array when the note stands on its own). \"section\" MUST be one of the JSON keys below; \"code\" MUST be from this list; \"detail\" is an optional specifier of 10 words or fewer:\n\
 - no_strategy_outcome (lessonProgressNarrative, behaviorPlanNarrative): a strategy or teaching procedure is named with no statement of what happened as a result\n\
 - helped_not_in_plan (any section): the notes credit something that helped which is not part of the written plan\n\
 - no_rate_comparison (behaviorPlanNarrative): no comparison to recent sessions\n\
-- no_prompt_level (lessonProgressNarrative): teaching described with no prompt type or fading decision\n\
+- no_prompt_level (lessonProgressNarrative): teaching described without saying whether the client answered independently or with prompts, or which way it moved across the session (the code keeps its old name; it no longer asks for a prompt type)\n\
 - single_program_only (lessonProgressNarrative): only one program is identifiable in the notes\n\
 - antecedent_effect_unstated (antecedentNarrative): an antecedent strategy is named with no stated effect\n\
 - thin_clinical_status (clinicalStatusNarrative): almost nothing about how the client presented on arrival\n\
@@ -475,8 +488,8 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
      one moment the technician still has the session in their head on data the
      EHR collected automatically.
 
-     What a supervisor actually reads for is the three checks below. They are
-     the same three the quality rubric measures after the draft, deliberately:
+     What a supervisor actually reads for is the gaps below. The first three are
+     the ones the quality rubric measures after the draft, deliberately:
      asking before the note is written is cheaper for the technician than
      flagging a gap after it, and a fault the tool will point at later is a
      fault it should have asked about first.
@@ -484,14 +497,16 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
      window.NoteTriagePrompt.suggestions carries the candidate-answer mechanism
      and is appended by the engine, so it is not repeated here. */
   var TRIAGE_SYSTEM =
-    "You are reviewing a behavior technician's raw session notes BEFORE they are turned into a formal note.\n\n" +
+    "You are reviewing a BT's raw session notes BEFORE they are turned into a formal note. Address the BT as \"you\" and refer to them as \"the BT\" or \"staff\", never \"the technician\".\n\n" +
     "Your ONLY job: decide whether anything is too thin to write from, and if so ask the short, specific questions that would materially improve the finished note.\n\n" +
     "WHAT IS ALREADY CAPTURED, AND MUST NOT BE ASKED FOR\n" +
     "Trial counts, accuracy percentages, and behavior frequencies are collected automatically and land on the form beside this note. Never ask for a number the data collection already holds. A technician who spends their time re-reporting those has less time for the part only they can supply.\n\n" +
-    "THE THREE GAPS WORTH ASKING ABOUT\n" +
-    "1. A PROGRAM WITH NO ACCOUNT OF HOW IT WENT. They named what they taught and stopped. Ask what needed more support, or what did not work - the prompt level they actually ran, the step that broke down, the part they had to change mid-session.\n" +
+    "THE GAPS WORTH ASKING ABOUT\n" +
+    "1. A PROGRAM WITH NO DIRECTION. They named what they taught and stopped, or said how it went without saying which way it moved. Ask how the client did across the session: more independent by the end, needing fewer prompts, needing more help, a run of errors, or steady. Ask where the errors were if there were many. Ask what needed more support, or what did not work - the step that broke down, the part they had to change mid-session. Never ask for a prompt type or a count; the EHR holds both.\n" +
     "2. A BEHAVIOR WITH NO COMPARISON, OR A COMPARISON WITH NO RESPONSE. \"How did this compare to recent sessions?\" is the first half. The second half matters more: when a behavior has moved, and especially when it has moved the wrong way against goal, ask what they did about it.\n" +
-    "3. SOMETHING THAT HELPED AND IS NOT IN THE PROTOCOL. The adjustment they made because it worked, which no plan told them to make. This is the detail nobody else in the record can supply, and it is the one most often left out. When they have reported nothing of the kind, read where the session struggled and offer candidates rather than an open question.\n\n" +
+    "3. SOMETHING THAT HELPED AND IS NOT IN THE PROTOCOL. The adjustment they made because it worked, which no plan told them to make. This is the detail nobody else in the record can supply, and it is the one most often left out. When they have reported nothing of the kind, read where the session struggled and offer candidates rather than an open question.\n" +
+    "4. FEWER THAN TWO ANTECEDENT STRATEGIES. A session usually runs two or three proactive strategies and the person who ran them rarely thinks of all of them. When the antecedent notes name one or none, ask once, and put the memory jog in the question itself as a short list to glance down: a first-then board, a warning before a transition, offered choices, a visual schedule, setting up the space, a break or a preferred item first, simplified instructions, taking turns or modeling the question. Keep `suggestions` empty for it, since a suggestion is accepted by default and these are things they may not have done. If they answer that it was only one, that is a complete answer and it is never asked about again.\n" +
+    "5. A STRATEGY THAT DID NOT WORK, WITH NOTHING AFTER IT. When the notes say something was tried and the behavior still happened, ask what staff did next and what the BCBA should know, with a short list to glance down: documented it and took ABC data, lowered the demand, tried a different reinforcer, ran a preference assessment, something else. One question, not one per item.\n\n" +
     "RULES\n" +
     "- Be specific and quote back what they wrote. \"You mentioned elopement - what did you do when it happened?\" NOT \"Can you add more detail?\"\n" +
     "- NEVER ask for a name, a date, an address, or any other identifying detail. The notes are deliberately de-identified.\n" +
@@ -530,6 +545,55 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
     "- \"Contact family, new behavior\" is ticked only when the notes report a behavior that is new for this client (they say new, first time, or never seen before). A caregiver's question, such as one about toilet training, is not a new behavior: it goes in followUpNarrative as an item for the BCBA, and no box calls it a behavior.",
   ];
 
+  /* ── The follow-up section when the BT has nothing for the BCBA ──────────
+     One fixed sentence in every note is a signature, and a reader who has seen
+     it forty times stops reading it. The model cannot vary it across notes
+     because it sees one note at a time, so the variety is chosen here, in the
+     page, and handed over as the sentence to write.
+
+     The pick is a hash of the typed intake rather than a random draw: this
+     prompt is rebuilt on every revision turn, and a sentence that changed
+     under the clinician each time she asked for an edit elsewhere would look
+     like a fault. Two different notes still land on different sentences.
+
+     Every line is about the session or the BCBA, never about the paperwork, so
+     none of them trips the absence rule, and none repeats the stiff "no new
+     reported concerns" shape the old default wore smooth. */
+  var FOLLOW_UP_NONE = [
+    "Nothing to flag for the BCBA from this session.",
+    "Nothing came up that the BCBA needs to know about.",
+    "No questions for the BCBA today.",
+    "Nothing from this session needs follow-up from the BCBA.",
+    "No questions or action items for the BCBA from today.",
+    "Nothing new to bring to the BCBA this time.",
+    "No follow-up needed from the BCBA after this session.",
+    "Nothing to add for the BCBA this session.",
+    "No action items for the BCBA, and no questions.",
+    "Nothing to raise with the BCBA today.",
+    "Nothing else for the BCBA from this session.",
+    "No questions or concerns to pass along today.",
+  ];
+  // What a BT types when there is nothing to say: "n/a", "none", "No new concerns this session".
+  var NOTHING_WORDS = /^(?:n\/?a|none|nothing|nil|nope|no|new|further|other|else|concerns?|questions?|issues?|to|report|add|at|this|time|session|today|for|the|bcba|or|and|at|all|really|right|now)$/i;
+  function saysNothing(text) {
+    var words = String(text || "").toLowerCase().replace(/[.,!;:]+/g, " ").split(/\s+/).filter(Boolean);
+    if (!words.length) return true;
+    if (words.length > 8) return false;
+    if (!/^(?:n\/?a|none|nothing|nil|nope|no)$/.test(words[0])) return false;
+    return words.every(function (w) { return NOTHING_WORDS.test(w); });
+  }
+  function followUpFor(values) {
+    var seed = ["fSession", "fLesson", "fAntecedent", "fBehavior"].map(function (k) { return (values && values[k]) || ""; }).join("|");
+    var h = 5381;
+    for (var i = 0; i < seed.length; i++) h = ((h * 33) ^ seed.charCodeAt(i)) >>> 0;
+    return FOLLOW_UP_NONE[h % FOLLOW_UP_NONE.length];
+  }
+  function followUpBlock(values) {
+    var typed = ((values && values.fFollowUp) || "").trim();
+    if (!saysNothing(typed)) return typed;
+    return "(nothing for the BCBA. Write followUpNarrative as exactly this sentence and nothing else: \"" + followUpFor(values) + "\")";
+  }
+
   function buildUserPrompt(values) {
     return [
       "FACTUAL SESSION DATA (provided, do not infer, do not include in the JSON):",
@@ -558,7 +622,7 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
       // had them writing about themselves in the third person, which is exactly
       // the actorless register that reads as machine-written. Say it the way the
       // person filing the note would say it.
-      (values.fFollowUp || "").trim() || "(none provided, default followUpNarrative to: \"No new questions or concerns for the BCBA at this time.\")",
+      followUpBlock(values),
       "",
       "ALLOWED CHECKBOX OPTIONS (return only verbatim values from these lists):",
       "- individualsPresent: " + menu(INDIVIDUALS_PRESENT),
@@ -574,7 +638,7 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
       "- clientProgress: " + menu(CLIENT_PROGRESS),
       "",
       "NARRATIVE GUIDANCE:",
-      "- lessonProgressNarrative: up to 8 sentences, ideally across two programs (one social/communication, one adaptive/repetitive-behavior-replacement). Qualitative, specific. Carry all three of what was observed, what was attempted, and what happened as a result of the attempt. A sentence that names a strategy and stops before its outcome is the most common gap in these notes, and completeness B4 asks for the third part by name.",
+      "- lessonProgressNarrative: up to 8 sentences, ideally across two programs (one social/communication, one adaptive/repetitive-behavior-replacement). Qualitative, specific. Carry all three of what was observed, what was attempted, and what happened as a result of the attempt. A sentence that names a strategy and stops before its outcome is the most common gap in these notes, and completeness B4 asks for the third part by name. Summarize how the client did across the session as a direction (more independent, fewer prompts, more errors, steady) when the notes give one; say \"independently\" or \"with prompts\" and leave prompt types, counts and percentages to the EHR. Do not call a program complete or mastered, and do not write what will happen next, unless the BT wrote it.",
       /* The order is not a style preference and he said so: "It is just
          backward to good session design. That is why I was upset about it." A
          note that prompts before it arranges describes a session run
@@ -599,22 +663,22 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
       /* B4 again, applied to a behavior rather than to a teaching procedure.
          no_response_described has existed since this catalog was written and
          the guidance never told the model what would earn it. */
-      "  For each behavior: what happened, what the technician did in response, and what followed. A behavior named with no response is a gap rather than a short sentence, so emit the no_response_described hint instead of inventing one.",
+      "  For each behavior: what happened, what staff did in response, and what followed. A behavior named with no response is a gap rather than a short sentence, so emit the no_response_described hint instead of inventing one.",
       // Kaleb, 2026-10-04: "how do you block a flop?", "did he follow the
       // prompt and ask for a break or did the BT just end up modeling?", "It
       // should say no aggression occurred, not was observed", and a break must
       // not read as reinforcement for the flop.
-      "  Name exactly what the technician did, in the notes' words (not \"blocked\" alone when the notes say how). Say whether the client then did what was prompted or the technician modeled it. Where the notes say a strategy helped, write what that meant (shorter, less often, or lower intensity than usual); if the notes do not say, write what followed and stop. A behavior that did not occur is written \"No aggression occurred\", never \"was observed\". When a break or item followed a behavior, say what it was contingent on (\"after the client requested a break\"), so the note never reads as reinforcement delivered for the problem behavior.",
+      "  Name exactly what staff did, in the notes' words (not \"blocked\" alone when the notes say how). Say whether the client then did what was prompted or staff modeled it. Where the notes say a strategy helped, write what that meant (shorter, less often, or lower intensity than usual); if the notes do not say, write what followed and stop. A behavior that did not occur is written \"No aggression occurred\", never \"was observed\". When a break or item followed a behavior, say what it was contingent on (\"after the client requested a break\"), so the note never reads as reinforcement delivered for the problem behavior.",
       /* "As applied and their impact" is two parts of three, and the missing
          one is the client. His shipped antecedent narrative read "Choices were
          offered when appropriate to increase opportunities for the client to
          participate", which satisfies both halves of the old line and says
          nothing about what the client did. */
-      "- antecedentNarrative: three parts for each strategy. How it was actually applied, what the client did in response, and whether it worked. \"Choices were offered\" is the first part alone. Where the notes give you a strategy and not the response or the effect, write the part you have, emit the antecedent_effect_unstated hint, and supply neither of the others yourself.",
+      "- antecedentNarrative: three parts for each strategy. How it was actually applied, what the client did in response, and whether it worked. \"Choices were offered\" is the first part alone. Where the notes give you a strategy and not the response or the effect, write the part you have, emit the antecedent_effect_unstated hint, and supply neither of the others yourself. Two cases change the shape. When no behavior of concern occurred and the notes name a strategy, one or two sentences are enough, and they should say the strategies were effective in supporting engagement (or, where a behavior occurred less often, effective in reducing its frequency, then what staff did when it occurred and whether that helped). When a strategy did not work, write three or four sentences: what was tried, what happened, and what staff did next or is passing to the BCBA, each taken from the notes.",
       // Kaleb, 2026-10-04: status "rooted in a BEHAVIOR", "what does perked up
       // mean (give a sign or two)", "Why mention someone NOT there?"
       "- clinicalStatusNarrative: up to 2 sentences on the client's behavior at session start, with the evidence: \"The client appeared tired as evidenced by yawning and rubbing his eyes.\" A word like \"perked up\" or \"in a good mood\" needs the signs that showed it, or it stays out. Name another person only when the notes place them in the session or say they took part; never someone who was not there.",
-      "- followUpNarrative: brief; use the default sentence above if nothing reported. Write it as the person filing the note, not about them. The technician IS the direct staff, so never write \"Direct staff report...\" or \"The behavior technician has no concerns\" here, that is the author describing themselves in the third person, which reads as though someone else wrote the note. \"No new questions or concerns for the BCBA at this time\" is the register.",
+      "- followUpNarrative: brief. Where section [5] hands you a sentence to write, write that sentence exactly. Otherwise write it as the person filing the note, not about them. The BT IS the direct staff, so never write \"Direct staff report...\" or \"The behavior technician has no concerns\" here, that is the author describing themselves in the third person, which reads as though someone else wrote the note.",
       // Kaleb, 2026-10-04, rewriting "Mom asked about potty training. Velcro is
       // needed": "BT to follow up with BCBA about 1. Request from parent about
       // toilet training program goal 2. Replace worn / missing pieces velco on
@@ -676,7 +740,21 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
     return Object.assign({}, out, normalizeRevision(o, SECTION_IDS));
   }
 
-  window.NOTE_TOOLS.push({
+  /* ── The word floor ───────────────────────────────────────────────────────
+     65 words across the intake, split by how much of the finished note each box
+     feeds. The weights are the narrative sentence ceilings the prompt already
+     gives each section, so lesson progress and behavior carry most of it and
+     the session-start box carries little. The follow-up box has no floor: the
+     BCBA note may honestly be thin, and the page writes a varied sentence for
+     it. Derivation, and the colours a box shows on the way, are in
+     scripts/min-words-model.mjs; tests/min-words.spec.js holds the two together. */
+  var MIN_WORDS = {
+    total: 65,
+    weights: { fSession: 2.5, fLesson: 8, fAntecedent: 4, fBehavior: 5.5 },
+    optional: ["fFollowUp"],
+  };
+
+  var BT_TOOL = {
     id: "bt",
     // Who "What would you do here?" is answering. Every other tool is a BCBA
     // asking a peer; this one is the technician asking the analyst above them.
@@ -756,7 +834,7 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
       },
       {
         id: "fLesson", type: "textarea", label: "Skill Acquisition / Lesson Progress", required: true, height: 150,
-        hint: "Programs taught and how each went. Two programs per hour: one communication/social, one adaptive/daily-living or repetitive-behavior replacement. Include prompting, accuracy/progress and barriers.",
+        hint: "Programs taught and how each went. Two programs per hour: one communication/social, one adaptive/daily-living or repetitive-behavior replacement. Say whether the client did it independently or with prompts, whether that changed as the session went (fewer prompts, more errors), and what got in the way. The EHR already has the trials and counts.",
         help: {
           intro: "Name the techniques used.",
           items: [
@@ -771,7 +849,7 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
             { t: "Token Economy", d: "earning tokens toward a reward" },
           ],
         },
-        placeholder: "No names or other PHI.\nFragments OK. Examples:\n- Receptive ID in DTT, 3-item array; full physical \u2192 independent, 2 indep at end\n- Tact training in NET during play, ~70% accuracy\n- Errorless start, faded to gestural prompt",
+        placeholder: "No names or other PHI.\nFragments OK. Examples:\n- Receptive ID in DTT, needed prompts early, mostly independent by the end\n- Tact training in NET during play, a few errors on the new items\n- Errorless start, needed fewer prompts as it went",
       },
       {
         id: "fAntecedent", type: "textarea", label: "Antecedent Strategies", required: true, height: 120,
@@ -837,7 +915,25 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
     triageSystem: TRIAGE_SYSTEM,
     triageKind: "bt_triage",
 
+    /* The word floor, from min-words.js. A page that has not loaded that file
+       (the admin preview does not) falls back to the old empty-box check, so a
+       missing script weakens the rule instead of breaking Generate. */
+    minWords: MIN_WORDS,
+
     validate: function (values) {
+      var MW = window.MinWords;
+      if (MW) {
+        var labelOf = function (id) {
+          var f = BT_TOOL.inputs.filter(function (i) { return i.id === id; })[0];
+          return f ? f.label : id;
+        };
+        var short = MW.shortfall(MW.plan(MIN_WORDS), values, labelOf);
+        if (!short.length) return null;
+        return "A little more from you first, so the note comes from your words:\n" +
+          short.map(function (s) {
+            return "- " + s.label + ": " + s.remaining + " more " + (s.remaining === 1 ? "word" : "words");
+          }).join("\n");
+      }
       if (!(values.fLesson || "").trim()) return "Skill Acquisition / Lesson Progress is required.";
       if (!(values.fAntecedent || "").trim()) return "Antecedent Strategies is required.";
       if (!(values.fBehavior || "").trim()) return "Behavior & Staff Response is required.";
@@ -878,5 +974,7 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
       return SYSTEM_CORE + LABELED_FORMAT_BLOCK + "\n\n---\n\n" + buildUserPrompt(values);
     },
     normalizeOutput: normalizeOutput,
-  });
+  };
+
+  window.NOTE_TOOLS.push(BT_TOOL);
 })();

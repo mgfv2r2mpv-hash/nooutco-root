@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { FLOOR_PAD } from './helpers/bt-floor.js';
 import { isTriageCall } from './helpers/llm-call.js';
 
 // Triage asks more than once.
@@ -62,9 +63,10 @@ async function run(page, script) {
   await page.goto('/notes/bt/');
   await page.evaluate((tok) => localStorage.setItem('notes_auth_token', tok), tokenFor());
   await page.goto('/notes/bt/');
-  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT money 3 item array');
-  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first then board');
-  await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked');
+  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT money 3 item array' + FLOOR_PAD.lesson);
+  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first then board' + FLOOR_PAD.antecedent);
+  await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked' + FLOOR_PAD.behavior);
+  await page.getByRole('textbox', { name: /Session Start/i }).fill(FLOOR_PAD.session);
   await page.getByRole('button', { name: 'Generate Note' }).click();
   const ack = page.locator('#notes-ack-go');
   if (await ack.isVisible({ timeout: 5000 }).catch(() => false)) {
@@ -147,9 +149,10 @@ test.describe('it asks again when something is still missing', () => {
     await page.goto('/notes/bt/');
     await page.evaluate((tok) => localStorage.setItem('notes_auth_token', tok), tokenFor());
     await page.goto('/notes/bt/');
-    await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT money 3 item array');
-    await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first then board');
-    await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked');
+    await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT money 3 item array' + FLOOR_PAD.lesson);
+    await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first then board' + FLOOR_PAD.antecedent);
+    await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked' + FLOOR_PAD.behavior);
+    await page.getByRole('textbox', { name: /Session Start/i }).fill(FLOOR_PAD.session);
     await page.getByRole('button', { name: 'Generate Note' }).click();
     const ack = page.locator('#notes-ack-go');
     if (await ack.isVisible({ timeout: 5000 }).catch(() => false)) {

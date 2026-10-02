@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { FLOOR_PAD } from './helpers/bt-floor.js';
 import { isTriageCall } from './helpers/llm-call.js';
 import { refusedKeywords } from './helpers/schema.js';
 
@@ -78,9 +79,10 @@ async function ask(page, triage) {
   await page.goto('/notes/bt/');
   await page.evaluate((tok) => localStorage.setItem('notes_auth_token', tok), tokenFor());
   await page.goto('/notes/bt/');
-  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT money 3 item array, needed full physical most of it');
-  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first then board, also moved to the floor and he settled');
-  await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked and redirected');
+  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT money 3 item array, needed full physical most of it' + FLOOR_PAD.lesson);
+  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first then board, also moved to the floor and he settled' + FLOOR_PAD.antecedent);
+  await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked and redirected' + FLOOR_PAD.behavior);
+  await page.getByRole('textbox', { name: /Session Start/i }).fill(FLOOR_PAD.session);
   await page.getByRole('button', { name: 'Generate Note' }).click();
   const ack = page.locator('#notes-ack-go');
   if (await ack.isVisible({ timeout: 5000 }).catch(() => false)) {
@@ -168,7 +170,7 @@ test.describe('the prompt that produces them', () => {
     expect(block, 'the cap has to be stated as well as enforced').toMatch(/at most two/i);
   });
 
-  test('bt asks about the three gaps a supervisor reads for, and not about the counts', async ({ page }) => {
+  test('bt asks about the gaps a supervisor reads for, and not about the counts', async ({ page }) => {
     await page.goto('/notes/bt/');
     const bt = await page.evaluate(() => (window.NOTE_TOOLS.find((t) => t.id === 'bt') || {}).triageSystem);
     expect(bt, 'bt.js no longer registers a triage prompt of its own').toBeTruthy();
@@ -177,7 +179,10 @@ test.describe('the prompt that produces them', () => {
     // the session is still in the technician's head on data they did not have
     // to supply.
     expect(bt).toMatch(/Never ask for a number the data collection already holds/i);
-    expect(bt).toMatch(/A PROGRAM WITH NO ACCOUNT OF HOW IT WENT/);
+    // Direction, not a prompt type or a count: the EHR holds the trial data.
+    expect(bt).toMatch(/A PROGRAM WITH NO DIRECTION/);
+    expect(bt).toMatch(/FEWER THAN TWO ANTECEDENT STRATEGIES/);
+    expect(bt).toMatch(/A STRATEGY THAT DID NOT WORK, WITH NOTHING AFTER IT/);
     expect(bt).toMatch(/A BEHAVIOR WITH NO COMPARISON, OR A COMPARISON WITH NO RESPONSE/);
     expect(bt).toMatch(/SOMETHING THAT HELPED AND IS NOT IN THE PROTOCOL/);
     // The half he added on top of the round-6 proposal: a comparison on its own

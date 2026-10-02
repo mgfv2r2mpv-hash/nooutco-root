@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { FLOOR_PAD } from './helpers/bt-floor.js';
 import { isTriageCall } from './helpers/llm-call.js';
 import {
   reshapeReply, reshapeOne, SHAPE_COUNT, issuedNumbers, tokenFamily, captureClipboard, copiedFrom,
@@ -112,9 +113,10 @@ const readNote = (page) =>
     [el.innerText, ...[...el.querySelectorAll('textarea')].map((t) => t.value)].join('\n'));
 
 async function fillIntake(page, text = INTAKE) {
-  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill(text);
-  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first-then board before demands');
-  await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked and redirected');
+  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill(text + FLOOR_PAD.lesson);
+  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first-then board before demands' + FLOOR_PAD.antecedent);
+  await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked and redirected' + FLOOR_PAD.behavior);
+  await page.getByRole('textbox', { name: /Session Start/i }).fill(FLOOR_PAD.session);
 }
 
 // The gates are off by the maintainer's ruling of 2026-09-01, so this is a
@@ -553,9 +555,10 @@ test.describe('path 6, the saved draft after a reload', () => {
  * because it is the one that carries over without needing a model.
  */
 async function promptFor(page, text) {
-  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill(text);
-  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first-then board before demands');
-  await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked and redirected');
+  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill(text + FLOOR_PAD.lesson);
+  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first-then board before demands' + FLOOR_PAD.antecedent);
+  await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked and redirected' + FLOOR_PAD.behavior);
+  await page.getByRole('textbox', { name: /Session Start/i }).fill(FLOOR_PAD.session);
   await page.getByRole('button', { name: 'Generate Prompt' }).click();
   await clearGates(page);
   await expect.poll(() => page.evaluate(() => (window.NotesGate.draft.load('bt::map') || []).length))

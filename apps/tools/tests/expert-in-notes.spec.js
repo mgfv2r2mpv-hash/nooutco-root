@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { FLOOR_PAD } from './helpers/bt-floor.js';
 import { isTriageCall } from './helpers/llm-call.js';
 
 /* The expert runs on the note pages now, beside the draft rather than instead
@@ -104,10 +105,11 @@ async function draft(page, { role = 'admin', expert = EXPERT, query = '', note =
   await page.addInitScript(([k, t]) => localStorage.setItem(k, t), ['notes_auth_token', tokenFor(role, tools)]);
   await page.goto(PAGE + query);
 
-  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT money 3 item array, 8 of 10 gestural');
-  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('two minute warning before transitions');
+  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT money 3 item array, 8 of 10 gestural' + FLOOR_PAD.lesson);
+  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('two minute warning before transitions' + FLOOR_PAD.antecedent);
   await page.getByRole('textbox', { name: /Behavior & Staff Response/i })
-    .fill('elopement x2 with client Jacob, blocked and redirected, he wanted attention');
+    .fill('elopement x2 with client Jacob, blocked and redirected, he wanted attention' + FLOOR_PAD.behavior);
+  await page.getByRole('textbox', { name: /Session Start/i }).fill(FLOOR_PAD.session);
   await page.getByRole('button', { name: 'Generate Note' }).click();
 
   const ack = page.locator('#notes-ack-go');

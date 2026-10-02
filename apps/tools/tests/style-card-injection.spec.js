@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { FLOOR_PAD } from './helpers/bt-floor.js';
 import { isTriageCall, browserSystem } from './helpers/llm-call.js';
 
 // The learned style block reaching the prompt, and staying put once it does.
@@ -64,9 +65,10 @@ function noteReply() {
 }
 
 async function fillRequiredAndGenerate(page) {
-  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT 3-item array, full physical faded to independent');
-  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first-then board before demands');
-  await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked and redirected');
+  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT 3-item array, full physical faded to independent' + FLOOR_PAD.lesson);
+  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first-then board before demands' + FLOOR_PAD.antecedent);
+  await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked and redirected' + FLOOR_PAD.behavior);
+  await page.getByRole('textbox', { name: /Session Start/i }).fill(FLOOR_PAD.session);
   await page.getByRole('button', { name: 'Generate Note' }).click();
 
   const ack = page.locator('#notes-ack-go');

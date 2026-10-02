@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { FLOOR_PAD } from './helpers/bt-floor.js';
 import { browserSystem } from './helpers/llm-call.js';
 
 // The tool revises its own first draft before anyone sees it.
@@ -88,11 +89,12 @@ async function generate(page, prose, { revisedProse = null } = {}) {
   await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), tokenFor());
   await page.goto('/notes/bt/');
   await page.getByRole('textbox', { name: /Skill Acquisition/i })
-    .fill('DTT money program, 3 item array, started full physical faded to gestural by trial 6. 8/12 correct.');
+    .fill('DTT money program, 3 item array, started full physical faded to gestural by trial 6. 8/12 correct.' + FLOOR_PAD.lesson);
   await page.getByRole('textbox', { name: /Antecedent Strategies/i })
-    .fill('first then board before each demand. offered choice up front. 2 min warning.');
+    .fill('first then board before each demand. offered choice up front. 2 min warning.' + FLOOR_PAD.antecedent);
   await page.getByRole('textbox', { name: /Behavior & Staff Response/i })
-    .fill('elopement x2 from table, blocked and redirected. no SIB today.');
+    .fill('elopement x2 from table, blocked and redirected. no SIB today.' + FLOOR_PAD.behavior);
+  await page.getByRole('textbox', { name: /Session Start/i }).fill(FLOOR_PAD.session);
   await page.getByRole('button', { name: 'Generate Note' }).click();
   const ack = page.locator('#notes-ack-go');
   if (await ack.isVisible({ timeout: 5000 }).catch(() => false)) {
@@ -158,9 +160,10 @@ test.describe('the tool revises its own draft first', () => {
     await page.goto('/notes/bt/');
     await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), tokenFor());
     await page.goto('/notes/bt/');
-    await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT money program, 3 item array, faded to gestural.');
-    await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first then board, offered choice up front.');
-    await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement x2, blocked and redirected.');
+    await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT money program, 3 item array, faded to gestural.' + FLOOR_PAD.lesson);
+    await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first then board, offered choice up front.' + FLOOR_PAD.antecedent);
+    await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement x2, blocked and redirected.' + FLOOR_PAD.behavior);
+    await page.getByRole('textbox', { name: /Session Start/i }).fill(FLOOR_PAD.session);
     await page.getByRole('button', { name: 'Generate Note' }).click();
     const ack = page.locator('#notes-ack-go');
     if (await ack.isVisible({ timeout: 5000 }).catch(() => false)) {

@@ -26,7 +26,7 @@ const IDS = ['clinicalStatusNarrative', 'lessonProgressNarrative', 'behaviorPlan
 const CATALOG = {
   no_strategy_outcome: 'Strategy described without its outcome, say what happened as a result of trying it',
   no_rate_comparison: 'No comparison to recent sessions, say whether this was higher, lower, or about the same',
-  no_prompt_level: 'Teaching described without a prompt level, name the prompt type used and whether it was faded',
+  no_prompt_level: 'Teaching described without saying whether the client answered independently or needed prompts, say which, and whether that changed across the session',
 };
 
 const RUBRIC = [

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { FLOOR_PAD } from './helpers/bt-floor.js';
 import { captureClipboard } from './helpers/clipboard.js';
 import { createHmac } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -149,9 +150,10 @@ async function draft(page, c, { corrections = [] } = {}) {
   await page.goto(BT_PAGE);
   await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), tokenFor());
   await page.goto(BT_PAGE);
-  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT 3-item array, full physical faded to independent');
-  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first-then board before demands');
-  await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement x2, blocked the door');
+  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT 3-item array, full physical faded to independent' + FLOOR_PAD.lesson);
+  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first-then board before demands' + FLOOR_PAD.antecedent);
+  await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement x2, blocked the door' + FLOOR_PAD.behavior);
+  await page.getByRole('textbox', { name: /Session Start/i }).fill(FLOOR_PAD.session);
   await page.getByRole('button', { name: 'Generate Note' }).click();
   await acceptScrubGate(page);
   if (corrections.length) {

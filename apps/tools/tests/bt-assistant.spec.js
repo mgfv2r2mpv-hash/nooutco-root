@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { FLOOR_PAD } from './helpers/bt-floor.js';
 import { isTriageCall } from './helpers/llm-call.js';
 import { refusedKeywords } from './helpers/schema.js';
 
@@ -60,9 +61,10 @@ function note(overrides = {}) {
 
 // Drive the tool past its own validate() and the scrub acknowledge/review gate.
 async function fillRequiredAndGenerate(page) {
-  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT 3-item array, full physical faded to independent');
-  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first-then board before demands');
-  await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked and redirected');
+  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT 3-item array, full physical faded to independent' + FLOOR_PAD.lesson);
+  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first-then board before demands' + FLOOR_PAD.antecedent);
+  await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked and redirected' + FLOOR_PAD.behavior);
+  await page.getByRole('textbox', { name: /Session Start/i }).fill(FLOOR_PAD.session);
   await page.getByRole('button', { name: 'Generate Note' }).click();
   // The scrub gate shows an acknowledge dialog once per page load, then a name
   // review only when it finds candidates. Accept whatever it puts up.

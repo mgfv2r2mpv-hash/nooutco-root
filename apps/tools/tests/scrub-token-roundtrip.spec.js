@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { FLOOR_PAD } from './helpers/bt-floor.js';
 import { isTriageCall } from './helpers/llm-call.js';
 
 /* A word the scrubber cannot rule out must come back.
@@ -86,9 +87,10 @@ async function draft(page, text = INTAKE) {
   });
 
   await loggedIn(page);
-  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill(text);
-  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first-then board before demands');
-  await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked and redirected');
+  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill(text + FLOOR_PAD.lesson);
+  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first-then board before demands' + FLOOR_PAD.antecedent);
+  await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked and redirected' + FLOOR_PAD.behavior);
+  await page.getByRole('textbox', { name: /Session Start/i }).fill(FLOOR_PAD.session);
   await page.getByRole('button', { name: 'Generate Note' }).click();
   await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 30000 });
   /* The NOTE, not the page. Two reasons this is not innerText on the body.
@@ -300,9 +302,10 @@ async function reviseAfterDraft(page, instruction, intakeText = INTAKE, sectionK
   });
 
   await loggedIn(page);
-  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill(intakeText);
-  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first-then board before demands');
-  await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked and redirected');
+  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill(intakeText + FLOOR_PAD.lesson);
+  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first-then board before demands' + FLOOR_PAD.antecedent);
+  await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked and redirected' + FLOOR_PAD.behavior);
+  await page.getByRole('textbox', { name: /Session Start/i }).fill(FLOOR_PAD.session);
   await page.getByRole('button', { name: 'Generate Note' }).click();
   await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 30000 });
 
@@ -488,9 +491,10 @@ async function draftWithMangledTokens(page, collapse) {
   });
 
   await loggedIn(page);
-  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill(INTAKE);
-  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first-then board before demands');
-  await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked and redirected');
+  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill(INTAKE + FLOOR_PAD.lesson);
+  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first-then board before demands' + FLOOR_PAD.antecedent);
+  await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked and redirected' + FLOOR_PAD.behavior);
+  await page.getByRole('textbox', { name: /Session Start/i }).fill(FLOOR_PAD.session);
   await page.getByRole('button', { name: 'Generate Note' }).click();
   await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 30000 });
   const note = page.getByTestId('generated-note');
@@ -614,9 +618,10 @@ test.describe('the ledger outlives the page', () => {
     await page.goto('/notes/bt/');
     // Every required input, or tool.validate() rejects and the scrub never runs.
     await page.getByRole('textbox', { name: /Skill Acquisition/i })
-      .fill('Client sorted the Magenta cards during Tact trials.');
-    await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first-then board before demands');
-    await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked and redirected');
+      .fill('Client sorted the Magenta cards during Tact trials.' + FLOOR_PAD.lesson);
+    await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first-then board before demands' + FLOOR_PAD.antecedent);
+    await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked and redirected' + FLOOR_PAD.behavior);
+    await page.getByRole('textbox', { name: /Session Start/i }).fill(FLOOR_PAD.session);
     await page.getByRole('button', { name: 'Generate Prompt' }).click();
     await expect
       .poll(() => page.evaluate(() => (window.NotesGate.draft.load('bt::map') || []).length))
@@ -627,9 +632,10 @@ test.describe('the ledger outlives the page', () => {
     await expect(page.getByRole('textbox', { name: /Skill Acquisition/i })).toHaveValue('');
 
     await page.getByRole('textbox', { name: /Skill Acquisition/i })
-      .fill('Client sorted the Teal cards during Echoic trials.');
-    await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first-then board before demands');
-    await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked and redirected');
+      .fill('Client sorted the Teal cards during Echoic trials.' + FLOOR_PAD.lesson);
+    await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first-then board before demands' + FLOOR_PAD.antecedent);
+    await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked and redirected' + FLOOR_PAD.behavior);
+    await page.getByRole('textbox', { name: /Session Start/i }).fill(FLOOR_PAD.session);
     await page.getByRole('button', { name: 'Generate Prompt' }).click();
     await expect
       .poll(() => page.evaluate(() => (window.NotesGate.draft.load('bt::map') || []).length))
