@@ -164,6 +164,8 @@ test.describe('Send waits a minute on revisions nobody has answered', () => {
     await expect(send).toBeDisabled();
     await expect(lock).toBeVisible();
     await expect(lock).toHaveText(/\b(60|59|58)s\b/, { timeout: 2000 });
+    // The disabled button leaves the tab order, so the field carries the note.
+    await expect(page.locator('.revision-input')).toHaveAttribute('aria-describedby', 'revision-send-lock');
 
     await page.clock.runFor(30_000);
     await expect(send).toBeDisabled();
@@ -175,6 +177,7 @@ test.describe('Send waits a minute on revisions nobody has answered', () => {
     await page.clock.runFor(6_000);
     await expect(send).toBeEnabled();
     await expect(lock).toHaveCount(0);
+    await expect(page.locator('.revision-input')).not.toHaveAttribute('aria-describedby', 'revision-send-lock');
   });
 
   test('24 characters leave it locked and 25 open it', async ({ page }) => {

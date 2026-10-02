@@ -1188,6 +1188,11 @@ function RevisionPanel({
                   : "Change or added detail"
             }
             className="revision-input"
+            /* A disabled Send leaves the tab order, so a screen-reader user
+               never lands on the button its note is attached to. The field is
+               where they are when Enter does nothing, so it carries the note
+               too. */
+            aria-describedby={sendLocked ? "revision-send-lock" : undefined}
           />
           <button
             type="submit"
