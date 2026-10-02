@@ -484,12 +484,18 @@ function SuggestionRow({ id, text, original, accepted, alternatives, own, onTogg
 const SEND_UNLOCK_CHARS = 25;
 
 /* Seconds left on the lock. It restarts when a new round of questions arrives,
-   which is why the round is its key. */
+   which is why the round is its key.
+
+   A layout effect, not a plain one: the panel is usually mounted before the
+   round arrives, so `left` still holds the last round's 0 on the first render
+   of a new one. A plain effect runs after the paint, and for that one frame
+   Send was drawn open with no lock note. The layout effect resets the count
+   before the browser paints. */
 function useSendLock(seconds, round) {
   const total = Math.max(0, Number(seconds) || 0);
   const [left, setLeft] = React.useState(total);
 
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
     setLeft(total);
     if (!total) return;
     // Wall-clock, not a tick counter: a backgrounded tab throttles timers, and
