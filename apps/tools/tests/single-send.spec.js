@@ -180,6 +180,33 @@ test.describe('Send waits a minute on revisions nobody has answered', () => {
     await expect(page.locator('.revision-input')).not.toHaveAttribute('aria-describedby', 'revision-send-lock');
   });
 
+  test('typing short of 25 characters does not restart the count', async ({ page }) => {
+    await ask(page, REVISIONS);
+    await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
+    const send = page.locator('.revision-send');
+    const lock = page.locator('[data-send-lock]');
+
+    await page.clock.runFor(30_000);
+    // Every keystroke re-renders the engine; the count must not start over.
+    await page.locator('.revision-input').pressSequentially('Twice.');
+    await expect(lock).toHaveText(/\b(30|29|28)s\b/, { timeout: 2000 });
+    await expect(send).toBeDisabled();
+
+    await page.clock.runFor(31_000);
+    await expect(lock).toHaveCount(0);
+    await expect(send).toBeEnabled();
+  });
+
+  /* The 2026-08-06 floor, kept by the build agent's own reading: his
+     2026-09-28 words do not mention readiness. Pinned here so that flipping it
+     is a visible change to this spec, not a quiet one. */
+  test('a note reading 85 or more is not locked', async ({ page }) => {
+    await ask(page, { ...REVISIONS, readiness: 85 });
+    await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
+    await expect(page.locator('.revision-send')).toBeEnabled();
+    await expect(page.locator('[data-send-lock]')).toHaveCount(0);
+  });
+
   test('24 characters leave it locked and 25 open it', async ({ page }) => {
     const seen = await ask(page, REVISIONS);
     await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
@@ -206,12 +233,17 @@ test.describe('Send waits a minute on revisions nobody has answered', () => {
     expect(String(seen.notes[0].messages[0].content)).toContain(twentyFive);
   });
 
+  /* Read below 85 on purpose. At 90 the readiness floor alone opens Send, so
+     this test passed whether or not the candidates check worked at all. Below
+     the bar the gate wants one answer first, so a short one is typed: short
+     enough that only the missing candidates can explain an open Send. */
   test('a round with no revisions in it is not locked', async ({ page }) => {
     await ask(page, {
-      sufficient: false, readiness: 90,
+      sufficient: false, readiness: 70,
       questions: [{ field: 'fBehavior', question: 'How many times?', suggestions: [] }],
     });
     await expect(page.getByText(/How many times/i)).toBeVisible({ timeout: 20000 });
+    await page.locator('.revision-input').fill('Twice.');
     await expect(page.locator('.revision-send')).toBeEnabled();
     await expect(page.locator('[data-send-lock]')).toHaveCount(0);
   });
