@@ -280,13 +280,16 @@ test.describe('below the bar the tool will not draft yet', () => {
     await expect(page.locator('[data-skip-held]')).toContainText('Generates after one answer');
   });
 
-  test('a kept suggestion is an answer, so it opens the gate', async ({ page }) => {
+  test('a chosen suggestion is an answer, so it opens the gate', async ({ page }) => {
     await ask(page, oneQuestion(55, ['Moving to the floor settled him faster than the break did.']));
     await expect(page.getByText(/Question number 1 /)).toBeVisible({ timeout: 20000 });
-    // Suggestions arrive accepted, so the way out is already taken. What stands
-    // between it and Send is the minute on unanswered revisions, not the gate.
+    /* Nothing arrives chosen (his ruling, 2 Oct 2026), so the gate holds until
+       one is. Choosing it opens the gate, and the wait with it (proposed with
+       that ruling: a chosen suggestion counts as an answer for Send). */
+    await expect(page.locator('[data-skip-held]')).toContainText('Generates after one chosen suggestion');
+    await page.locator('[data-suggestion-tick="0:0"]').click();
     await expect(page.locator('[data-skip-held]')).toHaveCount(0);
-    await expect(page.locator('[data-send-lock]')).toBeVisible();
+    await expect(page.locator('[data-send-lock]')).toHaveCount(0);
 
     /* Decline it and the gate closes again, because now nothing would reach
        the note. His way, 2026-09-22: key your own words (which deselects the
@@ -297,7 +300,7 @@ test.describe('below the bar the tool will not draft yet', () => {
     await own.press('Enter');
     await own.fill('');
     await own.press('Enter');
-    await expect(page.locator('[data-skip-held]')).toContainText('Generates after one kept suggestion');
+    await expect(page.locator('[data-skip-held]')).toContainText('Generates after one chosen suggestion');
   });
 
   test('at the bar Send is open, with no wait on it', async ({ page }) => {

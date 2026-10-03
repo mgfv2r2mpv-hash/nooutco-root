@@ -1052,6 +1052,46 @@ body.is-pointing, body.is-pointing * { cursor: crosshair !important; }
 .tg-revert:hover, .tg-revert:focus-visible { background: rgba(55, 69, 40, .12); }
 .tg-revert.is-dirty:hover, .tg-revert.is-dirty:focus-visible { background: rgba(198, 40, 40, .14); }
 
+/* ── An edit left behind by a pick ────────────────────────────────────────
+   His ruling, 2 Oct 2026: a row that loses the pick while holding unsaved
+   words shows "back to faded with the pencil glowing yellow". Faded, not
+   gone: the words are kept for a re-pick. The amber comes from tokens.css, and
+   colour is never the only cue: the pencil carries a ring and a dot, and the
+   row says the state in words for a screen reader (.tg-unsaved-say). No
+   pulse, so there is nothing for reduced motion to turn off. */
+.tg-suggestion.is-dropped .tg-suggestion-text { cursor: pointer; }
+.tg-suggestion.is-unsaved { position: relative; }
+.tg-suggestion.is-unsaved .tg-suggestion-text,
+.tg-suggestion.is-unsaved .tg-suggestion-field {
+  opacity: .7;
+  color: #2d3a1f;
+  background: none;
+  box-shadow: inset 0 -1px 0 var(--amber-500);
+}
+.tg-pencil.is-unsaved {
+  position: relative;
+  color: var(--amber-700);
+  background: var(--amber-100);
+  box-shadow: 0 0 0 2px var(--amber-300), 0 0 8px 2px var(--amber-300);
+  font-weight: 700;
+}
+.tg-pencil.is-unsaved:hover, .tg-pencil.is-unsaved:focus-visible {
+  background: var(--amber-50);
+  outline: 2px solid var(--amber-700);
+  outline-offset: 2px;
+}
+.tg-unsaved-dot {
+  position: absolute; top: -3px; right: -3px;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--amber-700);
+  border: 1.5px solid white;
+}
+.tg-unsaved-say {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%);
+  white-space: nowrap; border: 0;
+}
+
 .tg-check { color: #38691f; border: 1.5px solid #b7cba2; background: white; }
 /* The same checkmark, already on. Filled rather than outlined, so "this is the
    answer, press to drop it" and "press to make this the answer" never look the
@@ -1272,7 +1312,8 @@ body.is-pointing, body.is-pointing * { cursor: crosshair !important; }
 .dz-state-edited .dz-mark { color: #4a3a5c; }
 /* A removed sentence stays readable. Striking it out would make a technician
    squint at the thing they are deciding about. */
-.dz-state-reverted .dz-line { background: #f4f4f1; border-left-color: #c7d3b5; color: #6b7360; }
+.dz-state-reverted .dz-line,
+.dz-state-open .dz-line { background: #f4f4f1; border-left-color: #c7d3b5; color: #6b7360; }
 
 .dz-actions {
   display: flex;

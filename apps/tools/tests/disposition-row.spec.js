@@ -109,9 +109,13 @@ test.describe('what the tool added', () => {
      ticks and all. If this fails, the flag has stopped being a flag. */
   test('without the flag the pencil-and-checkmark row is still what renders', async ({ page }) => {
     await ask(page, ONE, { aid: false });
-    // The chosen row carries the pencil and no drop control: declining is done
-    // by keying your own words. His rulings, 2026-09-21 and 2026-09-22.
-    await expect(page.locator('[data-suggestion-pencil="0:0"]')).toBeVisible({ timeout: 20000 });
+    // Nothing is picked until they pick it (his ruling, 2 Oct 2026), so the
+    // row arrives with the checkmark; choosing it hands it the pencil and no
+    // drop control. His rulings, 2026-09-21 and 2026-09-22.
+    await expect(page.locator('[data-suggestion-tick="0:0"]')).toBeVisible({ timeout: 20000 });
+    await expect(page.locator('[data-suggestion-pencil="0:0"]')).toHaveCount(0);
+    await page.locator('[data-suggestion-tick="0:0"]').click();
+    await expect(page.locator('[data-suggestion-pencil="0:0"]')).toBeVisible();
     await expect(page.locator('[data-suggestion-tick="0:0"]')).toHaveCount(0);
     await expect(page.locator('[data-disposition="0:0"]')).toHaveCount(0);
   });
@@ -126,18 +130,27 @@ test.describe('what the tool added', () => {
     await expect(row(page, '0:0')).not.toContainText('✗');
   });
 
-  test('a heading says in words that the tool added this and it is already in', async ({ page }) => {
+  /* Since the no-pre-pick ruling of 2 Oct 2026 nothing offered is in the note
+     until it is chosen, so the heading says that instead of "Added to the note
+     by NoMe", which stopped being true. */
+  test('a heading says in words that the tool offered this and it is not in until chosen', async ({ page }) => {
     await ask(page, ONE);
     await expect(row(page, '0:0')).toBeVisible({ timeout: 20000 });
     const head = page.locator('.dz-head');
-    await expect(head).toContainText('Added to the note by NoMe');
+    await expect(head).toContainText('Offered by NoMe. Not in the note until chosen.');
   });
 
-  /* The resting state is agreement, so it says nothing. */
-  test('the resting row is the sentence and no state word', async ({ page }) => {
+  /* A row nobody has decided about says so, and once chosen the resting state
+     is agreement again, so it says nothing. */
+  test('an untouched row reads not chosen, and the chosen row is the sentence and no state word', async ({ page }) => {
     await ask(page, ONE);
     const r = row(page, '0:0');
     await expect(r).toBeVisible({ timeout: 20000 });
+    await expect(r).toHaveAttribute('data-disposition-state', 'open');
+    await expect(r.locator('.dz-mark')).toHaveText('not chosen');
+
+    await r.click();
+    await page.locator('[data-disposition-revert="0:0"]').click();
     await expect(r).toHaveAttribute('data-disposition-state', 'default');
     await expect(r).toContainText('Moving to the floor settled him faster');
     await expect(r.locator('.dz-mark')).toHaveCount(0);
@@ -148,6 +161,10 @@ test.describe('what the tool added', () => {
     await row(page, '0:0').click({ timeout: 20000 });
     await expect(page.locator('[data-disposition-approve="0:0"]')).toHaveText('Approve');
     await expect(page.locator('[data-disposition-editbtn="0:0"]')).toHaveText('Edit');
+    await expect(page.locator('[data-disposition-revert="0:0"]')).toHaveText('Use this one');
+    // Once chosen, the third answer takes it back out.
+    await page.locator('[data-disposition-revert="0:0"]').click();
+    await row(page, '0:0').click();
     await expect(page.locator('[data-disposition-revert="0:0"]')).toHaveText('Remove it');
   });
 
@@ -157,10 +174,12 @@ test.describe('what the tool added', () => {
     await page.locator('[data-disposition-approve="0:0"]').click();
     await expect(row(page, '0:0')).toHaveAttribute('data-disposition-state', 'approved');
     await expect(row(page, '0:0').locator('.dz-mark')).toHaveText('approved');
-    // Approving changes nothing in the note. The sentence was already in.
+    // Approving an untouched row chooses it, with the stronger signal.
     await expect(row(page, '0:0')).toContainText('Moving to the floor settled him faster');
   });
 
+  /* Saving an edit into an untouched row chooses it, so reworded words are
+     never quietly left out (no pre-pick, 2 Oct 2026). */
   test('editing keeps the technician wording and marks it the strongest answer', async ({ page }) => {
     await ask(page, ONE);
     await row(page, '0:0').click({ timeout: 20000 });
@@ -175,7 +194,10 @@ test.describe('what the tool added', () => {
 
   test('removing it says removed and leaves the sentence readable', async ({ page }) => {
     await ask(page, ONE);
+    // Chosen first, since nothing arrives chosen, then removed.
     await row(page, '0:0').click({ timeout: 20000 });
+    await page.locator('[data-disposition-revert="0:0"]').click();
+    await row(page, '0:0').click();
     await page.locator('[data-disposition-revert="0:0"]').click();
     await expect(row(page, '0:0')).toHaveAttribute('data-disposition-state', 'reverted');
     await expect(row(page, '0:0').locator('.dz-mark')).toHaveText('removed');
@@ -191,7 +213,8 @@ test.describe('what the tool added', () => {
   test('one of several answers reads as not chosen, never as removed', async ({ page }) => {
     await ask(page, TWO);
     await expect(row(page, '0:1')).toBeVisible({ timeout: 20000 });
-    await expect(row(page, '0:1')).toHaveAttribute('data-disposition-state', 'reverted');
+    // Undecided on arrival (no pre-pick), and it reads the same: not chosen.
+    await expect(row(page, '0:1')).toHaveAttribute('data-disposition-state', 'open');
     await expect(row(page, '0:1').locator('.dz-mark')).toHaveText('not chosen');
 
     await row(page, '0:1').click();

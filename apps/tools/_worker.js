@@ -3747,7 +3747,26 @@ export const AUDIT_TYPES = new Set([
      Counts and token totals. Not a word of what was asked, not a word of what
      was held out, and not a word of the note either was about. */
   "corrections_ask_send",
+  /* HOW THE TRIAGE QUESTIONS GOT ANSWERED, added 2026-10-03 in the same commit
+     as the browser call that emits it. His words: "I do want some reporting on
+     BT note tool use so that I can guide their performance. Can't do that
+     blind. It is a little oos for now, but let's track accepted-as-is."
+
+     One event per Send that finishes a round: how many questions took a
+     suggestion as offered, how many took one and reworded it, how many were
+     answered in the technician's own words, and how many were left alone, plus
+     the round. Tracked only; the view that reads it is on his Later list. This
+     type is held to those integer keys by AUDIT_INTEGER_KEYS below, so not even
+     the short slugs the general rule admits can ride in it. */
+  "triage_answers",
 ]);
+
+/* Types whose data is a fixed set of integer counts and nothing else. Any key
+   not listed is dropped and any value that is not a finite number is dropped,
+   so a modified client cannot put a word in these through a slug value. */
+export const AUDIT_INTEGER_KEYS = {
+  triage_answers: ["accepted_as_is", "edited", "own_words", "not_refined", "round"],
+};
 
 export function sanitizeAuditEvent(raw) {
   if (!raw || typeof raw !== "object") return null;
@@ -3756,6 +3775,14 @@ export function sanitizeAuditEvent(raw) {
   const ts = Number.isFinite(raw.ts) ? Math.round(raw.ts) : Date.now();
   const data = {};
   const src = raw.data && typeof raw.data === "object" ? raw.data : {};
+  const integerKeys = AUDIT_INTEGER_KEYS[raw.type];
+  if (integerKeys) {
+    for (const k of integerKeys) {
+      const v = src[k];
+      if (typeof v === "number" && Number.isFinite(v)) data[k] = Math.max(0, Math.round(v));
+    }
+    return { type: raw.type, tool, ts, data };
+  }
   /* 24, matching MAX_METRIC_KEYS in the profile app rather than sitting under
      it. note_register sends 16 and the overflow here is dropped silently, so a
      lower cap in front would throw away whichever keys happened to sort last

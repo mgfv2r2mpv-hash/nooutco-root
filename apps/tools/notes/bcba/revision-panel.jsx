@@ -342,10 +342,27 @@ function Bubble({ role, children, muted }) {
  * choice and the free-text box, or typing all of it into the box. So the third
  * row is a blank field with the same controls, and what he types there goes to
  * the model with the rest.
+ *
+ * NOTHING IS PICKED UNTIL THEY PICK IT, his ruling of 2 Oct 2026, so every
+ * offered row arrives with a checkmark. And from the same ruling:
+ *
+ *   "clicking onto a box for an unchosen item should pick it and open it in
+ *   edit textbox mode, and any pending changes in other changes show back to
+ *   faded with the pencil glowing yellow to show the deselected change is
+ *   unsaved"
+ *
+ * So a click on an unchosen sentence, or on its checkmark, picks it and puts
+ * the caret at the end of its field. A row that loses the pick while holding
+ * words nobody saved keeps those words, shows them faded, and carries a yellow
+ * pencil with a dot and the state in words: the pencil puts the row back with
+ * the edit still in it. The own-words row reads the same way once the caret
+ * has left it with unsaved words in it.
  */
 function SuggestionRow({ id, text, original, accepted, alternatives, own, onToggle, onEdit }) {
   const [buffer, setBuffer] = React.useState(text || "");
+  const [focused, setFocused] = React.useState(false);
   const ref = React.useRef(null);
+  const wantFocus = React.useRef(false);
 
   // The saved text is the truth; the buffer only differs while they are typing.
   React.useEffect(() => { setBuffer(text || ""); }, [text]);
@@ -354,6 +371,24 @@ function SuggestionRow({ id, text, original, accepted, alternatives, own, onTogg
   const edited = !own && typeof original === "string" && (text || "") !== original;
   const blank = own && !(text || "").trim() && !dirty;
   const canRevert = dirty || edited || (own && !!(text || "").trim());
+  /* Words typed and not saved, on a row that is not the answer. The own row
+     only reads this way once the caret has left it, since typing into it is how
+     it becomes the answer in the first place. */
+  const unsaved = !accepted && dirty && !(own && focused);
+
+  /* Pick it and open it for editing. The field only exists once the row is
+     accepted, so the focus waits for that render rather than reaching for a
+     textarea that is not there yet. */
+  const pick = () => { wantFocus.current = true; onToggle(); };
+  React.useEffect(() => {
+    if (!accepted || !wantFocus.current) return;
+    wantFocus.current = false;
+    const el = ref.current;
+    if (!el) return;
+    el.focus();
+    const end = el.value.length;
+    try { el.setSelectionRange(end, end); } catch (e) { /* not a text field */ }
+  }, [accepted]);
 
   const save = () => { if (dirty) onEdit(buffer); };
   const revert = () => {
@@ -372,8 +407,18 @@ function SuggestionRow({ id, text, original, accepted, alternatives, own, onTogg
   };
   React.useEffect(() => { autosize(ref.current); }, [buffer]);
 
+  /* Their own words, kept but not chosen, become the choice again on a click
+     into the box, the same as an offered row. An empty own row does not: a
+     click there is the start of typing, and picking nothing would only take
+     the pick off whatever was chosen. */
+  const ownKept = own && !accepted && !!(text || "").trim() && !dirty;
+
   return (
-    <div className={"tg-suggestion" + (accepted ? "" : " is-dropped") + (own ? " is-own" : "")}>
+    <div
+      className={"tg-suggestion" + (accepted ? "" : " is-dropped") + (own ? " is-own" : "") + (unsaved ? " is-unsaved" : "")}
+      data-suggestion-row={id}
+      data-suggestion-unsaved={unsaved ? "1" : "0"}
+    >
       {accepted || own ? (
         <textarea
           ref={ref}
@@ -389,6 +434,9 @@ function SuggestionRow({ id, text, original, accepted, alternatives, own, onTogg
           data-suggestion-own={own ? id : undefined}
           data-suggestion-accepted={own ? undefined : (accepted ? "1" : "0")}
           onChange={(e) => setBuffer(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          onClick={ownKept ? pick : undefined}
           onKeyDown={(e) => {
             /* Enter saves THIS field, which is his ruling and the reason the
                row needs no button at all in the common case. Shift-Enter is
@@ -398,21 +446,42 @@ function SuggestionRow({ id, text, original, accepted, alternatives, own, onTogg
           }}
         />
       ) : (
+        /* The whole sentence is the target for a pointer, which is the box his
+           ruling names. The checkmark beside it stays the keyboard's way in,
+           so the row is one tab stop and not two. */
         <span
           className="tg-suggestion-text"
           data-suggestion={id}
           data-suggestion-accepted="0"
+          onClick={pick}
         >
-          {text}
+          {unsaved ? buffer : text}
         </span>
       )}
+      {unsaved && <span className="tg-unsaved-say">Unsaved edit, not chosen.</span>}
 
       <span className="cx-ctl tg-suggestion-ctl">
-        {own && !accepted && !!(text || "").trim() && !dirty ? (
+        {unsaved ? (
+          /* THE YELLOW PENCIL: words nobody saved, on a row that lost the pick.
+             Pressing it puts the row back with those words in it. For the own
+             row that is a save, because saving is what makes it the answer. */
+          <button
+            type="button"
+            className="tg-pencil is-unsaved"
+            data-suggestion-pencil={id}
+            data-suggestion-dirty="1"
+            title="Unsaved edit, not chosen. Press to choose it with the edit."
+            aria-label="Unsaved edit, not chosen. Choose this row with the edit."
+            onClick={own ? save : pick}
+          >
+            &#9998;
+            <span className="tg-unsaved-dot" aria-hidden="true" />
+          </button>
+        ) : ownKept ? (
           /* Their own words are there but a preloaded row was checked after. The
              text is kept; this makes it the choice again, ipso facto. */
           <button type="button" className="tg-check" data-suggestion-tick={id}
-            title="Use my answer" aria-label="Use my answer" onClick={onToggle}>
+            title="Use my answer" aria-label="Use my answer" onClick={pick}>
             &#10003;
           </button>
         ) : accepted || own ? (
@@ -453,7 +522,7 @@ function SuggestionRow({ id, text, original, accepted, alternatives, own, onTogg
             data-suggestion-tick={id}
             title={alternatives ? "Use this one instead" : "Use this one"}
             aria-label="Choose this suggestion"
-            onClick={onToggle}
+            onClick={pick}
           >
             &#10003;
           </button>
@@ -544,10 +613,22 @@ function SendGlyph() {
   );
 }
 
+/* Room left above a question when a round scrolls to it, so the bubble does not
+   sit flush against the panel's edge. */
+const QUESTION_SCROLL_MARGIN = 8;
+
+function prefersLessMotion() {
+  try {
+    return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  } catch (e) {
+    return false;
+  }
+}
+
 function RevisionPanel({
   open, onToggle, thread, annotation, onClearAnnotation,
   draft, onDraft, onSend, onAskAdvice, canAsk, onExportPairs, pairCount, loading, questions, sendLockSeconds, inPlaceChars, skipHeld, unread, quality, suggestionDisposition, onApproveSuggestion, placedQuestions, pendingAnswers,
-  suggestState, suggestionAccepted, onToggleSuggestion, onEditSuggestion, acceptedSuggestions,
+  suggestState, suggestionAccepted, onToggleSuggestion, onEditSuggestion, acceptedSuggestions, suggestionPicked,
   loggedIn,
   intro,
   routingAsks, onTakeRouted, onLeaveRouted,
@@ -637,10 +718,31 @@ function RevisionPanel({
 
   const [phiOpen, setPhiOpen] = React.useState(false);
 
-  // Keep the newest turn in view as the exchange grows.
+  /* Keep the newest turn in view as the exchange grows, EXCEPT when a round
+     of questions opens. His ruling, 2 Oct 2026: "the NoMe questions should
+     start scroll top-aligned to the first open item from that round, not at
+     the bottom of the list". So a new round, or the panel opening on one, puts
+     the first question with nothing chosen under it at the top of the scroll
+     area, where reading starts. Once landed, later turns scroll as before.
+
+     Smooth unless the reader asked the system for less motion, and then it
+     jumps: a glide is decoration, and decoration is what that setting turns
+     off. */
+  const landedRound = React.useRef(null);
   React.useEffect(() => {
-    if (!open || !scrollRef.current) return;
-    scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    if (!open) { landedRound.current = null; return; }
+    const body = scrollRef.current;
+    if (!body) return;
+    if (awaitingQuestions && !loading && landedRound.current !== questions) {
+      landedRound.current = questions;
+      const first = body.querySelector('[data-question-open="1"]');
+      if (first) {
+        const top = first.getBoundingClientRect().top - body.getBoundingClientRect().top + body.scrollTop;
+        body.scrollTo({ top: Math.max(0, top - QUESTION_SCROLL_MARGIN), behavior: prefersLessMotion() ? "auto" : "smooth" });
+        return;
+      }
+    }
+    body.scrollTop = body.scrollHeight;
   }, [open, thread.length, loading, questions]);
 
   // Pointing at a section is a statement of intent - put the cursor where the
@@ -677,6 +779,9 @@ function RevisionPanel({
      panel the technicians are using today. */
   const aidOn = !!(window.authorAidEnabled && window.authorAidEnabled() && window.DispositionRow);
   const awaitingQuestions = !!(questions && questions.length);
+  // A question is answered once something under it is chosen, own words included.
+  const questionAnswered = (q, i) => !!suggestionAccepted && (
+    (q.suggestions || []).some((_raw, j) => suggestionAccepted(i, j)) || suggestionAccepted(i, "own"));
 
   /* WHEN SEND WORKS. Locked while the engine's wait runs, unless the bottom box
      and the answers typed in place together already hold SEND_UNLOCK_CHARS of
@@ -685,7 +790,11 @@ function RevisionPanel({
      the draft it needs something to send. */
   const typedChars = String(draft || "").trim().length;
   const writtenChars = typedChars + (Number(inPlaceChars) || 0);
-  const sendLocked = sendLock.left > 0 && writtenChars < SEND_UNLOCK_CHARS;
+  /* A chosen suggestion is an answer, so it opens the wait as 25 characters
+     do. Proposed 2026-10-03 with the no-pre-pick change and flagged for his
+     ruling: a technician who agrees with what was offered should not have to
+     wait the minute to say so. Own words stay on the 25 characters. */
+  const sendLocked = sendLock.left > 0 && writtenChars < SEND_UNLOCK_CHARS && !suggestionPicked;
   const hasWords = typedChars > 0 || !!pendingAnswers;
   const canSend = !loading && !sendLocked &&
     (awaitingQuestions ? (hasWords || !skipHeld) : hasWords);
@@ -958,7 +1067,13 @@ function RevisionPanel({
                 replaced. A question with no box on this form was not placed and
                 still belongs here. */}
             {questions.map((q, i) => (placedQuestions && placedQuestions[i]) ? null : (
-              <React.Fragment key={i}>
+              /* data-question-open marks a question with nothing chosen under
+                 it, which is where the scroll lands when a round opens. */
+              <div
+                key={i}
+                data-panel-question={i}
+                data-question-open={questionAnswered(q, i) ? "0" : "1"}
+              >
                 <Bubble role="assistant">{q.question}</Bubble>
                 {(q.suggestions || []).length > 0 && aidOn && (
                   <div className="tg-suggestions dz-group">
@@ -1021,14 +1136,14 @@ function RevisionPanel({
                     />
                   </div>
                 )}
-              </React.Fragment>
+              </div>
             ))}
             {skipHeld && (
               /* Send stays, and this line names the one state that opens it:
                  answer something. */
               <div className="skip-held" data-skip-held="1">
                 {hasSuggestions && !acceptedSuggestions
-                  ? "Generates after one kept suggestion or one answer."
+                  ? "Generates after one chosen suggestion or one answer."
                   : "Generates after one answer."}
               </div>
             )}
@@ -1117,7 +1232,7 @@ function RevisionPanel({
             drains so the wait visibly goes somewhere. */}
         {!signedOut && sendLocked && (
           <div className="send-lock" id="revision-send-lock" data-send-lock={sendLock.left}>
-            <span>{"Send locked · " + sendLock.left + "s · opens at " + SEND_UNLOCK_CHARS + " characters typed"}</span>
+            <span>{"Send locked · " + sendLock.left + "s · opens at " + SEND_UNLOCK_CHARS + " characters typed or a suggestion chosen"}</span>
             <div className="send-lock-bar" aria-hidden="true">
               <span style={{ width: ((sendLock.total - sendLock.left) / sendLock.total) * 100 + "%" }} />
             </div>
