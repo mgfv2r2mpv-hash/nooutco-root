@@ -1,0 +1,64 @@
+name: Horae Zone Tests
+
+# apps/horae-zone is the account service skeleton: the route checks, device
+# signatures, single-use nonces, the content-free audit, the scheduled purge
+# and the ingress rules (no route, workers.dev off). Its tests run over real
+# SQLite through apps/profile-api's D1 helper, so a change there runs these too.
+#
+# No install step, like profile-api-test.yml: the service has no dependencies
+# and no lockfile, and `npm ci` fails without one. It does not use the PIN
+# blocklist yet; the slice that wires /pin/set adds the private package and
+# its secret here.
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - 'apps/horae-zone/**'
+      - 'apps/profile-api/test/helpers/d1-sqlite.js'
+      - '.github/workflows/horae-zone-test.yml'
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - 'apps/horae-zone/**'
+      - 'apps/profile-api/test/helpers/d1-sqlite.js'
+      - '.github/workflows/horae-zone-test.yml'
+
+defaults:
+  run:
+    working-directory: apps/horae-zone
+
+jobs:
+  # Guard, in deploy-pages.yml's gate-then-run shape: the purge cron in
+  # wrangler.toml is the one the code was written for. A cron edited in one
+  # place only fails here, before the suite (test/purge.test.mjs checks the
+  # same thing in full).
+  drift-check:
+    name: Horae Zone purge schedule matches its config
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compare wrangler.toml crons with src/retention.js
+        run: |
+          toml=$(sed -n 's/^crons = \["\(.*\)"\]$/\1/p' wrangler.toml)
+          code=$(sed -n 's/^  purgeCron: "\(.*\)",$/\1/p' src/retention.js)
+          echo "wrangler.toml: '$toml'  src/retention.js: '$code'"
+          [ -n "$toml" ] && [ "$toml" = "$code" ]
+
+  unit:
+    name: Horae Zone (node --test)
+    needs: drift-check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # 22.13 or later: node:sqlite runs without a flag from 22.13, and
+          # '22' resolves to the newest 22.x.
+          node-version: '22'
+
+      - name: Run tests
+        run: node --test "test/*.test.mjs"

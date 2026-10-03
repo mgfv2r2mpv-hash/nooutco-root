@@ -1,0 +1,29 @@
+# Horae Zone, the nooutco account service (plan: sass-assistant docs/ios-plan.md §3).
+#
+# INGRESS. `workers_dev = false` and no route: until the owner's first deploy
+# this Worker has no public URL. The route for horae-zone.nooutco.me (with its
+# WAF skip rule for the device routes, ruling D-22) is added at that deploy, on
+# the owner's word. test/config.test.mjs fails if a route appears here first.
+#
+# SECRETS are never in this file. The deploy script (plan §4) sets them with
+# `wrangler secret put` from hidden prompts on stdin: PIN pepper, seed sealing
+# key, ticket signing key, Resend key.
+
+name = "horae-zone"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+workers_dev = false
+
+# The hourly purge of spent and expired nonces and of audit rows past their
+# 6-year retention (src/retention.js RETENTION; test/purge.test.mjs keeps the
+# two in step). A cron trigger opens no URL.
+[triggers]
+crons = ["0 * * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "horae-zone"
+# The deploy script creates the database and writes its id here. Local dev
+# (`wrangler dev --local`) uses an on-disk sqlite file and ignores the id.
+database_id = "00000000-0000-0000-0000-000000000000"
