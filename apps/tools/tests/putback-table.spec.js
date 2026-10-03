@@ -176,7 +176,7 @@ test.describe('the wire stays dehydrated', () => {
     await page.getByTestId('put-back-input-[CLIENT]').fill(NAME);
     // Put his word in the intake too, as a technician might after reading the table.
     await page.getByRole('textbox', { name: /SAP Specifications/i }).fill(`Prompt ${NAME} with a touch cue.`);
-    await page.getByRole('button', { name: /Generate SAP/i }).click();
+    await page.getByRole('button', { name: /^Regenerate$/ }).click();
     await expect.poll(() => bodies.filter((b) => b.route === 'llm-call' && !isTriageCall(b.body)).length, { timeout: 30000 }).toBeGreaterThan(1);
     expect(JSON.stringify(bodies)).not.toContain(NAME);
   });
@@ -196,7 +196,8 @@ async function copyCard(page, id) {
 
 async function regenerateSap(page, bodies) {
   const before = draftingCalls(bodies);
-  await page.getByRole('button', { name: /Generate SAP/i }).click();
+  // After the first Generate the button reads Regenerate (#228).
+  await page.getByRole('button', { name: /^Regenerate$/ }).click();
   await expect.poll(() => draftingCalls(bodies), { timeout: 30000 }).toBeGreaterThan(before);
   await expect(page.getByText('Generated SAP Draft')).toBeVisible({ timeout: 30000 });
 }
