@@ -3102,9 +3102,15 @@ function App() {
 
      Revisions are the candidate answers a model-asked question carries: the
      rows the aid flag labels "Added to the note by NoMe". A round of feedback is
-     the technician's Send on that round. Each new round of questions carrying
-     candidates is a fresh set nobody has answered, so the lock comes back with
-     it. A round with no candidates has nothing to read first and never locks.
+     the technician's Send on that round. A round with no candidates has nothing
+     to read first and never locks.
+
+     ONLY UNTIL THE FIRST FEEDBACK, his reading approved 2026-10-02 after #218
+     shipped a lock on every round. His words were "no round of feedback has
+     been provided yet", so once the technician has sent once in a note's
+     rounds, a later round on that note opens straight away. A new note starts
+     at round 1 again and locks again. The round counter already carries this:
+     only a Send moves it past 1, and Generate puts it back to 1.
 
      The same wait on every tool, his earlier ruling: "yeah, it should lock my
      drafters as well." And still a wait, NOT a block: a tired technician at 7pm
@@ -3180,10 +3186,28 @@ function App() {
   const hasUnansweredRevisions = () =>
     (S.questions || []).some((q) => !q.injected && (q.suggestions || []).length > 0);
 
+  const feedbackGiven = () => (S.triageRound || 1) > 1;
+
   const sendLockSeconds = () => {
     if (!hasUnansweredRevisions()) return 0;
+    if (feedbackGiven()) return 0;
     if (Number.isFinite(S.readiness) && S.readiness >= SKIP_FREE_AT_READINESS) return 0;
     return SEND_LOCK_SECONDS;
+  };
+
+  /* What the technician has written in the answer fields under the questions
+     on the page, counted the way the bottom field is counted: each field
+     trimmed, so padding is not writing. His reading approved 2026-10-02: an
+     answer typed in place counts toward the 25 characters, together with the
+     bottom field, and a technician who answered in place does not wait the
+     minute. The question text is not counted, which is why this does not read
+     the length of answeredInPlace(). */
+  const inPlaceChars = () => {
+    const drafts = S.answerDrafts || {};
+    return (S.questions || []).reduce(
+      (n, _q, qi) => n + String(drafts[qi] == null ? "" : drafts[qi]).trim().length,
+      0,
+    );
   };
 
   /* ── The candidate answers under each question ────────────────────────────
@@ -3948,8 +3972,9 @@ function App() {
         if (more.length) {
           audit("gap_questions", { asked: more.length, round, readiness, ...barsFor(more) });
           // Re-read each round rather than carried forward: answering two of
-          // three questions is exactly the case where the note got closer, and
-          // a reading over the bar lifts the Send lock.
+          // three questions is exactly the case where the note got closer. The
+          // Send lock no longer reads it here: this round follows a Send, so
+          // sendLockSeconds already returns 0 (feedbackGiven).
           patchS({ questions: more, readiness, triageAnswers: answered, triageRound: round, suggestState: {} });
           return;
         }
@@ -5070,6 +5095,7 @@ function App() {
         acceptedSuggestions={acceptedSuggestions().length}
         pendingAnswers={!!answeredInPlace()}
         sendLockSeconds={sendLockSeconds()}
+        inPlaceChars={inPlaceChars()}
         skipHeld={gateHolds()}
         unread={S.questions ? S.questions.length : 0}
         quality={noteQuality()}
