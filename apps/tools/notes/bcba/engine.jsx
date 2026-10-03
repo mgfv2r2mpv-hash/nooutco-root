@@ -1602,7 +1602,7 @@ function App() {
      standing as offered carries no pair of theirs. Spending the note's one
      teaching on that copy threw away every edit made after it, which is how an
      assess note copied on 2026-10-02, then worked by hand and copied again,
-     reached the voice store as nothing (probe: voice-assess-probe.spec.js).
+     reached the voice store as nothing (voice-teach-after-copy.spec.js).
 
      Still once per note: each is set the first time it actually emits, and a
      later Copy finds it set and sends nothing. */
