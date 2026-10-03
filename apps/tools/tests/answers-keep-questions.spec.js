@@ -100,6 +100,9 @@ const sendEmpty = async (page) => {
 };
 
 test.describe('an answer goes out with its question', () => {
+  /* Nothing arrives chosen (no pre-pick, 2 Oct 2026), so the question left
+     alone goes under its own Q: as "(not refined)", his wording of 3 Oct 2026,
+     and never as the suggestion it was offered. */
   test('a kept pick reaches the note request directly under the question it answers', async ({ page }) => {
     const seen = await ask(page, ROUND);
     await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
@@ -111,7 +114,8 @@ test.describe('an answer goes out with its question', () => {
     expect(seen.notes).toHaveLength(1);
     const content = seen.notes[0];
     expect(content).toContain(`Q: ${Q_FLOOR}\nA: ${PICK_B}`);
-    expect(content).toContain(`Q: ${Q_ELOPE}\nA: ${ELOPE_PICK}`);
+    expect(content).toContain(`Q: ${Q_ELOPE}\nA: (not refined)`);
+    expect(content).not.toContain(ELOPE_PICK);
     // The struck alternative goes nowhere, paired or not.
     expect(content).not.toContain(PICK_A);
   });
@@ -134,6 +138,9 @@ test.describe('an answer goes out with its question', () => {
   test('a typed Send keeps the picks paired and adds the typed line after them', async ({ page }) => {
     const seen = await ask(page, ROUND);
     await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
+    // Chosen first, since nothing arrives chosen (2 Oct 2026).
+    await page.locator('[data-suggestion-tick="0:0"]').click();
+    await page.locator('[data-suggestion-tick="1:0"]').click();
 
     const box = page.locator('.revision-input');
     await box.fill('He also asked for the tablet twice.');
@@ -155,7 +162,14 @@ test.describe('an answer goes out with its question', () => {
   test('an answer typed in place and a pick on the same question both sit under it', async ({ page }) => {
     const seen = await ask(page, ROUND, { aid: true });
     await expect(page.locator('[data-question-answer="1"]')).toBeVisible({ timeout: 20000 });
+    /* The pick is made first, since nothing arrives chosen (2 Oct 2026). A tap
+       on the page collapses the panel, so it is closed first and opened again
+       for the Send. */
+    await page.locator('.revision-panel-close').click();
+    await page.locator('[data-disposition="1:0"]').click();
+    await page.locator('[data-disposition-revert="1:0"]').click();
     await page.locator('[data-question-answer="1"]').fill('Both were shorter than last week.');
+    await page.locator('.revision-fab').click();
     await page.locator('.revision-send').click();
     await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 30000 });
 
