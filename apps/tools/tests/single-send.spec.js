@@ -12,7 +12,7 @@ import { isTriageCall } from './helpers/llm-call.js';
  *   field in the middle."
  *
  * "Revisions" are the candidate answers NoMe puts under its gap questions: the
- * rows the aid flag labels "Added to the note by NoMe". "A round of feedback" is
+ * rows the aid flag lists as "Offered by NoMe". "A round of feedback" is
  * the technician's reply to that round, which is a Send. Once one Send has gone
  * in a note's rounds, feedback has been provided, so later rounds on that note
  * do not lock (approved 2026-10-02, pinned below).
@@ -183,6 +183,12 @@ test.describe('Send waits a minute on revisions nobody has answered', () => {
     await expect(lock).toHaveText(/\b(60|59|58)s\b/, { timeout: 2000 });
     // The disabled button leaves the tab order, so the field carries the note.
     await expect(page.locator('.revision-input')).toHaveAttribute('aria-describedby', 'revision-send-lock');
+
+    /* A short answer in hand, because nothing arrives chosen (2 Oct 2026) and
+       below the bar the gate holds an untouched round after the minute too.
+       Short of 25 characters, it leaves the wait to run. */
+    await page.locator('.revision-input').fill('Twice.');
+    await expect(send).toBeDisabled();
 
     await page.clock.runFor(30_000);
     await expect(send).toBeDisabled();
@@ -450,6 +456,9 @@ for (const width of [1280, 400]) {
     await expect.poll(async () => (await row(page)).overflow, { timeout: 5000, intervals: [100, 200, 400, 1000] }).toBe(false);
 
     // And the keyboard walks it the same way: Tab from the mic reaches the field, then Send.
+    // A chosen suggestion first, since nothing arrives chosen and a disabled
+    // Send leaves the tab order.
+    await page.locator('[data-suggestion-tick="0:1"]').click();
     await page.clock.runFor(61_000);
     await page.locator('[data-speak]').focus();
     await page.keyboard.press('Tab');

@@ -55,6 +55,9 @@ var DZ_WORD = {
   // An alternative that lost is not rejected, it simply is not the one they
   // picked, and calling that "removed" would misreport what they did.
   notchosen: "not chosen",
+  /* Offered and not yet chosen, which is how every row arrives since his
+     no-pre-pick ruling of 2 Oct 2026. Not in the note, so it says so. */
+  open: "not chosen",
 };
 
 function DispositionRow(props) {
@@ -170,7 +173,9 @@ function DispositionRow(props) {
           )}
           <button type="button" className="dz-act" data-disposition-revert={props.id}
             onClick={function () { props.onRevert(); setOpen(false); }}>
-            {state === "reverted"
+            {state === "open"
+              ? "Use this one"
+              : state === "reverted"
               ? (props.alternatives ? "Use this one" : "Put it back")
               : (props.alternatives ? "Use a different one" : "Remove it")}
           </button>
@@ -187,9 +192,9 @@ function DispositionHeading(props) {
   var n = props.count;
   return (
     <div className="dz-head">
-      Added to the note by NoMe.
+      Offered by NoMe. Not in the note until chosen.
       <br />
-      <span className="dz-head-sub">Tap one to approve, edit or remove it.</span>
+      <span className="dz-head-sub">Tap one to use, approve, edit or remove it.</span>
     </div>
   );
 }

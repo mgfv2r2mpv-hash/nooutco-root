@@ -219,6 +219,10 @@ test.describe('Regenerate starts a new process from the intake', () => {
     await expect(page.locator('.revision-send')).toBeDisabled();
     await expect(page.locator('[data-send-lock]')).toBeVisible();
 
+    /* Nothing arrives chosen (2 Oct 2026), so below the bar the gate holds an
+       untouched round even after the minute. A short fresh answer opens it
+       without opening the wait, which still runs off the clock. */
+    await page.locator('[data-question-answer="0"]').fill('Yes.');
     await page.clock.runFor(61_000);
     await page.locator('.revision-send').click();
     await passScrub(page);
@@ -268,6 +272,11 @@ test.describe('the Send lock after Regenerate', () => {
     await expect(page.locator('.revision-input')).toHaveAttribute('aria-describedby', 'revision-send-lock');
     expect(seen.notes).toHaveLength(0);
 
+    /* A short answer, because with nothing arriving chosen (2 Oct 2026) the
+       gate below the bar holds an untouched round after the minute too. Short
+       of 25 characters it leaves the wait running. */
+    await page.locator('.revision-input').fill('Twice.');
+    await expect(send).toBeDisabled();
     await page.clock.runFor(61_000);
     await expect(send).toBeEnabled();
     await expect(lock).toHaveCount(0);

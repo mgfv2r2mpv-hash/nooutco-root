@@ -10,12 +10,16 @@ import { refusedKeywords } from './helpers/schema.js';
  * discussed with ghost check -> pencil/undo -> save/cancel)."
  *
  * A question costs a technician a sentence. A suggestion costs a glance, and
- * these run at the one moment the session is still in their head. So the whole
- * value of this is in the default: doing nothing keeps them.
+ * these run at the one moment the session is still in their head.
  *
- * Which is only safe because of the traceability rule in the prompt. A
+ * They used to be kept by default. His ruling of 2 Oct 2026 ended that ("yes
+ * stop the prepick"): nothing stands until the technician chooses it, and a
+ * question left alone goes to the model marked "(not refined)". See
+ * tests/no-prepick.spec.js.
+ *
+ * Choosing one is only safe because of the traceability rule in the prompt. A
  * suggestion rephrases what the technician already wrote and never supplies a
- * fact they did not report, so leaving one alone re-surfaces their observation
+ * fact they did not report, so choosing one re-surfaces their observation
  * rather than the model's guess. Two tests below hold that rule in the prompt
  * text, because nothing downstream can tell an invented sentence from a
  * rephrased one.
@@ -108,6 +112,14 @@ const TWO = {
    the pick and hands the checkmark to whichever one was standing. */
 const press = async (page, id) => {
   await page.locator(`[data-suggestion-tick="${id}"]`).click();
+};
+
+/* NOTHING ARRIVES CHOSEN, his ruling of 2 Oct 2026 ("yes stop the prepick").
+   The tests below that are about what a chosen row does choose it first, which
+   is the one step the old default took for them. */
+const choose = async (page, id) => {
+  await press(page, id);
+  await expect(page.locator(`[data-suggestion="${id}"]`)).toHaveAttribute('data-suggestion-accepted', '1');
 };
 
 /* DECLINING, his way, 2026-09-22: the own-words field is option N + 1, keying it
@@ -209,12 +221,11 @@ test.describe('the posted schema', () => {
     // Two is his number. A question wearing five pre-accepted answers is a
     // paragraph the tool wrote and dared the technician to read.
     await expect(page.locator('[data-suggestion]')).toHaveCount(2);
-    /* The chosen row is a field and the other is not, since 2026-09-21: the one
-       standing is editable in place because the pencil on it is also its save
-       button. The empty third row carries data-suggestion-own and is
+    /* Neither arrives chosen (2 Oct 2026), so both are sentences rather than
+       fields. The empty third row carries data-suggestion-own and is
        deliberately not counted above, because it is not something the model
        offered. */
-    await expect(page.locator('[data-suggestion="0:0"]')).toHaveValue('One.');
+    await expect(page.locator('[data-suggestion="0:0"]')).toHaveText('One.');
     await expect(page.locator('[data-suggestion="0:1"]')).toHaveText('Two.');
     await expect(page.locator('[data-suggestion-own="0:own"]')).toHaveCount(1);
   });
@@ -233,6 +244,7 @@ test.describe('the button flow', () => {
   test('the chosen row carries the pencil and the other carries the checkmark, and one click swaps them', async ({ page }) => {
     await ask(page, TWO);
     await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
+    await choose(page, '0:0');
 
     await expect(page.locator('[data-suggestion-pencil="0:0"]')).toBeVisible();
     await expect(page.locator('[data-suggestion-pencil="0:1"]')).toHaveCount(0);
@@ -249,6 +261,7 @@ test.describe('the button flow', () => {
   test('THE PENCIL GOES GREEN ON A DELTA AND GRAY AGAIN ON SAVE', async ({ page }) => {
     await ask(page, TWO);
     await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
+    await choose(page, '0:0');
     const pencil = page.locator('[data-suggestion-pencil="0:0"]');
 
     await expect(pencil).toHaveAttribute('data-suggestion-dirty', '0');
@@ -268,6 +281,7 @@ test.describe('the button flow', () => {
   test('a red revert sits beside the green pencil and throws the unsaved words away', async ({ page }) => {
     await ask(page, TWO);
     await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
+    await choose(page, '0:0');
     const field = page.locator('[data-suggestion-field="0:0"]');
     const revert = page.locator('[data-suggestion-revert="0:0"]');
 
@@ -285,6 +299,7 @@ test.describe('the button flow', () => {
   test('ENTER SAVES THAT FIELD, and shift-Enter is a newline instead', async ({ page }) => {
     await ask(page, TWO);
     await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
+    await choose(page, '0:0');
     const field = page.locator('[data-suggestion-field="0:0"]');
     const pencil = page.locator('[data-suggestion-pencil="0:0"]');
 
@@ -373,6 +388,7 @@ test.describe('the own field is an option like the others', () => {
   test('KEYING YOUR OWN WORDS DESELECTS THE PRELOADED ROWS, and only your words reach the model', async ({ page }) => {
     const seen = await ask(page, TWO);
     await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
+    await choose(page, '0:0');
     await expect(page.locator('[data-suggestion="0:0"]')).toHaveAttribute('data-suggestion-accepted', '1');
 
     const own = page.locator('[data-suggestion-own="0:own"]');
@@ -408,6 +424,7 @@ test.describe('the own field is an option like the others', () => {
   test('the chosen row has no drop control of its own; declining is done by choosing', async ({ page }) => {
     await ask(page, TWO);
     await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
+    await choose(page, '0:0');
     await expect(page.locator('[data-suggestion-tick="0:0"]')).toHaveCount(0);
     await expect(page.locator('[data-suggestion-tick="0:1"]')).toHaveCount(1);
   });
@@ -420,10 +437,13 @@ test.describe('what the technician does with them', () => {
      arrive accepted, so a question offering two readings of one procedure sent
      both readings and the note came back asserting a pair that cannot both be
      true. He hit it on the SAP drafter, whose triage prompt deliberately offers
-     the competing readings of a coherence conflict. */
-  test('one stands, the other arrives struck, and only the one standing goes', async ({ page }) => {
+     the competing readings of a coherence conflict. Since 2 Oct 2026 neither
+     arrives chosen, and choosing one still leaves the other struck. */
+  test('none stands on arrival, one stands once chosen, and only the one standing goes', async ({ page }) => {
     const seen = await ask(page, TWO);
     await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
+    await expect(page.locator('[data-suggestion-accepted="1"]')).toHaveCount(0);
+    await choose(page, '0:0');
     await expect(page.locator('[data-suggestion-accepted="1"]')).toHaveCount(1);
     await expect(page.locator('[data-suggestion="0:0"]')).toHaveAttribute('data-suggestion-accepted', '1');
     await expect(page.locator('[data-suggestion="0:1"]')).toHaveAttribute('data-suggestion-accepted', '0');
@@ -468,6 +488,7 @@ test.describe('what the technician does with them', () => {
   test('dropping the one that stands puts the note back behind the gate', async ({ page }) => {
     await ask(page, TWO);
     await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
+    await choose(page, '0:0');
     await declineByOwnWords(page, 0);
     await expect(page.locator('[data-suggestion-accepted="1"]')).toHaveCount(0);
     /* An empty Send was the accept path, so leaving nothing standing leaves it
@@ -476,7 +497,7 @@ test.describe('what the technician does with them', () => {
        empty Send is held. The line names both ways out rather than leaving them
        to work out which one the tool wanted. */
     await expect(page.locator('.revision-send')).toBeDisabled();
-    await expect(page.locator('[data-skip-held]')).toHaveText(/Generates after one kept suggestion/);
+    await expect(page.locator('[data-skip-held]')).toHaveText(/Generates after one chosen suggestion/);
   });
 
   test('and on a note already at the bar an empty Send is a plain skip again', async ({ page }) => {
@@ -492,6 +513,7 @@ test.describe('what the technician does with them', () => {
   test('rewording one sends the reworded sentence, not the one it was offered as', async ({ page }) => {
     const seen = await ask(page, TWO);
     await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
+    await choose(page, '0:0');
 
     /* The row is a field, and the PENCIL IS THE SAVE BUTTON: gray while the
        text is what it was, green the moment there is a delta, gray again once
@@ -515,6 +537,7 @@ test.describe('what the technician does with them', () => {
   test('a typed answer and the suggestions left standing arrive together', async ({ page }) => {
     const seen = await ask(page, TWO);
     await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
+    await choose(page, '0:0');
 
     await page.locator('.revision-input').fill('No, floor seating is not in the plan.');
     await page.locator('.revision-send').click();
@@ -525,13 +548,12 @@ test.describe('what the technician does with them', () => {
   });
 });
 
-/* A question carrying ONE candidate has no alternatives, so nothing about it
-   changed: doing nothing still keeps it, and dropping it still puts it back.
-   That default is the entire reason suggestions get used at all - the audit
-   trail that produced them showed two technicians, 22 sessions and zero
-   revisions ever made - and the exclusive rule must not cost it. This describe
-   is what proves the rule was scoped to alternatives rather than to
-   suggestions. */
+/* A question carrying ONE candidate has no alternatives. It used to arrive
+   kept, on the reading that a default was the only way suggestions got used.
+   His ruling of 2 Oct 2026 ended that ("yes stop the prepick"): a technician
+   who pressed Send untouched was sending NoMe's words as their own. So a lone
+   suggestion arrives unchosen like any other, choosing it keeps it, and
+   declining it still lets the checkmark put it back. */
 test.describe('a lone suggestion is untouched by the exclusive rule', () => {
   const ONE = {
     sufficient: false,
@@ -543,10 +565,11 @@ test.describe('a lone suggestion is untouched by the exclusive rule', () => {
     }],
   };
 
-  test('arrives standing, and generating keeps it', async ({ page }) => {
+  test('arrives unchosen, and choosing it keeps it', async ({ page }) => {
     const seen = await ask(page, ONE);
     await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
-    await expect(page.locator('[data-suggestion-accepted="1"]')).toHaveCount(1);
+    await expect(page.locator('[data-suggestion-accepted="1"]')).toHaveCount(0);
+    await choose(page, '0:0');
 
     await sendEmpty(page);
     await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 20000 });
@@ -556,6 +579,7 @@ test.describe('a lone suggestion is untouched by the exclusive rule', () => {
   test('and declining it still lets its checkmark put it back', async ({ page }) => {
     await ask(page, ONE);
     await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
+    await choose(page, '0:0');
     await declineByOwnWords(page, 0);
     await expect(page.locator('[data-suggestion="0:0"]')).toHaveAttribute('data-suggestion-accepted', '0');
     // Once declined, the lone row shows the checkmark like any unchosen row.

@@ -3235,7 +3235,7 @@ function App() {
      characters in the large bottom text field."
 
      Revisions are the candidate answers a model-asked question carries: the
-     rows the aid flag labels "Added to the note by NoMe". A round of feedback is
+     rows the aid flag lists as "Offered by NoMe". A round of feedback is
      the technician's Send on that round. A round with no candidates has nothing
      to read first and never locks.
 
@@ -3272,8 +3272,8 @@ function App() {
      a gate that could hold someone twice is a gate that could hold them
      forever.
 
-     A kept suggestion opens it, because a kept suggestion IS the answer. It
-     carries the technician's own words into the note, so a draft built on one
+     A chosen suggestion opens it, because a chosen suggestion IS the answer.
+     It carries the technician's own words into the note, so a draft built on one
      is not the empty draft this refuses.
 
      EVERY TOOL, INCLUDING HIS OWN, on the same ruling that put the skip wait on
@@ -3353,13 +3353,15 @@ function App() {
   };
 
   /* ── The candidate answers under each question ────────────────────────────
-     Accepted by default and undone with a click, the same contract the
-     corrections marks carry.
+     NOTHING STANDS UNTIL THE TECHNICIAN CHOOSES IT. His ruling, 2 Oct 2026
+     (finding 6): "yes stop the prepick." The first suggestion used to be
+     accepted by default, so a technician who pressed Send without touching
+     anything sent NoMe's words as their own answer. A question left alone now
+     goes to the model as NOT_REFINED instead (see answerBlock).
 
-     That is only safe because of what the prompt forbids: a suggestion
-     rephrases something the technician already wrote and never supplies a fact
-     they did not report. So leaving one alone re-surfaces their own observation
-     rather than admitting the model's guess about their session.
+     The prompt rule still holds and still matters: a suggestion rephrases
+     something the technician already wrote and never supplies a fact they did
+     not report, so choosing one re-surfaces their own observation.
 
      ONE QUESTION TAKES ONE ANSWER, ruled 2026-09-10. "Doing nothing keeps all
      of them" was written when a question carried a single candidate. The cap is
@@ -3377,9 +3379,8 @@ function App() {
   const suggestionCount = (qi) =>
     (((S.questions || [])[qi] || {}).suggestions || []).length;
 
-  /* An explicit decision wins. With none, the FIRST one stands - which keeps a
-     lone suggestion behaving exactly as it always has, since its index is 0,
-     and leaves a pair arriving with one picked instead of both. */
+  /* An explicit decision wins. With none, nothing stands: no pre-pick, his
+     ruling of 2 Oct 2026. */
   const suggestionAccepted = (qi, si) => {
     const st = (S.suggestState || {})[suggestKey(qi, si)];
     /* HIS RULING, 2026-09-22: the own-words field is option N + 1 and selection
@@ -3388,7 +3389,7 @@ function App() {
        its own: with nothing typed there is nothing to accept. */
     if (si === "own") return !!(st && typeof st.text === "string" && st.text.trim()) && !(st && st.reverted);
     if (st && typeof st.reverted === "boolean") return !st.reverted;
-    return si === 0;
+    return false;
   };
 
   const suggestionText = (qi, si, raw) => {
@@ -3443,9 +3444,11 @@ function App() {
   /* What goes through the scrub gate: every question and answer on a line of
      its own, the shape answeredInPlace has always sent. The Q: and A: labels
      are added AFTER the scrub, so a label never puts a capitalised word in
-     mid-line where the name detector would read it as a name. */
+     mid-line where the name detector would read it as a name. The open
+     questions go through it with or without the panel's box, because with the
+     box empty they go out marked NOT_REFINED (see answerBlock). */
   const answerScrubText = (pairs, free) => {
-    const open = free ? pairs.filter((p) => !p.answers.length).map((p) => p.question) : [];
+    const open = pairs.filter((p) => !p.answers.length).map((p) => p.question);
     return [
       ...pairs.filter((p) => p.answers.length).flatMap((p) => [p.question, ...p.answers]),
       ...open,
@@ -3455,16 +3458,23 @@ function App() {
 
   /* The labelled form the model reads. `out` is the scrub, applied to each
      piece on its own; applyMap is deterministic per string, so a piece comes
-     out exactly as it would inside the whole. */
+     out exactly as it would inside the whole.
+
+     A question with nothing chosen and nothing typed, and no panel box to
+     answer it, goes out as its own pair with A: NOT_REFINED. No pre-pick (his
+     ruling, 2 Oct 2026) means such a question is now common, and his wording
+     of 3 Oct 2026 is "send as 'not refined' so I can have that distinction". */
   const answerBlock = (pairs, free, out) => {
     const qLine = (q) => (q ? ["Q: " + out(q)] : []);
     const answered = pairs
       .filter((p) => p.answers.length)
       .map((p) => [...qLine(p.question), ...p.answers.map((a) => "A: " + out(a))].join("\n"));
     const open = pairs.filter((p) => !p.answers.length && p.question);
-    const loose = !free ? [] : open.length
-      ? [[...open.flatMap((p) => qLine(p.question)), "A: " + out(free)].join("\n")]
-      : [out(free)];
+    const loose = free
+      ? (open.length
+        ? [[...open.flatMap((p) => qLine(p.question)), "A: " + out(free)].join("\n")]
+        : [out(free)])
+      : open.map((p) => [...qLine(p.question), "A: " + NOT_REFINED].join("\n"));
     return [...answered, ...loose].join("\n\n");
   };
 
@@ -3527,7 +3537,10 @@ function App() {
      say removed, because that is what the note now does. */
   const suggestionDisposition = (qi, si) => {
     const st = (S.suggestState || {})[suggestKey(qi, si)] || {};
-    if (!suggestionAccepted(qi, si)) return "reverted";
+    /* "open" is a row nobody has decided about yet, which with no pre-pick is
+       how every row arrives. It is not in the note, and calling it removed
+       would report a decision nobody made. */
+    if (!suggestionAccepted(qi, si)) return typeof st.reverted === "boolean" ? "reverted" : "open";
     if (typeof st.text === "string") return "edited";
     if (st.approved) return "approved";
     return "default";
@@ -3545,6 +3558,22 @@ function App() {
        deselects every preloaded row; saving it empty un-picks it, which is
        how the question goes back to having no answer at all. */
     const parts = String(key).split(":");
+    /* A ROW NOBODY HAS DECIDED ABOUT IS CHOSEN BY REWORDING IT. With no
+       pre-pick every row arrives undecided, and the aid row offers Edit on
+       one; saving words into a row and having them quietly left out would be
+       the opposite of his 2 Oct 2026 ruling, that clicking an unchosen box
+       picks it and opens it for editing. A row they explicitly undid stays
+       undone when reworded, as the line above has always said. */
+    if (parts[1] !== "own" && typeof prev.reverted !== "boolean") {
+      const qi = Number(parts[0]);
+      const n = suggestionCount(qi);
+      for (let j = 0; j < n; j++) {
+        const k = suggestKey(qi, j);
+        if (k !== key) next[k] = { ...(next[k] || {}), reverted: true };
+      }
+      next[qi + ":own"] = { ...(next[qi + ":own"] || {}), reverted: true };
+      next[key] = { ...next[key], reverted: false };
+    }
     if (parts[1] === "own") {
       const qi = Number(parts[0]);
       const has = typeof text === "string" && text.trim().length > 0;
@@ -3556,6 +3585,63 @@ function App() {
     }
     patchS({ suggestState: next });
   };
+
+  /* HOW EACH QUESTION GOT ITS ANSWER, one word per question, derived rather
+     than stored so the line sent to the model and the count audited below can
+     never disagree.
+
+       accepted_as_is   a suggestion chosen and left in NoMe's words
+       edited           a suggestion chosen and then reworded
+       own_words        the own-words row, or an answer typed in place under
+                        the question (`drafts`, the floor plan's boxes)
+       not_refined      nothing chosen and nothing typed
+
+     A chosen suggestion wins over an in-place answer beside it, because the
+     suggestion is the row the technician decided on. */
+  const answerKind = (q, qi, drafts) => {
+    const picked = (q.suggestions || [])
+      .map((raw, si) => ({ raw: String(raw || "").trim(), said: String(suggestionText(qi, si, raw) || "").trim() }))
+      .find((p) => p.said);
+    if (picked) return picked.said === picked.raw ? "accepted_as_is" : "edited";
+    const typed = String((drafts || {})[qi] == null ? "" : drafts[qi]).trim();
+    if (ownAnswer(qi).trim() || typed) return "own_words";
+    return "not_refined";
+  };
+
+  /* A QUESTION LEFT ALONE IS SAID TO BE LEFT ALONE. With no pre-pick (his
+     ruling, 2 Oct 2026), a question the technician did not touch has no answer
+     standing, and the model is told so in words rather than by silence:
+     answerBlock sends it as Q: <question> then A: NOT_REFINED. His wording, 3
+     Oct 2026: "send as 'not refined' so I can have that distinction." Silence
+     read as "nothing to add", and a model reading the answers cannot tell a
+     skipped question from one it never asked.
+
+     The panel's bottom box answers no single question, so with text in it the
+     open questions are written above it instead (answerBlock). */
+  const NOT_REFINED = "(not refined)";
+
+  /* TRACKED, NOT REPORTED. His words, 3 Oct 2026: "I do want some reporting on
+     BT note tool use so that I can guide their performance. Can't do that
+     blind. It is a little oos for now, but let's track accepted-as-is". So
+     every Send that finishes a round records how its questions were answered,
+     as four counts and the round. Counts only, never a word: the worker keeps
+     this event to its integer keys (AUDIT_INTEGER_KEYS in _worker.js), so not
+     even a short slug can ride in it. The view that reads it is on his Later
+     list. */
+  const auditTriageAnswers = (drafts) => {
+    const counts = { accepted_as_is: 0, edited: 0, own_words: 0, not_refined: 0 };
+    (S.questions || []).forEach((q, qi) => { counts[answerKind(q, qi, drafts)] += 1; });
+    audit("triage_answers", { ...counts, round: S.triageRound || 1 });
+  };
+
+  /* Whether one of NoMe's own suggestions is chosen, the own-words rows aside.
+     A chosen suggestion is an answer, so it opens the Send wait the way 25
+     characters do (proposed 2026-10-03, flagged in the PR for his ruling): a
+     technician who agrees with what was offered is not made to wait the minute
+     to say so. Own words stay on the 25 characters, his 2026-10-03 ruling. */
+  const suggestionPicked = () =>
+    (S.questions || []).some((q, qi) =>
+      (q.suggestions || []).some((_raw, si) => suggestionAccepted(qi, si)));
 
   /* An empty Send is the ACCEPT path for the suggestions, and that is
      deliberate. It used to be its own button, "Use these and generate"; his
@@ -3582,12 +3668,15 @@ function App() {
       readiness: S.readiness,
     });
     let carried = "";
-    if (taken.length) {
-      const pairs = answerPairs({});
+    // With nothing taken the questions still go, each marked NOT_REFINED, so
+    // the block is built whenever there are questions, not only on a pick.
+    const pairs = answerPairs({});
+    if (pairs.length) {
       const review = await scrubGate(answerScrubText(pairs, ""), { carryOver: true });
       if (!review) return;
       carried = answerBlock(pairs, "", scrubAnswer);
     }
+    auditTriageAnswers({});
     pushThread("user", "answer", taken.length ? taken.join("\n") : "(skipped)");
     // Anything they answered in an earlier round still counts. Dropping it
     // because they skipped the last question would throw away work they did.
@@ -4157,6 +4246,7 @@ function App() {
         suggestionsTaken: taken.length,
         round: S.triageRound || 1,
       });
+      auditTriageAnswers(drafts);
 
       const answered = [S.triageAnswers, answerBlock(pairs, free, scrubAnswer)]
         .filter((x) => x && x.trim()).join("\n\n");
@@ -5363,6 +5453,7 @@ function App() {
         }, {})}
         onApproveSuggestion={approveSuggestion}
         acceptedSuggestions={acceptedSuggestions().length}
+        suggestionPicked={suggestionPicked()}
         pendingAnswers={!!answeredInPlace()}
         sendLockSeconds={sendLockSeconds()}
         inPlaceChars={inPlaceChars()}

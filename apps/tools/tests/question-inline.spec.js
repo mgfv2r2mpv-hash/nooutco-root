@@ -168,7 +168,7 @@ test.describe('the question goes to the box', () => {
     await ask(page, ONE_PLACED);
     const q = page.locator('[data-question-inline="fAntecedent"]');
     await expect(q.locator('[data-disposition="0:0"]')).toBeVisible({ timeout: 20000 });
-    await expect(q).toContainText('Added to the note by NoMe');
+    await expect(q).toContainText('Offered by NoMe');
     await expect(page.locator('[data-suggestion-tick]')).toHaveCount(0);
   });
 });
@@ -189,8 +189,11 @@ test.describe('what the answers do', () => {
     // down rather than left for the model to infer from one blob.
     expect(answered).toContain('How did the two elopements compare with last week?');
     expect(answered).toContain('Both elopements were shorter than last week.');
-    // The question they did not answer contributes no blank.
-    expect(answered).not.toContain('Was moving to the floor in the plan?');
+    /* The question they did not answer contributes no blank: it goes marked
+       "(not refined)", his wording of 3 Oct 2026, so the model can tell a
+       question left alone from one it never asked. */
+    expect(answered).toContain('Was moving to the floor in the plan?\n(not refined)');
+    expect(answered).not.toContain('How did the two elopements compare with last week?\n(not refined)');
   });
 
   /* The dead end the first version of this had. Below the readiness bar the
@@ -265,6 +268,14 @@ test.describe('on the phone he actually hands them', () => {
   test('the panel gives the screen back once it has handed the questions over', async ({ page }) => {
     await ask(page, ONE_PLACED);
     await expect(page.locator('[data-question-inline="fAntecedent"]')).toBeVisible({ timeout: 25000 });
+    /* Nothing arrives chosen (2 Oct 2026), and below the bar an untouched
+       round adds the held line to the panel. Choosing the suggestion is the
+       one tap that ends the round, so the panel is measured after it. */
+    await page.locator('[data-disposition="0:0"]').click();
+    await page.locator('[data-disposition-revert="0:0"]').click();
+    // A tap on the page collapses the panel, so it is opened again to measure.
+    if (!(await page.locator('.revision-panel').isVisible())) await page.locator('.revision-fab').click();
+    await expect(page.locator('[data-skip-held]')).toHaveCount(0);
     const panel = page.locator('.revision-panel');
     await expect(panel).toHaveClass(/revision-panel-bar/);
     const share = await page.evaluate(() => {
