@@ -21,6 +21,10 @@
     "- Be specific and quote back what they wrote. \"You mentioned elopement - how many times, and what did you do?\" NOT \"Can you add more detail?\"\n" +
     "- NEVER ask for a name, a date, an address, or any other identifying detail. The notes are deliberately de-identified.\n" +
     "- Do not ask about something they plainly had nothing to report. A session with no behaviors of concern is a normal session, not a gap.\n" +
+    // Approved 2026-10-03 (parent note plan, step 8): a production parent
+    // note carried "2/0" beside "100%" and a row with an empty column, nobody
+    // asked, and the note wrote "competence" over data it could not read.
+    "- Ask about data you cannot read. A data entry whose notation is not self-evident (a fraction beside a percentage that does not obviously match it, an empty column between separators, a code with no legend) is a gap worth one question: quote it back and ask what it records. Offer a reading as a suggestion only when something they wrote supports it.\n" +
     "- If the notes are adequate, return sufficient=true and an empty array. Fewer questions is better than more, and HOW MANY TO ASK below is the only ceiling.\n" +
     // The object's shape is stated once, at the end of the composed prompt, by
     // the READINESS block below. A partial version here names a second object.
