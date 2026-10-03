@@ -1428,6 +1428,10 @@ function freshSession(tool) {
     ticketFiling: false,
     triageAnswers: "",     // everything they have answered so far, scrubbed
     triageRound: 0,        // rounds asked; capped so this cannot become an interrogation
+    // True once a Generate on this page load has landed a round or a draft.
+    // The main button then reads Regenerate. Never persisted, and Clear builds
+    // a fresh session, so a reload or a Clear puts it back to Generate Note.
+    generated: false,
     // Candidate answers offered alongside this round's questions. Absent from
     // the map means accepted, which is the resting state: a technician who
     // reads them and generates keeps all of them.
@@ -2664,13 +2668,21 @@ function App() {
     return { ask: ask.join("\n"), result };
   };
 
-  const draftNote = async (scrubbedValues, extra) => {
-    setLoading(true);
+  /* EVERYTHING A NOTE CARRIES, dropped so the next one starts from the intake.
+     draftNote calls it, and so does Regenerate before its first round: a new
+     process must not keep the previous note's conversation, marks, asks or
+     specimen book while it asks its first questions. */
+  const forgetNote = () => {
     patchS({ output: null, proposal: null, conversation: [], questions: null, readiness: null, pendingValues: null, expert: null, corrections: null, markState: {}, askQueue: {}, heldOut: [] });
     taughtRef.current = false; // a new note may teach again; a revision may not
     styleTaughtRef.current = false;
     voiceTaughtRef.current = false;
     specimenBook.current = null;
+  };
+
+  const draftNote = async (scrubbedValues, extra) => {
+    setLoading(true);
+    forgetNote();
     try {
       let userMsg = tool.buildUserPrompt(scrubbedValues);
       if (extra && extra.trim()) {
@@ -2860,6 +2872,7 @@ function App() {
       patchS({
         output: corrected,
         conversation,
+        generated: true,
         lastCallAt: Date.now(),
         corrections: marks,
         markState: {},
@@ -3046,6 +3059,20 @@ function App() {
     const review = await scrubGate(collectFreeText());
     if (!review) return;
     const scrubbed = scrubValues(review.map);
+    /* A NEW PROCESS FROM THE RAW INTAKE, his ruling of 2026-10-02: "regenerate
+       starts again with the raw input as a new process rather than continuing
+       with the previous conversation." Revising is the panel's Send; this
+       button is the other decision. So the previous note goes before the first
+       round, not only when the next draft lands: its conversation, its marks
+       and asks, the half-written answers to its round, and the triage state.
+       Answers typed in place are keyed by question index, so left standing
+       they would fill the new round's boxes, count toward its 25 characters
+       and be sent as answers to questions they were never written for. */
+    forgetNote();
+    patchS({
+      answerDrafts: {}, suggestState: {}, triageAnswers: "", triageRound: 0,
+      routingAsks: null, design: null, conflicts: null, bcbaOffer: "", claimAnswers: {},
+    });
     setLoading(true);
     setPanelOpen(true);
     let questions = [];
@@ -3086,7 +3113,7 @@ function App() {
          the other is what the tool knew for certain before it read one - and a
          single total would answer neither question later. */
       audit("gap_questions", { asked: questions.length, misfiled: misfiled.length, round: 1, readiness, ...barsFor(questions) });
-      patchS({ questions, readiness, pendingValues: scrubbed, triageAnswers: "", triageRound: 1, suggestState: {} });
+      patchS({ questions, readiness, pendingValues: scrubbed, triageAnswers: "", triageRound: 1, suggestState: {}, generated: true });
       return;
     }
     audit("gap_questions", { asked: 0 });
@@ -4593,6 +4620,23 @@ function App() {
     cacheRemaining = Math.min(CACHE_WINDOW_S, CACHE_WINDOW_S - idleS);
   }
 
+  /* ── The main button ───────────────────────────────────────────────────
+     Generate Note until a Generate on this page load lands, then Regenerate
+     in orange. His ruling of 2026-10-02: clicking it again is a different
+     decision from revising in the panel, a new note from the raw intake, so
+     the button says so. The label is the button's text, so its accessible name
+     changes with it. While a call runs it reads Generating… in the existing
+     disabled colours, whichever state it came from. */
+  const genDisabled = loading || (loggedIn && !canUse);
+  const regenerate = loggedIn && canUse && !loading && !!S.generated;
+  const genLabel = !loggedIn
+    ? "Log in"
+    : !canUse
+      ? "No access for this tool"
+      : loading
+        ? "Generating…"
+        : regenerate ? "Regenerate" : (tool.genLabel || "Generate Note");
+
   /* ── Render helpers ────────────────────────────────────────────────── */
 
   const toggleExpand = (i) =>
@@ -5230,15 +5274,18 @@ function App() {
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <button
               onClick={!loggedIn ? () => NotesGate.openLogin() : (canUse ? handleGenerate : undefined)}
-              disabled={loading || (loggedIn && !canUse)}
+              disabled={genDisabled}
+              className={"note-generate" + (regenerate ? " is-regenerate" : "")}
               style={{
                 padding: "11px 28px", borderRadius: 8, border: "none",
-                background: (loading || (loggedIn && !canUse)) ? "#a0b890" : "#374528",
-                color: "white", fontSize: 15, fontWeight: 600,
-                cursor: (loading || (loggedIn && !canUse)) ? "not-allowed" : "pointer",
+                // The orange state takes its colours from notes-page.css, so its
+                // hover can work. Inline colour would win over the stylesheet.
+                ...(regenerate ? {} : { background: genDisabled ? "#a0b890" : "#374528", color: "white" }),
+                fontSize: 15, fontWeight: 600,
+                cursor: genDisabled ? "not-allowed" : "pointer",
               }}
             >
-              {!loggedIn ? "Log in" : (canUse ? (loading ? "Generating…" : (tool.genLabel || "Generate Note")) : "No access for this tool")}
+              {genLabel}
             </button>
             {!loggedIn && (
               <button

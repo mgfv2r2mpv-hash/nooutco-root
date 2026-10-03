@@ -400,6 +400,22 @@ body {
 }
 .icon-btn:focus-visible { outline: 2px solid #374528; outline-offset: 2px; }
 
+/* The main Generate button. Its resting colours are inline in engine.jsx; this
+   is the keyboard ring it never had, and the orange Regenerate state.
+
+   REGENERATE, his ruling of 2026-10-02: after the first Generate on a page the
+   button reads Regenerate "in orange button", because pressing it again starts
+   a new note from the raw intake rather than revising this one. The orange is
+   --brand-fix. White on it measures 3.56:1, under the 4.5:1 AA asks of 15px
+   text, so the label is --text-primary on it (4.98:1). Hover darkens to
+   --orange-700 and the label turns white there (7.31:1). Disabled is the
+   existing sage, set inline, so a running call looks the same from either
+   state. */
+.note-generate:focus-visible { outline: 2px solid #374528; outline-offset: 2px; }
+.note-generate.is-regenerate { background: var(--brand-fix); color: var(--text-primary); }
+.note-generate.is-regenerate:hover:not(:disabled) { background: var(--orange-700); color: var(--text-on-dark); }
+.note-generate.is-regenerate:focus-visible { outline-color: var(--orange-700); }
+
 .revision-send { border: none; background: #374528; color: white; }
 .revision-send:hover:not(:disabled) { background: #2d3a1f; }
 .revision-send:disabled { background: #a0b890; cursor: not-allowed; }

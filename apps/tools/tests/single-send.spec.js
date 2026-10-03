@@ -110,8 +110,10 @@ async function ask(page, triage, { clock = true, later = null, aid = false } = {
   return seen;
 }
 
-async function generate(page) {
-  await page.getByRole('button', { name: 'Generate Note' }).click();
+/* After the first Generate on a page load the button reads Regenerate
+   (tests/regenerate.spec.js), so a second press names it that way. */
+async function generate(page, name = 'Generate Note') {
+  await page.getByRole('button', { name, exact: true }).click();
   const ack = page.locator('#notes-ack-go');
   if (await ack.isVisible({ timeout: 5000 }).catch(() => false)) {
     await page.locator('#notes-ack-cb').check();
@@ -317,7 +319,7 @@ test.describe('the lock holds only until the first feedback', () => {
     expect(seen.notes).toHaveLength(1);
 
     // Generating again is a new note, and its first round is locked again.
-    await generate(page);
+    await generate(page, 'Regenerate');
     await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
     await expect(send).toBeDisabled();
     await expect(lock).toBeVisible();

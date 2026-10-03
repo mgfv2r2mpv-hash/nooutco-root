@@ -129,11 +129,12 @@ test.describe('what a click means while pointing', () => {
 
   test('a click while pointing does not press the thing it lands on', async ({ page }) => {
     await drafted(page);
-    // Arm pointing, then point at Generate Note. It must not generate.
+    // Arm pointing, then point at the main button. It must not generate. A note
+    // is already drafted, so the button reads Regenerate (regenerate.spec.js).
     let calls = 0;
     await page.route('**/api/llm-call**', async (route) => { calls++; await route.abort(); });
     await page.locator('.point-toggle').click();
-    await page.getByRole('button', { name: 'Generate Note' }).click();
+    await page.getByRole('button', { name: 'Regenerate', exact: true }).click();
     await page.waitForTimeout(600);
     expect(calls, 'pointing at a button must not activate it').toBe(0);
   });

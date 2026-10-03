@@ -134,7 +134,8 @@ test.describe('a note copied section by section still teaches once', () => {
     await expect.poll(() => copies(events).length, { timeout: 10000 }).toBe(1);
 
     // Generate again in the same session. The guard is per note, not per page.
-    await page.getByRole('button', { name: 'Generate Note' }).click();
+    // The second press on this page reads Regenerate (regenerate.spec.js).
+    await page.getByRole('button', { name: 'Regenerate', exact: true }).click();
     const ack = page.locator('#notes-ack-go');
     if (await ack.isVisible({ timeout: 5000 }).catch(() => false)) {
       await page.locator('#notes-ack-cb').check();
