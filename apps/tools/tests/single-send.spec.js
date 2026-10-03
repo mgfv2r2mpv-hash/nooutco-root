@@ -13,8 +13,9 @@ import { isTriageCall } from './helpers/llm-call.js';
  *
  * "Revisions" are the candidate answers NoMe puts under its gap questions: the
  * rows the aid flag labels "Added to the note by NoMe". "A round of feedback" is
- * the technician's reply to that round, which is a Send. Every new round of
- * questions carrying candidates is a fresh set of revisions nobody has answered.
+ * the technician's reply to that round, which is a Send. Once one Send has gone
+ * in a note's rounds, feedback has been provided, so later rounds on that note
+ * do not lock (approved 2026-10-02, pinned below).
  */
 
 function tokenFor(tools = ['bt']) {
@@ -77,7 +78,11 @@ const INSTALL_FAKE = () => {
   Object.defineProperty(window, 'webkitSpeechRecognition', { value: FakeRecognition, configurable: true, writable: true });
 };
 
-async function ask(page, triage, { clock = true } = {}) {
+/* `later` answers the triage calls that carry an earlier round's answers
+   (ALREADY ANSWERED). Left out, those come back sufficient and the note drafts,
+   as they always have here. `aid` opens the floor plan (?aid=1), the only mode
+   that draws an answer field under each question on the page. */
+async function ask(page, triage, { clock = true, later = null, aid = false } = {}) {
   const seen = { notes: [], triage: [] };
   await page.route('**/api/llm-call**', async (route) => {
     const b = JSON.parse(route.request().postData() || '{}');
@@ -85,7 +90,7 @@ async function ask(page, triage, { clock = true } = {}) {
     if (/look at your own draft again/i.test(last)) return route.fulfill(reply(note()));
     if (isTriageCall(b)) {
       seen.triage.push(last);
-      if (/ALREADY ANSWERED/.test(last)) return route.fulfill(reply({ sufficient: true, readiness: 90, questions: [] }));
+      if (/ALREADY ANSWERED/.test(last)) return route.fulfill(reply(later || { sufficient: true, readiness: 90, questions: [] }));
       return route.fulfill(reply(triage));
     }
     seen.notes.push(b);
@@ -93,12 +98,19 @@ async function ask(page, triage, { clock = true } = {}) {
   });
   await page.addInitScript(INSTALL_FAKE);
   if (clock) await page.clock.install();
-  await page.goto('/notes/bt/');
+  const url = aid ? '/notes/bt/?aid=1' : '/notes/bt/';
+  await page.goto(url);
   await page.evaluate((tok) => localStorage.setItem('notes_auth_token', tok), tokenFor());
-  await page.goto('/notes/bt/');
+  await page.goto(url);
   await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT money 3 item array, needed full physical most of it');
   await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first then board, also moved to the floor and he settled');
   await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked and redirected');
+  await generate(page);
+  await expect(page.locator('.revision-panel')).toBeVisible({ timeout: 20000 });
+  return seen;
+}
+
+async function generate(page) {
   await page.getByRole('button', { name: 'Generate Note' }).click();
   const ack = page.locator('#notes-ack-go');
   if (await ack.isVisible({ timeout: 5000 }).catch(() => false)) {
@@ -107,8 +119,6 @@ async function ask(page, triage, { clock = true } = {}) {
   }
   const rev = page.locator('#notes-scrub-go');
   if (await rev.isVisible({ timeout: 1500 }).catch(() => false)) await rev.click();
-  await expect(page.locator('.revision-panel')).toBeVisible({ timeout: 20000 });
-  return seen;
 }
 
 const passScrub = async (page) => {
@@ -245,6 +255,122 @@ test.describe('Send waits a minute on revisions nobody has answered', () => {
     await expect(page.getByText(/How many times/i)).toBeVisible({ timeout: 20000 });
     await page.locator('.revision-input').fill('Twice.');
     await expect(page.locator('.revision-send')).toBeEnabled();
+    await expect(page.locator('[data-send-lock]')).toHaveCount(0);
+  });
+});
+
+/* ── Two readings of the same ruling, approved 2 Oct 2026 ──────────────────
+   #218 shipped "no round of feedback has been provided yet" as a lock on every
+   round that carries revisions, counting only the bottom field. Kaleb approved
+   two readings after it shipped:
+
+   1. The lock holds only until the first feedback. Once the technician has
+      sent once in a note's rounds, later rounds on that note are open. A new
+      draft starts a new note and locks again.
+   2. Answers typed in place count. The answer fields under the questions on
+      the page count toward the 25 characters, together with the bottom field. */
+const SECOND_ROUND = {
+  sufficient: false, readiness: 70,
+  questions: [
+    { field: 'fBehavior', question: 'What did you do right after he reached the door?',
+      suggestions: ['Blocked the door and pointed back to the table.'] },
+  ],
+};
+
+test.describe('the lock holds only until the first feedback', () => {
+  test('a second round after one Send on the same note is not locked', async ({ page }) => {
+    const seen = await ask(page, REVISIONS, { later: SECOND_ROUND });
+    await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
+    const send = page.locator('.revision-send');
+    const lock = page.locator('[data-send-lock]');
+    await expect(send).toBeDisabled();
+
+    await page.locator('.revision-input').fill('He ran to the door twice.');
+    await send.click();
+    await passScrub(page);
+
+    // The second round carries revisions of its own and well under a minute
+    // has passed, so only the earlier Send can explain an open button.
+    await expect(page.getByText(/right after he reached the door/i)).toBeVisible({ timeout: 20000 });
+    await expect(send).toBeEnabled();
+    await expect(lock).toHaveCount(0);
+    await expect(page.locator('.revision-input')).not.toHaveAttribute('aria-describedby', 'revision-send-lock');
+    expect(seen.notes).toHaveLength(0);
+  });
+
+  test('a new draft locks again', async ({ page }) => {
+    const seen = await ask(page, REVISIONS, { later: SECOND_ROUND });
+    await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
+    const send = page.locator('.revision-send');
+    const lock = page.locator('[data-send-lock]');
+
+    await page.locator('.revision-input').fill('He ran to the door twice.');
+    await send.click();
+    await passScrub(page);
+    await expect(page.getByText(/right after he reached the door/i)).toBeVisible({ timeout: 20000 });
+
+    // An empty Send on the open second round finishes it and drafts the note.
+    await expect(send).toBeEnabled();
+    await send.click();
+    await passScrub(page);
+    await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 20000 });
+    expect(seen.notes).toHaveLength(1);
+
+    // Generating again is a new note, and its first round is locked again.
+    await generate(page);
+    await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
+    await expect(send).toBeDisabled();
+    await expect(lock).toBeVisible();
+    await expect(page.locator('.revision-input')).toHaveAttribute('aria-describedby', 'revision-send-lock');
+  });
+});
+
+test.describe('answers typed in place count toward the 25 characters', () => {
+  test('25 characters in the answer fields on the page open Send with the bottom field empty', async ({ page }) => {
+    await ask(page, REVISIONS, { aid: true });
+    const first = page.locator('[data-question-answer="0"]');
+    const second = page.locator('[data-question-answer="1"]');
+    await expect(first).toBeVisible({ timeout: 20000 });
+    await expect(second).toBeVisible();
+    const send = page.locator('.revision-send');
+    const lock = page.locator('[data-send-lock]');
+    await expect(send).toBeDisabled();
+    await expect(page.locator('.revision-input')).toHaveValue('');
+
+    const a = 'It was in the plan.';
+    expect(a.length).toBe(19);
+    await first.fill(a);
+    // Padding does not count here either: 19 + 5 written is 24.
+    await second.fill('  Block  ');
+    await expect(send).toBeDisabled();
+    await expect(lock).toBeVisible();
+
+    await second.fill('Block.');
+    await expect(send).toBeEnabled();
+    await expect(lock).toHaveCount(0);
+    await expect(send).not.toHaveAttribute('aria-describedby', 'revision-send-lock');
+  });
+
+  test('the answers in place and the bottom field add up, and short of 25 together stays locked', async ({ page }) => {
+    await ask(page, REVISIONS, { aid: true });
+    const inPlace = page.locator('[data-question-answer="0"]');
+    await expect(inPlace).toBeVisible({ timeout: 20000 });
+    const send = page.locator('.revision-send');
+    const box = page.locator('.revision-input');
+
+    const ten = 'Twice now.';
+    const fourteen = 'Blocked twice.';
+    const fifteen = 'Blocked, twice.';
+    expect([ten.length, fourteen.length, fifteen.length]).toEqual([10, 14, 15]);
+
+    await inPlace.fill(ten);
+    await expect(send).toBeDisabled();
+    await box.fill(fourteen);
+    await expect(send).toBeDisabled();
+    await expect(page.locator('[data-send-lock]')).toBeVisible();
+
+    await box.fill(fifteen);
+    await expect(send).toBeEnabled();
     await expect(page.locator('[data-send-lock]')).toHaveCount(0);
   });
 });

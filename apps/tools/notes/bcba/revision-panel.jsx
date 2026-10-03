@@ -480,7 +480,9 @@ function SuggestionRow({ id, text, original, accepted, alternatives, own, onTogg
 
    Still a delay and NOT a block: a wait they can watch end is not a trap. The
    duration comes from the engine, which can see the note; the typed-length exit
-   lives here, beside the box it measures. */
+   lives here, beside the box it measures. The engine also hands over what was
+   written in the answer fields under the questions on the page, which counts
+   toward the same 25 (his reading, approved 2026-10-02). */
 const SEND_UNLOCK_CHARS = 25;
 
 /* Seconds left on the lock. It restarts when a new round of questions arrives,
@@ -544,7 +546,7 @@ function SendGlyph() {
 
 function RevisionPanel({
   open, onToggle, thread, annotation, onClearAnnotation,
-  draft, onDraft, onSend, onAskAdvice, canAsk, onExportPairs, pairCount, loading, questions, sendLockSeconds, skipHeld, unread, quality, suggestionDisposition, onApproveSuggestion, placedQuestions, pendingAnswers,
+  draft, onDraft, onSend, onAskAdvice, canAsk, onExportPairs, pairCount, loading, questions, sendLockSeconds, inPlaceChars, skipHeld, unread, quality, suggestionDisposition, onApproveSuggestion, placedQuestions, pendingAnswers,
   suggestState, suggestionAccepted, onToggleSuggestion, onEditSuggestion, acceptedSuggestions,
   loggedIn,
   intro,
@@ -677,11 +679,13 @@ function RevisionPanel({
   const awaitingQuestions = !!(questions && questions.length);
 
   /* WHEN SEND WORKS. Locked while the engine's wait runs, unless the bottom box
-     already holds SEND_UNLOCK_CHARS of writing. With questions on screen an
-     empty Send finishes the round with what is standing, so it needs text only
-     where the gate is holding; after the draft it needs something to send. */
+     and the answers typed in place together already hold SEND_UNLOCK_CHARS of
+     writing. With questions on screen an empty Send finishes the round with
+     what is standing, so it needs text only where the gate is holding; after
+     the draft it needs something to send. */
   const typedChars = String(draft || "").trim().length;
-  const sendLocked = sendLock.left > 0 && typedChars < SEND_UNLOCK_CHARS;
+  const writtenChars = typedChars + (Number(inPlaceChars) || 0);
+  const sendLocked = sendLock.left > 0 && writtenChars < SEND_UNLOCK_CHARS;
   const hasWords = typedChars > 0 || !!pendingAnswers;
   const canSend = !loading && !sendLocked &&
     (awaitingQuestions ? (hasWords || !skipHeld) : hasWords);

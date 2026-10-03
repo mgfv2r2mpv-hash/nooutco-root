@@ -340,8 +340,8 @@ test.describe('triage questions before drafting', () => {
     });
 
     /* Round one asks with nothing to pick, so the gate holds it until an answer
-       and there is no lock. Round two arrives with a candidate, which is a fresh
-       set of revisions nobody has answered. */
+       and there is no lock. Round two arrives with a candidate, after the
+       technician has already sent once on this note. */
     async function secondRound(page, first, second) {
       let calls = 0;
       await page.route('**/api/llm-call**', (route) => {
@@ -361,14 +361,16 @@ test.describe('triage questions before drafting', () => {
       return page.locator('.revision-send');
     }
 
-    test('a new round of revisions locks again', async ({ page }) => {
+    /* Reversed on 2026-10-02. #218 locked every round that carried revisions;
+       Kaleb approved the reading in his own words, "no round of feedback has
+       been provided yet". One Send on this note is that feedback, so a later
+       round opens at once, even the first one to carry a candidate. The
+       single-send spec pins the rest: a new draft locks again. */
+    test('a later round after one Send is not locked, even the first with revisions', async ({ page }) => {
       const noPicks = { sufficient: false, readiness: 40, questions: [{ field: 'fBehavior', question: 'How many times?', suggestions: [] }] };
       const send = await secondRound(page, noPicks, nextRound({ readiness: 40 }));
-      await startsAt(page, 60);
-      await page.clock.runFor(55_000);
-      await expect(send).toBeDisabled();
-      await page.clock.runFor(6_000);
       await expect(send).toBeEnabled();
+      await expect(page.locator('[data-send-lock]')).toHaveCount(0);
     });
 
     test('a triage reply with no readiness gets the full wait, not the free pass', async ({ page }) => {
