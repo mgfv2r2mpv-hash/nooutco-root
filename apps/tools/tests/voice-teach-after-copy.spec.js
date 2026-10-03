@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { captureClipboard } from './helpers/clipboard.js';
 import { createHmac } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -187,9 +188,12 @@ async function copyAll(page) {
 
 const report = (label, data) => console.log(`\n=== ${label} ===\n${JSON.stringify(data, null, 1)}`);
 
-test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
+/* Not grantPermissions: it throws on firefox and webkit ("Unknown permission:
+   clipboard-read" / "clipboard-write"), which failed this spec on its first CI
+   run. See tests/helpers/clipboard.js. */
+test.beforeEach(async ({ page }) => { await captureClipboard(page); });
 
-test.describe('PROBE: assess voice at copy', () => {
+test.describe('assess voice at copy', () => {
   test('D. no corrections, hand edit results, Copy (assess analogue of the BT test)', async ({ page }) => {
     const c = chain();
     await draft(page, c);
