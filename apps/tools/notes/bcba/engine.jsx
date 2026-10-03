@@ -1335,31 +1335,14 @@ function ExpertReading({ expert, claimAnswers, onClaimAnswer, busy }) {
  */
 function scrubMapKey(toolId) { return toolId + "::map"; }
 
-/* The put-back table's words, per tool, under the draft's own encryption.
-   Stamped with the LOCAL calendar day, because his rule is a fresh page each
-   day, not a fresh page every so many hours. */
+/* Where an earlier build of the put-back table saved its words. Nothing writes
+   here now (his ruling of 2026-10-02, see the table below); the key is kept so
+   the page can delete any record that build left behind. */
 function putBackKey(toolId) { return toolId + "::putback"; }
 
-function localDay(d) {
-  const at = d || new Date();
-  return at.getFullYear() + "-" + String(at.getMonth() + 1).padStart(2, "0") + "-" + String(at.getDate()).padStart(2, "0");
-}
-
-/* Today's words for this tool, or nothing. A record from any other day, or one
-   that is not the shape this writes, is deleted here rather than left to sit
-   in storage holding a name nobody will see again. */
-function loadPutBack(toolId) {
-  if (!window.NotesGate || !NotesGate.draft) return {};
-  const rec = NotesGate.draft.load(putBackKey(toolId));
-  if (!rec) return {};
-  const fresh = rec.day === localDay() && rec.words && typeof rec.words === "object";
-  if (!fresh) { NotesGate.draft.clear(putBackKey(toolId)); return {}; }
-  const out = {};
-  Object.keys(rec.words).forEach((token) => {
-    if (typeof rec.words[token] === "string" && rec.words[token].trim()) out[token] = rec.words[token];
-  });
-  return out;
-}
+// One shared empty table, so a tool with no words keeps a stable identity and
+// the memo that reads it does not recompute on every render.
+const NO_WORDS = Object.freeze({});
 
 /* Copy marks live under their own sibling key for the same reason the scrub
    ledger does: they belong to the note, they have to survive a reload, and they
@@ -1595,10 +1578,9 @@ function App() {
     setCopied(null);
     setCopiedPrompt(false);
     setCopyMarks((prev) => Object.assign({}, prev, { [tool.id]: {} }));
-    /* The put-back table is keyed by token, and [CLIENT] means a different
-       person on the next tool. Carrying it across would quietly paste one
-       client's name into another's note, so each tool reads its own. */
-    setPutBack(loadPutBack(id));
+    /* Nothing to do for the put-back table: it is kept per tool, because
+       [CLIENT] means a different person on the next tool, and carrying one
+       tool's words across would paste one client's name into another's note. */
   };
 
   const collectFreeText = () =>
@@ -1745,28 +1727,50 @@ function App() {
    *     took, a role word he typed, or a tag the model wrote. A blank field
    *     keeps the token. The field's placeholder is the word that was taken.
    *   - Copy takes exactly what is drawn, so the box equals the clipboard.
-   *   - His words are real names. They are saved with the draft, encrypted the
-   *     same way, per tool, stamped with the local calendar day, and a record
-   *     from any other day is deleted on load.
    *   - NotesGate.setOutboundWords is the second lock: the three model doors
-   *     take each word back to its token even if something here missed it. */
-  const [putBack, setPutBack] = React.useState(() => loadPutBack(tool.id));
+   *     take each word back to its token even if something here missed it.
+   *
+   * HIS RULING, 2026-10-02, option (a): "agreed, new generate, new tokens".
+   * [CLIENT] is whoever the CURRENT note is about, so a word typed for it
+   * belongs to one note. The first cut kept the words all day per tool and drew
+   * them into the next note for a different client. Now:
+   *   - Every Generate (and Regenerate) and every Clear empties this tool's
+   *     table, through forgetPutBack(). A revision does not, because a revision
+   *     is the same note being finished.
+   *   - Nothing typed here is written to storage. S.output is never saved, so
+   *     after a reload the note is gone, and a saved word could only ever be
+   *     drawn into a different note. The words live in memory, per tool, so a
+   *     tool switch inside one page load still finds each note's own words.
+   *   - Any record an earlier build saved under `<tool>::putback` is deleted
+   *     when the page mounts. */
+  const [putBackByTool, setPutBackByTool] = React.useState({});
+  const putBack = putBackByTool[tool.id] || NO_WORDS;
+  const setPutBack = (update) => setPutBackByTool((prev) => {
+    const current = prev[tool.id] || NO_WORDS;
+    const next = typeof update === "function" ? update(current) : update;
+    return { ...prev, [tool.id]: next };
+  });
 
   const typedWords = React.useMemo(() => Object.keys(putBack)
     .map((token) => ({ token, word: String(putBack[token] || "").trim() }))
     .filter((e) => e.word), [putBack]);
 
-  // Set during render as well as in an effect: a call made in the same tick
-  // as a keystroke must already see the word.
+  // Set during render: a call made in the same tick as a keystroke must
+  // already see the word.
   if (window.NotesGate && NotesGate.setOutboundWords) NotesGate.setOutboundWords(typedWords);
 
+  /* A new note starts with an empty table. The outbound list is emptied here
+     too, not left for the next render, so the old note's words are in no copy
+     the page holds by the time the new note's first call goes out. */
+  const forgetPutBack = () => {
+    setPutBack(NO_WORDS);
+    if (window.NotesGate && NotesGate.setOutboundWords) NotesGate.setOutboundWords([]);
+  };
+
   React.useEffect(() => {
-    if (!window.NotesGate) return;
-    const words = {};
-    typedWords.forEach((e) => { words[e.token] = e.word; });
-    if (Object.keys(words).length) NotesGate.draft.save(putBackKey(tool.id), { day: localDay(), words });
-    else NotesGate.draft.clear(putBackKey(tool.id));
-  }, [typedWords, tool.id]);
+    if (!window.NotesGate || !NotesGate.draft) return;
+    TOOLS.forEach((t) => NotesGate.draft.clear(putBackKey(t.id)));
+  }, []);
 
   const hydrate = (text) => {
     if (!typedWords.length || typeof text !== "string") return text;
@@ -2734,6 +2738,10 @@ function App() {
      specimen book while it asks its first questions. */
   const forgetNote = () => {
     patchS({ output: null, proposal: null, conversation: [], questions: null, readiness: null, pendingValues: null, expert: null, corrections: null, markState: {}, askQueue: {}, heldOut: [] });
+    /* Again here, because the follow-up questions sit between Generate and this
+       call with the last note still on screen, and a word typed into its table
+       in that gap would otherwise be drawn into this new note. */
+    forgetPutBack();
     taughtRef.current = false; // a new note may teach again; a revision may not
     styleTaughtRef.current = false;
     voiceTaughtRef.current = false;
@@ -3116,6 +3124,9 @@ function App() {
     if (err) { patchS({ error: err }); return; }
     if (!NotesGate.isLoggedIn()) { NotesGate.openLogin(); return; }
     patchS({ error: "", thread: [], annotation: null, panelDraft: "" });
+    // New generate, new tokens: the scrub below remints [CLIENT] for this
+    // intake, so a word typed for the last note's [CLIENT] goes now.
+    forgetPutBack();
     const review = await scrubGate(collectFreeText());
     if (!review) return;
     const scrubbed = scrubValues(review.map);
@@ -4677,7 +4688,7 @@ function App() {
     setCopiedPrompt(false);
     // Same reason the ref is cleared: the tokens it names no longer exist.
     // A Clear is a new note, and the next [CLIENT] may be somebody else.
-    setPutBack({});
+    forgetPutBack();
   };
 
   /* ── Note-freshness countdown ──────────────────────────────────────── */
@@ -4867,7 +4878,7 @@ function App() {
         ) : (
           <div className="diff-view">
             {change.kind === "table"
-              ? <GoalsTable columns={change.columns} rows={change.value} onChange={() => {}} idPrefix={"prop-" + change.id} />
+              ? <GoalsTable columns={change.columns} rows={mapCells(change.value, hydrate)} onChange={() => {}} idPrefix={"prop-" + change.id} />
               : <Checklist options={tool.groupOptions[change.id]} selected={change.value} single={change.kind === "single"} />}
           </div>
         )}
@@ -5478,7 +5489,7 @@ function App() {
                       Shown in the note and in copies.<br />
                       Sent to NoMe as tokens.<br />
                       A blank field keeps the token.<br />
-                      Cleared at the end of the day.
+                      Cleared on each new note.
                     </p>
                   </div>
               </div>

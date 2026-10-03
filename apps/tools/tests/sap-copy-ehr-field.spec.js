@@ -186,7 +186,7 @@ test.describe('each EHR field has its own Copy', () => {
     });
   }
 
-  test('a field copy is exactly its cards joined, token put-back off', async ({ page }) => {
+  test('a field copy is exactly its cards joined, with no word typed for a token', async ({ page }) => {
     await draft(page);
     for (const field of FIELDS) {
       const whole = await copyField(page, field.heading);
@@ -194,11 +194,16 @@ test.describe('each EHR field has its own Copy', () => {
     }
   });
 
+  /* The put-back table is a field per token (#217): a word typed there is drawn
+     in the note and copied with it. Whatever token the scrub minted for
+     "Jacob" has its own field, so the first field in the table is filled
+     rather than one named here, which keeps this file independent of what a
+     role token looks like. */
   test('a field copy restores tokens exactly as the card copy does', async ({ page }) => {
     await draft(page);
-    const panel = page.getByTestId('put-back-toggle');
+    const panel = page.getByTestId('put-back-panel');
     await expect(panel, 'the draft carried no role token, so this proves nothing').toBeVisible();
-    await panel.check();
+    await panel.locator('input[data-testid^="put-back-input-"]').first().fill('Jacob');
 
     for (const field of FIELDS) {
       const whole = await copyField(page, field.heading);

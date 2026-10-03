@@ -2196,19 +2196,31 @@
    * match would take "mom" in prose for the "Mom" he typed for [CAREGIVER]. */
   var outboundWords = [];
 
+  /* A token already in the text is left whole. Without this a word spelled like
+     a token's own letters ("CLIENT", "T1") was matched inside "[CLIENT-2]" or
+     "[[T1]]" and broke it on the wire. The capture group keeps the tokens in
+     the split, at the odd indexes. */
+  var TOKEN_SPLIT = /(\[\[[^\]\s]+\]\]|\[[A-Z]+(?:-\d+)?\])/;
+
+  function dehydratePlain(text, sorted) {
+    var out = text;
+    sorted.forEach(function (e) {
+      var w = String(e.word).trim();
+      var lead = /^\w/.test(w) ? "\\b" : "";
+      var tail = /\w$/.test(w) ? "\\b" : "";
+      out = out.split(TOKEN_SPLIT).map(function (part, i) {
+        return i % 2 ? part : part.replace(new RegExp(lead + escapeRe(w) + tail, "g"), e.token);
+      }).join("");
+    });
+    return out;
+  }
+
   function dehydrateWords(text, list) {
-    var out = String(text == null ? "" : text);
-    (list || [])
+    var sorted = (list || [])
       .filter(function (e) { return e && e.word && e.token && String(e.word).trim(); })
       .slice()
-      .sort(function (a, b) { return String(b.word).length - String(a.word).length; })
-      .forEach(function (e) {
-        var w = String(e.word).trim();
-        var lead = /^\w/.test(w) ? "\\b" : "";
-        var tail = /\w$/.test(w) ? "\\b" : "";
-        out = out.replace(new RegExp(lead + escapeRe(w) + tail, "g"), e.token);
-      });
-    return out;
+      .sort(function (a, b) { return String(b.word).length - String(a.word).length; });
+    return dehydratePlain(String(text == null ? "" : text), sorted);
   }
 
   // Keys whose values are structure the Worker reads, never prose.
@@ -2353,7 +2365,11 @@
         // and so load() right after save() is consistent.
         draftCache[key] = obj;
         encryptRecord(obj).then(function (blob) {
-          if (!blob) return;
+          /* Write only if this is still the record the key holds. The encrypt
+             is async, so a clear() (or a newer save) can land while it runs,
+             and writing anyway would put a cleared record, a name or a note,
+             back on disk for the next load to decrypt. */
+          if (!blob || draftCache[key] !== obj) return;
           try { localStorage.setItem(DRAFT_PREFIX + key, blob); } catch (e) {}
         }).catch(function () {});
       },
