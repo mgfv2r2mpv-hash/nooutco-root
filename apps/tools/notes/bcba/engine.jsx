@@ -1335,6 +1335,15 @@ function ExpertReading({ expert, claimAnswers, onClaimAnswer, busy }) {
  */
 function scrubMapKey(toolId) { return toolId + "::map"; }
 
+/* Where an earlier build of the put-back table saved its words. Nothing writes
+   here now (his ruling of 2026-10-02, see the table below); the key is kept so
+   the page can delete any record that build left behind. */
+function putBackKey(toolId) { return toolId + "::putback"; }
+
+// One shared empty table, so a tool with no words keeps a stable identity and
+// the memo that reads it does not recompute on every render.
+const NO_WORDS = Object.freeze({});
+
 /* Copy marks live under their own sibling key for the same reason the scrub
    ledger does: they belong to the note, they have to survive a reload, and they
    must not ride inside the values object that every tool's migrateDraft touches.
@@ -1569,11 +1578,9 @@ function App() {
     setCopied(null);
     setCopiedPrompt(false);
     setCopyMarks((prev) => Object.assign({}, prev, { [tool.id]: {} }));
-    /* The put-back table is keyed by token, and [CLIENT] means a different
-       person on the next tool. Carrying it across would quietly paste one
-       client's name into another's note. */
-    setPutBack({});
-    setPutBackOn(false);
+    /* Nothing to do for the put-back table: it is kept per tool, because
+       [CLIENT] means a different person on the next tool, and carrying one
+       tool's words across would paste one client's name into another's note. */
   };
 
   const collectFreeText = () =>
@@ -1699,44 +1706,101 @@ function App() {
     });
   };
 
-  /* ── Putting his own words back, on the way out ─────────────────────
+  /* ── The put-back table: his words on the page, tokens on the wire ──
    *
-   * A role token is deliberately not restored into the note: NotesScrub mints
-   * [CLIENT] precisely so the technician cannot forget to substitute their
-   * own word before signing, and restoreOutput leaves it alone on purpose.
-   * That trade costs a retype of every token on every section, which is what
-   * the maintainer asked to remove on 2026-09-19: "local on-page find/replace
-   * would help to rehydrate for client and caregiver".
+   * WHAT EXISTED. From 2026-09-19 a checkbox-gated table under the note,
+   * pre-filled with the scrubbed word, substituted on the CLIPBOARD only. It
+   * was not saved, and the note on the page kept its tokens.
    *
-   * SO IT HAPPENS AT THE CLIPBOARD AND NOWHERE ELSE. The clipboard is the
-   * moment the note leaves for the EHR, where the client's name is the record
-   * rather than something in transit. Three things follow from doing it here
-   * instead of in state, and all three are the reason:
+   * WHAT HE ASKED FOR, 2026-09-28: "key in a word in a field in the generated
+   * area (not visible on initial entry) that simply maps [CLIENT] or
+   * [CAREGIVER-1] etc. tokens to that matching token ... It dehydrates for any
+   * review on a section of course, and maintains the rehydrations selected
+   * within that page load. When the tab or window is opened again ... anything
+   * in there saved in the fields from prior calendar days is axed."
    *
-   *   - The note ON THE PAGE keeps its tokens, so the banner above it stays
-   *     true and a glance still shows what was taken out.
-   *   - S.output is untouched, so a revision turn still sends the tokenised
-   *     text. The name cannot reach the model through this door.
-   *   - Nothing is persisted, so the draft store gains no name it did not
-   *     already hold in the scrub map.
+   * So the rules are:
+   *   - S.output stays in TOKENS. Only what is drawn is hydrated, and what he
+   *     edits by hand is dehydrated before it is stored, so every call that
+   *     quotes the note quotes tokens.
+   *   - The table lists every role token this note carries: a name the scrub
+   *     took, a role word he typed, or a tag the model wrote. A blank field
+   *     keeps the token. The field's placeholder is the word that was taken.
+   *   - Copy takes exactly what is drawn, so the box equals the clipboard.
+   *   - NotesGate.setOutboundWords is the second lock: the three model doors
+   *     take each word back to its token even if something here missed it.
    *
-   * The replacement is pre-filled with what they actually typed and is theirs
-   * to edit, because [CAREGIVER] may want to be "Mom" in one field and her
-   * name in another. The substitution itself is NotesScrub.forEhr, the same one
-   * rehydrate() uses, so both read [CLIENT] and a saved draft's "Client--1". */
-  const [putBack, setPutBack] = React.useState({});
-  const [putBackOn, setPutBackOn] = React.useState(false);
+   * HIS RULING, 2026-10-02, option (a): "agreed, new generate, new tokens".
+   * [CLIENT] is whoever the CURRENT note is about, so a word typed for it
+   * belongs to one note. The first cut kept the words all day per tool and drew
+   * them into the next note for a different client. Now:
+   *   - Every Generate (and Regenerate) and every Clear empties this tool's
+   *     table, through forgetPutBack(). A revision does not, because a revision
+   *     is the same note being finished.
+   *   - Nothing typed here is written to storage. S.output is never saved, so
+   *     after a reload the note is gone, and a saved word could only ever be
+   *     drawn into a different note. The words live in memory, per tool, so a
+   *     tool switch inside one page load still finds each note's own words.
+   *   - Any record an earlier build saved under `<tool>::putback` is deleted
+   *     when the page mounts. */
+  const [putBackByTool, setPutBackByTool] = React.useState({});
+  const putBack = putBackByTool[tool.id] || NO_WORDS;
+  const setPutBack = (update) => setPutBackByTool((prev) => {
+    const current = prev[tool.id] || NO_WORDS;
+    const next = typeof update === "function" ? update(current) : update;
+    return { ...prev, [tool.id]: next };
+  });
 
-  // Role tokens only. Identifiers restore themselves, and opaque tokens were
-  // already round-tripped before the draft reached the page.
-  // One row per token: a name and the role word typed for the same person
-  // share one, and the name is what the row is pre-filled with.
-  const roleTokens = NotesScrub.roleTokenRows(S.scrubMap || []);
+  const typedWords = React.useMemo(() => Object.keys(putBack)
+    .map((token) => ({ token, word: String(putBack[token] || "").trim() }))
+    .filter((e) => e.word), [putBack]);
 
-  const forEhr = (text) => {
-    if (!putBackOn || !roleTokens.length) return text;
-    return NotesScrub.forEhr(text, roleTokens, putBack);
+  // Set during render: a call made in the same tick as a keystroke must
+  // already see the word.
+  if (window.NotesGate && NotesGate.setOutboundWords) NotesGate.setOutboundWords(typedWords);
+
+  /* A new note starts with an empty table. The outbound list is emptied here
+     too, not left for the next render, so the old note's words are in no copy
+     the page holds by the time the new note's first call goes out. */
+  const forgetPutBack = () => {
+    setPutBack(NO_WORDS);
+    if (window.NotesGate && NotesGate.setOutboundWords) NotesGate.setOutboundWords([]);
   };
+
+  React.useEffect(() => {
+    if (!window.NotesGate || !NotesGate.draft) return;
+    TOOLS.forEach((t) => NotesGate.draft.clear(putBackKey(t.id)));
+  }, []);
+
+  const hydrate = (text) => {
+    if (!typedWords.length || typeof text !== "string") return text;
+    let t = text;
+    typedWords.slice().sort((a, b) => b.token.length - a.token.length)
+      .forEach((e) => { t = t.split(e.token).join(e.word); });
+    return t;
+  };
+  const dehydrate = (text) => (typedWords.length && typeof text === "string"
+    ? NotesGate._scrub.dehydrateWords(text, typedWords)
+    : text);
+  const mapCells = (rows, fn) => (Array.isArray(rows) && typedWords.length
+    ? rows.map((r) => { const o = {}; Object.keys(r || {}).forEach((k) => { o[k] = fn(r[k]); }); return o; })
+    : rows);
+
+  // Every role token the note carries, with the word it replaced where the map
+  // knows one. Identifiers restore themselves, and opaque tokens were already
+  // round-tripped before the draft reached the page.
+  const roleTokens = React.useMemo(() => {
+    const rows = NotesScrub.roleTokenRows(S.scrubMap || []);
+    const seen = {};
+    rows.forEach((r) => { seen[r.token] = true; });
+    NotesScrub.roleTagsIn(S.output).forEach((token) => {
+      if (!seen[token]) { seen[token] = true; rows.push({ token, name: "", roleWord: false }); }
+    });
+    return rows;
+  }, [S.scrubMap, S.output]);
+
+  // Copy takes what is drawn, so the box and the clipboard agree.
+  const forEhr = hydrate;
 
   /* THE READER'S COPY OF A SECTION IS NOT THE MODEL'S COPY.
    *
@@ -2674,6 +2738,10 @@ function App() {
      specimen book while it asks its first questions. */
   const forgetNote = () => {
     patchS({ output: null, proposal: null, conversation: [], questions: null, readiness: null, pendingValues: null, expert: null, corrections: null, markState: {}, askQueue: {}, heldOut: [] });
+    /* Again here, because the follow-up questions sit between Generate and this
+       call with the last note still on screen, and a word typed into its table
+       in that gap would otherwise be drawn into this new note. */
+    forgetPutBack();
     taughtRef.current = false; // a new note may teach again; a revision may not
     styleTaughtRef.current = false;
     voiceTaughtRef.current = false;
@@ -3056,6 +3124,9 @@ function App() {
     if (err) { patchS({ error: err }); return; }
     if (!NotesGate.isLoggedIn()) { NotesGate.openLogin(); return; }
     patchS({ error: "", thread: [], annotation: null, panelDraft: "" });
+    // New generate, new tokens: the scrub below remints [CLIENT] for this
+    // intake, so a word typed for the last note's [CLIENT] goes now.
+    forgetPutBack();
     const review = await scrubGate(collectFreeText());
     if (!review) return;
     const scrubbed = scrubValues(review.map);
@@ -4049,8 +4120,13 @@ function App() {
     return () => clearInterval(t);
   }, []);
 
+  /* A phrase selected in a hydrated section carries his words. The annotation
+     is quoted to the model, so it goes back to tokens here. */
   const targetSection = (annotation) => {
-    patchS({ annotation });
+    const a = annotation && typeof annotation.text === "string"
+      ? { ...annotation, text: dehydrate(annotation.text) }
+      : annotation;
+    patchS({ annotation: a });
     setPanelOpen(true);
   };
 
@@ -4080,7 +4156,7 @@ function App() {
   const editCorrection = (key, text) => {
     if (!S.corrections) return;
     audit("corrections_mark", { edited: 1 });
-    applyMarkState(NoteCorrections.edit(S.markState, key, text));
+    applyMarkState(NoteCorrections.edit(S.markState, key, dehydrate(text)));
   };
 
   /* Approving a change does nothing to the note, which is the point. The
@@ -4611,8 +4687,8 @@ function App() {
     setCopied(null);
     setCopiedPrompt(false);
     // Same reason the ref is cleared: the tokens it names no longer exist.
-    setPutBack({});
-    setPutBackOn(false);
+    // A Clear is a new note, and the next [CLIENT] may be somebody else.
+    forgetPutBack();
   };
 
   /* ── Note-freshness countdown ──────────────────────────────────────── */
@@ -4790,8 +4866,8 @@ function App() {
       <div style={{ marginTop: 10 }}>
         {change.kind === "narrative" ? (
           <window.PendingDiff
-            before={change.prev}
-            after={change.value}
+            before={hydrate(change.prev)}
+            after={hydrate(change.value)}
             onAsk={(hunk) => targetSection({
               kind: "span",
               id: change.id,
@@ -4802,7 +4878,7 @@ function App() {
         ) : (
           <div className="diff-view">
             {change.kind === "table"
-              ? <GoalsTable columns={change.columns} rows={change.value} onChange={() => {}} idPrefix={"prop-" + change.id} />
+              ? <GoalsTable columns={change.columns} rows={mapCells(change.value, hydrate)} onChange={() => {}} idPrefix={"prop-" + change.id} />
               : <Checklist options={tool.groupOptions[change.id]} selected={change.value} single={change.kind === "single"} />}
           </div>
         )}
@@ -4838,6 +4914,7 @@ function App() {
             <CorrectionsView
               id={id}
               ops={marked}
+              hydrate={hydrate}
               /* `why` is the section line, kept as the fallback for a change
                  the pass quoted nothing for. `reasons` is per mark, which is
                  his 2026-09-20 ruling and what the rail under the note reads. */
@@ -4874,20 +4951,23 @@ function App() {
         );
       }
       const empty = !(v || "").trim();
+      /* Drawn hydrated, stored dehydrated: his words are on the screen and
+         never in S.output, which is what every later call quotes. */
+      const shown = hydrate(v || "");
       return (
         <textarea
-          value={v || ""}
+          value={shown}
           // Selecting inside one of these is what raises the "Revise this" chip;
           // the attributes are how the selection handler knows which section it
           // is in without threading refs through every row.
           data-section-id={id}
           data-section-heading={sec.heading}
-          onChange={(e) => { patchS((s) => ({ output: { ...s.output, [id]: e.target.value } })); markSectionRevised(id); }}
+          onChange={(e) => { const next = dehydrate(e.target.value); patchS((s) => ({ output: { ...s.output, [id]: next } })); markSectionRevised(id); }}
           placeholder={sec.emptyNote || ""}
           // Sized to the prose rather than to a fixed box: at full width these
           // no longer need an internal scrollbar to show four sentences, which
           // is what made them feel like the smallest thing on the page.
-          rows={Math.max(3, Math.ceil((v || "").length / 105) + 1)}
+          rows={Math.max(3, Math.ceil(shown.length / 105) + 1)}
           style={{ width: "100%", minHeight: sec.minHeight || 84, padding: "11px 12px", borderRadius: 7, border: "1px solid #c0d4a8", fontSize: 14.5, color: "#2d3a1f", lineHeight: 1.7, resize: "vertical", background: "white", opacity: empty ? 0.75 : 1 }}
         />
       );
@@ -4904,8 +4984,8 @@ function App() {
       return (
         <GoalsTable
           columns={sec.columns}
-          rows={v}
-          onChange={(rows) => patchS((s) => ({ output: { ...s.output, [id]: rows } }))}
+          rows={mapCells(v, hydrate)}
+          onChange={(rows) => patchS((s) => ({ output: { ...s.output, [id]: mapCells(rows, dehydrate) } }))}
           onCopyCell={handleCopy}
           copiedId={copied}
           idPrefix={id}
@@ -5374,29 +5454,14 @@ function App() {
               {"\u26a0"} possible grounds for claim rejection.
             </p>
 
-            {/* Find and replace, scoped to the clipboard. Only shown when this
-                note actually carries role tokens, because on a note with none
-                it is a control that would do nothing. */}
+            {/* The put-back table. It lives in the output, so it is not on the
+                page before there is a note, and only when the note carries a
+                role token, because on a note with none it would do nothing. */}
             {roleTokens.length > 0 && (
               <div data-testid="put-back-panel" style={{ margin: "0 0 20px", borderRadius: 10, border: "1.5px solid #c0d4a8", background: "#f7faf3", overflow: "hidden" }}>
-                <label style={{ display: "flex", gap: 9, alignItems: "flex-start", padding: "10px 14px", cursor: "pointer", borderBottom: putBackOn ? "1px solid #dde8cf" : "none" }}>
-                  <input
-                    type="checkbox"
-                    data-testid="put-back-toggle"
-                    checked={putBackOn}
-                    onChange={(e) => setPutBackOn(e.target.checked)}
-                    style={{ marginTop: 2, width: 16, height: 16, flex: "0 0 auto" }}
-                  />
-                  <span style={{ fontSize: 13, color: "#3a4326", lineHeight: 1.5 }}>
-                    <strong>Restore original words on copy</strong>
-                    <span style={{ display: "block", fontSize: 12, color: "#7a9460", marginTop: 2 }}>
-                      Applies to copied text only.<br />
-                      The note on this page keeps its tokens.
-                    </span>
-                  </span>
-                </label>
-
-                {putBackOn && (
+                <div style={{ padding: "10px 14px 0", fontSize: 13, color: "#3a4326", lineHeight: 1.5 }}>
+                  <strong>Words for tokens</strong>
+                </div>
                   <div style={{ padding: "10px 14px 12px" }}>
                     {/* A GRID, NOT A WRAPPING FLEX ROW. On a 390px screen the flex
                         version wrapped the input under the wider tokens and not
@@ -5412,18 +5477,21 @@ function App() {
                         <input
                           type="text"
                           data-testid={"put-back-input-" + m.token}
-                          value={putBack[m.token] === undefined ? m.name : putBack[m.token]}
+                          value={putBack[m.token] || ""}
+                          placeholder={m.name || ""}
+                          aria-label={"Word for " + m.token}
                           onChange={(e) => setPutBack((p) => Object.assign({}, p, { [m.token]: e.target.value }))}
                           style={{ width: "100%", minWidth: 0, fontSize: 13, padding: "5px 9px", borderRadius: 6, border: "1.5px solid #c0d4a8", background: "#fff", color: "#2d3a1f" }}
                         />
                       </div>
                     ))}
                     <p style={{ fontSize: 11.5, color: "#7a9460", margin: "8px 0 0", lineHeight: 1.5 }}>
-                      Pre-filled with the original words.<br />
-                      Leave a field blank to keep the token.
+                      Shown in the note and in copies.<br />
+                      Sent to NoMe as tokens.<br />
+                      A blank field keeps the token.<br />
+                      Cleared on each new note.
                     </p>
                   </div>
-                )}
               </div>
             )}
 

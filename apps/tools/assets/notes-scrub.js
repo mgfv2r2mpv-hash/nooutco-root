@@ -645,6 +645,20 @@
     return out;
   }
 
+  /* Every role tag the note carries, in order of first appearance, whether this
+     page minted it or the model wrote it (the SAP drafter writes [CLIENT] on
+     its prompt's instruction). The put-back table lists all of them. */
+  function roleTagsIn(value) {
+    var tags = ROLES.map(function (r) { return r.tag; }).join("|");
+    var re = new RegExp("\\[(?:" + tags + ")(?:-\\d+)?\\]", "g");
+    var found = [];
+    mapStrings(value, function (str) {
+      (str.match(re) || []).forEach(function (t) { if (found.indexOf(t) === -1) found.push(t); });
+      return str;
+    });
+    return found;
+  }
+
   /* ONE ROW PER TOKEN, for the put-back table and for forEhr. Two entries can
      share a token: the name the scrub found and the role word typed for the
      same person. The name wins the pre-fill, because it is the word the
@@ -1317,6 +1331,7 @@
     // "Restore original words on copy": role tokens to words, clipboard only.
     forEhr: forEhr,
     roleTokenRows: roleTokenRows,
+    roleTagsIn: roleTagsIn,
     withoutRoleWords: withoutRoleWords,
     persistMap: persistMap,
     installPHIHighlight: installPHIHighlight,

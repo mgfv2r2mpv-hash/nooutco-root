@@ -117,7 +117,7 @@ test.describe('a role word he typed becomes the role token, and nothing else in 
     expect(by('Sarah')).toBe('[CAREGIVER]');
     expect(by('Mom')).toBe('[CAREGIVER]');
     expect(by('Dad')).toBe('[CAREGIVER-2]');
-    // One put-back row per token, pre-filled with the name rather than the role word.
+    // One put-back row per token, hinted with the name rather than the role word.
     const rows = await page.evaluate((m) => window.NotesScrub.roleTokenRows(m), map);
     expect(rows.map((r) => [r.token, r.name])).toEqual([['[CLIENT]', 'Jacob'], ['[CAREGIVER]', 'Sarah'], ['[CAREGIVER-2]', 'Dad']]);
   });
