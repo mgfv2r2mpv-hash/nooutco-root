@@ -118,12 +118,22 @@ RULES\n\
 - Never invent caregiver actions, child responses, or program changes not in the notes. Sparse section → brief honest sentence.\n\
 - Never assert criterion, mastery, generalization or fidelity unless the notes say so. Each of those is a determination with a threshold behind it, and \"met criterion\" or \"implemented with fidelity\" over the author's name is a measurement they did not take.\n\
 - DATA IS QUOTED, NEVER PARAPHRASED. A count, a fraction, a percentage and a prompt-code string are the author's measurements. Keep the notation they wrote: 8/0 stays 8/0, never \"(8 correct)\". Prompt and stage codes (RI, M, I and the like, read against the legend they gave) are data too, so name the teaching stage the trials ran under, because the author uses it to plan the next fade. This is faithfulness and not a caveat: accuracy and independence are different measures, so never hedge, qualify or reinterpret a percentage because prompting was in place.\n\
+- In this author's notation a count written as a/b (for instance 2/0) means a trials correct at or above the intended prompt level and b trials that were not.\n\
+- PROMPT LEVEL GOES WITH THE COUNT. When trials were completed only with a prompt above the program's criterion, write the count with the prompt level beside it, so engagement and independence both stay true: \"completed on 2 of 3 trials, both with a physical prompt (criterion: gesture prompt)\", never \"completed on 2 of 3 trials\" alone, and never \"the other\" when the notes say the other two.\n\
+- NAME EVERY GOAL. Name each goal as the notes write it, with its data line, in the summary. A goal the author adds in an answer to a follow-up question is a goal of this note like the others. Never state a count of goals (\"all three parent goals\") that the list in the notes does not support, and never claim a result for all of them when one of them says otherwise.\n\
 - A parenthetical in the notes is load-bearing, not an aside. Definitions, legends, precursors and exclusions written in parentheses carry into the note. Under a sentence ceiling they are the first thing to survive, never the first thing cut.\n\
 - Plain, precise clinical language - no filler, no elevated vocabulary.\n\
-- \"individualsPresent\" should include \"Parent/Caregiver\" and \"Client\" unless notes indicate otherwise.\n\n\
-CHECKBOX INFERENCE: For each group return ONLY verbatim values from the allowed list. Infer conservatively - only options clearly supported by the notes. Single-selects: one verbatim value or \"\".\n\n\
+- \"individualsPresent\": Parent/Caregiver, Client and Technician are present by default. Leave one out only when the notes say so, for instance \"follow up when the BT is present\" or \"client was not present\". A technician the notes place in any part of the session was present.\n\n\
+CHECKBOX INFERENCE: For each group return ONLY verbatim values from the allowed list. Infer conservatively - only options clearly supported by the notes. Single-selects: one verbatim value or \"\".\n\
+- caregiverResponse: the third option (responding, generalization occurring, no barriers) only when the notes say generalization is occurring AND name no barrier. A missed step, a missed or late prompt, prompting the caregiver needed, or any resistance means the second option, however good the rest of the data is. The first option only for large barriers or resistance.\n\
+- progressStatus: this is a parent training note, so the caregivers' goal progress weighs more than the client's goal progress. A client goal at 0 of 3 beside caregiver goals at 85 to 100 percent is moderate progress, not minimal.\n\n\
+BEHAVIOR ANALYST FOLLOW UP (\"followup\")\n\
+- 1 to 3 items, rarely more, that the BCBA could put on a task list. Each is an action with a deliverable: what gets done, made or decided, and with whom when someone else is involved.\n\
+- Draw them from the notes: an action the notes call for, a follow-up with another person the notes say needs to happen (a technician, a teacher, a caregiver), or the next step that moves a goal toward a clinical answer or toward progress.\n\
+- It is almost never empty. A session with goals run and data taken always leaves a next step.\n\
+- NEVER a question to the author, and never a request for more detail (\"Clarify...\", \"Specify...\", \"Confirm whether...\"). What is missing from the notes goes in hints, not here.\n\n\
 TERMINOLOGY (non-negotiable)\n\
-- Reinforcement is contingent on behavior. Never \"[person] was reinforced.\" Write \"[behavior] was reinforced,\" \"reinforcement was delivered contingent on [behavior],\" or for caregivers: \"BCBA praised Caregiver for [specific implementation behavior]\" or \"performance feedback was delivered.\"\n\
+- Reinforcement is contingent on behavior. Never \"[person] was reinforced.\" Write \"[behavior] was reinforced\" or \"reinforcement was delivered contingent on [behavior]\". For caregivers, only when the notes say feedback was given: name the implementation behavior it was about, as in \"BCBA praised Caregiver for [specific implementation behavior]\". Never add feedback the notes do not report.\n\
 - Precise verbs: prompted, faded, modeled, shaped, chained, redirected, blocked, provided BST, gave performance feedback.\n\
 - Name procedures specifically (partial verbal prompt, errorless teaching, DRO, BST). No loose synonyms (rewarded, encouraged, motivated).\n\
 - Objective, observable language. A light judgment sitting on something actually seen is not value-laden phrasing and stays as written.";
@@ -131,9 +141,9 @@ TERMINOLOGY (non-negotiable)\n\
   // Additive hint instructions, the core prompt above matches the standalone page.
   var HINTS_BLOCK = "\n\nHINTS: also return a \"hints\" array of {section, code, detail} objects flagging ONLY missing or ambiguous standard elements (max 3; empty [] when the note stands on its own). section is one of: " + SECTION_IDS.join(", ") + ". code is one of: thin_section (a narrative lacks the specifics the form expects), ambiguous_item (detail = what needs clarifying, 10 words max), other (detail = the question). Never fabricate to avoid a hint.";
 
-  var JSON_FORMAT_BLOCK = "\n\nOUTPUT FORMAT\nReturn ONLY a single JSON object. No markdown, no preamble. Use EXACTLY these keys; arrays hold verbatim option labels (empty [] if unsupported); single-selects are one verbatim label or \"\".\n{\n  \"individualsPresent\": [],\n  \"supportActivities\": [],\n  \"caregiverResponse\": \"\",\n  \"progressStatus\": \"\",\n  \"summary\": \"\",\n  \"followup\": \"\",\n  \"hints\": []\n}\nWhere \"summary\" is 3-5 clinical sentences covering goal progress and any program modifications made or needed, and \"followup\" is follow-up items for the Behavior Analyst, each item on its own line separated by \\n, no bullets, no numbers, no commas between items.";
+  var JSON_FORMAT_BLOCK = "\n\nOUTPUT FORMAT\nReturn ONLY a single JSON object. No markdown, no preamble. Use EXACTLY these keys; arrays hold verbatim option labels (empty [] if unsupported); single-selects are one verbatim label or \"\".\n{\n  \"individualsPresent\": [],\n  \"supportActivities\": [],\n  \"caregiverResponse\": \"\",\n  \"progressStatus\": \"\",\n  \"summary\": \"\",\n  \"followup\": \"\",\n  \"hints\": []\n}\nWhere \"summary\" is 3-5 clinical sentences covering goal progress and any program modifications made or needed, and \"followup\" is 1 to 3 task-list items for the Behavior Analyst, each an action with a deliverable, each on its own line separated by \\n, no bullets, no numbers, no commas between items.";
 
-  var LABELED_FORMAT_BLOCK = "\n\nOUTPUT FORMAT\nReturn labeled sections in the exact order below. For each \"[tick]\" line, list ONLY the options that apply, comma-separated and verbatim from that section's allowed list; if none apply write \"None selected.\" For \"[choose one]\" pick exactly one allowed option (or \"None\"). For \"[narrative]\" write the prose. No JSON, no preamble, no commentary.\n\nINDIVIDUALS PRESENT [tick]\nCAREGIVER RECEIVED THE FOLLOWING SUPPORT [tick]\nCAREGIVER RESPONSE TO TRAINING [choose one]\nPROGRESS STATUS [choose one]\nSUMMARY OF GOAL PROGRESS & MODIFICATIONS [narrative: 3-5 clinical sentences]\nBEHAVIOR ANALYST FOLLOW UP [narrative: one item per line, no bullets/numbers]";
+  var LABELED_FORMAT_BLOCK = "\n\nOUTPUT FORMAT\nReturn labeled sections in the exact order below. For each \"[tick]\" line, list ONLY the options that apply, comma-separated and verbatim from that section's allowed list; if none apply write \"None selected.\" For \"[choose one]\" pick exactly one allowed option (or \"None\"). For \"[narrative]\" write the prose. No JSON, no preamble, no commentary.\n\nINDIVIDUALS PRESENT [tick]\nCAREGIVER RECEIVED THE FOLLOWING SUPPORT [tick]\nCAREGIVER RESPONSE TO TRAINING [choose one]\nPROGRESS STATUS [choose one]\nSUMMARY OF GOAL PROGRESS & MODIFICATIONS [narrative: 3-5 clinical sentences]\nBEHAVIOR ANALYST FOLLOW UP [narrative: 1 to 3 task-list items, each an action with a deliverable, one per line, no bullets/numbers]";
 
   function buildUserPrompt(values) {
     return [
@@ -150,6 +160,31 @@ TERMINOLOGY (non-negotiable)\n\
     ].join("\n");
   }
 
+  /* FOLLOW UP IS A TASK LIST, NOT A QUESTION LIST. A production parent note's
+     Follow Up came back as "Clarify baseline climbing rate...", "Specify
+     topography...", "Confirm whether ...": the model's own gap questions,
+     written into a field the BCBA signs as their own next steps. His word for
+     it was "the WORST of the whole lot". The prompt now defines the field;
+     this is the backstop for a draft that ignores it. A line that opens with a
+     request for information, or ends in a question mark, is moved to hints. */
+  // Narrow on purpose. "Confirm onboarding date with the new technician" is a
+  // real task, so only the wordings that ask the author something are caught.
+  var QUESTION_LINE = /^\s*(clarify|specify|(confirm|verify|determine|check|ask|identify) (whether|if)|find out (whether|if))\b|\?\s*$/i;
+
+  function splitFollowupQuestions(text) {
+    var kept = [];
+    var hints = [];
+    String(text || "").split("\n").forEach(function (line) {
+      if (!line.trim()) return;
+      if (QUESTION_LINE.test(line)) {
+        hints.push({ section: "followup", code: "ambiguous_item", detail: line.trim().split(/\s+/).slice(0, 10).join(" ") });
+      } else {
+        kept.push(line);
+      }
+    });
+    return { kept: kept.join("\n"), hints: hints };
+  }
+
   function normalizeOutput(raw) {
     var o = raw && typeof raw === "object" ? raw : {};
     var out = {};
@@ -160,7 +195,11 @@ TERMINOLOGY (non-negotiable)\n\
       else out[key] = (Array.isArray(o[key]) ? o[key] : []).filter(function (v) { return opts.indexOf(v) !== -1; });
     });
     ["summary", "followup"].forEach(function (key) { out[key] = typeof o[key] === "string" ? o[key] : ""; });
-    out.hints = normalizeHints(o.hints, HINT_CATALOG, SECTION_IDS);
+    // A follow-up line that is a question to the author is a gap, not a task:
+    // it moves to hints, where gaps belong, and never reaches the signed note.
+    var moved = splitFollowupQuestions(out.followup);
+    out.followup = moved.kept;
+    out.hints = normalizeHints((Array.isArray(o.hints) ? o.hints : []).concat(moved.hints), HINT_CATALOG, SECTION_IDS);
     // The three revision keys the engine reads back. Kept separate from the
     // note's own fields because they never reach the EHR: an answer is shown
     // in the panel and a routing decision is consumed before render.
