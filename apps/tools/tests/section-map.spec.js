@@ -182,3 +182,77 @@ test.describe('the section map', () => {
     }
   });
 });
+
+/* THE STRIP MUST NOT BE THE ONLY THING HOLDING THE PAGE STRAIGHT.
+ *
+ * The tiles run a couple of thousand pixels past a phone viewport, and for a
+ * long time the one thing keeping that off the document's own scroll width was
+ * overflow-x:auto on .section-map-strip. Measured: drop that single declaration
+ * and the page scrolls sideways by the whole extent, because nothing above the
+ * strip clipped anything.
+ *
+ * That is a brittle place for a page-wide promise to live, and the bill came in
+ * on WebKit, which reported the document 111px wide for the one frame in which
+ * the changes drawer first becomes visible. changes-drawer.spec.js polls past
+ * that frame (#226); this pins the other half, so the promise holds by
+ * construction rather than by when a browser gets to the inner scroller.
+ *
+ * The first test defeats the inner scroller on purpose. That is the point: it
+ * asks whether anything ELSE holds the line, and before the clip on
+ * .section-map the answer was no. */
+test.describe('the strip cannot push the page sideways', () => {
+  test.use({ viewport: { width: 390, height: 664 } });
+
+  test('the document stays flat even with the strip\'s own scroller defeated', async ({ page }) => {
+    await draft(page);
+    await expect(page.locator('.section-map-strip')).toBeVisible();
+
+    const flat = () => page.evaluate(() => {
+      const de = document.documentElement;
+      return de.scrollWidth - de.clientWidth;
+    });
+    expect(await flat()).toBeLessThanOrEqual(1);
+
+    /* The tiles really do extend well past the screen, so the assertion below
+       is not passing for want of anything to clip. */
+    const extent = await page.evaluate(() => {
+      const s = document.querySelector('.section-map-strip');
+      return s.scrollWidth - s.clientWidth;
+    });
+    expect(extent).toBeGreaterThan(200);
+
+    await page.evaluate(() => {
+      document.querySelector('.section-map-strip').style.overflowX = 'visible';
+    });
+    expect(await flat()).toBeLessThanOrEqual(1);
+  });
+
+  /* The clip must not cost the two things .section-map already had: the sticky
+     that keeps it under the nav bar, and the 20px bleed that lets a tile reach
+     the screen edge so there is visibly more to the right. overflow-x:hidden
+     would have taken the sticky, by computing overflow-y to auto. */
+  test('the clip keeps the sticky, the bleed and the strip\'s own scrolling', async ({ page }) => {
+    await draft(page);
+    await expect(page.locator('.section-map')).toBeVisible();
+
+    const read = await page.evaluate(() => {
+      const m = document.querySelector('.section-map');
+      const s = document.querySelector('.section-map-strip');
+      const cs = getComputedStyle(m);
+      const mb = m.getBoundingClientRect(), sb = s.getBoundingClientRect();
+      return {
+        position: cs.position,
+        overflowY: cs.overflowY,
+        bleedLeft: Math.round(mb.left - sb.left),
+        bleedRight: Math.round(sb.right - mb.right),
+        stripScrolls: s.scrollWidth - s.clientWidth,
+      };
+    });
+
+    expect(read.position).toBe('sticky');
+    expect(read.overflowY).toBe('visible');
+    expect(read.bleedLeft).toBe(20);
+    expect(read.bleedRight).toBe(20);
+    expect(read.stripScrolls).toBeGreaterThan(200);
+  });
+});

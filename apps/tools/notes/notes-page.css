@@ -1112,6 +1112,33 @@ body.is-pointing, body.is-pointing * { cursor: crosshair !important; }
   border-bottom: 1px solid #c7d3b5;
   padding: 8px 0 6px;
   margin-bottom: 14px;
+  /* A BACKSTOP, SO THE PAGE CANNOT SCROLL SIDEWAYS ON THE STRIP'S ACCOUNT.
+     Measured in chromium at 390px: the tiles run 2371px past the viewport, and
+     the ONE thing holding them was overflow-x:auto on .section-map-strip below.
+     Drop that single declaration and the document scrolls sideways by all
+     2371px - nothing above the strip clipped anything. An invariant the whole
+     page depends on rested on one property of one inner element.
+
+     This is the class of failure behind the 111px that failed main's webkit
+     shard on 1c28b6f1 and sent changes-drawer.spec.js to a poll (#226): WebKit
+     reported the document wide for the one frame in which the changes drawer
+     first becomes visible, then flat from the next frame on. Not the same
+     number as the 2371 above, and the frame itself has not been reproduced
+     here - WebKit will not install in the box this was measured in - so what
+     follows is a structural guarantee rather than a verified cure for that
+     frame: with the extent clipped at this level, no timing of the inner
+     scroller can put it on the document's scrollWidth.
+
+     clip, NOT hidden: overflow-x:hidden with overflow-y:visible computes the
+     other axis to auto, which would make this a scroll container and break the
+     position:sticky above it. clip leaves overflow-y visible and the sticky
+     intact (both checked in chromium). A browser too old for clip drops the
+     declaration and keeps today's behaviour, so it degrades to the status quo.
+
+     overflow-clip-margin keeps the 20px bleed the strip's negative margin buys
+     below, so a tile still reaches the screen edge; only the far extent goes. */
+  overflow-x: clip;
+  overflow-clip-margin: 20px;
 }
 
 .section-map-head {
