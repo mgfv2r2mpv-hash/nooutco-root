@@ -3228,11 +3228,19 @@ function App() {
      answer typed in place counts toward the 25 characters, together with the
      bottom field, and a technician who answered in place does not wait the
      minute. The question text is not counted, which is why this does not read
-     the length of answeredInPlace(). */
+     the length of answeredInPlace().
+
+     His ruling 2026-10-03: the panel's own-words row counts as well, so the
+     lock reads the same with and without ?aid=1. Without the floor plan, that
+     row is where a technician answers a question in place. It counts once it
+     is saved (Enter or leaving the field), the moment it becomes an answer
+     the Send would carry, and only while it is the accepted choice. */
   const inPlaceChars = () => {
     const drafts = S.answerDrafts || {};
     return (S.questions || []).reduce(
-      (n, _q, qi) => n + String(drafts[qi] == null ? "" : drafts[qi]).trim().length,
+      (n, _q, qi) => n
+        + String(drafts[qi] == null ? "" : drafts[qi]).trim().length
+        + String(ownAnswer(qi) || "").trim().length,
       0,
     );
   };

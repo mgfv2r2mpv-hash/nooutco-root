@@ -353,6 +353,33 @@ test.describe('answers typed in place count toward the 25 characters', () => {
     await expect(send).not.toHaveAttribute('aria-describedby', 'revision-send-lock');
   });
 
+  /* His ruling, 2026-10-03: the panel's own-words row counts too, so the lock
+     works the same with and without ?aid=1. Without the floor plan, the
+     own-words row under each question is where a technician answers in place. */
+  test('the own-words row counts on the page without ?aid=1, and short of 25 stays locked', async ({ page }) => {
+    await ask(page, REVISIONS);
+    await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
+    const send = page.locator('.revision-send');
+    const lock = page.locator('[data-send-lock]');
+    const own = page.locator('[data-suggestion-own="1:own"]');
+    await expect(send).toBeDisabled();
+    await expect(page.locator('.revision-input')).toHaveValue('');
+
+    const short = 'Back on his own.';
+    const enough = 'He walked back on his own.';
+    expect([short.length, enough.length]).toEqual([16, 26]);
+
+    await own.fill(short);
+    await own.press('Enter');
+    await expect(send).toBeDisabled();
+    await expect(lock).toBeVisible();
+
+    await own.fill(enough);
+    await own.press('Enter');
+    await expect(send).toBeEnabled();
+    await expect(lock).toHaveCount(0);
+  });
+
   test('the answers in place and the bottom field add up, and short of 25 together stays locked', async ({ page }) => {
     await ask(page, REVISIONS, { aid: true });
     const inPlace = page.locator('[data-question-answer="0"]');
