@@ -100,6 +100,38 @@ test.describe('names are still masked', () => {
   });
 });
 
+/* THE PARENT NOTE SHAPE, added 2026-10-03 with the parent note plan. A
+ * production parent intake headed its lists "Client Goals:" and "Parent
+ * Goals:" and wrote pipe rows whose first cell is the program. The role-label
+ * cue read "Goals" after "Client" as the client's name and minted [CLIENT] for
+ * it, so "Parent Goals:" reached the model as "Parent [CLIENT]:" and the note
+ * came back saying "BCBA met with Parent Goals". Invented lines of that shape. */
+const PARENT_SHAPE = [
+  'Client Goals:',
+  'Parent Goals:',
+  'Complete Functional One-Step Instructions (Listener Resp.)|0/3',
+  '1. Parent Goal: Implement Toilet Training Plan|Use Timer|2/0|100%',
+  'The caregiver ran the Client Goal and two Parent Goals today.',
+  'BT reviewed the client Programs and the caregiver Targets.',
+];
+
+test.describe('goal headers after a role word are not names', () => {
+  for (const line of PARENT_SHAPE) {
+    test(`nothing is flagged in: ${line}`, () => {
+      expect(gate.detectNames(line)).toEqual([]);
+    });
+  }
+
+  test('a real name after a role word is still taken, header or not', () => {
+    expect(gate.detectNames('Client Goals: Client Adaeze did Matching.')).toContain('Adaeze');
+    expect(lower(gate.detectNames('Mom Sarah ran Implement Toilet Training Plan with the client.'))).toContain('sarah');
+  });
+
+  test('a header word in surname position beside a name is still masked with it', () => {
+    expect(lower(gate.detectNames('The form was signed by Kowalski Goals at pickup.'))).toContain('kowalski goals');
+  });
+});
+
 /* The drafting path end to end: what the model is actually handed. */
 async function loggedIn(page) {
   await page.goto('/notes/bt/');
@@ -124,6 +156,15 @@ test.describe('what the model is handed', () => {
     const r = await scrubOf(page, text);
     expect(r.map).toEqual([]);
     expect(r.scrubbed).toBe(text);
+  });
+
+  test('a parent intake\'s goal headers and program rows leave the page as written', async ({ page }) => {
+    await loggedIn(page);
+    const text = 'Client Goals:\nComplete Functional One-Step Instructions|0/3\nParent Goals:\n1. Parent Goal: Implement Toilet Training Plan|2/0|100%\nBCBA met with caregivers.';
+    const r = await scrubOf(page, text);
+    expect(r.scrubbed).not.toMatch(/\[\[T\d+\]\]|\[CLIENT\]/);
+    expect(r.scrubbed).toContain('Parent Goals:');
+    expect(r.scrubbed).toContain('Implement Toilet Training Plan');
   });
 
   test('the name beside the program title is still taken', async ({ page }) => {
