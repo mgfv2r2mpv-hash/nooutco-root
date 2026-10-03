@@ -75,6 +75,11 @@ const SECOND = {
 };
 
 const NOT_REFINED = '(not refined)';
+/* The question, then the marker on the line under it. The optional "A: " is
+   for #229, which labels each answer under its question; the marker reads the
+   same in both shapes. */
+const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const notRefined = (question) => new RegExp(esc(question) + '\\n(?:A: )?' + esc(NOT_REFINED));
 
 async function ask(page, triage, { later = null } = {}) {
   const seen = { notes: [], triage: [] };
@@ -143,7 +148,7 @@ test.describe('nothing is picked until the technician picks it', () => {
     const content = noteText(seen);
     const at = content.indexOf('\n\nTHE TECHNICIAN ADDED');
     expect(at, 'the untouched question never reached the model').toBeGreaterThan(0);
-    expect(content.slice(at)).toContain('You wrote that you moved to the floor. Was that in the plan?\n' + NOT_REFINED);
+    expect(content.slice(at)).toMatch(notRefined('You wrote that you moved to the floor. Was that in the plan?'));
     for (const offered of [FLOOR, BOARD]) {
       expect(content, 'an untouched suggestion went out as the answer').not.toContain(offered);
     }
@@ -169,7 +174,7 @@ test.describe('nothing is picked until the technician picks it', () => {
 
     const content = noteText(seen);
     for (const q of SECOND.questions) {
-      expect(content).toContain(q.question + '\n' + NOT_REFINED);
+      expect(content).toMatch(notRefined(q.question));
       for (const offered of q.suggestions) {
         expect(content, 'an untouched suggestion went out as the answer').not.toContain(offered);
       }
@@ -187,9 +192,9 @@ test.describe('nothing is picked until the technician picks it', () => {
     const [q0, q1, q2] = SECOND.questions;
     expect(content).toContain(q1.suggestions[1]);
     expect(content).not.toContain(q1.suggestions[0]);
-    expect(content).not.toContain(q1.question + '\n' + NOT_REFINED);
-    expect(content).toContain(q0.question + '\n' + NOT_REFINED);
-    expect(content).toContain(q2.question + '\n' + NOT_REFINED);
+    expect(content).not.toMatch(notRefined(q1.question));
+    expect(content).toMatch(notRefined(q0.question));
+    expect(content).toMatch(notRefined(q2.question));
   });
 
   test('below the bar an untouched round is held until something is chosen', async ({ page }) => {
