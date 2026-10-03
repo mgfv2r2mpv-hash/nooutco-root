@@ -248,7 +248,8 @@ test.describe('what the partition keeps out', () => {
     // The second note's pass finds nothing. Registered last, so it answers first.
     await page.route('**/api/corrections-pass**', (route) =>
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ corrections: [], dropped: 0, usage: {}, model: 'test' }) }));
-    await page.getByRole('button', { name: 'Generate Note' }).click();
+    // The second press on this page reads Regenerate (regenerate.spec.js).
+    await page.getByRole('button', { name: 'Regenerate', exact: true }).click();
     await acceptScrubGate(page);
     await expect(page.locator('[data-corrections-section]')).toHaveCount(0, { timeout: 20000 });
     await expect(page.locator('textarea[data-section-id="behaviorPlanNarrative"]')).toHaveValue(PLAN);
