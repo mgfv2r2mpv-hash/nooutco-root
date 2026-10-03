@@ -2754,7 +2754,7 @@ function App() {
     try {
       let userMsg = tool.buildUserPrompt(scrubbedValues);
       if (extra && extra.trim()) {
-        userMsg += "\n\nTHE TECHNICIAN ADDED, ANSWERING FOLLOW-UP QUESTIONS (treat as part of the notes above):\n" + extra.trim();
+        userMsg += "\n\nTHE TECHNICIAN ADDED, ANSWERING FOLLOW-UP QUESTIONS (each A: answers the Q: above it, so write it where that question points; treat as part of the notes above):\n" + extra.trim();
       }
       // Snapshot the technician's learned style for this whole conversation.
       // Empty for a new technician, and empty when the profile store is
@@ -3382,6 +3382,66 @@ function App() {
       ])
       .filter((t) => t && t.trim());
 
+  /* EACH ANSWER TRAVELS WITH THE QUESTION IT ANSWERS. Approved 2026-10-02,
+     from a production Supervision note with wrong goal names and repeated
+     facts. The picks and the own-words rows used to go out as bare lines with
+     nothing saying which question each one answered, so the model could not
+     attach an answer to a goal and tacked it on at the end of the note.
+
+     `drafts` are the answers typed in place under each question. `free` is the
+     panel's own box, which belongs to no single question: it is written under
+     every question that has no other answer, because in the panel that box is
+     the only way to answer them, and on its own when every question already
+     has one. */
+  const answerPairs = (drafts) =>
+    (S.questions || [])
+      .map((q, qi) => {
+        const picked = (q.suggestions || []).map((raw, si) => suggestionText(qi, si, raw));
+        const typed = (drafts || {})[qi];
+        const answers = [...picked, ownAnswer(qi), typed == null ? "" : typed]
+          .map((t) => String(t || "").trim())
+          .filter(Boolean);
+        return { question: q && q.question ? String(q.question).trim() : "", answers };
+      });
+
+  /* What goes through the scrub gate: every question and answer on a line of
+     its own, the shape answeredInPlace has always sent. The Q: and A: labels
+     are added AFTER the scrub, so a label never puts a capitalised word in
+     mid-line where the name detector would read it as a name. */
+  const answerScrubText = (pairs, free) => {
+    const open = free ? pairs.filter((p) => !p.answers.length).map((p) => p.question) : [];
+    return [
+      ...pairs.filter((p) => p.answers.length).flatMap((p) => [p.question, ...p.answers]),
+      ...open,
+      free,
+    ].filter(Boolean).join("\n");
+  };
+
+  /* The labelled form the model reads. `out` is the scrub, applied to each
+     piece on its own; applyMap is deterministic per string, so a piece comes
+     out exactly as it would inside the whole. */
+  const answerBlock = (pairs, free, out) => {
+    const qLine = (q) => (q ? ["Q: " + out(q)] : []);
+    const answered = pairs
+      .filter((p) => p.answers.length)
+      .map((p) => [...qLine(p.question), ...p.answers.map((a) => "A: " + out(a))].join("\n"));
+    const open = pairs.filter((p) => !p.answers.length && p.question);
+    const loose = !free ? [] : open.length
+      ? [[...open.flatMap((p) => qLine(p.question)), "A: " + out(free)].join("\n")]
+      : [out(free)];
+    return [...answered, ...loose].join("\n\n");
+  };
+
+  /* THE NOTE'S WHOLE MAP, not this scrub's share of it. The question on screen
+     was restored, so it holds words the intake sent as tokens. This scrub mints
+     a fresh token for such a word, and sending that would hand the model an
+     answer about a goal it was never told about. The carried map holds the
+     intake's token first (mergeMaps keeps the earlier entry ahead of a later
+     one of the same length), so the word goes back out as the token the intake
+     used. It also masks a name the intake carried that this scrub alone would
+     have missed. */
+  const scrubAnswer = (text) => NotesScrub.applyMap(String(text || ""), scrubMapRef.current || []);
+
   /* Picking one drops its alternatives. Dropping the one that stands leaves the
      question with NO answer, which is a state they are allowed to be in and is
      the safe one: the drafter then designs that mechanic from the standing
@@ -3487,14 +3547,15 @@ function App() {
     });
     let carried = "";
     if (taken.length) {
-      const review = await scrubGate(taken.join("\n"), { carryOver: true });
+      const pairs = answerPairs({});
+      const review = await scrubGate(answerScrubText(pairs, ""), { carryOver: true });
       if (!review) return;
-      carried = NotesScrub.applyMap(taken.join("\n"), review.map);
+      carried = answerBlock(pairs, "", scrubAnswer);
     }
     pushThread("user", "answer", taken.length ? taken.join("\n") : "(skipped)");
     // Anything they answered in an earlier round still counts. Dropping it
     // because they skipped the last question would throw away work they did.
-    const answered = [S.triageAnswers, carried].filter((x) => x && x.trim()).join("\n");
+    const answered = [S.triageAnswers, carried].filter((x) => x && x.trim()).join("\n\n");
     patchS({ triageAnswers: "", triageRound: 0, suggestState: {} });
     draftNote(S.pendingValues || scrubValues([]), answered);
   };
@@ -3978,10 +4039,12 @@ function App() {
      and each one carrying its question. An empty box contributes nothing, so a
      technician who answered one of three sends one answer and not two blanks.
 
-     The QUESTION text is safe to repeat here: the model wrote it, from intake
-     that had already been through the scrub. The ANSWER is not, and it is not
-     treated as if it were - this string goes into the same gate the panel's
-     draft goes into, in the same call, a few lines below. */
+     Neither the QUESTION nor the ANSWER is treated as safe. The question was
+     restored for the screen, so it can hold words the intake sent as tokens.
+     Both go into the same gate the panel's draft goes into, in the same call,
+     and out under the note's whole map (see answerPairs and scrubAnswer). This
+     string is what the gate and the Send lock read; answerBlock is what the
+     model reads. */
   const answeredInPlace = () => {
     const qs = S.questions || [];
     const drafts = S.answerDrafts || {};
@@ -4009,6 +4072,9 @@ function App() {
        the pairing gets written down. */
     const text = [answeredInPlace(), S.panelDraft.trim()].filter(Boolean).join("\n\n");
     if (!text || loading) return;
+    // Read before the clear below, so the answer path pairs what was on screen.
+    const free = S.panelDraft.trim();
+    const drafts = S.answerDrafts || {};
     patchS({ panelDraft: "", answerDrafts: {} });
     /* THE THREAD SHOWS WHAT WENT, AND THE PICKS WENT. His report, 2026-09-22:
        "when I use the text field at the bottom of NoMe near the send, and then
@@ -4044,10 +4110,11 @@ function App() {
       //
       // The suggestions they left standing go through the SAME gate as the text
       // they typed, in one string, so an edited one cannot skip the check and a
-      // name typed into either is caught once.
+      // name typed into either is caught once. Each answer goes with its
+      // question (see answerPairs), and the question goes through the gate too.
       const taken = acceptedSuggestions();
-      const said = [...taken, text].filter((x) => x && x.trim()).join("\n");
-      const review = await scrubGate(said, { carryOver: true });
+      const pairs = answerPairs(drafts);
+      const review = await scrubGate(answerScrubText(pairs, free), { carryOver: true });
       if (!review) return;
       audit("gap_questions", {
         answered: S.questions.length,
@@ -4055,8 +4122,8 @@ function App() {
         round: S.triageRound || 1,
       });
 
-      const answered = [S.triageAnswers, NotesScrub.applyMap(said, review.map)]
-        .filter((x) => x && x.trim()).join("\n");
+      const answered = [S.triageAnswers, answerBlock(pairs, free, scrubAnswer)]
+        .filter((x) => x && x.trim()).join("\n\n");
       const round = (S.triageRound || 1) + 1;
 
       // Ask again only while there is room, and only if something is genuinely
