@@ -649,7 +649,7 @@ test.describe('the ledger outlives the page', () => {
  * checkbox put the scrubbed word back on the clipboard only. From 2026-09-28
  * the put-back table is a field per token: what he types is drawn in the note
  * and copied with it, a blank field keeps the token, and the model is only
- * ever sent the token. putback-table.spec.js pins the wire and the daily reset;
+ * ever sent the token. putback-table.spec.js pins the wire and the per-note reset;
  * these pin the clipboard.
  */
 async function stubClipboard(page) {

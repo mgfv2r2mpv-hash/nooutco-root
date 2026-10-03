@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { isTriageCall } from './helpers/llm-call.js';
+import { captureClipboard } from './helpers/clipboard.js';
 
 /* THE PUT-BACK TABLE: HIS WORDS ON THE PAGE, TOKENS ON THE WIRE.
  *
@@ -10,6 +11,12 @@ import { isTriageCall } from './helpers/llm-call.js';
  * that page load. When the tab or window is opened again for a note page,
  * anything in there saved in the fields from prior calendar days is axed so a
  * fresh page greets daily."
+ *
+ * His ruling, 2026-10-02, option (a): "agreed, new generate, new tokens". A
+ * word typed for [CLIENT] belongs to ONE note. Every Generate, every
+ * Regenerate and every Clear empties the table, and nothing typed there is
+ * written to storage, because the note itself does not survive a reload and a
+ * saved word could only ever land on a different client's note.
  *
  * What existed before this: a checkbox-gated table under the note, pre-filled
  * with the scrubbed word, that substituted on the CLIPBOARD only, was not saved,
@@ -175,43 +182,154 @@ test.describe('the wire stays dehydrated', () => {
   });
 });
 
-test.describe('saving, and the daily reset', () => {
-  const key = 'sap::putback';
+/* The drafting call is the one non-triage llm-call that carries a single turn.
+   A revision replays the conversation, so it carries more. */
+const draftingCalls = (bodies) => bodies.filter((b) =>
+  b.route === 'llm-call' && !isTriageCall(b.body) && (b.body.messages || []).length === 1).length;
 
-  test('his entries come back after a reload the same day, encrypted at rest', async ({ page }) => {
+const lastCopied = (page) => page.evaluate(() => navigator.clipboard.readText());
+
+async function copyCard(page, id) {
+  await page.locator(`[data-section-key="${id}"]`).getByRole('button', { name: 'Copy', exact: true }).click();
+  return lastCopied(page);
+}
+
+async function regenerateSap(page, bodies) {
+  const before = draftingCalls(bodies);
+  await page.getByRole('button', { name: /Generate SAP/i }).click();
+  await expect.poll(() => draftingCalls(bodies), { timeout: 30000 }).toBeGreaterThan(before);
+  await expect(page.getByText('Generated SAP Draft')).toBeVisible({ timeout: 30000 });
+}
+
+test.describe('one note, one set of words (his ruling, 2026-10-02)', () => {
+  test('a word typed for one note is gone from the table, the note and the copy after the next Generate', async ({ page }) => {
+    const bodies = [];
+    await captureModelCalls(page, bodies);
+    await captureClipboard(page);
+    await openSap(page);
+    await generateSap(page);
+    await page.getByTestId('put-back-input-[CLIENT]').fill(NAME);
+    await expect.poll(() => noteText(page)).toContain(`Teaches ${NAME} to wait`);
+
+    const before = bodies.length;
+    await regenerateSap(page, bodies);
+
+    await expect(page.getByTestId('put-back-input-[CLIENT]')).toHaveValue('');
+    await expect.poll(() => noteText(page)).toContain('Teaches [CLIENT] to wait');
+    expect(await noteText(page)).not.toContain(NAME);
+    const copied = await copyCard(page, 'purpose');
+    expect(copied).toContain('[CLIENT]');
+    expect(copied, 'the last note’s word reached the next note’s copy').not.toContain(NAME);
+
+    const sent = JSON.stringify(bodies.slice(before));
+    expect(sent).toContain('[CLIENT]');
+    expect(sent).not.toContain(NAME);
+  });
+
+  test('within one note the word holds through a revision, in the note and in the copy', async ({ page }) => {
+    const bodies = [];
+    await captureModelCalls(page, bodies);
+    await captureClipboard(page);
+    await openSap(page);
+    await generateSap(page);
+    await page.getByTestId('put-back-input-[CLIENT]').fill(NAME);
+
+    const before = bodies.length;
+    await page.getByText('Purpose', { exact: true }).click();
+    await page.locator('.revision-input').fill('make it one line');
+    await page.locator('.revision-send').click();
+    await expect.poll(() => bodies.slice(before).filter((b) => b.route === 'llm-call' && !isTriageCall(b.body)).length,
+      { timeout: 30000 }).toBeGreaterThan(0);
+
+    // A revision is the same note, so nothing he typed is dropped by it.
+    await expect(page.getByTestId('put-back-input-[CLIENT]')).toHaveValue(NAME);
+    await expect.poll(() => noteText(page)).toContain(`Teaches ${NAME} to wait`);
+    const copied = await copyCard(page, 'purpose');
+    expect(copied).toContain(`Teaches ${NAME} to wait`);
+    expect(copied).not.toContain('[CLIENT]');
+
+    const sent = JSON.stringify(bodies.slice(before));
+    expect(sent).toContain('[CLIENT]');
+    expect(sent, 'his word reached the model').not.toContain(NAME);
+  });
+
+  test('Clear empties the table for the next intake', async ({ page }) => {
     const bodies = [];
     await captureModelCalls(page, bodies);
     await openSap(page);
     await generateSap(page);
     await page.getByTestId('put-back-input-[CLIENT]').fill(NAME);
-    await expect.poll(() => page.evaluate(() => Object.keys(localStorage).some((k) => k.indexOf('putback') !== -1))).toBe(true);
-    // Never in plain local storage.
-    const plain = await page.evaluate(() => Object.keys(localStorage).map((k) => localStorage.getItem(k)).join('\n'));
-    expect(plain).not.toContain(NAME);
 
-    await page.reload();
-    await page.waitForFunction(() => !!(window.NotesScrub && window.NOTE_TOOLS && window.NOTE_TOOLS.length));
-    await generateSap(page);
-    await expect(page.getByTestId('put-back-input-[CLIENT]')).toHaveValue(NAME);
-    await expect.poll(() => noteText(page)).toContain(`Teaches ${NAME} to wait`);
-  });
+    page.on('dialog', (d) => d.accept());
+    await page.getByRole('button', { name: /^Clear/ }).click();
+    await expect(page.getByTestId('put-back-panel')).toHaveCount(0);
 
-  test('entries saved on a prior day are deleted on load', async ({ page }) => {
-    const bodies = [];
-    await captureModelCalls(page, bodies);
-    await openSap(page);
-    await page.evaluate(([k, n]) => window.NotesGate.draft.save(k, { day: '2000-01-01', words: { '[CLIENT]': n } }), [key, NAME]);
-    await expect.poll(() => page.evaluate(() => Object.keys(localStorage).some((k) => k.indexOf('putback') !== -1))).toBe(true);
-    await page.reload();
-    await page.waitForFunction(() => !!(window.NotesScrub && window.NOTE_TOOLS && window.NOTE_TOOLS.length));
-    // Cleared when the tool mounts, which waits for the drafts to decrypt.
-    await expect.poll(() => page.evaluate((k) => window.NotesGate.draft.load(k), key)).toBeNull();
     await generateSap(page);
     await expect(page.getByTestId('put-back-input-[CLIENT]')).toHaveValue('');
+    expect(await noteText(page)).not.toContain(NAME);
   });
 });
 
-test.describe('every tool keeps its own table and resets it daily', () => {
+test.describe('the outbound lock', () => {
+  test('takes a typed word back to its token, and never rewrites inside a token already there', async ({ page }) => {
+    await openSap(page);
+    const out = await page.evaluate(() => {
+      const d = window.NotesGate._scrub.dehydrateWords;
+      return {
+        plain: d('Samwise waited, then Samwise asked.', [{ token: '[CLIENT]', word: 'Samwise' }]),
+        // A word spelled like a token's own letters must leave the tokens whole.
+        inside: d('CLIENT met [CLIENT-2] and [CLIENT].', [{ token: '[CLIENT]', word: 'CLIENT' }]),
+        opaque: d('Used [[T1]] with T1.', [{ token: '[CLIENT]', word: 'T1' }]),
+      };
+    });
+    expect(out.plain).toBe('[CLIENT] waited, then [CLIENT] asked.');
+    expect(out.inside).toBe('[CLIENT] met [CLIENT-2] and [CLIENT].');
+    expect(out.opaque).toBe('Used [[T1]] with [CLIENT].');
+  });
+});
+
+test.describe('nothing typed there is written to storage', () => {
+  test('a typed word is never saved, so a reload and a new note start blank', async ({ page }) => {
+    const bodies = [];
+    await captureModelCalls(page, bodies);
+    await openSap(page);
+    await generateSap(page);
+    await page.getByTestId('put-back-input-[CLIENT]').fill(NAME);
+    await expect.poll(() => noteText(page)).toContain(`Teaches ${NAME} to wait`);
+    // The draft store encrypts in the background, so give a write time to land.
+    await page.waitForTimeout(500);
+
+    const stored = await page.evaluate(() => ({
+      keys: Object.keys(localStorage).filter((k) => k.indexOf('putback') !== -1),
+      plain: Object.keys(localStorage).map((k) => localStorage.getItem(k)).join('\n'),
+      decrypted: JSON.stringify(['sap', 'sap::map', 'sap::copied', 'sap::putback'].map((k) => window.NotesGate.draft.load(k))),
+    }));
+    expect(stored.keys).toEqual([]);
+    expect(stored.plain).not.toContain(NAME);
+    expect(stored.decrypted, 'his word sits in the draft store').not.toContain(NAME);
+
+    await page.reload();
+    await page.waitForFunction(() => !!(window.NotesScrub && window.NOTE_TOOLS && window.NOTE_TOOLS.length));
+    await generateSap(page);
+    await expect(page.getByTestId('put-back-input-[CLIENT]')).toHaveValue('');
+    await expect.poll(() => noteText(page)).toContain('Teaches [CLIENT] to wait');
+    expect(await noteText(page)).not.toContain(NAME);
+  });
+
+  test('a clear that lands while a save is still encrypting leaves nothing behind', async ({ page }) => {
+    await openSap(page);
+    const left = await page.evaluate(async () => {
+      window.NotesGate.draft.save('sap::race', { w: 'Racer' });
+      window.NotesGate.draft.clear('sap::race');
+      await new Promise((r) => setTimeout(r, 500));
+      return localStorage.getItem('notes_draft_sap::race');
+    });
+    expect(left, 'the encrypted write landed after the clear').toBeNull();
+  });
+
+  /* An earlier build of this table saved the words per tool under
+     `<tool>::putback`. Any such record is deleted when the page mounts, on
+     every tool, so nothing typed under it can come back into a later note. */
   const PAGES = [
     ['bt', '/notes/bt/'],
     ['sap', '/notes/bcba/index.html?tool=sap'],
@@ -220,31 +338,26 @@ test.describe('every tool keeps its own table and resets it daily', () => {
     ['parent', '/notes/bcba/index.html?tool=parent'],
   ];
   for (const [id, path] of PAGES) {
-    test(`${id}: today's entries survive a reload and a prior day's are axed`, async ({ page }) => {
+    test(`${id}: a word saved by an earlier build is deleted on load`, async ({ page }) => {
       await page.goto(path);
       await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), tokenFor([id]));
       await page.reload();
-      await page.waitForFunction(() => !!(window.NotesGate && window.NotesGate.draft));
+      // Seed only after the page has mounted, or its own sweep on mount races
+      // the seed and deletes it before this test can look.
+      await page.waitForSelector('textarea', { timeout: 30000 });
       const k = `${id}::putback`;
       const today = await page.evaluate(() => {
         const d = new Date();
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       });
-      await page.evaluate(([key, day]) => window.NotesGate.draft.save(key, { day, words: { '[CLIENT]': 'Kept' } }), [k, today]);
-      await page.evaluate(() => new Promise((r) => setTimeout(r, 300)));
-      const mounted = () => page.waitForSelector('textarea', { timeout: 30000 });
-      await page.reload();
-      await mounted();
-      await page.waitForTimeout(500);
-      expect(await page.evaluate((key) => window.NotesGate.draft.load(key), k)).toEqual({ day: today, words: { '[CLIENT]': 'Kept' } });
+      await page.evaluate(([key, day]) => window.NotesGate.draft.save(key, { day, words: { '[CLIENT]': 'Stale' } }), [k, today]);
+      await expect.poll(() => page.evaluate((key) => localStorage.getItem('notes_draft_' + key), k)).not.toBeNull();
 
-      await page.evaluate((key) => window.NotesGate.draft.save(key, { day: '2000-01-01', words: { '[CLIENT]': 'Stale' } }), k);
-      await page.evaluate(() => new Promise((r) => setTimeout(r, 300)));
       await page.reload();
-      await mounted();
-      // The page clears it when the tool mounts, so give the mount a moment.
+      await page.waitForSelector('textarea', { timeout: 30000 });
       await expect.poll(() => page.evaluate((key) => window.NotesGate.draft.load(key), k)).toBeNull();
       expect(await page.evaluate((key) => localStorage.getItem('notes_draft_' + key), k)).toBeNull();
     });
   }
 });
+
