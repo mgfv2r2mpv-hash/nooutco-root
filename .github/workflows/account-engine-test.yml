@@ -1,0 +1,100 @@
+name: Account Engine Tests
+
+# packages/account-engine is the code check, the lockout rules and the PIN
+# rules that Horae Zone, Sass C. Assistant and JanusMirror share, and it must
+# run unchanged in Node, a browser and a Worker. The runtime tests prove that
+# with Playwright's Chromium and a pinned workerd, so this job installs both.
+#
+# THE PIN BLOCKLIST IS PRIVATE (owner ruling, 2026-10-03). The real list lives
+# in the private repo mgfv2r2mpv-hash/pin-blocklist; the public suite runs on a
+# five-PIN fixture and passes without it. When the read-only deploy key is set
+# as the secret PIN_BLOCKLIST_DEPLOY_KEY, the job also checks out the private
+# package and the live test ("the installed private package loads all 2,913
+# PINs") runs instead of skipping. Without the secret (not yet created, or a
+# fork's pull request) those steps are skipped, never failed.
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - 'packages/account-engine/**'
+      - '.github/workflows/account-engine-test.yml'
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - 'packages/account-engine/**'
+      - '.github/workflows/account-engine-test.yml'
+
+defaults:
+  run:
+    working-directory: packages/account-engine
+
+jobs:
+  # Guard: the vendored @noble files are byte-for-byte what was pinned when
+  # they were vendored. A hand edit to a copy fails here before any test runs,
+  # in the same gate-then-run shape as deploy-pages.yml's drift-check.
+  drift-check:
+    name: Account engine vendored files match their pins
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check vendor/noble against vendor/noble.sha256
+        working-directory: packages/account-engine/vendor/noble
+        run: sha256sum --check --strict --quiet ../noble.sha256
+
+  test:
+    name: Account engine (node + Chromium + workerd)
+    needs: drift-check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      HAS_PIN_BLOCKLIST_KEY: ${{ secrets.PIN_BLOCKLIST_DEPLOY_KEY != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # 22: the engine's floor, and the first `node --test` that expands a
+          # glob itself (see profile-api-test.yml).
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: packages/account-engine/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      # Only with the secret. The key is read-only and scoped to the one
+      # private repo; persist-credentials false keeps it out of later steps.
+      - name: Check out the private PIN blocklist
+        if: env.HAS_PIN_BLOCKLIST_KEY == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: mgfv2r2mpv-hash/pin-blocklist
+          ref: v1.0.0
+          ssh-key: ${{ secrets.PIN_BLOCKLIST_DEPLOY_KEY }}
+          persist-credentials: false
+          path: _private/pin-blocklist
+
+      # After `npm ci`, which empties node_modules. Copied, not saved: the
+      # package is never a declared dependency of this public package.
+      - name: Put the private package where the engine imports it
+        if: env.HAS_PIN_BLOCKLIST_KEY == 'true'
+        run: |
+          mkdir -p node_modules/@nooutco
+          cp -R "$GITHUB_WORKSPACE/_private/pin-blocklist" node_modules/@nooutco/pin-blocklist
+          rm -rf node_modules/@nooutco/pin-blocklist/.git
+
+      - name: Say which PIN list the run uses
+        run: |
+          if [ "$HAS_PIN_BLOCKLIST_KEY" = "true" ]; then
+            echo "PIN list: the private package and the public fixture (live test runs)" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "PIN list: the public fixture only (PIN_BLOCKLIST_DEPLOY_KEY not set; live test skipped)" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Run tests
+        run: node --test --test-timeout=120000 "test/*.test.mjs"

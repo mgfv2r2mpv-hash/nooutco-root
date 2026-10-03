@@ -66,8 +66,11 @@ test('the engine\'s pake runs unchanged in a browser', async (t) => {
     }
   });
   const port = await listen(server);
+  // Closed first and on its own, so a browser that fails to launch fails the
+  // test instead of leaving the server holding the run open forever.
+  t.after(() => server.close());
   const browser = await chromium.launch();
-  t.after(async () => { await browser.close(); server.close(); });
+  t.after(() => browser.close());
   const page = await browser.newPage();
   await page.goto(`http://127.0.0.1:${port}/`);
   const got = await page.evaluate(async () => (await import('/src/probe.mjs')).probe());
