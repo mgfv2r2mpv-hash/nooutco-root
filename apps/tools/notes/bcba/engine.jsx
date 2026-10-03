@@ -1595,6 +1595,19 @@ function App() {
      which is a far smaller error than counting one note six times, and it is
      the only moment available: nothing in the tool marks a note as done. */
   const taughtRef = React.useRef(false);
+  /* WHAT THE NOTE TEACHES IS SPENT ONLY WHEN IT HAD SOMETHING TO TEACH.
+     taughtRef above counts the copy. These two count the lessons, and they are
+     separate because the first Copy is often pressed before the technician has
+     done anything to the note: a section copied with the corrections still
+     standing as offered carries no pair of theirs. Spending the note's one
+     teaching on that copy threw away every edit made after it, which is how an
+     assess note copied on 2026-10-02, then worked by hand and copied again,
+     reached the voice store as nothing (probe: voice-assess-probe.spec.js).
+
+     Still once per note: each is set the first time it actually emits, and a
+     later Copy finds it set and sends nothing. */
+  const styleTaughtRef = React.useRef(false);
+  const voiceTaughtRef = React.useRef(false);
 
   /* What each corrected section was offered as, what was undone and how the
      marks read, kept after "Edit by hand" puts a section's marks away. See
@@ -1612,8 +1625,15 @@ function App() {
      taught six times or none depending only on which button the technician
      reached for. */
   const recordNoteLeft = () => {
-    if (!S.output || !S.lastCallAt || taughtRef.current) return;
-    taughtRef.current = true;
+    if (!S.output || !S.lastCallAt) return;
+    if (!taughtRef.current) {
+      taughtRef.current = true;
+      recordCopyOnce();
+    }
+    learnFromNote();
+  };
+
+  const recordCopyOnce = () => {
     const retyped = manualEditBySection();
     audit("note_copied", {
       seconds: Math.round((Date.now() - S.lastCallAt) / 1000),
@@ -1631,17 +1651,30 @@ function App() {
        Nothing is sent for a note that was copied as written. The absence is the
        reading: note_copied's `edited` is 0 on the same note and says so. */
     if (Object.keys(retyped).length) audit("note_retyped", retyped);
+  };
 
-    // Typing over the draft is the strongest signal there is - it is the
-    // technician's own prose rather than something they approved. Measured at
-    // copy time because that is when they are finished with it.
+  // Typing over the draft is the strongest signal there is - it is the
+  // technician's own prose rather than something they approved. Measured at
+  // copy time because that is when they are finished with it, and on every
+  // Copy until each lesson has been sent once (see styleTaughtRef).
+  const learnFromNote = () => {
+    if (styleTaughtRef.current && voiceTaughtRef.current) return;
     const modelOut = lastModelOutput();
     if (!modelOut) return;
     if (!window.NoteSpecimens) return;
     const leaving = NoteSpecimens.pairs({ ids: narrativeIds(), draft: modelOut, book: specimenBook.current, shipped: S.output });
-    leaving.forEach((p) => emitStyle(p.before, p.after, p.source, p.own));
+    if (!styleTaughtRef.current && leaving.length) {
+      styleTaughtRef.current = true;
+      leaving.forEach((p) => emitStyle(p.before, p.after, p.source, p.own));
+    }
     // The note's voice levels, read only when the technician's own hand changed it. See voice-note.js.
-    if (window.NoteVoice) NotesGate.audit.voice(NoteVoice.entry({ tool: tool.id, ids: narrativeIds(), shipped: S.output, pairs: leaving }));
+    if (!voiceTaughtRef.current && window.NoteVoice) {
+      const entry = NoteVoice.entry({ tool: tool.id, ids: narrativeIds(), shipped: S.output, pairs: leaving });
+      if (entry) {
+        voiceTaughtRef.current = true;
+        NotesGate.audit.voice(entry);
+      }
+    }
   };
 
   /* Remember what went to the clipboard, so the section map can tell "already in
@@ -2635,6 +2668,8 @@ function App() {
     setLoading(true);
     patchS({ output: null, proposal: null, conversation: [], questions: null, readiness: null, pendingValues: null, expert: null, corrections: null, markState: {}, askQueue: {}, heldOut: [] });
     taughtRef.current = false; // a new note may teach again; a revision may not
+    styleTaughtRef.current = false;
+    voiceTaughtRef.current = false;
     specimenBook.current = null;
     try {
       let userMsg = tool.buildUserPrompt(scrubbedValues);
