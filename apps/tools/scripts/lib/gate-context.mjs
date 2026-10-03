@@ -103,6 +103,9 @@ export function loadGateSource(source, label) {
     buildIdentifierMap: s.buildIdentifierMap,
     applyScrub: s.applyScrub,
     isFirstName: s.isFirstName,
+    // Everything the gate exposes under _scrub, for a spec that needs a hook
+    // the census itself never reads (program-words-not-names.spec.js).
+    raw: s,
   };
 }
 
