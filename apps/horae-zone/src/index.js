@@ -6,9 +6,14 @@
  * What it holds and never holds is in schema.sql. Every request ends in one
  * audit row of route and closed reason word. There is no console output: a
  * log line is one more place a value could land.
+ *
+ * The scheduled handler (wrangler.toml [triggers]) purges spent and expired
+ * nonces and audit rows past their retention (src/retention.js). A failed
+ * purge throws, so Cloudflare records the cron run as failed.
  */
 import { ROUTES } from "./routes.js";
 import { Refusal, readBody, findDevice, checkSignature, isAdmin } from "./checks.js";
+import { purgeExpired } from "./retention.js";
 
 const HEADERS = { "content-type": "application/json", "cache-control": "no-store" };
 
@@ -55,8 +60,17 @@ export function createHandler({ now = () => Date.now(), routes = ROUTES } = {}) 
   };
 }
 
+export function createScheduled({ retention = {} } = {}) {
+  return (controller, env, ctx) => {
+    if (!env || !env.DB) throw new Error("scheduled purge: no database bound");
+    ctx.waitUntil(purgeExpired(env.DB, controller.scheduledTime, retention));
+  };
+}
+
 const handle = createHandler();
+const purge = createScheduled();
 
 export default {
   fetch: (request, env) => handle(request, env),
+  scheduled: (controller, env, ctx) => purge(controller, env, ctx),
 };

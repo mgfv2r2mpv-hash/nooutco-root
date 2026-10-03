@@ -15,6 +15,12 @@ compatibility_date = "2026-09-01"
 
 workers_dev = false
 
+# The hourly purge of spent and expired nonces and of audit rows past their
+# 6-year retention (src/retention.js RETENTION; test/purge.test.mjs keeps the
+# two in step). A cron trigger opens no URL.
+[triggers]
+crons = ["0 * * * *"]
+
 [[d1_databases]]
 binding = "DB"
 database_name = "horae-zone"

@@ -1,8 +1,7 @@
 // Checks a vendored folder against the sha256 record written when it was
 // vendored. Returns the relative paths ("./x/y.js") that differ, are missing
 // or are not recorded; an empty list means every file matches its pin.
-// `only` limits the files on disk that are compared (the pins folder also
-// holds its source note, which carries no pin).
+// `only` limits the files on disk that are compared.
 import crypto from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
