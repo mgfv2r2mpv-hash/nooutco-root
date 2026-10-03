@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import path from 'node:path';
 import { readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 
 /* ONE PARENT NOTE THAT CAME OUT WRONG, KEPT AS A TEST.
  *
@@ -136,5 +137,69 @@ test.describe('the checker', () => {
       expect(c.intake.length, c.id).toBeGreaterThan(40);
       expect(Object.keys(c.expect).length, c.id).toBeGreaterThan(2);
     }
+  });
+});
+
+/* THE PASTE SCRIPT, run on the real page with the model call stubbed. Kaleb
+ * runs scripts/parent-shape-live.js from his console, where a broken call
+ * would cost him a run and say little, so this proves the file is current with
+ * the fixture and the checker, reaches every page function it names, and
+ * scores what comes back. Nothing here leaves the browser. */
+test.describe('the live paste script', () => {
+  test('the committed file is what the builder writes', () => {
+    const run = spawnSync(process.execPath, ['scripts/build-parent-shape-live.mjs', '--check'], { cwd: ROOT, encoding: 'utf8' });
+    expect(run.status, run.stdout + run.stderr).toBe(0);
+  });
+
+  test('it drafts every case through the page and scores each one', async ({ page }) => {
+    await page.goto('/notes/bcba/index.html');
+    await page.evaluate(() => {
+      const payload = { role: 'user', kid: 'pw:bcba-1', tools: ['parent'], exp: Math.floor(Date.now() / 1000) + 3600 };
+      const b64 = btoa(JSON.stringify(payload)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      localStorage.setItem('notes_auth_token', `${b64}.local-test`);
+    });
+    await page.reload();
+    await page.waitForFunction(() => (window.NOTE_TOOLS || []).some((t) => t.id === 'parent'));
+
+    const GOOD_V1 = {
+      individualsPresent: ['Parent/Caregiver', 'Client', 'Technician'],
+      caregiverResponse: 'Parent/Family is trying to learn new strategies, but there are some small barriers to generalization.',
+      progressStatus: 'Moderate progress towards goals',
+      summary: 'BCBA met with caregivers to review a staff transition the parents requested. Client completed Complete Functional One-Step Instructions on 2 of 3 trials, both with a physical prompt (criterion: gesture prompt), and tantrum behavior occurred on the third. Climbing occurred 2 times during the parent training portion. Caregivers ran Prompt FCR (Antecedent) at 6/1, 85%. Caregivers implemented Prompt to Sit for Interval, Prompt to Go to Bathroom and Use Timer at 2/0, 100% each.',
+      followup: 'Review the missed FCR prompt with caregivers and model prompting before climbing precursors.\nMonitor new technician onboarding over the next 2 weeks for fidelity with the BIP.',
+      hints: [],
+    };
+    await page.evaluate((good) => {
+      window.__sent = [];
+      window.NotesGate.styleCard = { get: async () => ({ block: 'STYLE CARD', shapeBlock: 'SHAPE' }) };
+      window.NotesGate.generateConversation = async (opts) => {
+        window.__sent.push(opts);
+        if (window.__sent.length === 1) return { parsed: good };
+        if (window.__sent.length === 2) throw new Error('the model was unreachable');
+        return { parsed: { summary: 'A short summary.', followup: 'Clarify whether the BT attended?', hints: [] } };
+      };
+    }, GOOD_V1);
+
+    const script = readFileSync(path.join(ROOT, 'scripts/parent-shape-live.js'), 'utf8');
+    const report = await page.evaluate(script);
+    const sent = await page.evaluate(() => window.__sent.map((o) => ({
+      user: o.messages[0].content, suffix: o.systemSuffix, tool: o.tool, keys: o.expectKeys, schema: !!o.responseSchema,
+    })));
+
+    expect(report.results.map((r) => r.case)).toEqual(fixture.cases.map((c) => c.id));
+    expect(report.results[0]).toMatchObject({ case: 'v1-the-original-shape', pass: true, voice: true });
+    expect(report.results[1].fails).toMatch(/draft failed: the model was unreachable/);
+    expect(report.results[2].pass).toBe(false);
+    expect(report.results[3].fails).toMatch(/goal not named/);
+
+    expect(sent).toHaveLength(4);
+    expect(sent.every((s) => s.tool === 'parent' && s.schema && s.keys.includes('summary'))).toBe(true);
+    expect(sent[0].suffix).toMatch(/^STYLE CARD[\s\S]*SHAPE$/);
+    // Program words may leave as tokens until the scrubber's word list covers
+    // them, so these hold to words the scrubber never takes.
+    expect(sent[0].user).toContain('\nQ: You wrote 0/3 on the');
+    expect(sent[0].user).toContain('\nA: ');
+    expect(sent[0].user).toContain('behavior occurred on 1 trial');
+    expect(sent[2].user).not.toContain('THE TECHNICIAN ADDED');
   });
 });
