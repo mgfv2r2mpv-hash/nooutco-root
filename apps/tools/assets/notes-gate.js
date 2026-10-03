@@ -991,8 +991,33 @@
    "Following Directions Instructions Transition Transitions Greetings " +
    "Communication Functional Compliance Attention Conversation Social Skills Play " +
    "Elopement Tantrum Tantrums Noncompliance Hitting Biting Kicking Screaming " +
-   "Crying Throwing Flopping Pinching Scratching Injury")
+   "Crying Throwing Flopping Pinching Scratching Injury " +
+   // Added 2026-10-03 from a production parent note: "Implement Toilet
+   // Training Plan" and "Functional One-Step Instructions" went out as rows
+   // of [[Tn]] tokens. Same test as the words above: common in a program
+   // title, not a given name, not a surname, not a place.
+   "Complete Implement Toilet Training One-Step Two-Step Step Steps " +
+   "Prompt Prompts Sit Interval Production Bathroom Use Timer Resp Responses")
     .split(/\s+/).forEach(function (w) { if (w) PROGRAM_WORDS[w.toLowerCase()] = true; });
+
+  /* GOAL AND SECTION HEADERS AFTER A ROLE WORD. "Client Goals:" and "Parent
+   * Goals:" head a list in an intake; they are not "client Jacob". Before this,
+   * the role-label cue below read "Goals" as the client's name, minted
+   * [CLIENT] for it, and "Parent Goals:" reached the model as "Parent
+   * [CLIENT]:" - so the note came back saying "BCBA met with Parent Goals".
+   * Approved 2026-10-03 with the parent note plan. Narrow on purpose: only
+   * these header nouns skip the role cue; every other word after a role word
+   * is still treated as a possible name. A header that is not already a
+   * stopword (Goal, Target and Program are) also joins the program words, so
+   * the pair pass sets it aside unless a name-like word stands beside it. */
+  var HEADER_WORDS = {};
+  ("Goal Goals Program Programs Target Targets Skill Skills Plan Plans Objective Objectives Behaviors")
+    .split(/\s+/).forEach(function (w) {
+      if (!w) return;
+      var wl = w.toLowerCase();
+      HEADER_WORDS[wl] = true;
+      if (!STOPWORDS[wl]) PROGRAM_WORDS[wl] = true;
+    });
 
   // Common US first names (lowercase). Any word in the note matching one of these
   // is flagged as a name candidate regardless of capitalisation, giving the clinician
@@ -1693,6 +1718,8 @@
            running prose, so a preposition alone is no evidence of a person for
            a program word. The role label and the possessive still count. */
         if (cr === PREPOSITION_CUE && PROGRAM_WORDS[cl]) continue;
+        // "Client Goals", "Parent Goals": a header after a role word, not a name.
+        if (HEADER_WORDS[cl]) continue;
         if (!excluded[cl] && !STOPWORDS[cl]) contextNames[cl] = cname;
       }
     });
