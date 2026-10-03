@@ -192,8 +192,9 @@ test.describe('what the answers do', () => {
     /* The question they did not answer contributes no blank: it goes marked
        "(not refined)", his wording of 3 Oct 2026, so the model can tell a
        question left alone from one it never asked. */
-    expect(answered).toContain('Was moving to the floor in the plan?\n(not refined)');
-    expect(answered).not.toContain('How did the two elopements compare with last week?\n(not refined)');
+    // The optional "A: " is for #229's labelled pairs.
+    expect(answered).toMatch(/Was moving to the floor in the plan\?\n(?:A: )?\(not refined\)/);
+    expect(answered).not.toMatch(/How did the two elopements compare with last week\?\n(?:A: )?\(not refined\)/);
   });
 
   /* The dead end the first version of this had. Below the readiness bar the
@@ -271,10 +272,13 @@ test.describe('on the phone he actually hands them', () => {
     /* Nothing arrives chosen (2 Oct 2026), and below the bar an untouched
        round adds the held line to the panel. Choosing the suggestion is the
        one tap that ends the round, so the panel is measured after it. */
+    /* A tap on the page collapses the panel, and on webkit the page moving
+       under that collapse swallowed the tap, so the panel is closed first and
+       opened again to measure. */
+    await page.locator('.revision-panel-close').click();
     await page.locator('[data-disposition="0:0"]').click();
     await page.locator('[data-disposition-revert="0:0"]').click();
-    // A tap on the page collapses the panel, so it is opened again to measure.
-    if (!(await page.locator('.revision-panel').isVisible())) await page.locator('.revision-fab').click();
+    await page.locator('.revision-fab').click();
     await expect(page.locator('[data-skip-held]')).toHaveCount(0);
     const panel = page.locator('.revision-panel');
     await expect(panel).toHaveClass(/revision-panel-bar/);
