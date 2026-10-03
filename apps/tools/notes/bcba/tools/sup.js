@@ -30,7 +30,9 @@
   var FORM_SECTIONS = [
     // His layout, 2026-08-04: Goals Analyzed is the wide one and leads, with
     // the two short cards side by side underneath it rather than above.
-    { kind: "table", heading: "Goals Analyzed", fullWidth: true, key: "goalsAnalyzed", columns: [
+    // checkAgainstIntake: each goal name is compared with the intake, and one
+    // the BCBA never wrote is flagged on its row (goal-names.js, 2026-10-02).
+    { kind: "table", heading: "Goals Analyzed", fullWidth: true, key: "goalsAnalyzed", checkAgainstIntake: "goal", columns: [
       { id: "goal", label: "Goal" },
       { id: "progress", label: "Progress" },
       { id: "nextSteps", label: "Next Steps" },
