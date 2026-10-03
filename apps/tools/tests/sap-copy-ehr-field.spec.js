@@ -239,9 +239,13 @@ test.describe('the field row fits', () => {
     test(`at ${width} px nothing scrolls sideways and every Copy is on screen`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
       await draft(page);
-      const sideways = await page.evaluate(() =>
+      // Polled, not read once, for the reason changes-drawer.spec.js gives:
+      // WebKit can report the document wide for one frame after the draft
+      // lands (146 px, 1 run in 6 on dev at a693ee94), then 0 from the next.
+      // A page that stays wide still fails here.
+      const sideways = () => page.evaluate(() =>
         document.documentElement.scrollWidth - document.documentElement.clientWidth);
-      expect(sideways, 'the page scrolls sideways').toBeLessThanOrEqual(0);
+      await expect.poll(sideways, { message: 'the page scrolls sideways', timeout: 2000 }).toBeLessThanOrEqual(0);
 
       for (const field of FIELDS) {
         const button = page.getByRole('button', { name: `Copy ${field.heading}`, exact: true });
