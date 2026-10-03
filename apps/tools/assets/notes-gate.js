@@ -957,6 +957,43 @@
    "Sibling Peer")
     .split(/\s+/).forEach(function (w) { if (w) STOPWORDS[w.toLowerCase()] = true; });
 
+  /* PROGRAM, GOAL AND BEHAVIOUR WORDS, which are Title Case in a program title
+   * and are not names. Approved 2026-10-02, from a production Supervision note
+   * whose goal names reached the model as a row of [[Tn]] tokens: "Personal
+   * Information", "Safety Questions" and "Task Refusal" each had every word
+   * flagged, the review dialog that once let someone wave them off went on
+   * 2026-08-24, and the case blind replace took the lowercase uses as well.
+   *
+   * KEPT APART FROM STOPWORDS, because a stopword is dropped wherever it stands
+   * and these are not. A word here is set aside only when nothing that could be
+   * a name stands next to it. "Sarah Matching" or "Kowalski Safety" is a first
+   * and last name pair as far as the scrubber can tell, so the whole pair is
+   * still masked (see nameLikeNeighbour). And the first-names dictionary pass
+   * never reads this list, so a word the dictionary knows is caught whatever is
+   * written here; program-words-not-names.spec.js also holds every word below
+   * outside that dictionary.
+   *
+   * CURATED FROM THE TOOLS' OWN VOCABULARY (the intake examples, the drafting
+   * prompts, the PHI census corpus and the specs), short on purpose. A word
+   * belongs here only if it is common in an ABA program, goal or behaviour
+   * title, is not a given name, and is not a surname or a place someone could
+   * be from. Delay (a surname), Mand (a surname) and Reading (a town) were left
+   * off for that reason. Tact and Echoic were left off as well: the token round
+   * trip specs use them as their standing example of a word that leaves as
+   * [[Tn]] and comes back, and nothing in the bad note needed them. A real name
+   * that reaches the model is the worst outcome this list can have, so when in
+   * doubt a word stays off it and is masked as before. */
+  var PROGRAM_WORDS = {};
+  ("Personal Information Safety Questions Responding Task Refusal Aggression " +
+   "Manding Mands Tacting Imitation Matching Listener Receptive Expressive " +
+   "Identification Labeling Sorting Counting Toileting Feeding Dressing " +
+   "Tolerating Tolerance Requesting Breaks Delays Demands Waiting Sharing " +
+   "Following Directions Instructions Transition Transitions Greetings " +
+   "Communication Functional Compliance Attention Conversation Social Skills Play " +
+   "Elopement Tantrum Tantrums Noncompliance Hitting Biting Kicking Screaming " +
+   "Crying Throwing Flopping Pinching Scratching Injury")
+    .split(/\s+/).forEach(function (w) { if (w) PROGRAM_WORDS[w.toLowerCase()] = true; });
+
   // Common US first names (lowercase). Any word in the note matching one of these
   // is flagged as a name candidate regardless of capitalisation, giving the clinician
   // a chance to certify it as non-PII or assign a role token. Sourced from SSA
@@ -1617,13 +1654,14 @@
     // These bypass the sentence-start downgrade even if only at sentence starts.
     var contextNames = {};
     var SIMPLE_CAP = "([A-Z][a-z]{1,15}(?:[\\-’][A-Za-z]{1,})?)";
+    // after common prepositions: "with Jacob", "for Sarah", "beside Mark"
+    var PREPOSITION_CUE = new RegExp("\\b(?:with|for|beside)\\s+" + SIMPLE_CAP + "\\b", "gi");
     [
       // role label immediately followed by a capitalized word: "client Jacob", "mom Sarah"
       new RegExp("\\b(?:client|caregiver|mom|dad|mother|father|guardian|bt|rbt|technician|teacher)\\s+" + SIMPLE_CAP + "\\b", "gi"),
       // possessive form - separate simple pattern avoids NAME_WORD consuming the ‘s
       new RegExp("\\b" + SIMPLE_CAP + "[‘’]s\\b", "g"),
-      // after common prepositions: "with Jacob", "for Sarah", "beside Mark"
-      new RegExp("\\b(?:with|for|beside)\\s+" + SIMPLE_CAP + "\\b", "gi"),
+      PREPOSITION_CUE,
     ].forEach(function (cr) {
       var cm;
       while ((cm = cr.exec(text)) !== null) {
@@ -1651,6 +1689,10 @@
          */
         if (!TITLE_CASE.test(cname)) continue;
         var cl = cname.toLowerCase();
+        /* "for Toileting" and "with Imitation" are how a program is named in
+           running prose, so a preposition alone is no evidence of a person for
+           a program word. The role label and the possessive still count. */
+        if (cr === PREPOSITION_CUE && PROGRAM_WORDS[cl]) continue;
         if (!excluded[cl] && !STOPWORDS[cl]) contextNames[cl] = cname;
       }
     });
@@ -1665,14 +1707,39 @@
     // Add context-signal names first (bypass sentence-start filter).
     Object.keys(contextNames).forEach(function (k) { push(contextNames[k]); });
 
+    /* COULD THIS WORD BE PART OF A NAME? Capitalised, and on neither list. A
+       word at a sentence start counts too: the downgrade below decides whether
+       it is flagged, not whether it can make a program word beside it a
+       surname, and reading it the other way would unmask "Matching" in a name
+       pair that opens a sentence. */
+    function nameLike(w) {
+      var wl = String(w || "").replace(/[‘’]s$/i, "").toLowerCase();
+      return !!wl && !STOPWORDS[wl] && !excluded[wl] && !PROGRAM_WORDS[wl];
+    }
+    /* The pair regex reads two words at a time, so in "Mom Matching Kowalski"
+       the window is "Mom Matching" and "Kowalski" is the next one. A program
+       word with a name-like capitalised word right beside it, on the same
+       line, is kept as part of a possible name whichever window it fell in. */
+    var NEXT_CAP = new RegExp("^[ \\t]+(" + NAME_WORD + ")");
+    var PREV_CAP = new RegExp("(" + NAME_WORD + ")[ \\t]+$");
+    function nameLikeNeighbour(start, end) {
+      var after = NEXT_CAP.exec(text.slice(end, end + 64));
+      var before = PREV_CAP.exec(text.slice(Math.max(0, start - 64), start));
+      return !!((after && nameLike(after[1])) || (before && nameLike(before[1])));
+    }
+
     var re = new RegExp("\\b(" + NAME_WORD + "(?:\\s+" + NAME_WORD + ")?)\\b", "g");
     var m;
     while ((m = re.exec(text)) !== null) {
       var phrase = m[1].replace(/[‘’]s$/, ""); // drop possessive
       var words = phrase.split(/\s+/);
+      // A program word is set aside only when nothing beside it could be a name.
+      var besideName = (words.length > 1 && words.some(nameLike)) ||
+        nameLikeNeighbour(m.index, m.index + m[0].length);
       var meaningful = words.filter(function (w) {
         var wl = w.toLowerCase();
         if (STOPWORDS[wl] || excluded[wl]) return false;
+        if (PROGRAM_WORDS[wl] && !besideName) return false;
         // Downgrade: sentence-start word that never appears mid-sentence capitalized,
         // not in FIRST_NAMES, and not in a high-confidence context → skip.
         if (sentenceStartWords[wl] && !midSentenceCapitalized[wl] && !FIRST_NAMES[wl] && !contextNames[wl]) return false;
@@ -2325,6 +2392,8 @@
       isFirstName: function (w) {
         return !!FIRST_NAMES[String(w || "").toLowerCase().replace(/[^a-z'\-]/g, "")];
       },
+      // The program-word list, read by the spec that holds it outside FIRST_NAMES.
+      programWords: function () { return Object.keys(PROGRAM_WORDS); },
       applyScrub: applyScrub, restoreDeep: restoreDeep,
       inferRoles: inferRoles, buildRoleMap: buildRoleMap,
     },
