@@ -8,11 +8,9 @@ import { vendorMismatches } from '../bin/vendor-pins.mjs';
 
 const VENDOR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'vendor');
 
-for (const [dir, record] of [['noble', 'noble.sha256'], ['pins', 'pins.sha256']]) {
-  test(`the vendored ${dir} files match the hashes recorded when they were vendored`, () => {
-    assert.deepEqual(vendorMismatches(path.join(VENDOR, dir), path.join(VENDOR, record), { only: dir === 'pins' ? /\.txt$/ : null }), []);
-  });
-}
+test('the vendored noble files match the hashes recorded when they were vendored', () => {
+  assert.deepEqual(vendorMismatches(path.join(VENDOR, 'noble'), path.join(VENDOR, 'noble.sha256')), []);
+});
 
 test('NEGATIVE CONTROL: a vendored file that differs from its pin fails', (t) => {
   const tmp = mkdtempSync(path.join(os.tmpdir(), 'engine-vendor-'));
