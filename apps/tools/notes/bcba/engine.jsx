@@ -618,11 +618,19 @@ function Checklist({ options, selected, single = false, sectionId: sid }) {
 
 // Editable Goal/Progress/Next-Steps rows matching the EHR's 3-column grid.
 // Each cell has its own copy affordance because the EHR has separate boxes.
-function GoalsTable({ columns, rows, onChange, onCopyCell, copiedId, idPrefix }) {
+/* `flagged` holds the rows whose name in `checkColumn` the intake never named
+   (see goalFlags in the engine). Such a row is edged in the claim-warning tone
+   and carries one line under it saying so, with a Confirm button. The name
+   itself is never touched here: correcting it is an edit to the cell, and an
+   edit re-checks it. */
+const GOAL_FLAG = { fg: "#9b1c1c", bg: "#fdf0ef", edge: "#eec4c0" };
+
+function GoalsTable({ columns, rows, onChange, onCopyCell, copiedId, idPrefix, checkColumn, flagged, onConfirm }) {
   const list = Array.isArray(rows) ? rows : [];
   if (!list.length) {
     return <p style={{ fontSize: 13, color: "#9aab86", fontStyle: "italic" }}>No goals identified in the notes.</p>;
   }
+  const flags = new Set(Array.isArray(flagged) ? flagged : []);
   const setCell = (ri, cid, val) => {
     const next = list.map((r, i) => (i === ri ? { ...r, [cid]: val } : r));
     onChange(next);
@@ -630,7 +638,8 @@ function GoalsTable({ columns, rows, onChange, onCopyCell, copiedId, idPrefix })
   return (
     <div style={{ display: "grid", gap: 10 }}>
       {list.map((row, ri) => (
-        <div key={ri} style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, padding: 10, borderRadius: 8, border: "1px solid #ddecd0", background: "white" }}>
+        <div key={ri} data-goal-row={ri} style={{ display: "grid", gap: 8, padding: 10, borderRadius: 8, border: `1px solid ${flags.has(ri) ? GOAL_FLAG.edge : "#ddecd0"}`, background: "white" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
           {columns.map((c) => {
             const cellId = `${idPrefix}-r${ri}-${c.id}`;
             return (
@@ -646,11 +655,23 @@ function GoalsTable({ columns, rows, onChange, onCopyCell, copiedId, idPrefix })
                 <textarea
                   value={row[c.id] || ""}
                   onChange={(e) => setCell(ri, c.id, e.target.value)}
-                  style={{ width: "100%", minHeight: 66, padding: 8, borderRadius: 6, border: "1px solid #c0d4a8", fontSize: 13, color: "#2d3a1f", lineHeight: 1.5, resize: "vertical", background: "#fafcf8" }}
+                  aria-invalid={flags.has(ri) && c.id === checkColumn ? true : undefined}
+                  style={{ width: "100%", minHeight: 66, padding: 8, borderRadius: 6, border: `1px solid ${flags.has(ri) && c.id === checkColumn ? GOAL_FLAG.edge : "#c0d4a8"}`, fontSize: 13, color: "#2d3a1f", lineHeight: 1.5, resize: "vertical", background: "#fafcf8" }}
                 />
               </div>
             );
           })}
+        </div>
+        {flags.has(ri) && (
+          <p data-goal-unmatched={ri} role="status" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, margin: 0, fontSize: 12.5, color: GOAL_FLAG.fg, background: GOAL_FLAG.bg, border: `1px solid ${GOAL_FLAG.edge}`, borderRadius: 7, padding: "6px 10px", lineHeight: 1.5 }}>
+            <span style={{ flex: "1 1 220px" }}>⚠ This goal name is not in your notes. Correct it above, or confirm it if it is right.</span>
+            {onConfirm && (
+              <button data-goal-confirm={ri} onClick={() => onConfirm(row[checkColumn] || "")} style={{ ...smallBtn, padding: "2px 10px", fontSize: 12 }}>
+                Confirm
+              </button>
+            )}
+          </p>
+        )}
         </div>
       ))}
     </div>
@@ -1426,6 +1447,10 @@ function freshSession(tool) {
     // here and still works; this is what the floor plan collects into, and both
     // are spent by the same send.
     answerDrafts: {},      // {"<question index>": "what they typed"}
+    // What the current draft was written from, scrubbed, and the goal names the
+    // clinician has confirmed against it. Never persisted; see draftNote.
+    draftIntake: "",
+    goalConfirmed: {},     // {"<normalised goal name>": true}
     questions: null,       // triage questions awaiting an answer, or null
     readiness: null,       // 0-100 from triage; sets how long the skip stays locked
     pendingValues: null,   // scrubbed values held while triage runs
@@ -2735,9 +2760,11 @@ function App() {
   /* EVERYTHING A NOTE CARRIES, dropped so the next one starts from the intake.
      draftNote calls it, and so does Regenerate before its first round: a new
      process must not keep the previous note's conversation, marks, asks or
-     specimen book while it asks its first questions. */
+     specimen book while it asks its first questions. The goal-name check's
+     intake and confirmations go with it, so a confirmed name on the last note
+     never stands on the next one. */
   const forgetNote = () => {
-    patchS({ output: null, proposal: null, conversation: [], questions: null, readiness: null, pendingValues: null, expert: null, corrections: null, markState: {}, askQueue: {}, heldOut: [] });
+    patchS({ output: null, proposal: null, conversation: [], questions: null, readiness: null, pendingValues: null, expert: null, corrections: null, markState: {}, askQueue: {}, heldOut: [], draftIntake: null, goalConfirmed: {} });
     /* Again here, because the follow-up questions sit between Generate and this
        call with the last note still on screen, and a word typed into its table
        in that gap would otherwise be drawn into this new note. */
@@ -2751,6 +2778,15 @@ function App() {
   const draftNote = async (scrubbedValues, extra) => {
     setLoading(true);
     forgetNote();
+    /* `draftIntake` is what this draft is written from, as the model is sent it:
+       the scrubbed boxes plus the answers to the follow-up questions. The goal
+       name check reads it (goalFlags). forgetNote has just cleared the last
+       note's confirmations. */
+    const draftIntake = [
+      ...tool.inputs.filter((f) => f.type === "textarea").map((f) => String(scrubbedValues[f.id] || "")),
+      String(extra || ""),
+    ].join("\n");
+    patchS({ draftIntake });
     try {
       let userMsg = tool.buildUserPrompt(scrubbedValues);
       if (extra && extra.trim()) {
@@ -4964,6 +5000,38 @@ function App() {
     );
   };
 
+  /* GOAL NAMES ARE CHECKED AGAINST THE INTAKE, approved 2026-10-02. A table
+     section that names a column in `checkAgainstIntake` has each row's name in
+     that column compared with what the draft was written from, and a row whose
+     name the intake never named is flagged for the clinician to correct or
+     confirm. Never rewritten. Worked out on every render, so an edit to the
+     name re-checks it as it is typed.
+
+     Three readings of the intake, because the name can match through the scrub
+     in either direction: the boxes as typed now, the scrubbed draft intake for a
+     name still carrying a role token, and that same intake restored for a name
+     the page put back from [[Tn]]. */
+  const goalFlags = (sec, rows) => {
+    const col = sec.checkAgainstIntake;
+    if (!col || !window.GoalNames || !Array.isArray(rows)) return [];
+    const scrubbed = S.draftIntake || "";
+    const intakes = [
+      collectFreeText(),
+      scrubbed,
+      NotesScrub.restoreOutput(scrubbed, scrubMapRef.current || []),
+    ];
+    const confirmed = S.goalConfirmed || {};
+    return GoalNames.unmatched(rows.map((r) => (r && r[col]) || ""), intakes)
+      .filter((ri) => !confirmed[GoalNames.normalise(rows[ri][col])]);
+  };
+
+  // Confirming is per name, so a row confirmed and then edited is checked again.
+  const confirmGoal = (name) => {
+    const key = window.GoalNames ? GoalNames.normalise(name) : "";
+    if (!key) return;
+    patchS((s) => ({ goalConfirmed: { ...(s.goalConfirmed || {}), [key]: true } }));
+  };
+
   const renderSectionContent = (sec) => {
     const id = sectionId(sec);
     const v = S.output[id];
@@ -5056,6 +5124,9 @@ function App() {
           onCopyCell={handleCopy}
           copiedId={copied}
           idPrefix={id}
+          checkColumn={sec.checkAgainstIntake}
+          flagged={goalFlags(sec, v)}
+          onConfirm={confirmGoal}
         />
       );
     }
