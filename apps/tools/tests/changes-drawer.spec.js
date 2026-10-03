@@ -399,12 +399,18 @@ test.describe('on the phone they actually use', () => {
   test('the drawer does not push the page sideways', async ({ page }) => {
     await draft(page, ONE_ADD);
     await openDrawer(page);
-    const overflow = await page.evaluate(() => {
+    // Polled, not read once. WebKit can report the document 111px wide for the
+    // single frame in which the drawer first becomes visible, then 0 from the
+    // next frame on (sampled every 170ms for 2s on 2 Oct). One read landed on
+    // that frame in 3 of 5 local runs, so a page that settles flat failed.
+    // What a thumb meets is the settled layout, and a page that stays wide
+    // still fails here.
+    const overflow = () => page.evaluate(() => {
       const el = document.querySelector('[data-changes-drawer]');
       return { doc: document.documentElement.scrollWidth - document.documentElement.clientWidth, drawer: el.scrollWidth - el.clientWidth };
     });
-    expect(overflow.doc).toBeLessThanOrEqual(1);
-    expect(overflow.drawer).toBeLessThanOrEqual(1);
+    await expect.poll(async () => (await overflow()).doc, { timeout: 2000 }).toBeLessThanOrEqual(1);
+    await expect.poll(async () => (await overflow()).drawer, { timeout: 2000 }).toBeLessThanOrEqual(1);
   });
 
   test('every answer is big enough for a thumb', async ({ page }) => {
