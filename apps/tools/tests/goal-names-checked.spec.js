@@ -151,7 +151,9 @@ test.describe('on the note', () => {
     ]);
     await page.locator('[data-goal-confirm="0"]').click();
     await expect(page.locator('[data-goal-unmatched]')).toHaveCount(0);
-    await page.getByRole('button', { name: /Generate Note/ }).first().click();
+    // After the first Generate the button reads Regenerate (#228), and that is
+    // the new process this test is about.
+    await page.getByRole('button', { name: /^Regenerate$/ }).first().click();
     const review = page.locator('#notes-scrub-go');
     if (await review.isVisible({ timeout: 1200 }).catch(() => false)) await review.click();
     await expect(page.locator('[data-goal-unmatched="0"]')).toBeVisible({ timeout: 30000 });
