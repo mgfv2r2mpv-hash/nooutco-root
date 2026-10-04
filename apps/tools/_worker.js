@@ -3845,8 +3845,7 @@ async function handleAudit(request, env) {
     return jsonRes(503, { error: "Storage not configured." });
   }
 
-  // The login code IS the technician identity; admin sessions have no kid.
-  const kid = typeof payload.kid === "string" ? payload.kid : "admin";
+  const kid = profileKidFor(payload);
 
   // KV stays the durable trail. It is the compliance artifact, it already
   // works, and it must not start depending on a service that did not exist
@@ -3979,6 +3978,19 @@ function sanitizeCorrection(raw) {
  */
 const PROFILE_TIMEOUT_MS = 1500;
 
+/* WHOSE PROFILE A SESSION READS AND WRITES, decided in one place.
+ *
+ * The login code IS the technician identity, and an admin session has no
+ * login code, so it learns under "admin". Until 2026-10-04 only the learning
+ * side knew that: the style card read and the mute switch returned "no card"
+ * for a session with no kid, so everything learned from Kaleb's edits on the
+ * admin login was saved and never read back. He ruled that day that the admin
+ * login is his alone, so its card is his card. One function, so the read, the
+ * write and the mute cannot disagree again. */
+function profileKidFor(payload) {
+  return typeof payload?.kid === "string" ? payload.kid : "admin";
+}
+
 async function profileFetch(env, path, body, method = "POST", diag = null) {
   const note = (reason) => { if (diag) diag.reason = reason; };
   if (!env.PROFILE) { note("unbound"); return null; }
@@ -4014,8 +4026,7 @@ async function handleStyleCard(request, env) {
   const payload = secret ? await readToken(auth.replace(/^Bearer\s+/i, ""), secret) : null;
   if (!payload) return jsonRes(401, { error: "Not logged in." });
 
-  const kid = typeof payload.kid === "string" ? payload.kid : null;
-  if (!kid) return jsonRes(200, { rules: [], block: "", available: false });
+  const kid = profileKidFor(payload);
 
   /* tool and seed decide the sentence shape target. The seed must be stable for
      one note and different across notes: stable so a revision replays the same
@@ -4228,8 +4239,7 @@ async function handleStyleCardMute(request, env) {
   const payload = secret ? await readToken(auth.replace(/^Bearer\s+/i, ""), secret) : null;
   if (!payload) return jsonRes(401, { error: "Not logged in." });
 
-  const kid = typeof payload.kid === "string" ? payload.kid : null;
-  if (!kid) return jsonRes(403, { error: "This session has no technician profile." });
+  const kid = profileKidFor(payload);
 
   let body;
   try { body = await request.json(); } catch { return jsonRes(400, { error: "Invalid JSON." }); }
