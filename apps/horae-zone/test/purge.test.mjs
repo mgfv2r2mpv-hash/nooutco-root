@@ -170,7 +170,7 @@ test('a purge removes finished and expired code exchanges', async () => {
 test('a purge removes a pending device\'s tries once they are a day old', async () => {
   const { db } = harness();
   const day = 24 * 60 * 60 * 1000;
-  for (const at of [T0 - day - 1, T0 - day, T0 - day + 1, T0]) db.sqlite.prepare('INSERT INTO pending_try (device_id, at) VALUES (?, ?)').run('dev-1', at);
+  for (const at of [T0 - day - 1, T0 - day, T0 - day + 1, T0]) db.sqlite.prepare('INSERT INTO pending_try (device_id, account_id, at) VALUES (?, ?, ?)').run('dev-1', 'acct-1', at);
   await purgeExpired(db, T0);
   assert.deepEqual(db.sqlite.prepare('SELECT at FROM pending_try ORDER BY at').all().map((r) => r.at), [T0 - day + 1, T0]);
 });
