@@ -9,7 +9,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { SIGNIN_LIMITS } from '../src/signin.js';
+import { SIGNIN_LIMITS, backoffMs } from '../src/signin.js';
 import { LIVE_NONCES_PER_DEVICE, NONCE_TTL_MS } from '../src/checks.js';
 import { accountKeys } from '../src/account-keys.js';
 import {
@@ -150,26 +150,32 @@ test('sign-in tries are rate limited per requester, across addresses', async () 
 
 // ---- H2 (security review): strangers cannot lock the owner out of /signin ----
 
-// Puts ADDRESS into backoff (second review, item 4) with wrong passwords,
-// each from its own requester, the way a stranger spread over many addresses
-// would: one failure past backoffAfter.
-async function strangersFill(h, address) {
-  for (let i = 0; i < SIGNIN_LIMITS.backoffAfter + 1; i += 1) {
-    await h.call(signInRequest(address, `wrong password ${i}!`, `198.51.100.${i + 1}`));
-  }
+// Fills ADDRESS's ceiling (perAddressHour, second review, item 4) with
+// strangers' wrong passwords spread over the hour, as rows, since one
+// requester's pair caps it at perPairHour (third review, item 1). Leaves
+// `free` places.
+async function strangersFill(h, address, free = 0) {
+  const bucket = `signin-address:${await (await accountKeys(h.env)).addressKey(address)}`;
+  const add = h.db.sqlite.prepare('INSERT INTO throttle (bucket, at) VALUES (?, ?)');
+  for (let i = 0; i < SIGNIN_LIMITS.perAddressHour - free; i += 1) add.run(bucket, h.clock.ms - 1 - i * 1000);
+  return bucket;
 }
+
+// The clock moves past a pair's backoff after its nth wrong password, so a
+// test can count failures up to perPairHour from one requester.
+const pastBackoff = (h, failures) => { h.clock.ms += backoffMs(failures); };
 
 const signedSignIn = (h, device, address, ip, options = {}) =>
   signed(h.call, device, '/signin', { email: address, password: PASSWORD, keyDigest: ANY_KEY_DIGEST }, { ...options, headers: { 'cf-connecting-ip': ip } });
 
 const HELD = { status: 429, json: { error: 'slow-down' } };
 
-test('H2: with the address in backoff, the owner signs in from a registered device', async () => {
+test('H2: with the address at its ceiling, the owner signs in from a registered device', async () => {
   const h = harness();
   const device = await registeredDevice(h, ADDRESS);
   await strangersFill(h, ADDRESS);
   assert.deepEqual(await answer(await h.call(signInRequest(ADDRESS, PASSWORD, '203.0.113.9'))), HELD,
-    'NEGATIVE CONTROL: an unsigned try is still held by the backoff');
+    'NEGATIVE CONTROL: an unsigned try is still held by the ceiling');
   const res = await answer(await h.call(await signedSignIn(h, device, ADDRESS, '203.0.113.9')));
   assert.equal(res.status, 200);
   assert.match(res.json.ticket, /^[A-Za-z0-9_-]{43}$/);
@@ -178,20 +184,19 @@ test('H2: with the address in backoff, the owner signs in from a registered devi
 test('H2: a successful sign-in is not counted against the address', async () => {
   const h = harness();
   await signUp(h, ADDRESS);
-  for (let i = 0; i < SIGNIN_LIMITS.backoffAfter + 1; i += 1) {
+  const bucket = await strangersFill(h, ADDRESS, 1);
+  for (let i = 0; i < 11; i += 1) {
     assert.equal((await h.call(signInRequest(ADDRESS, PASSWORD, `198.51.100.${i + 1}`))).status, 200, `success ${i + 1}`);
   }
+  assert.equal(h.db.sqlite.prepare('SELECT COUNT(*) AS n FROM throttle WHERE bucket = ?').get(bucket).n, SIGNIN_LIMITS.perAddressHour - 1, 'no success took a place');
   assert.deepEqual(await answer(await h.call(signInRequest(ADDRESS, 'a wrong password', '203.0.113.9'))), { status: 401, json: { error: 'bad-login' } });
-  assert.equal((await h.call(signInRequest(ADDRESS, PASSWORD, '203.0.113.10'))).status, 200);
 });
 
-test('H2: wrong passwords alone count toward the backoff, and a success does not clear them', async () => {
+test('H2: wrong passwords alone count toward the address ceiling, and a success does not clear them', async () => {
   const h = harness();
   await signUp(h, ADDRESS);
-  for (let i = 0; i < SIGNIN_LIMITS.backoffAfter; i += 1) {
-    assert.equal((await h.call(signInRequest(ADDRESS, `wrong password ${i}!`, `198.51.100.${i + 1}`))).status, 401);
-  }
-  assert.equal((await h.call(signInRequest(ADDRESS, PASSWORD, '203.0.113.9'))).status, 200, 'not in backoff yet');
+  await strangersFill(h, ADDRESS, 1);
+  assert.equal((await h.call(signInRequest(ADDRESS, PASSWORD, '203.0.113.9'))).status, 200, 'not at the ceiling yet');
   assert.equal((await h.call(signInRequest(ADDRESS, 'one wrong password more', '203.0.113.10'))).status, 401, 'the success took no place');
   assert.deepEqual(await answer(await h.call(signInRequest(ADDRESS, PASSWORD, '203.0.113.11'))), HELD);
 });
@@ -214,8 +219,8 @@ test('item 4: a single requester hammering one address is refused', async () => 
   await signUp(h, ADDRESS);
   for (let i = 0; i < SIGNIN_LIMITS.perPairHour; i += 1) {
     assert.equal((await h.call(signInRequest(ADDRESS, `wrong password ${i}!`, '198.51.100.7'))).status, 401, `failure ${i + 1}`);
+    pastBackoff(h, i + 1);
   }
-  assert.ok(SIGNIN_LIMITS.perPairHour < SIGNIN_LIMITS.backoffAfter, 'the pair cap is reached before the address backs off');
   assert.deepEqual(await answer(await h.call(signInRequest(ADDRESS, PASSWORD, '198.51.100.7'))), HELD, 'even the right password');
   assert.equal((await h.call(signInRequest(ADDRESS, PASSWORD, '203.0.113.9'))).status, 200, 'NEGATIVE CONTROL: another requester');
 });
@@ -229,36 +234,12 @@ test('item 4 NEGATIVE CONTROL: the owner\'s own successes from one requester tak
   assert.deepEqual(await answer(await h.call(signInRequest(ADDRESS, 'a wrong password', '192.0.2.10'))), { status: 401, json: { error: 'bad-login' } });
 });
 
-test('item 4: past backoffAfter failures the address answers slow-down whatever the password, for a delay that doubles and never passes 15 minutes', async () => {
-  const MAX = 15 * 60 * 1000;
-  assert.ok(SIGNIN_LIMITS.backoffMaxMs <= MAX, 'backoff never exceeds 15 minutes');
-  const h = harness();
-  await signUp(h, ADDRESS);
-  let n = 0;
-  const fresh = () => `198.51.100.${(n += 1)}`;
-  for (let i = 0; i < SIGNIN_LIMITS.backoffAfter + 1; i += 1) {
-    assert.equal((await h.call(signInRequest(ADDRESS, `wrong password ${i}!`, fresh()))).status, 401, `failure ${i + 1}`);
-  }
-  const delays = [0, 1, 2, 3, 4, 5].map((k) => Math.min(SIGNIN_LIMITS.backoffBaseMs * 2 ** k, SIGNIN_LIMITS.backoffMaxMs));
-  assert.equal(delays.at(-1), SIGNIN_LIMITS.backoffMaxMs, 'the steps below reach the cap');
-  for (const [k, delay] of delays.entries()) {
-    assert.deepEqual(await answer(await h.call(signInRequest(ADDRESS, PASSWORD, fresh()))), HELD, `step ${k}: the right password is held`);
-    assert.deepEqual(await answer(await h.call(signInRequest(ADDRESS, 'a wrong password', fresh()))), HELD, `step ${k}: a wrong one gets the same answer`);
-    h.clock.ms += delay - 1;
-    assert.deepEqual(await answer(await h.call(signInRequest(ADDRESS, PASSWORD, fresh()))), HELD, `step ${k}: still held 1 ms before ${delay} ms`);
-    h.clock.ms += 1;
-    assert.equal((await h.call(signInRequest(ADDRESS, `wrong password step ${k}`, fresh()))).status, 401, `step ${k}: tried again after ${delay} ms`);
-  }
-  h.clock.ms += SIGNIN_LIMITS.backoffMaxMs;
-  assert.equal((await h.call(signInRequest(ADDRESS, PASSWORD, fresh()))).status, 200, 'the owner signs in once the capped backoff has passed');
-});
-
 test('item 4: the per-address ceiling is 100 failures an hour, and only failures fill it', async () => {
   assert.equal(SIGNIN_LIMITS.perAddressHour, 100);
   const h = harness();
   await signUp(h, ADDRESS);
   const bucket = `signin-address:${await (await accountKeys(h.env)).addressKey(ADDRESS)}`;
-  // Failures spread over the hour, the newest well past the capped backoff.
+  // Failures spread over the hour, from other requesters.
   const add = h.db.sqlite.prepare('INSERT INTO throttle (bucket, at) VALUES (?, ?)');
   for (let i = 0; i < SIGNIN_LIMITS.perAddressHour; i += 1) add.run(bucket, h.clock.ms - SIGNIN_LIMITS.backoffMaxMs - 1 - i * 1000);
   assert.deepEqual(await answer(await h.call(signInRequest(ADDRESS, PASSWORD, '203.0.113.9'))), HELD, 'at the ceiling');
@@ -279,6 +260,7 @@ test('item 7: a registered device guessing passwords from one requester is held 
   for (let i = 0; i < SIGNIN_LIMITS.perPairHour; i += 1) {
     assert.deepEqual(await answer(await h.call(await signedGuess(h, device, ADDRESS, '198.51.100.7', `wrong password ${i}!`))),
       { status: 401, json: { error: 'bad-login' } }, `failure ${i + 1}`);
+    pastBackoff(h, i + 1);
   }
   assert.deepEqual(await answer(await h.call(await signedSignIn(h, device, ADDRESS, '198.51.100.7'))), HELD, 'even the right password');
   assert.equal((await h.call(await signedSignIn(h, device, ADDRESS, '203.0.113.9'))).status, 200, 'NEGATIVE CONTROL: another requester');
@@ -289,8 +271,10 @@ test('item 7: a known device\'s wrong passwords share the pair bucket with unsig
   const device = await registeredDevice(h, ADDRESS);
   for (let i = 0; i < SIGNIN_LIMITS.perPairHour - 1; i += 1) {
     assert.equal((await h.call(signInRequest(ADDRESS, `wrong password ${i}!`, '198.51.100.7'))).status, 401, `unsigned failure ${i + 1}`);
+    pastBackoff(h, i + 1);
   }
   assert.equal((await h.call(await signedGuess(h, device, ADDRESS, '198.51.100.7', 'one signed wrong password'))).status, 401);
+  pastBackoff(h, SIGNIN_LIMITS.perPairHour);
   assert.deepEqual(await answer(await h.call(await signedSignIn(h, device, ADDRESS, '198.51.100.7'))), HELD);
 });
 
@@ -304,6 +288,65 @@ test('item 7 NEGATIVE CONTROL: a known device\'s own successes take no place in 
   const addressKey = await (await accountKeys(h.env)).addressKey(ADDRESS);
   assert.equal(h.db.sqlite.prepare('SELECT COUNT(*) AS n FROM throttle WHERE bucket = ?').get(`signin-address:${addressKey}`).n, 0,
     'a known device takes no place in the address bucket');
+});
+
+// ---- third review, item 1: no address-wide quiet period on /signin ----
+
+test('third review, item 1: six strangers polling every second never hold the owner\'s right password from a fresh connecting address', async () => {
+  const h = harness();
+  await signUp(h, ADDRESS);
+  const strangers = [1, 2, 3, 4, 5, 6].map((i) => `198.51.100.${20 + i}`);
+  // The strangers push the address past 10 wrong passwords, a second apart.
+  for (let i = 0; i < 11; i += 1) {
+    assert.equal((await h.call(signInRequest(ADDRESS, `wrong password ${i}!`, strangers[i % strangers.length]))).status, 401, `failure ${i + 1}`);
+    h.clock.ms += 1000;
+  }
+  // Then each polls every second, so a stranger's try lands first in the
+  // second any quiet time ends, and the owner tries every 30 s for 4 hours.
+  const SECONDS = 4 * 60 * 60;
+  let tries = 0;
+  let res = null;
+  for (let s = 1; s <= SECONDS && !res; s += 1) {
+    h.clock.ms += 1000;
+    for (const ip of strangers) await h.call(signInRequest(ADDRESS, `wrong password at ${s}`, ip));
+    if (s % 30 !== 0) continue;
+    tries += 1;
+    const owner = await answer(await h.call(signInRequest(ADDRESS, PASSWORD, '203.0.113.50')));
+    if (owner.status === 200) res = owner;
+  }
+  assert.ok(res, `the owner signed in within 4 hours (tried ${tries} times)`);
+  assert.match(res.json.ticket, /^[A-Za-z0-9_-]{43}$/);
+  assert.equal(tries, 1, 'the owner signed in on the first try');
+});
+
+test('third review, item 1: one requester hammering one address backs off on its own pair, then is capped at perPairHour', async () => {
+  assert.ok(SIGNIN_LIMITS.backoffAfter < SIGNIN_LIMITS.perPairHour, 'the pair backs off before its cap');
+  assert.ok(SIGNIN_LIMITS.backoffMaxMs <= 15 * 60 * 1000, 'backoff never exceeds 15 minutes');
+  const h = harness();
+  await signUp(h, ADDRESS);
+  const IP = '198.51.100.7';
+  const start = h.clock.ms;
+  const wrong = async (label) => (await h.call(signInRequest(ADDRESS, `wrong password ${label}`, IP))).status;
+  let failures = 0;
+  while (failures < SIGNIN_LIMITS.backoffAfter + 1) {
+    assert.equal(await wrong(failures), 401, `failure ${failures + 1}`);
+    failures += 1;
+  }
+  while (failures < SIGNIN_LIMITS.perPairHour) {
+    const delay = Math.min(SIGNIN_LIMITS.backoffBaseMs * 2 ** (failures - SIGNIN_LIMITS.backoffAfter - 1), SIGNIN_LIMITS.backoffMaxMs);
+    assert.deepEqual(await answer(await h.call(signInRequest(ADDRESS, PASSWORD, IP))), HELD, `after ${failures}: the right password is held`);
+    assert.deepEqual(await answer(await h.call(signInRequest(ADDRESS, 'a wrong password', IP))), HELD, `after ${failures}: a wrong one gets the same answer`);
+    assert.equal((await h.call(signInRequest(ADDRESS, PASSWORD, '203.0.113.9'))).status, 200, `after ${failures}: NEGATIVE CONTROL: another requester`);
+    h.clock.ms += delay - 1;
+    assert.deepEqual(await answer(await h.call(signInRequest(ADDRESS, PASSWORD, IP))), HELD, `after ${failures}: still held 1 ms before ${delay} ms`);
+    h.clock.ms += 1;
+    assert.equal(await wrong(`after ${delay}`), 401, `after ${failures}: tried again after ${delay} ms`);
+    failures += 1;
+  }
+  h.clock.ms += SIGNIN_LIMITS.backoffMaxMs;
+  assert.deepEqual(await answer(await h.call(signInRequest(ADDRESS, PASSWORD, IP))), HELD, 'capped at perPairHour past any backoff');
+  h.clock.ms = start + SIGNIN_LIMITS.windowMs + 1;
+  assert.equal((await h.call(signInRequest(ADDRESS, PASSWORD, IP))).status, 200, 'its first failure has left the hour');
 });
 
 test('H2 NEGATIVE CONTROL: a device of another account does not lift the address bucket', async () => {
