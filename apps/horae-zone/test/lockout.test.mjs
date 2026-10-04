@@ -322,6 +322,10 @@ test('A5 review 2 NEGATIVE CONTROL: a non-pending device\'s wrongs still close t
 // A start admitted while the path was open can reach /unlock/finish after
 // other tries closed it. The finish answers locked: the exchange is spent,
 // its try is dropped from the lockout uncounted, and no ticket is signed.
+// Since the day cap (A5 re-review item 4) counts tries in flight, the rules
+// can no longer close the path while one of the lockout's own tries is in
+// flight (the closing 12th wrong code is refused instead), so the start
+// here is a pending device's, whose tries are counted outside the lockout.
 
 // Locks `count` windows two apart (none in a row), then sets the clock 5
 // seconds before the end of a window two after the last.
@@ -335,9 +339,10 @@ async function lockWindowsApart(h, dev, count) {
 
 test('A5 review 5: /unlock/finish refuses while the path is closed, a right code started before it closed included', async () => {
   const h = harness();
-  const dev = await enrolledDevice(h, ADDRESS);
+  const dev = await confirmedDevice(h, ADDRESS);
+  const next = await pendingDevice(h, dev);
   await lockWindowsApart(h, dev, 3);
-  const early = await startCode(h, dev, await codeAt(dev, h.clock.ms));
+  const early = await startCode(h, next, await codeAt(dev, h.clock.ms));
   assert.equal(early.start.status, 200, 'the start is admitted while the path is open');
   h.clock.ms += 10_000;
   await lockWindow(h, dev);
@@ -372,8 +377,8 @@ test('A5 review 5 NEGATIVE CONTROL: a locked window that leaves the path open do
 // ---- A5 security review item 6: what one start checks ----
 // Each start offers the current step and the previous one, so one try checks
 // two codes: 3 tries a window are 6 guesses, and the 4 locked windows that
-// close the path in a day are 24. The lockout counts tries in a window, not
-// in a day, so a guesser who stops at 2 wrong codes a window locks nothing.
+// close the path in a day are 24. A guesser who stops at 2 wrong codes a
+// window locks no window, and meets the day cap below (A5 re-review item 4).
 
 test('A5 review 6: one start answers for two steps, so a full window is 6 guesses and four locked windows are 24', async () => {
   const h = harness();
@@ -391,18 +396,88 @@ test('A5 review 6: one start answers for two steps, so a full window is 6 guesse
   assert.equal(pathState(h).pathLocked, true, '4 locked windows x 3 tries x 2 steps = 24 guesses, then closed');
 });
 
-test('A5 review 6: a guesser who stops at 2 wrong codes a window is never locked (the 24 a day bounds locked windows only)', async () => {
+
+// ---- A5 re-review item 4 (open point 10): 12 wrong codes a day ----
+// Wrong codes from every device in the account's lockout count toward one
+// cap a day, 12, whatever window they fall in, so a guesser who stops at 2
+// wrong codes a window closes the path at the 12th, and the owner gets the
+// link, as with the other rules. A pending device's tries stay out of it
+// (their own cap, security review item 2 and re-review item 3).
+const WRONG_PER_DAY = 12;
+
+// `count` wrong codes, 2 a window, so no window ever locks.
+async function wrongTwoAWindow(h, devs, count) {
+  for (let i = 0; i < count; i += 1) {
+    await wrongTry(h, devs[i % devs.length]);
+    if (i % 2 === 1) h.clock.ms += WINDOW_MS;
+  }
+}
+
+test('re-review 4: a guesser who stops at 2 wrong codes a window closes the path at the 12th wrong code of the day, and the owner gets the link', async () => {
   const h = harness();
   const dev = await enrolledDevice(h, ADDRESS);
-  const WINDOWS = 20;
-  for (let i = 0; i < WINDOWS; i += 1) {
-    await wrongTry(h, dev);
-    await wrongTry(h, dev);
-    h.clock.ms += WINDOW_MS;
-  }
-  // 20 windows x 2 tries x 2 steps = 80 guesses, past 24, and nothing closed.
+  await wrongTwoAWindow(h, [dev], WRONG_PER_DAY - 1);
+  assert.equal(pathState(h).pathLocked, false, '11 wrong codes leave the path open');
+  await wrongTry(h, dev);
+  assert.equal(pathState(h).pathLocked, true, 'the 12th wrong code closes the path');
+  assert.deepEqual(pathState(h).locked, [], 'no window locked on the way');
+  const mails = lockMail(h, ADDRESS);
+  assert.equal(mails.length, 1, 'one note, the path-closed one');
+  assertPlainNote(mails[0], dev);
+  assert.match(mails[0].text, /12 wrong authenticator codes/);
+  const token = reopenTokenFrom(h, ADDRESS);
+  assert.ok(token, 'the note carries the link');
+  h.clock.ms += 2 * WINDOW_MS;
+  assert.deepEqual((await rightTry(h, dev)).start, LOCKED, 'closed to a right code until the link');
+  assert.deepEqual(await answer(await h.call(post('/unlock/reopen', { token }))), { status: 200, json: { ok: true } });
+  assert.equal((await rightTry(h, dev)).finish.status, 200, 'the link reopened the path');
+});
+
+test('re-review 4: wrong codes from every device that proved a code count toward the one cap', async () => {
+  const h = harness();
+  const owner = await confirmedDevice(h, ADDRESS);
+  const other = { ...(await registeredDevice(h, ADDRESS, { fresh: false })), seed: owner.seed };
+  assert.equal((await rightTry(h, other)).finish.status, 200, 'the second device proved a code');
+  h.clock.ms += WINDOW_MS;
+  await wrongTwoAWindow(h, [owner, other], WRONG_PER_DAY);
+  assert.equal(pathState(h).pathLocked, true, '6 wrong codes from each device close the path');
+  assert.deepEqual((await rightTry(h, owner)).start, LOCKED);
+  assert.deepEqual((await rightTry(h, other)).start, LOCKED);
+});
+
+test('re-review 4: tries arriving together never pass the day cap', async () => {
+  const h = harness();
+  const dev = await enrolledDevice(h, ADDRESS);
+  await wrongTwoAWindow(h, [dev], WRONG_PER_DAY - 2);
+  const code = await wrongCodeAt(dev, h.clock.ms);
+  const starts = await Promise.all([0, 1, 2].map(() => startCode(h, dev, code)));
+  assert.deepEqual(starts.map((s) => s.start.status).sort(), [200, 200, 423], 'only the 2 tries left today are admitted');
+  for (const s of starts.filter((x) => x.start.status === 200)) await s.finish();
+  assert.equal(pathState(h).pathLocked, true);
+});
+
+test('re-review 4: after the link one more wrong code closes the path again, and a wrong code counts for a day', async () => {
+  const h = harness();
+  const dev = await enrolledDevice(h, ADDRESS);
+  await wrongTwoAWindow(h, [dev], WRONG_PER_DAY);
+  const first = reopenTokenFrom(h, ADDRESS);
+  assert.deepEqual(await answer(await h.call(post('/unlock/reopen', { token: first }))), { status: 200, json: { ok: true } });
+  await wrongTry(h, dev);
+  assert.equal(pathState(h).pathLocked, true, 'one more wrong code the same day closes it again');
+  const second = reopenTokenFrom(h, ADDRESS);
+  assert.notEqual(second, first, 'with a new link');
+  assert.deepEqual(await answer(await h.call(post('/unlock/reopen', { token: second }))), { status: 200, json: { ok: true } });
+  h.clock.ms += DAY_MS;
+  await wrongTwoAWindow(h, [dev], WRONG_PER_DAY - 1);
+  assert.equal(pathState(h).pathLocked, false, 'a day later the old wrong codes no longer count');
+  assert.equal((await rightTry(h, dev)).finish.status, 200);
+});
+
+test('re-review 4 NEGATIVE CONTROL: 11 wrong codes in a day leave the path open and mail nothing', async () => {
+  const h = harness();
+  const dev = await enrolledDevice(h, ADDRESS);
+  await wrongTwoAWindow(h, [dev], WRONG_PER_DAY - 1);
   assert.equal(pathState(h).pathLocked, false);
-  assert.deepEqual(pathState(h).locked, []);
-  assert.deepEqual(lockMail(h, ADDRESS), [], 'no lock note reaches the owner');
+  assert.deepEqual(lockMail(h, ADDRESS), []);
   assert.equal((await rightTry(h, dev)).finish.status, 200);
 });
