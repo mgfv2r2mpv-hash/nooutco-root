@@ -17,6 +17,11 @@
  * Kept free of imports and of anything outside the page, because its source is
  * pasted as is. */
 export async function runParentShapeLive(CASES, checkParentDraft) {
+  /* Chrome lends the console's copy() only while the pasted code first runs,
+     so it is taken now, before the first await; by the time the drafts are
+     back the name is gone. The report also stays on window, where typing
+     copy(parentShapeReport) always works. */
+  const copyNow = typeof copy === 'function' ? copy : null;
   const tool = (window.NOTE_TOOLS || []).find((t) => t.id === 'parent');
   if (!tool) throw new Error('Open the BCBA notes page with Parent Training loaded first.');
   if (!window.NotesGate || !window.NotesGate.isLoggedIn()) throw new Error('Log in first.');
@@ -80,12 +85,13 @@ export async function runParentShapeLive(CASES, checkParentDraft) {
 
   console.table(results);
   const report = { at: new Date().toISOString(), styleCard: Boolean(styleBlock), results, drafts };
-  const json = JSON.stringify(report, null, 2);
+  window.parentShapeReport = report;
   try {
-    copy(json);
+    if (!copyNow) throw new Error('no console copy()');
+    copyNow(JSON.stringify(report, null, 2));
     console.log('The results and the four drafts are on your clipboard.');
   } catch (e) {
-    console.log(json);
+    console.log('To put the results on your clipboard, type copy(parentShapeReport) and press Enter.');
   }
   return report;
 }
