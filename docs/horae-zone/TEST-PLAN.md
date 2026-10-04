@@ -68,7 +68,7 @@ npm test
 These belong to later slices, each with its own RED tests:
 - device signatures and routes (A2, A4);
 - email codes (A3);
-- the PIN lifecycle — reuse lock, reset, review, offline block (A5b);
+- the PIN lifecycle (reuse lock, reset, review, offline block) (A5b);
 - admin (A5c).
 
 ---
@@ -83,7 +83,7 @@ npm test
 ```
 
 - **Needs:** Node 22.13 or later (for `node:sqlite`). No `npm ci` is needed, because the app has no dependencies.
-- **Expected result:** 30 tests, 30 pass.
+- **Expected result:** 30 tests, 30 pass, at the end of A2. A3 and A4 added to the same files, and the suite now holds 81 (see A4).
 
 **RED evidence.**
 1. A2: run `git checkout 7a171c6 -- apps/horae-zone && (cd apps/horae-zone && npm test)`, and expect 3 files failing on missing modules. (`7a171c6` is the 2026-10-03 rewrite of `05c75bf`.)
@@ -113,7 +113,8 @@ npm test
 
       | Request | Expected |
       |---|---|
-      | `curl -s -X POST -H 'content-type: application/json' -d '{}' localhost:8787/signin` | `{"error":"not-built"}` |
+      | `curl -s -X POST -H 'content-type: application/json' -d '{}' localhost:8787/recover` | `{"error":"not-built"}` |
+      | `curl -s -X POST -H 'content-type: application/json' -d '{}' localhost:8787/signin` | `{"error":"shape"}` (A4; it was `not-built` in A2) |
       | `curl -s localhost:8787/signin` | `{"error":"method"}` |
       | `curl -s -X POST -H 'content-type: application/json' -d '{}' localhost:8787/nonce` | `{"error":"no-device"}` |
 
@@ -129,3 +130,101 @@ These belong to later slices, each RED first:
 - the PIN lifecycle (A5b);
 - admin actions (A5c);
 - recovery (A6).
+
+---
+
+## A3: account and email (`apps/horae-zone`, `packages/account-engine`)
+
+### Run
+
+Both suites, as in A1 and A2:
+
+```
+cd packages/account-engine
+npm test
+cd ../../apps/horae-zone
+npm test
+```
+
+- **Expected result at the end of A3:** engine 58 tests (57 pass, 1 skips without the private package), Horae Zone 54 tests, 54 pass. The profile-api suite is unchanged at 195/195 (`cd apps/profile-api && node --test --test-concurrency=1 "test/*.test.js"`, about a minute).
+- **No mail is sent.** Every test injects a mail sink; the transport tests in `mailer.test.mjs` pass a fake `fetch`.
+- **Test values are fake:** the account secret is a fixed test value, the link base is `https://horae-zone.example.test/verify`, and every address ends in `example.test`.
+
+**RED evidence.**
+1. Run `git checkout 665f3042 -- packages/account-engine apps/horae-zone`, then both suites.
+2. Expect the engine to fail in `mailer.test.mjs` (`ERR_MODULE_NOT_FOUND` for `src/mailer.mjs`) and `same-hex.test.mjs` (`limits.mjs` has no export `sameHex`), with every other engine test passing.
+3. Expect Horae Zone to fail 4: `signup.test.mjs` and `purge.test.mjs` on the missing `src/signup.js`, the A3 leak test, and "a request with a query string is refused as shape before any check or handler". Every A2 test passes.
+4. Restore with `git checkout HEAD -- packages/account-engine apps/horae-zone`.
+
+### What each file proves
+
+| File | Proves | Negative controls |
+|---|---|---|
+| engine `test/mailer.test.mjs` | The mailer posts to Resend with the key only in the `authorization` header. A failed send logs once, with no key, address or text, and never throws. A message without a recipient, subject or text is not sent. It cannot be built without a sender or a key reader. `fragmentLink` puts the token only after `#`, and refuses a base that is not https or already has a query or fragment. Two transport tests are ported from JanusMirror's `pairing-limits.test.mjs` | `NEGATIVE CONTROL: a send that succeeds logs nothing` |
+| engine `test/same-hex.test.mjs` | `sameHex` is exported from `src/limits.mjs`, reads equal digests as the same and any one difference as not, refuses unequal lengths and non-strings, and has no early return in its loop | The equal-digest case |
+| `test/signup.test.mjs` | **"sign-up needs the email code"** and **"the email code rides in the fragment"** (the plan tests). An address never sent a code is refused like a wrong code. A code works once, expires, dies after its wrong tries, and is replaced by a newer one. It is stored only as a keyed digest and compared with `sameHex`. Starts are rate limited per address and per requester, tries per requester. No answer says whether an address already has an account. A bad address, an extra field or a password outside the length rule is `shape`. The password is stored as a salted slow hash and the address sealed, opening only with the service key. A failed mail is audited and the answer is unchanged. Without the account key or a link base nothing is written or mailed. The mail has a plain subject, the code, the link and no em dash | `NEGATIVE CONTROL: the code from the mail, with a password, makes the account` |
+| `test/checks.test.mjs` (added) | A request with a query string is refused as `shape` before any check or handler | The A2 negative control still passes |
+| `test/leak.test.mjs` (added) | A real sign-up leaves no address, email code or password in any answer, table, bound value or log | The A2 planted-echo control |
+| `test/purge.test.mjs` (added) | The purge removes spent, used-up and expired email codes, and rate-limit rows past their window | The A2 keep-fresh control |
+
+### Manual checks for the reviewer
+
+1. **No console calls**, as in A2: `grep -rn "console\." apps/horae-zone/src` prints nothing.
+2. **No value in a URL.** `grep -rn "searchParams\|?code=\|?token=" apps/horae-zone/src packages/account-engine/src` prints nothing.
+3. **Local smoke test without secrets** (as in A2, with `npx wrangler@4 dev --local` and no secret set):
+
+   | Request | Expected |
+   |---|---|
+   | `curl -s -X POST -H 'content-type: application/json' -d '{"email":"someone@example.test"}' localhost:8787/account` | `{"error":"unavailable"}`, since no account key or mail key is set |
+   | `curl -s -X POST -H 'content-type: application/json' -d '{}' 'localhost:8787/account?x=1'` | `{"error":"shape"}` |
+   | `curl -s -X POST -H 'content-type: application/json' -d '{"email":"someone@example.test","extra":1}' localhost:8787/account` | `{"error":"shape"}` |
+
+4. **No real mail and no real secret.** Confirm that no `wrangler secret put` was run, and that `wrangler.toml` still has no `[vars]`.
+
+### Not in A3 (do not add here)
+
+- The authenticator code, its enrolment and the code-path lockout email (A5).
+- The PIN (A5b) and recovery (A6).
+
+---
+
+## A4: devices (`apps/horae-zone`, `packages/account-engine`)
+
+### Run
+
+As in A3.
+
+- **Expected result now:** engine 64 tests (63 pass, 1 skips without the private package; the runtimes test loads `src/signed-bytes.mjs` in `workerd` and Chromium), Horae Zone 81 tests, 81 pass, and profile-api 195/195.
+
+**RED evidence.**
+1. Run `git checkout a55d8771 -- packages/account-engine apps/horae-zone`, then both suites.
+2. Expect the engine to fail in `signed-bytes.test.mjs` (`ERR_MODULE_NOT_FOUND` for `src/signed-bytes.mjs`), with every other engine test passing.
+3. Expect Horae Zone 57 tests with 3 failing: `devices.test.mjs` on the missing `src/signin.js`, the A4 leak test because `/signin` hands out no ticket, and the ticket purge test on `no such table: ticket`. Every A2 and A3 test passes.
+4. Restore with `git checkout HEAD -- packages/account-engine apps/horae-zone`.
+
+### What each file proves
+
+| File | Proves | Negative controls |
+|---|---|---|
+| engine `test/signed-bytes.test.mjs` | `signedBytes` and `SIGNED_LABEL` build the shared vector's bytes, and the vector's signature verifies over them with the vector key. Each part is length-prefixed, so a byte moved between path and body changes what is signed. A body that is not bytes, or a nonce or path that is not a string, throws `TypeError`. The body passed in is not kept or changed | `NEGATIVE CONTROL: the vector signature does not verify for another path or body` |
+| `test/devices.test.mjs` | **"a request with no registered device signature is refused"** and **"a removed device is refused at once"** (the plan tests). **"/device/register requires the ticket from /signin"** (A2 open point 1). Sign-in: a wrong password and an unknown address are refused alike, and the unknown address hashes a password just as a wrong password does; the body is exactly an address and a password; tries are rate limited per address (from any requester) and per requester (across addresses); the ticket is stored only as a keyed digest bound to its account. Register: a ticket registers one device and expires; a key that is not a P-256 point is `shape` and leaves the ticket live; the body is exactly a ticket and two keys. Remove: a device can remove itself and is refused at once; it cannot remove another account's device, and the answer does not say so; the body is exactly one device id; the row stays, marked with when it was removed. **At most five live nonces per device** (A2 open point 2), a spent or expired nonce frees its place, and the cap holds when requests arrive together. **The service builds signed bytes with the engine function and accepts the shared vector** (A2 open point 4). Sign-in, register and remove each write one audit row | `NEGATIVE CONTROL: a request signed by the registered key passes the device checks`; `NEGATIVE CONTROL: the right address and password answer a single-use ticket`; `NEGATIVE CONTROL: a ticket used just inside its life registers the device` |
+| `test/leak.test.mjs` (added) | Sign-in (wrong, unknown and right), a bad and a good register, a ticket reuse and a removal leave no address, password or ticket in any answer, table, bound value or log. The one answer that hands out a ticket is checked as the expected exception. The A2 sweep now lets each unspent nonce expire between routes, so the cap does not refuse it | The A2 planted-echo control |
+| `test/purge.test.mjs` (added) | The purge removes spent and expired sign-in tickets and keeps a live one | The live ticket kept |
+
+### Manual checks for the reviewer
+
+1. **One signed-bytes builder.** `grep -rn "function signedBytes" apps/horae-zone/src packages/account-engine/src` prints only `packages/account-engine/src/signed-bytes.mjs`.
+2. **The vector is fake.** `packages/account-engine/test/fixtures/signed-bytes-vector.json` holds a public key, signatures and a fake nonce, and no private key.
+3. **Local smoke test**, as in A3:
+
+   | Request | Expected |
+   |---|---|
+   | `curl -s -X POST -H 'content-type: application/json' -d '{}' localhost:8787/device/register` | `{"error":"shape"}` |
+   | `curl -s -X POST -H 'content-type: application/json' -d '{}' localhost:8787/device/remove` | `{"error":"no-device"}` |
+   | `curl -s -X POST -H 'content-type: application/json' -d '{"email":"someone@example.test","password":"not-a-real-one"}' localhost:8787/signin` | `{"error":"unavailable"}`, since no account key is set |
+
+### Not in A4 (do not add here)
+
+- The authenticator code on `/signin`, unlock and its lockout (A5).
+- The PIN (A5b), admin actions (A5c) and recovery (A6).
+- Pairing a vault to a new device (`/pair/offer`, `/pair/take`).
