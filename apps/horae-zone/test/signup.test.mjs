@@ -258,6 +258,39 @@ test('a start sends the same statements whether or not the address has an accoun
   assert.equal(live, 1, 'only the fresh address holds a code that can verify');
 });
 
+// L3 (security review): a request with no cf-connecting-ip was counted under
+// one shared requester, so every such request filled one bucket for all of
+// them. Such a request is now refused as shape on every route that counts by
+// requester, before any throttle row, code, ticket or mail.
+test('L3: a start, verify or sign-in without a connecting address is refused as shape and writes nothing', async () => {
+  const h = harness();
+  const bare = [
+    ['/account', { email: ADDRESS }],
+    ['/account/email/verify', { email: ADDRESS, code: '000000', password: PASSWORD }],
+    ['/signin', { email: ADDRESS, password: PASSWORD, keyDigest: ANY_KEY_DIGEST }],
+  ];
+  for (const [pathname, body] of bare) {
+    for (const headers of [{}, { 'cf-connecting-ip': '' }, { 'cf-connecting-ip': '   ' }]) {
+      assert.deepEqual(await answer(await h.call(post(pathname, body, headers))), { status: 400, json: { error: 'shape' } },
+        `${pathname} ${JSON.stringify(headers)}`);
+    }
+  }
+  for (const table of ['throttle', 'challenge', 'ticket', 'account']) {
+    assert.equal(h.db.sqlite.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get().n, 0, `no ${table} row`);
+  }
+  assert.equal(h.mail.length, 0, 'no mail');
+  assert.ok(auditRows(h.db).every((r) => r.reason === 'shape'), 'every refusal is audited as shape');
+});
+
+test('L3 NEGATIVE CONTROL: the same start with a connecting address is admitted and counted under it', async () => {
+  const h = harness();
+  assert.deepEqual(await answer(await start(h)), { status: 200, json: { ok: true } });
+  assert.equal(h.mail.length, 1);
+  const requester = await (await accountKeys({ HZ_ACCOUNT_KEY: h.env.HZ_ACCOUNT_KEY })).requesterKey(IP);
+  const buckets = h.db.sqlite.prepare('SELECT bucket FROM throttle').all().map((r) => r.bucket);
+  assert.ok(buckets.includes(`start-requester:${requester}`), 'the start is counted under its own requester');
+});
+
 // M2 (security review): an invisible format character or a look-alike
 // letter in the local part made a new address key for the same mailbox, so
 // the per-address limits did not hold. Such addresses are refused as shape,

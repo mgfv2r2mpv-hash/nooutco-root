@@ -57,9 +57,10 @@ export async function signIn({ db, device, body, now, env, request }) {
   const address = addressOf(body.email);
   const password = passwordOf(body.password);
   if (typeof body.keyDigest !== "string" || !KEY_DIGEST.test(body.keyDigest)) throw new Refusal("shape", 400);
+  const ip = requesterOf(request);
   const keys = await keysOrUnavailable(env);
   const addressKey = await keys.addressKey(address);
-  const requester = await keys.requesterKey(requesterOf(request));
+  const requester = await keys.requesterKey(ip);
   const account = await db.prepare("SELECT id, login_hash, login_salt FROM account WHERE address_key = ?").bind(addressKey).first();
   // device is set only when the request passed every signed check (routes.js "signable").
   const known = Boolean(device && account && device.account_id === account.id);
