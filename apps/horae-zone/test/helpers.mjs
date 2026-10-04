@@ -49,11 +49,12 @@ export function harness({ mailer = null, env = {} } = {}) {
   return { db, clock, call, mail, env: bindings };
 }
 
-export async function addDevice(db, { id = 'dev-1', account = 'acct-1', removed = null } = {}) {
+// A device row written straight into the table, not pending unless asked.
+export async function addDevice(db, { id = 'dev-1', account = 'acct-1', removed = null, pending = 0 } = {}) {
   const pair = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign', 'verify']);
   const raw = new Uint8Array(await crypto.subtle.exportKey('raw', pair.publicKey));
-  db.sqlite.prepare('INSERT INTO device (id, account_id, sign_key, created_at, removed_at) VALUES (?, ?, ?, ?, ?)')
-    .run(id, account, b64url(raw), T0, removed);
+  db.sqlite.prepare('INSERT INTO device (id, account_id, sign_key, created_at, removed_at, pending) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(id, account, b64url(raw), T0, removed, pending);
   return { id, account, key: pair.privateKey };
 }
 
@@ -115,13 +116,31 @@ export function auditRows(db) {
 // the emailed code, sign-in for a ticket, then registration with fresh keys.
 export const PASSWORD = 'correct horse battery staple CANARY';
 
-export async function signUp(h, email, { password = PASSWORD, ip = '192.0.2.10' } = {}) {
+// Signs up and, as the app does next, registers the owner device from the
+// sign-up ticket (A5 re-review), so a password sign-in can follow. `owner:
+// false` stops after the verify, an account with no device yet.
+export async function signUp(h, email, { owner = true, ...options } = {}) {
+  const keys = await deviceKeys();
+  const made = await signUpOwner(h, email, { ...options, keys });
+  if (owner) {
+    const res = await h.call(registerRequest(made.ticket, keys));
+    if (res.status !== 200) throw new Error(`owner register answered ${res.status}`);
+  }
+  return made.account;
+}
+
+// Signs up by the emailed link; the verify hands back the owner ticket (A5
+// re-review), bound to `keys` when given.
+export async function signUpOwner(h, email, { password = PASSWORD, ip = '192.0.2.10', keys = null } = {}) {
   await h.call(post('/account', { email }, { 'cf-connecting-ip': ip }));
   const message = h.mail.filter((m) => m.to === email).at(-1);
   const code = new URL(message.text.match(/https:\/\/\S+/)[0]).hash.slice(1);
-  const res = await h.call(post('/account/email/verify', { email, code, password }, { 'cf-connecting-ip': ip }));
+  const keyDigest = keys ? await keyDigestOf(keys) : ANY_KEY_DIGEST;
+  const res = await h.call(post('/account/email/verify', { email, code, password, keyDigest }, { 'cf-connecting-ip': ip }));
   if (res.status !== 200) throw new Error(`sign-up answered ${res.status}`);
-  return h.db.sqlite.prepare('SELECT id FROM account ORDER BY created_at DESC, rowid DESC LIMIT 1').get().id;
+  const { ticket } = await res.json();
+  const account = h.db.sqlite.prepare('SELECT id FROM account ORDER BY created_at DESC, rowid DESC LIMIT 1').get().id;
+  return { account, ticket };
 }
 
 // The key digest /signin binds a ticket to (security review M3): SHA-256 of
@@ -161,12 +180,15 @@ export function registerRequest(ticket, keys) {
   return post('/device/register', { ticket, signKey: keys.signKey, agreeKey: keys.agreeKey });
 }
 
-// Signs up (when `email` has no account yet), signs in and registers a new
-// device; returns it in the shape signed() takes.
-export async function registeredDevice(h, email, { fresh = true } = {}) {
-  const account = fresh ? await signUp(h, email) : null;
+// With `fresh`, signs up and registers the owner device from the sign-up
+// ticket; otherwise signs in and registers a further device, which starts
+// pending (A5 re-review). Returns it in the shape signed() takes.
+export async function registeredDevice(h, email, { fresh = true, ip } = {}) {
   const keys = await deviceKeys();
-  const res = await h.call(registerRequest(await signIn(h, email, { keys }), keys));
+  const owner = fresh ? await signUpOwner(h, email, { keys }) : null;
+  const ticket = owner ? owner.ticket : await signIn(h, email, { keys, ip });
+  const account = owner ? owner.account : null;
+  const res = await h.call(registerRequest(ticket, keys));
   if (res.status !== 200) throw new Error(`register answered ${res.status}`);
   const { device } = await res.json();
   return { id: device, account, key: keys.key, signKey: keys.signKey, agreeKey: keys.agreeKey };

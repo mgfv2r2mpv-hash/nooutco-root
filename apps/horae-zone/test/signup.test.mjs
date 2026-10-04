@@ -27,7 +27,7 @@ function start(h, email = ADDRESS, ip = IP) {
 }
 
 function verify(h, { email = ADDRESS, code, password = PASSWORD, ip = IP, query = '' } = {}) {
-  return h.call(post(`/account/email/verify${query}`, { email, code, password }, { 'cf-connecting-ip': ip }));
+  return h.call(post(`/account/email/verify${query}`, { email, code, password, keyDigest: ANY_KEY_DIGEST }, { 'cf-connecting-ip': ip }));
 }
 
 // The code is read from the link in the last mail to `to`, where it rides in
@@ -55,6 +55,16 @@ async function answer(res) {
   return { status: res.status, json: await res.json() };
 }
 
+// A verify's answer with its owner ticket (A5 re-review) checked for shape
+// and set aside, so a test compares the rest.
+async function verified(res) {
+  const { status, json } = await answer(res);
+  if (status !== 200) return { status, json };
+  const { ticket, ...rest } = json;
+  assert.match(ticket, /^[A-Za-z0-9_-]{43}$/);
+  return { status, json: rest };
+}
+
 test('sign-up needs the email code', async () => {
   const h = harness();
   assert.deepEqual(await answer(await start(h)), { status: 200, json: { ok: true } });
@@ -71,7 +81,7 @@ test('sign-up needs the email code', async () => {
 test('NEGATIVE CONTROL: the code from the mail, with a password, makes the account', async () => {
   const h = harness();
   await start(h);
-  assert.deepEqual(await answer(await verify(h, { code: codeFrom(h) })), { status: 200, json: { ok: true } });
+  assert.deepEqual(await verified(await verify(h, { code: codeFrom(h) })), { status: 200, json: { ok: true } });
   assert.equal(accounts(h.db).length, 1);
 });
 
@@ -169,7 +179,7 @@ test('H1: a second start leaves the first code live, so the owner\'s code still 
   const owners = codeFrom(h);
   await start(h, ADDRESS, '192.0.2.66');
   assert.equal(h.mail.length, 2, 'the second start mailed a code too');
-  assert.deepEqual(await answer(await verify(h, { code: owners })), { status: 200, json: { ok: true } });
+  assert.deepEqual(await verified(await verify(h, { code: owners })), { status: 200, json: { ok: true } });
   assert.equal(accounts(h.db).length, 1);
 });
 
@@ -191,7 +201,7 @@ test('H1: wrong guesses from another requester do not end the owner\'s code', as
   }
   assert.deepEqual(await answer(await verify(h, { code: wrongOf(owners), ip: '192.0.2.66' })), { status: 429, json: { error: 'slow-down' } },
     'one requester gets its share of tries at an address, then slows down');
-  assert.deepEqual(await answer(await verify(h, { code: owners })), { status: 200, json: { ok: true } });
+  assert.deepEqual(await verified(await verify(h, { code: owners })), { status: 200, json: { ok: true } });
   assert.equal(accounts(h.db).length, 1);
 });
 
@@ -206,7 +216,7 @@ test('item 2: 15 strangers\' wrong tries from 3 requesters, then the owner\'s li
   for (let i = 0; i < 15; i += 1) {
     assert.equal((await verify(h, { code: wrongOf(owners), ip: `192.0.2.${100 + (i % 3)}` })).status, 401, `stranger try ${i + 1}`);
   }
-  assert.deepEqual(await answer(await verify(h, { code: owners, ip: '192.0.2.200' })), { status: 200, json: { ok: true } });
+  assert.deepEqual(await verified(await verify(h, { code: owners, ip: '192.0.2.200' })), { status: 200, json: { ok: true } });
   assert.equal(accounts(h.db).length, 1);
   assert.equal(h.db.sqlite.prepare("SELECT COUNT(*) AS n FROM throttle WHERE bucket LIKE 'verify-address:%'").get().n, 0, 'no address-level try bucket');
 });
@@ -267,7 +277,7 @@ test('item 3: 3 strangers\' starts, then the owner\'s start still gets a working
   assert.equal(h.mail.length, mailed + 1, 'the owner\'s start mails a link');
   assert.equal(codeFrom(h), newest, 'the newest live link is sent again');
   assert.equal(challenges(h.db).length, rows, 'no code is minted at the cap');
-  assert.deepEqual(await answer(await verify(h, { code: codeFrom(h), ip: '192.0.2.99' })), { status: 200, json: { ok: true } });
+  assert.deepEqual(await verified(await verify(h, { code: codeFrom(h), ip: '192.0.2.99' })), { status: 200, json: { ok: true } });
   assert.equal(accounts(h.db).length, 1);
 });
 
@@ -340,7 +350,7 @@ test('third review, item 2: strangers\' 3 mints and 3 re-sends, then the owner\'
   const mailed = h.mail.length;
   assert.deepEqual(await answer(await start(h, ADDRESS, '192.0.2.99')), { status: 200, json: { ok: true } });
   assert.equal(h.mail.length, mailed + 1, 'the owner\'s start mails a link');
-  assert.deepEqual(await answer(await verify(h, { code: codeFrom(h), ip: '192.0.2.99' })), { status: 200, json: { ok: true } });
+  assert.deepEqual(await verified(await verify(h, { code: codeFrom(h), ip: '192.0.2.99' })), { status: 200, json: { ok: true } });
   assert.equal(accounts(h.db).length, 1);
 });
 
@@ -354,7 +364,7 @@ test('third review, item 2: strangers starting every 10 s for an hour never leav
   }
   h.clock.ms = T0 + ownerAt;
   assert.deepEqual(await answer(await start(h, ADDRESS, '192.0.2.99')), { status: 200, json: { ok: true } });
-  assert.deepEqual(await answer(await verify(h, { code: codeFrom(h), ip: '192.0.2.99' })), { status: 200, json: { ok: true } },
+  assert.deepEqual(await verified(await verify(h, { code: codeFrom(h), ip: '192.0.2.99' })), { status: 200, json: { ok: true } },
     'the newest link in the owner\'s mailbox works');
 });
 
@@ -434,7 +444,7 @@ test('L3: a start, verify or sign-in without a connecting address is refused as 
   const h = harness();
   const bare = [
     ['/account', { email: ADDRESS }],
-    ['/account/email/verify', { email: ADDRESS, code: NEVER_SENT, password: PASSWORD }],
+    ['/account/email/verify', { email: ADDRESS, code: NEVER_SENT, password: PASSWORD, keyDigest: ANY_KEY_DIGEST }],
     ['/signin', { email: ADDRESS, password: PASSWORD, keyDigest: ANY_KEY_DIGEST }],
   ];
   for (const [pathname, body] of bare) {
@@ -505,7 +515,7 @@ test('item 6: a trailing dot or another case is the same address as the plain on
   const h = harness();
   assert.deepEqual(await answer(await start(h, 'v@example.test.')), { status: 200, json: { ok: true } });
   const code = codeFrom(h, 'v@example.test');
-  assert.deepEqual(await answer(await verify(h, { email: 'V@EXAMPLE.TEST', code })), { status: 200, json: { ok: true } });
+  assert.deepEqual(await verified(await verify(h, { email: 'V@EXAMPLE.TEST', code })), { status: 200, json: { ok: true } });
   assert.equal(accounts(h.db).length, 1);
 
   const k = harness();

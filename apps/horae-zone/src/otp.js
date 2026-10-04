@@ -29,12 +29,13 @@
  * account's sole live device, checked in the ticket spend and again in the
  * seed insert, so a device registered in between still blocks it. A second
  * live device answers enrol-blocked (and a refused spend leaves the ticket
- * live). A password thief who registers a device of its own therefore cannot
- * enrol first, and until the enrolment is confirmed no device is pending, so
- * either device can remove the other. The first accepted code holds back
- * every other live device, and a device registered after it starts pending
- * (src/devices.js): it reaches only /nonce and /unlock until a code it
- * proves is accepted.
+ * live). A5 re-review: a device a /signin ticket registered is pending from
+ * registration (src/devices.js), code or no code, so it reaches neither this
+ * route nor /device/remove: a password thief's device cannot enrol, remove
+ * the owner device or replace an unconfirmed seed, and the owner device can
+ * remove it. The first accepted code holds back every other live device; a
+ * pending device reaches only /nonce and /unlock until a code it proves is
+ * accepted.
  */
 import { base32Encode, otpauthUri } from "../../../packages/account-engine/src/totp.mjs";
 import { Refusal, LIVE_DEVICE, b64url, fromB64url, findDevice } from "./checks.js";

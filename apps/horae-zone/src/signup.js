@@ -12,11 +12,20 @@
  * (third review, item 2), so a stranger's starts never leave the owner
  * without a working link.
  *
- * POST /account/email/verify {email, code, password} makes the account only
- * when the code is a live one for that address (a start never ends it). Each
- * try is reserved in the throttle before the compare (so parallel guesses cannot
- * pass the try limits), the compare is sameHex over keyed digests against
- * every live code, and a code is spent by the first right try.
+ * POST /account/email/verify {email, code, password, keyDigest} makes the
+ * account only when the code is a live one for that address (a start never
+ * ends it). Each try is reserved in the throttle before the compare (so
+ * parallel guesses cannot pass the try limits), the compare is sameHex over
+ * keyed digests against every live code, and a code is spent by the first
+ * right try.
+ *
+ * OWNER DEVICE (A5 re-review, root rule: ownership comes from the email
+ * inbox, not the password). The verify answers {ok, ticket}: the one ticket
+ * that registers the account's first device, the owner device
+ * (src/devices.js), bound to the keys keyDigest names, as a /signin ticket
+ * is (security review M3). The account and its owner ticket are written in
+ * one batch, so an account never exists without one. A password-only
+ * /signin on an account with no device registers nothing (src/signin.js).
  *
  * The limits below are the agent's safe defaults, listed for the owner in the
  * design review ("Decisions for Kaleb"): the plan does not fix them.
@@ -26,6 +35,15 @@ import { fragmentLink } from "../../../packages/account-engine/src/mailer.mjs";
 import { Refusal, b64url } from "./checks.js";
 import { accountKeys } from "./account-keys.js";
 import { admitThrottle } from "./throttle.js";
+
+// SHA-256, base64url without padding: the digest of the two public keys a
+// ticket may register (src/devices.js deviceKeyDigest).
+export const KEY_DIGEST = /^[A-Za-z0-9_-]{43}$/;
+const isKeyDigest = (value) => typeof value === "string" && KEY_DIGEST.test(value);
+// The owner ticket the verify hands out, as a /signin ticket: 32 random
+// bytes, live OWNER_TICKET_TTL_MS, stored only as a keyed digest.
+export const OWNER_TICKET_TTL_MS = 5 * 60 * 1000;
+const TICKET_BYTES = 32;
 
 // H1 (security review): a start never ends a live code and a wrong guess
 // never ends one either, so no one but the address owner can spend or kill
@@ -359,10 +377,11 @@ export async function startSignup({ db, body, now, env, request, mailer }) {
 }
 
 export async function verifySignup({ db, body, now, env, request }) {
-  if (!hasOnly(body, ["email", "code", "password"])) throw new Refusal("shape", 400);
+  if (!hasOnly(body, ["email", "code", "password", "keyDigest"])) throw new Refusal("shape", 400);
   const address = addressOf(body.email);
   if (typeof body.code !== "string" || !CODE.test(body.code)) throw new Refusal("shape", 400);
   const password = passwordOf(body.password);
+  if (!isKeyDigest(body.keyDigest)) throw new Refusal("shape", 400);
   const ip = requesterOf(request);
   const keys = await keysOrUnavailable(env);
   const requester = await keys.requesterKey(ip);
@@ -384,11 +403,20 @@ export async function verifySignup({ db, body, now, env, request }) {
   const login = await keys.hashLogin(password);
   const box = await keys.sealAddress(address, addressKey);
   const id = crypto.randomUUID();
-  const made = await db.prepare(
-    "INSERT INTO account (id, address_key, address_box, login_hash, login_salt, created_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (address_key) DO NOTHING RETURNING id",
-  ).bind(id, addressKey, box, login.hash, login.salt, now).first();
+  const ticket = b64url(crypto.getRandomValues(new Uint8Array(TICKET_BYTES)));
+  // One batch: the owner ticket is written only beside the account this
+  // verify made (never one an earlier race made), and never without it.
+  await db.batch([
+    db.prepare(
+      "INSERT INTO account (id, address_key, address_box, login_hash, login_salt, created_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (address_key) DO NOTHING",
+    ).bind(id, addressKey, box, login.hash, login.salt, now),
+    db.prepare(
+      "INSERT INTO ticket (digest, account_id, key_digest, expires_at, used, owner) SELECT ?, ?, ?, ?, 0, 1 WHERE EXISTS (SELECT 1 FROM account WHERE id = ? AND address_key = ?)",
+    ).bind(await keys.ticketDigest(ticket), id, body.keyDigest, now + OWNER_TICKET_TTL_MS, id, addressKey),
+  ]);
+  const made = await db.prepare("SELECT 1 AS yes FROM account WHERE id = ?").bind(id).first();
   // Only a race of two right tries reaches here without a row; it answers as
   // a spent code does.
   if (!made) throw new Refusal("bad-code", 401);
-  return { status: 200, json: { ok: true } };
+  return { status: 200, json: { ok: true, ticket } };
 }

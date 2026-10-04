@@ -30,6 +30,12 @@
  * ticket is stored only while that device is not removed, checked in the
  * same statement (security review L2), so a removal landing mid-flight wins.
  *
+ * A5 re-review, root rule: ownership comes from the email inbox, not the
+ * password. The right password on an account with no device yet (its owner
+ * device registers only from the sign-up link's ticket, src/signup.js)
+ * answers no-owner-device, stores no ticket and mails the owner a note, at
+ * most one an hour. Every device a /signin ticket registers starts pending.
+ *
  * The ticket is 32 random bytes, handed out once and stored only as a keyed
  * digest bound to its account and its key digest. It registers one device
  * (src/devices.js) and dies after SIGNIN_LIMITS.ticketTtlMs. Until A5 no
@@ -87,7 +93,42 @@ function passwordOf(value) {
   return value;
 }
 
-export async function signIn({ db, device, body, now, env, request }) {
+// Whether the account has ever had a device, removed ones included: until
+// its owner device is registered from the sign-up link, a password registers
+// nothing (A5 re-review, root rule).
+async function hasDevice(db, accountId) {
+  return Boolean(await db.prepare("SELECT 1 AS yes FROM device WHERE account_id = ? LIMIT 1").bind(accountId).first());
+}
+
+// The note to the owner when the password signed in to an account with no
+// device yet, at most one an hour per account. It carries no password, no
+// connecting address and no link. The wording is the owner's to change.
+export const OWNER_ALERT = Object.freeze({
+  subject: "Horae Zone: sign-in refused",
+  text: [
+    "The password for this account was used to sign in.",
+    "The account has no device yet, so the sign-in was refused and no device was added.",
+    "An account's first device is registered only from the sign-up email.",
+  ].join("\n"),
+});
+const OWNER_ALERTS_PER_HOUR = 1;
+
+// Sent to the address sealed at sign-up, opened from its box.
+async function ownerAlert(db, now, account, keys, mailer) {
+  const due = await admitThrottle(db, now, SIGNIN_LIMITS.windowMs, [{ bucket: `owner-alert:${account.id}`, limit: OWNER_ALERTS_PER_HOUR }]);
+  if (!due) return undefined;
+  return async () => {
+    if (!mailer) return "mail-failed";
+    try {
+      const to = await keys.openAddress(account.address_box, account.address_key);
+      return (await mailer({ to, ...OWNER_ALERT })) ? null : "mail-failed";
+    } catch {
+      return "mail-failed";
+    }
+  };
+}
+
+export async function signIn({ db, device, body, now, env, request, mailer }) {
   if (!hasOnly(body, ["email", "password", "keyDigest"])) throw new Refusal("shape", 400);
   const address = addressOf(body.email);
   const password = passwordOf(body.password);
@@ -96,7 +137,7 @@ export async function signIn({ db, device, body, now, env, request }) {
   const keys = await keysOrUnavailable(env);
   const addressKey = await keys.addressKey(address);
   const requester = await keys.requesterKey(ip);
-  const account = await db.prepare("SELECT id, login_hash, login_salt FROM account WHERE address_key = ?").bind(addressKey).first();
+  const account = await db.prepare("SELECT id, address_key, address_box, login_hash, login_salt FROM account WHERE address_key = ?").bind(addressKey).first();
   // device is set only when the request passed every signed check (routes.js "signable").
   const known = Boolean(device && account && device.account_id === account.id);
   const addressBucket = `signin-address:${addressKey}`;
@@ -111,6 +152,7 @@ export async function signIn({ db, device, body, now, env, request }) {
   if (!(await admitThrottle(db, now, SIGNIN_LIMITS.windowMs, buckets))) throw new Refusal("slow-down", 429);
   const login = await keys.hashLogin(password, account ? account.login_salt : NO_ACCOUNT_SALT);
   if (!account || !sameHex(login.hash, account.login_hash)) throw new Refusal("bad-login", 401);
+  if (!(await hasDevice(db, account.id))) throw new Refusal("no-owner-device", 403, await ownerAlert(db, now, account, keys, mailer));
   const ticket = b64url(crypto.getRandomValues(new Uint8Array(TICKET_BYTES)));
   const values = [await keys.ticketDigest(ticket), account.id, body.keyDigest, now + SIGNIN_LIMITS.ticketTtlMs];
   if (known) {
