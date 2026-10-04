@@ -48,5 +48,5 @@ test('Profiles and Knowledge still load when they are opened', () => {
 });
 
 test('no em dash reached the nav', () => {
-  expect(nav.includes('—')).toBe(false);
+  expect(nav.includes('\u2014')).toBe(false);
 });
