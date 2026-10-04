@@ -150,8 +150,15 @@ test.describe('goal picker on the phone', () => {
 
   test('chips wrap, nothing scrolls sideways, targets are at least 30px', async ({ page }) => {
     await open(page, NOTES, [row('Mand training'), row('Elopement'), row('Tolerate Waiting')]);
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-    expect(overflow).toBeLessThanOrEqual(1);
+    /* Measured against the device width, not innerWidth: a mobile Chromium
+       widens its layout viewport to fit wide content, so innerWidth grows with
+       the overflow and the difference reads zero. WebKit kept it at 390 and
+       caught the goal rows at 416 (2026-10-04). */
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect(overflow - IPHONE.viewport.width).toBeLessThanOrEqual(1);
+    const rowsRight = await page.locator('[data-goal-row]').evaluateAll(
+      (els) => Math.max(...els.map((e) => e.getBoundingClientRect().right)));
+    expect(rowsRight).toBeLessThanOrEqual(IPHONE.viewport.width);
     const sizes = await page.locator('[data-goal-chip] .gp-eye, [data-goal-chip] .gp-label').evaluateAll(
       (els) => els.map((e) => e.getBoundingClientRect().height));
     sizes.forEach((h) => expect(h).toBeGreaterThanOrEqual(30));
