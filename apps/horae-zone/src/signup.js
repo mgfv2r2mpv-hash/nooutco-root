@@ -7,15 +7,14 @@
  * sends to a server, carries the code: a 128-bit random token in base64url
  * (second security review: a 6-digit code was guessable, so it needed tight
  * per-address caps that a stranger could fill to lock the owner out). The
- * mail shows no code to type. A start at the per-address cap answers the
- * same 200 and, instead of minting, mails the newest live link again
- * (second review, item 3), so a stranger's starts never stop the owner
- * getting a working link.
+ * mail shows no code to type. One link is live for an address at a time: a
+ * start mints one when none is live and otherwise mails the live one again
+ * (third review, item 2), so a stranger's starts never leave the owner
+ * without a working link.
  *
  * POST /account/email/verify {email, code, password} makes the account only
- * when the code is one of the live ones for that address (up to
- * SIGNUP_LIMITS.liveCodes; a newer start never ends an older code). Each try
- * is reserved in the throttle before the compare (so parallel guesses cannot
+ * when the code is a live one for that address (a start never ends it). Each
+ * try is reserved in the throttle before the compare (so parallel guesses cannot
  * pass the try limits), the compare is sameHex over keyed digests against
  * every live code, and a code is spent by the first right try.
  *
@@ -34,18 +33,19 @@ import { admitThrottle } from "./throttle.js";
 // needed to stop guessing, so there is no address-level try cap and no
 // per-code try ceiling (either was a cap a stranger could fill to lock the
 // owner out). Tries stay capped per requester and per (address, requester)
-// pair, which bounds load, not guessing. Item 3: past codesPerAddressHour
-// (or codesPerMailboxHour for a tagged address) a start re-sends the newest
-// live link, at most resendsPerAddressHour times an hour, so mail to one
-// address is bounded at codesPerAddressHour + resendsPerAddressHour an hour.
-// Item 5: codesPerDay is the hard cap, the mail plan's daily limit (3000, or
-// HZ_CODES_PER_DAY), and at alertAtPercent of it one alert a day goes to
-// HZ_ALERT_TO.
+// pair, which bounds load, not guessing. Third review, item 2: a per-address
+// mint cap let strangers use up the hour's links, so once those expired the
+// owner's start mailed nothing. A start now mints whenever no link is live for
+// the address (one live at a time, so at most windowMs / codeTtlMs, 6, an
+// hour) and otherwise re-sends the live one, at most resendsPerAddressHour
+// times an hour: mail to one address is bounded at 6 + 3 an hour, and every
+// live link has been mailed to the address. A tagged address also needs a
+// place in codesPerMailboxHour to mint. Item 5: codesPerDay is the hard cap,
+// the mail plan's daily limit (3000, or HZ_CODES_PER_DAY), and at
+// alertAtPercent of it one alert a day goes to HZ_ALERT_TO.
 export const SIGNUP_LIMITS = Object.freeze({
   codeTtlMs: 10 * 60 * 1000,
-  liveCodes: 5,
   triesPerAddressRequesterHour: 5,
-  codesPerAddressHour: 3,
   codesPerMailboxHour: 3,
   resendsPerAddressHour: 3,
   codesPerDay: 3000,
@@ -73,6 +73,10 @@ export const DAILY_BUCKET = "codes-day";
 export const ALERT_BUCKET = "alert-day";
 // A live code for one address; binds address_key, now.
 const LIVE = "address_key = ? AND used = 0 AND expires_at > ?";
+// Any code for one address inside its life, live or spent (an address with
+// an account holds a spent one); binds address_key, now. While one is there,
+// a start re-sends instead of minting.
+const UNEXPIRED = "address_key = ? AND expires_at > ?";
 
 // The id of the live code whose digest is `digest`, or null. Every digest is
 // compared, with no early exit, so how long this takes does not say which
@@ -214,28 +218,29 @@ function linkOf(env, code) {
   }
 }
 
-// A new code joins the live ones and never replaces them; past liveCodes no
-// code is made (the start limit keeps that from happening inside one
-// window). M1 (security review): the account check rides inside the same
+// Third review, item 2: a new code only when the address has no code inside
+// its life, checked in the same INSERT, so two starts together cannot both
+// mint. M1 (security review): the account check rides inside the same
 // INSERT, so an address with an account runs the same statement and the
 // same write; its row is born spent (used = 1), never verifies and is never
-// mailed. Returns the code to mail, or null.
+// mailed. Returns { made, sent }; sent is the code to mail when the row is live.
 async function mintCode(db, keys, addressKey, now) {
   const code = newCode();
   const digest = await keys.codeDigest(addressKey, code);
   const box = await keys.sealLink(code, addressKey);
-  const made = await db.prepare(
+  const row = await db.prepare(
     `INSERT INTO challenge (address_key, digest, link_box, expires_at, tries, used)
      SELECT ?, ?, ?, ?, 0, EXISTS (SELECT 1 FROM account WHERE address_key = ?)
-     WHERE (SELECT COUNT(*) FROM challenge WHERE ${LIVE}) < ? RETURNING used`,
-  ).bind(addressKey, digest, box, now + SIGNUP_LIMITS.codeTtlMs, addressKey, addressKey, now, SIGNUP_LIMITS.liveCodes).first();
-  return made && made.used === 0 ? { code, msLeft: SIGNUP_LIMITS.codeTtlMs } : null;
+     WHERE NOT EXISTS (SELECT 1 FROM challenge WHERE ${UNEXPIRED}) RETURNING used`,
+  ).bind(addressKey, digest, box, now + SIGNUP_LIMITS.codeTtlMs, addressKey, addressKey, now).first();
+  if (!row) return { made: false, sent: null };
+  return { made: true, sent: row.used === 0 ? { code, msLeft: SIGNUP_LIMITS.codeTtlMs } : null };
 }
 
-// Item 3: at the start cap, the newest live code for the address, to mail
-// again, or null. Every start at the cap takes a place in the re-send
-// bucket before the lookup, mailed or not, so an address with an account
-// (which has no live code) runs the same statements as one without (M1).
+// The live code for the address, to mail again, or null. Every start that
+// does not mint takes a place in the re-send bucket before the lookup, mailed
+// or not, so an address with an account inside a code's life (its code is
+// spent) runs the same statements as one with a live code (M1).
 async function resendCode(db, keys, addressKey, mailboxKey, now) {
   const admitted = await admitThrottle(db, now, SIGNUP_LIMITS.windowMs, [
     { bucket: `resend-address:${addressKey}`, limit: SIGNUP_LIMITS.resendsPerAddressHour },
@@ -338,13 +343,13 @@ export async function startSignup({ db, body, now, env, request, mailer }) {
   ]);
   if (!counted) throw new Refusal("slow-down", 429);
   const alerted = await takeAlert(db, now, codesPerDay);
-  // The per-address (and per-mailbox) cap never refuses: past it a start
-  // re-sends the newest live link instead of minting.
-  const mints = await admitThrottle(db, now, SIGNUP_LIMITS.windowMs, [
-    { bucket: `start-address:${addressKey}`, limit: SIGNUP_LIMITS.codesPerAddressHour },
-    ...(mailboxKey ? [{ bucket: `start-mailbox:${mailboxKey}`, limit: SIGNUP_LIMITS.codesPerMailboxHour }] : []),
-  ]);
-  const sent = mints ? await mintCode(db, keys, addressKey, now) : await resendCode(db, keys, addressKey, mailboxKey, now);
+  // Nothing past here refuses. A tagged address mints only inside its
+  // mailbox's cap; any start that does not mint re-sends the live link.
+  const mints = mailboxKey
+    ? await admitThrottle(db, now, SIGNUP_LIMITS.windowMs, [{ bucket: `start-mailbox:${mailboxKey}`, limit: SIGNUP_LIMITS.codesPerMailboxHour }])
+    : true;
+  const minted = mints ? await mintCode(db, keys, addressKey, now) : { made: false, sent: null };
+  const sent = minted.made ? minted.sent : await resendCode(db, keys, addressKey, mailboxKey, now);
   const works = [
     ...(sent ? [mailAfter(mailer, codeMessage(address, linkOf(env, sent.code), sent.msLeft))] : []),
     ...(alerted ? [alertAfter(env, mailer, alerted, codesPerDay)] : []),

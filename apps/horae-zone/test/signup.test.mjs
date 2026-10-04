@@ -114,13 +114,14 @@ test('the email code rides in the fragment', async (t) => {
 test('the email secret is a 128-bit random token, and the mail shows no code to type', async () => {
   const h = harness();
   await start(h);
+  h.clock.ms = T0 + SIGNUP_LIMITS.codeTtlMs;
   await start(h, ADDRESS, '192.0.2.12');
   const [first, second] = h.mail.map((m) => new URL(m.text.match(/https:\/\/\S+/)[0]).hash.slice(1));
   for (const token of [first, second]) {
     assert.match(token, TOKEN);
     assert.equal(b64urlBytes(token).length, 16, 'the token is 16 bytes');
   }
-  assert.notEqual(first, second, 'each start draws a new token');
+  assert.notEqual(first, second, 'each new link draws a new token');
   for (const m of h.mail) {
     assert.doesNotMatch(m.text, /\b\d{6}\b/, 'no 6-digit code in the mail');
     assert.doesNotMatch(m.text, /code:/i, 'no typed code line in the mail');
@@ -159,9 +160,9 @@ test('an email code expires', async () => {
 });
 
 // H1 (security review): a start or a wrong guess by someone else must not
-// end the code the address owner was mailed. A start never deletes a live
-// code, up to SIGNUP_LIMITS.liveCodes stay live together, and a try is
-// compared with each of them.
+// end the code the address owner was mailed. A start never deletes or
+// replaces the live code (third review, item 2: it mails it again), and a
+// try is compared with every live code.
 test('H1: a second start leaves the first code live, so the owner\'s code still works', async () => {
   const h = harness();
   await start(h);
@@ -172,10 +173,12 @@ test('H1: a second start leaves the first code live, so the owner\'s code still 
   assert.equal(accounts(h.db).length, 1);
 });
 
-test('H1: every live code for an address works, the newest included', async () => {
+test('H1: starts while a link is live mail that link again, and it works', async () => {
   const h = harness();
-  for (let i = 0; i < SIGNUP_LIMITS.codesPerAddressHour; i += 1) await start(h, ADDRESS, `192.0.2.${40 + i}`);
-  assert.equal(challenges(h.db).length, SIGNUP_LIMITS.codesPerAddressHour);
+  for (let i = 0; i < 3; i += 1) await start(h, ADDRESS, `192.0.2.${40 + i}`);
+  assert.equal(challenges(h.db).length, 1, 'one live code');
+  const codes = h.mail.map((m) => new URL(m.text.match(/https:\/\/\S+/)[0]).hash.slice(1));
+  assert.deepEqual(codes, [codes[0], codes[0], codes[0]]);
   assert.equal((await verify(h, { code: codeFrom(h) })).status, 200);
 });
 
@@ -222,9 +225,9 @@ test('H1: a code lives inside one window', () => {
   assert.equal(Object.hasOwn(SIGNUP_LIMITS, 'triesPerAddressHour'), false, 'no address-level try cap (item 2)');
   assert.equal(Object.hasOwn(SIGNUP_LIMITS, 'codeTries'), false, 'no per-code try ceiling (item 2)');
   assert.ok(SIGNUP_LIMITS.codeTtlMs <= SIGNUP_LIMITS.windowMs, 'a code lives inside one window');
-  assert.ok(SIGNUP_LIMITS.codesPerAddressHour <= SIGNUP_LIMITS.liveCodes, 'the start limit never asks for more live codes than are kept');
-  assert.equal(SIGNUP_LIMITS.liveCodes, 5, 'up to 5 live codes per address (item 3)');
-  assert.equal(SIGNUP_LIMITS.codesPerAddressHour, 3);
+  assert.equal(Object.hasOwn(SIGNUP_LIMITS, 'codesPerAddressHour'), false, 'no per-address mint cap (third review, item 2)');
+  assert.equal(Object.hasOwn(SIGNUP_LIMITS, 'liveCodes'), false, 'one live code at a time (third review, item 2)');
+  assert.equal(SIGNUP_LIMITS.windowMs / SIGNUP_LIMITS.codeTtlMs, 6, 'at most 6 links minted an hour');
   assert.ok(Number.isInteger(SIGNUP_LIMITS.resendsPerAddressHour) && SIGNUP_LIMITS.resendsPerAddressHour >= 1, 'a re-send cap (item 3)');
 });
 
@@ -268,34 +271,34 @@ test('item 3: 3 strangers\' starts, then the owner\'s start still gets a working
   assert.equal(accounts(h.db).length, 1);
 });
 
-test('item 3: the mail count per address per hour stays bounded', async () => {
+test('item 3: re-sends of a live link are capped each hour', async () => {
   const h = harness();
   for (let i = 0; i < 40; i += 1) {
     assert.deepEqual(await answer(await start(h, ADDRESS, `192.0.2.${20 + (i % 20)}`)), { status: 200, json: { ok: true } }, `start ${i + 1}`);
   }
-  const bound = SIGNUP_LIMITS.codesPerAddressHour + SIGNUP_LIMITS.resendsPerAddressHour;
-  assert.equal(h.mail.filter((m) => m.to === ADDRESS).length, bound, 'mints plus re-sends, and no more');
-  assert.equal(challenges(h.db).length, SIGNUP_LIMITS.codesPerAddressHour, 'only the start cap mints');
-  h.clock.ms = T0 + SIGNUP_LIMITS.windowMs;
-  assert.equal((await start(h, ADDRESS, '192.0.2.99')).status, 200);
-  assert.equal(h.mail.length, bound + 1, 'the caps lift after their window');
+  assert.equal(h.mail.filter((m) => m.to === ADDRESS).length, 1 + SIGNUP_LIMITS.resendsPerAddressHour, 'one mint plus re-sends, and no more');
+  assert.equal(challenges(h.db).length, 1, 'no new link while one is live');
 });
 
-test('item 3: at the cap an expired link is never sent again', async () => {
+test('item 3: an expired link is never sent again, and the next start mints a new one', async () => {
   const h = harness();
-  for (let i = 0; i < SIGNUP_LIMITS.codesPerAddressHour; i += 1) await start(h, ADDRESS, `192.0.2.${20 + i}`);
-  const mailed = h.mail.length;
+  await start(h);
+  const first = codeFrom(h);
+  h.clock.ms = T0 + SIGNUP_LIMITS.codeTtlMs - 1;
+  await start(h, ADDRESS, '192.0.2.98');
+  assert.equal(codeFrom(h), first, 'inside its life the link is sent again');
   h.clock.ms = T0 + SIGNUP_LIMITS.codeTtlMs;
   assert.deepEqual(await answer(await start(h, ADDRESS, '192.0.2.99')), { status: 200, json: { ok: true } });
-  assert.equal(h.mail.length, mailed, 'no live link, so no mail');
+  assert.notEqual(codeFrom(h), first, 'a new link once the old one has expired');
+  assert.equal((await verify(h, { code: first, ip: '192.0.2.99' })).status, 401);
+  assert.equal((await verify(h, { code: codeFrom(h), ip: '192.0.2.99' })).status, 200);
 });
 
-test('item 3: at the cap an address with an account is sent nothing, with the same statements as one without', async () => {
+test('item 3: inside a code\'s life an address with an account is sent nothing, with the same statements as one with a live link', async () => {
   const h = harness();
   await start(h);
   assert.equal((await verify(h, { code: codeFrom(h) })).status, 200);
-  for (let i = 1; i < SIGNUP_LIMITS.codesPerAddressHour; i += 1) await start(h, ADDRESS, `192.0.2.${20 + i}`);
-  for (let i = 0; i < SIGNUP_LIMITS.codesPerAddressHour; i += 1) await start(h, 'fresh@example.test', `192.0.2.${30 + i}`);
+  await start(h, 'fresh@example.test', '192.0.2.30');
   const sqlOf = async (email, ip) => {
     const from = h.db.bound.length;
     assert.deepEqual(await answer(await start(h, email, ip)), { status: 200, json: { ok: true } });
@@ -321,6 +324,52 @@ test('item 3: a live link is kept sealed for a re-send, and dropped once spent',
   await assert.rejects(keys.openLink(live.link_box, 'f'.repeat(64)), 'the box is bound to its address key');
   assert.equal((await verify(h, { code })).status, 200);
   assert.equal(challenges(h.db)[0].link_box, null);
+});
+
+// Third security review, item 2: strangers' 3 starts used the per-address
+// mint cap and their next 3 the re-send cap, so once those links expired the
+// owner's start answered 200 and mailed nothing until the hour ended. A start
+// now mints whenever no link is live for the address (one live at a time),
+// and otherwise re-sends the live one inside the re-send cap.
+test('third review, item 2: strangers\' 3 mints and 3 re-sends, then the owner\'s start 11 minutes later mails a working link', async () => {
+  const h = harness();
+  for (let i = 0; i < 6; i += 1) {
+    assert.equal((await start(h, ADDRESS, `192.0.2.${20 + i}`)).status, 200, `stranger start ${i + 1}`);
+  }
+  h.clock.ms = T0 + 11 * 60 * 1000;
+  const mailed = h.mail.length;
+  assert.deepEqual(await answer(await start(h, ADDRESS, '192.0.2.99')), { status: 200, json: { ok: true } });
+  assert.equal(h.mail.length, mailed + 1, 'the owner\'s start mails a link');
+  assert.deepEqual(await answer(await verify(h, { code: codeFrom(h), ip: '192.0.2.99' })), { status: 200, json: { ok: true } });
+  assert.equal(accounts(h.db).length, 1);
+});
+
+test('third review, item 2: strangers starting every 10 s for an hour never leave the owner without a working link', async () => {
+  const h = harness();
+  const step = 10_000;
+  const ownerAt = 30 * 60 * 1000 + 5_000;
+  for (let t = 0; t < ownerAt; t += step) {
+    h.clock.ms = T0 + t;
+    assert.equal((await start(h, ADDRESS, `198.51.100.${(t / step) % 40}`)).status, 200, `stranger start at ${t} ms`);
+  }
+  h.clock.ms = T0 + ownerAt;
+  assert.deepEqual(await answer(await start(h, ADDRESS, '192.0.2.99')), { status: 200, json: { ok: true } });
+  assert.deepEqual(await answer(await verify(h, { code: codeFrom(h), ip: '192.0.2.99' })), { status: 200, json: { ok: true } },
+    'the newest link in the owner\'s mailbox works');
+});
+
+test('third review, item 2: one link is live at a time, and mail to one address stays bounded each hour', async () => {
+  const h = harness();
+  const live = () => h.db.sqlite.prepare('SELECT COUNT(*) AS n FROM challenge WHERE used = 0 AND expires_at > ?').get(h.clock.ms).n;
+  const minute = 60_000;
+  for (let i = 0; i < 60; i += 1) {
+    h.clock.ms = T0 + i * minute;
+    assert.deepEqual(await answer(await start(h, ADDRESS, `198.51.100.${i % 20}`)), { status: 200, json: { ok: true } }, `start ${i + 1}`);
+    assert.ok(live() <= 1, `at most one live link at minute ${i}`);
+  }
+  const mintsPerHour = SIGNUP_LIMITS.windowMs / SIGNUP_LIMITS.codeTtlMs;
+  assert.equal(challenges(h.db).length, mintsPerHour, 'a new link only when none is live');
+  assert.equal(h.mail.filter((m) => m.to === ADDRESS).length, mintsPerHour + SIGNUP_LIMITS.resendsPerAddressHour, 'mints plus re-sends, and no more');
 });
 
 test('sign-up starts are rate limited per device', async () => {
@@ -356,11 +405,14 @@ test('no answer says whether an address already has an account', async () => {
 
 // M1 (security review): a start for an address with an account skipped the
 // challenge write, so the time to answer said which addresses have accounts.
-// Both paths now send the same statements in the same order.
+// Both paths now send the same statements in the same order. Third review,
+// item 2: once the account's spent code is past its life, both mint (a code
+// still inside its life re-sends, tested under item 3 below).
 test('a start sends the same statements whether or not the address has an account', async () => {
   const h = harness();
   await start(h);
   await verify(h, { code: codeFrom(h) });
+  h.clock.ms = T0 + SIGNUP_LIMITS.codeTtlMs;
   const sqlOf = async (email, ip) => {
     const from = h.db.bound.length;
     assert.equal((await start(h, email, ip)).status, 200);
@@ -447,7 +499,7 @@ test('NEGATIVE CONTROL: an ASCII local part with a non-ASCII domain, a dot or a 
 // and a domain with characters no DNS name has was accepted. The address is
 // now keyed by its DNS name: one trailing dot stripped, IDNA-mapped to ASCII,
 // and every label letters, digits and inner hyphens.
-const startAddressBuckets = (h) => h.db.sqlite.prepare("SELECT DISTINCT bucket FROM throttle WHERE bucket LIKE 'start-address:%'").all().map((r) => r.bucket);
+const codeAddressKeys = (h) => h.db.sqlite.prepare("SELECT DISTINCT address_key FROM challenge").all().map((r) => r.address_key);
 
 test('item 6: a trailing dot or another case is the same address as the plain one', async () => {
   const h = harness();
@@ -460,7 +512,7 @@ test('item 6: a trailing dot or another case is the same address as the plain on
   for (const [email, ip] of [['v@example.test.', '192.0.2.60'], ['V@EXAMPLE.TEST', '192.0.2.61'], ['v@example.test', '192.0.2.62']]) {
     assert.deepEqual(await answer(await start(k, email, ip)), { status: 200, json: { ok: true } }, email);
   }
-  assert.equal(startAddressBuckets(k).length, 1, 'the three spellings share one per-address bucket');
+  assert.equal(codeAddressKeys(k).length, 1, 'the three spellings share one address key, so the later starts re-send the first link');
   assert.ok(k.mail.every((m) => m.to === 'v@example.test'), 'every mail goes to the plain address');
 });
 
@@ -473,7 +525,7 @@ test('item 6: a full-width or decomposed spelling of a domain is the same addres
     const h = harness();
     await start(h, odd, '192.0.2.70');
     await start(h, plain, '192.0.2.71');
-    assert.equal(startAddressBuckets(h).length, 1, JSON.stringify(odd));
+    assert.equal(codeAddressKeys(h).length, 1, JSON.stringify(odd));
     assert.equal(new Set(h.mail.map((m) => m.to)).size, 1, JSON.stringify(odd));
   }
 });
@@ -647,6 +699,7 @@ test('item 5: the alert check sends the same statements whether or not the addre
   const h = harness({ env: { HZ_CODES_PER_DAY: '6', HZ_ALERT_TO: OPERATOR } });
   await start(h);
   await verify(h, { code: codeFrom(h) });
+  h.clock.ms = T0 + SIGNUP_LIMITS.codeTtlMs; // the spent code's life is over, so both starts mint
   const shape = (s) => s.sql.replace(/\s+/g, ' ');
   const from = h.db.bound.length;
   await start(h, ADDRESS, '198.51.100.50');
