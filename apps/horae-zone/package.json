@@ -8,6 +8,8 @@
   "scripts": {
     "test": "node --test test/*.test.mjs",
     "dev": "wrangler dev --local",
-    "db:local": "wrangler d1 execute horae-zone --local --file schema.sql"
+    "db:local": "wrangler d1 execute horae-zone --local --file schema.sql",
+    "deploy": "node bin/deploy.mjs",
+    "deploy:dry-run": "node bin/deploy.mjs --dry-run"
   }
 }

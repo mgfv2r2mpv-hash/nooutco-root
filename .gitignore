@@ -31,3 +31,6 @@ credentials.json
 # Scratch: Lavish review surfaces and gnhf run artifacts (never source)
 .lavish/
 .gnhf/
+
+# Horae Zone deploy-only config: holds the real D1 id, written by bin/deploy.mjs
+wrangler.deploy.toml
