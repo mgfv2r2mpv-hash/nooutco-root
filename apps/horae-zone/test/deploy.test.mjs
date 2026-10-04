@@ -49,6 +49,11 @@ function mockWrangler(state = {}) {
     if (cmd === 'd1 execute') return ok(JSON.stringify([{ results: (state.tables ?? TABLES).map((name) => ({ name })), success: true }]));
     if (cmd === 'deploy --config') deployed = true;
     if (cmd === 'deploy --config') return ok(state.deployOut ?? `Uploaded horae-zone\nDeployed horae-zone triggers\n  ${HOSTNAME} (custom domain)\n  schedule: 0 * * * *\nCurrent Version ID: v1`);
+    if (cmd === 'deployments list' && state.deploymentsFail) return { code: 1, stdout: '', stderr: state.deploymentsFail };
+    if (cmd === 'deployments list' && state.deploymentsOut !== undefined) return ok(state.deploymentsOut);
+    // wrangler 4 on a Worker the account does not have: the API's code 10007.
+    if (cmd === 'deployments list' && !deployed) return { code: 1, stdout: '', stderr: `✘ [ERROR] A request to the Cloudflare API (/accounts/${FAKE_ACCOUNT.id}/workers/scripts/horae-zone/deployments) failed.\n\n  This Worker does not exist on your account. [code: 10007]` };
+    if (cmd === 'deployments list') return ok(JSON.stringify([{ id: 'dep-1', source: 'wrangler', strategy: 'percentage', created_on: '2026-10-01T00:00:00Z', versions: [{ version_id: 'v1', percentage: 100 }] }]));
     if (cmd === 'secret put') { secretsSet.add(args[2]); return ok(`Success! Uploaded secret ${args[2]}`); }
     if (cmd === 'secret list' && state.secretListFail) return { code: 1, stdout: '', stderr: state.secretListFail };
     if (cmd === 'secret list' && !deployed) return { code: 1, stdout: '', stderr: '✘ [ERROR] Worker "horae-zone" not found.\n\nIf this is a new Worker, run `wrangler deploy` first to create it.' };
@@ -58,7 +63,7 @@ function mockWrangler(state = {}) {
   return { run, calls };
 }
 
-function harness({ wrangler = mockWrangler(), argv = [], answers = ANSWERS, confirm = 'y', edge = 'y', replaceKey, route ={ status: 405, body: '{"error":"method"}', ray: true } } = {}) {
+function harness({ wrangler = mockWrangler(), argv = [], answers = ANSWERS, confirm = 'y', edge = 'y', replaceKey, replaceWorker = 'y', route ={ status: 405, body: '{"error":"method"}', ray: true } } = {}) {
   const lines = [];
   const files = new Map();
   const fetched = [];
@@ -68,6 +73,7 @@ function harness({ wrangler = mockWrangler(), argv = [], answers = ANSWERS, conf
     if (name === 'confirm-account') return confirm;
     if (name === 'confirm-edge') return edge;
     if (name === 'confirm-replace-key' && replaceKey !== undefined) return replaceKey;
+    if (name === 'confirm-replace-worker') return replaceWorker;
     if (name in answers) return answers[name];
     throw new Error(`unexpected prompt ${name}`);
   };
@@ -116,7 +122,7 @@ test('dry run prints every step and command, masks secrets and touches nothing',
   const out = lines.join('\n');
   assert.equal(result.dryRun, true);
   assert.match(out, /DRY RUN/);
-  for (const cmd of ['wrangler whoami --json', 'wrangler d1 list --json', 'wrangler d1 create horae-zone',
+  for (const cmd of ['wrangler whoami --json', 'wrangler deployments list --name horae-zone --json', 'wrangler d1 list --json', 'wrangler d1 create horae-zone',
     'wrangler d1 execute horae-zone --remote --yes --file schema.sql --config wrangler.deploy.toml',
     'wrangler deploy --config wrangler.deploy.toml', 'wrangler secret list --format json --config wrangler.deploy.toml']) {
     assert.ok(out.includes(cmd), `dry run lists: ${cmd}`);
@@ -132,7 +138,7 @@ test('a full run against mocked wrangler creates the database, sets every secret
   const result = await deploy(h.deps);
   assert.equal(result.ok, true, h.output());
   const order = h.wrangler.calls.map((c) => c.args.slice(0, 2).join(' '));
-  assert.deepEqual(order.slice(0, 5), ['whoami --json', 'd1 list', 'd1 create', 'd1 list', 'd1 execute']);
+  assert.deepEqual(order.slice(0, 6), ['whoami --json', 'deployments list', 'd1 list', 'd1 create', 'd1 list', 'd1 execute']);
   assert.ok(order.indexOf('deploy --config') < order.indexOf('secret put'), 'the Worker exists before a secret is put');
   // d1 create runs in an empty folder, so it cannot edit the committed wrangler.toml.
   assert.equal(h.wrangler.calls.find((c) => c.args[1] === 'create').cwd, '/tmp/hz-deploy-test-empty');
@@ -347,6 +353,50 @@ test('--new-account-key asks too when the secret list is unreadable, and not on 
   const r = await deploy(first.deps);
   assert.equal(r.ok, true, first.output());
   assert.equal(first.asked.some((a) => a.name === 'confirm-replace-key'), false, 'a Worker never deployed has no key to replace');
+});
+
+// Review 2026-10-04 item 4: a Worker already named horae-zone in the confirmed
+// account had its code replaced with no warning.
+test('a Worker already named horae-zone is named, and replaced only on y, before anything is created', async () => {
+  const existing = () => mockWrangler({ workerExists: true });
+  const yes = harness({ wrangler: existing(), replaceWorker: 'y' });
+  const r = await deploy(yes.deps);
+  assert.equal(r.ok, true, yes.output());
+  assert.match(yes.output(), /Worker horae-zone already exists; this will replace its code/);
+  const check = yes.wrangler.calls.find((c) => c.args[0] === 'deployments');
+  assert.deepEqual(check?.args, ['deployments', 'list', '--name', 'horae-zone', '--json']);
+  assert.equal(check.env?.CLOUDFLARE_ACCOUNT_ID, FAKE_ACCOUNT.id, 'checked in the confirmed account');
+  assert.equal(yes.asked.find((a) => a.name === 'confirm-replace-worker')?.hidden, false);
+
+  for (const answer of ['n', '', 'no', 'replace']) {
+    const no = harness({ wrangler: existing(), replaceWorker: answer });
+    const result = await deploy(no.deps);
+    assert.equal(result.ok, false, `answer ${JSON.stringify(answer)}`);
+    assert.match(no.output(), /Worker horae-zone not replaced; nothing was changed/, `answer ${JSON.stringify(answer)}`);
+    assert.deepEqual(no.wrangler.calls.map((c) => c.args.slice(0, 2).join(' ')), ['whoami --json', 'deployments list'], `answer ${JSON.stringify(answer)}: nothing after the check`);
+    assert.equal(no.files.size, 0);
+  }
+
+  const fresh = harness();
+  assert.equal((await deploy(fresh.deps)).ok, true, fresh.output());
+  assert.ok(fresh.wrangler.calls.some((c) => c.args[0] === 'deployments'), 'a first deploy is checked too');
+  assert.equal(fresh.asked.some((a) => a.name === 'confirm-replace-worker'), false, 'no Worker, no question');
+  assert.doesNotMatch(fresh.output(), /already exists/);
+});
+
+test('a Worker check that cannot tell whether horae-zone exists stops before anything is created', async () => {
+  const cases = {
+    'an auth failure': { deploymentsFail: '✘ [ERROR] A request to the Cloudflare API failed. Authentication error [code: 10000]' },
+    'an object, not a list': { deploymentsOut: '{"deployments":[]}' },
+    'no JSON at all': { deploymentsOut: 'Deployment ID: dep-1' },
+  };
+  for (const [what, state] of Object.entries(cases)) {
+    const h = harness({ wrangler: mockWrangler(state) });
+    const result = await deploy(h.deps);
+    assert.equal(result.ok, false, what);
+    assert.match(h.output(), /could not tell whether Worker horae-zone exists; nothing was changed/, what);
+    assert.deepEqual(h.wrangler.calls.map((c) => c.args.slice(0, 2).join(' ')), ['whoami --json', 'deployments list'], what);
+  }
 });
 
 test('the generated account key is 32 random bytes, base64url, and the service accepts it', async () => {
