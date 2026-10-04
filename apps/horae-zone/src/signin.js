@@ -14,7 +14,9 @@
  * batch that stores the ticket, so the owner's own sign-ins never fill it.
  * A request signed by a registered device of the account skips the address
  * bucket and still pays the requester bucket (security review H2): strangers
- * who fill the address bucket hold back a new device, never a known one.
+ * who fill the address bucket hold back a new device, never a known one. Its
+ * ticket is stored only while that device is not removed, checked in the
+ * same statement (security review L2), so a removal landing mid-flight wins.
  *
  * The ticket is 32 random bytes, handed out once and stored only as a keyed
  * digest bound to its account and its key digest. It registers one device
@@ -26,7 +28,7 @@
  * design review ("Decisions for Kaleb"): the plan does not fix them.
  */
 import { sameHex } from "../../../packages/account-engine/src/limits.mjs";
-import { Refusal, b64url } from "./checks.js";
+import { Refusal, LIVE_DEVICE, b64url } from "./checks.js";
 import { KEY_DIGEST } from "./devices.js";
 import { SIGNUP_LIMITS, hasOnly, addressOf, keysOrUnavailable, requesterOf } from "./signup.js";
 import { admitThrottle, releaseThrottle } from "./throttle.js";
@@ -69,8 +71,16 @@ export async function signIn({ db, device, body, now, env, request }) {
   const login = await keys.hashLogin(password, account ? account.login_salt : NO_ACCOUNT_SALT);
   if (!account || !sameHex(login.hash, account.login_hash)) throw new Refusal("bad-login", 401);
   const ticket = b64url(crypto.getRandomValues(new Uint8Array(TICKET_BYTES)));
-  const store = db.prepare("INSERT INTO ticket (digest, account_id, key_digest, expires_at, used) VALUES (?, ?, ?, ?, 0)")
-    .bind(await keys.ticketDigest(ticket), account.id, body.keyDigest, now + SIGNIN_LIMITS.ticketTtlMs);
-  await db.batch(known ? [store] : [store, releaseThrottle(db, addressBucket, now)]);
+  const values = [await keys.ticketDigest(ticket), account.id, body.keyDigest, now + SIGNIN_LIMITS.ticketTtlMs];
+  if (known) {
+    const stored = await db.prepare(`INSERT INTO ticket (digest, account_id, key_digest, expires_at, used) SELECT ?, ?, ?, ?, 0 WHERE ${LIVE_DEVICE} RETURNING digest`)
+      .bind(...values, device.id).first();
+    if (!stored) throw new Refusal("no-device", 401);
+  } else {
+    await db.batch([
+      db.prepare("INSERT INTO ticket (digest, account_id, key_digest, expires_at, used) VALUES (?, ?, ?, ?, 0)").bind(...values),
+      releaseThrottle(db, addressBucket, now),
+    ]);
+  }
   return { status: 200, json: { ticket } };
 }

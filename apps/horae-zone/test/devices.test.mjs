@@ -395,6 +395,89 @@ test('a removed device keeps its row, marked with when it was removed', async ()
   assert.equal(devices(h.db).find((d) => d.id === lost.id).removed_at, h.clock.ms - 1000);
 });
 
+// ---- L2 (security review): a removal landing mid-flight wins ----
+
+// The database the handler sees, with a removal of `id` landing the moment a
+// statement starting with `after` has run: past the device checks, before
+// the handler's own writes. `nonces: false` stamps the row only, so the
+// nonce spend is what has to notice.
+function removedMidFlight(h, id, after, { nonces = true } = {}) {
+  const db = h.db;
+  let landed = false;
+  const land = () => {
+    if (landed) return;
+    landed = true;
+    if (nonces) db.sqlite.prepare('UPDATE nonce SET used = 1 WHERE device_id = ?').run(id);
+    db.sqlite.prepare('UPDATE device SET removed_at = ? WHERE id = ?').run(h.clock.ms, id);
+  };
+  const wrap = (s) => ({
+    ...s,
+    bind: (...values) => wrap(s.bind(...values)),
+    first: async () => { const r = await s.first(); land(); return r; },
+    all: async () => { const r = await s.all(); land(); return r; },
+    run: async () => { const r = await s.run(); land(); return r; },
+  });
+  h.env.DB = { ...db, prepare: (sql) => (sql.startsWith(after) ? wrap(db.prepare(sql)) : db.prepare(sql)) };
+}
+
+const FIND_DEVICE = 'SELECT id, account_id, sign_key FROM device';
+const SPEND_NONCE = 'UPDATE nonce SET used = 1 WHERE value';
+
+test('L2: a device removed after its checks passed cannot remove another device', async () => {
+  const h = harness();
+  const caller = await registeredDevice(h, ADDRESS);
+  const target = await registeredDevice(h, ADDRESS, { fresh: false });
+  const request = await signed(h.call, caller, '/device/remove', { device: target.id });
+  removedMidFlight(h, caller.id, SPEND_NONCE);
+  await h.call(request);
+  assert.notEqual(devices(h.db).find((d) => d.id === caller.id).removed_at, null, 'the removal landed');
+  assert.equal(devices(h.db).find((d) => d.id === target.id).removed_at, null, 'the target is untouched');
+  const held = await nonceFor(h.call, target);
+  assert.equal(liveNonces(h.db, target.id, h.clock.ms), 1, 'NEGATIVE CONTROL: the target still works');
+  assert.equal((await answer(await h.call(await signed(h.call, target, '/reverify', {}, { nonce: held })))).json.error, 'not-built');
+});
+
+test('L2 NEGATIVE CONTROL: a live device removes another, and itself', async () => {
+  const h = harness();
+  const caller = await registeredDevice(h, ADDRESS);
+  const target = await registeredDevice(h, ADDRESS, { fresh: false });
+  removedMidFlight(h, 'never-registered', SPEND_NONCE);
+  await h.call(await signed(h.call, caller, '/device/remove', { device: target.id }));
+  assert.notEqual(devices(h.db).find((d) => d.id === target.id).removed_at, null);
+  await h.call(await signed(h.call, caller, '/device/remove', { device: caller.id }));
+  assert.notEqual(devices(h.db).find((d) => d.id === caller.id).removed_at, null);
+});
+
+test('L2: a device removed after its id was checked gets no nonce', async () => {
+  const h = harness();
+  const dev = await registeredDevice(h, ADDRESS);
+  removedMidFlight(h, dev.id, FIND_DEVICE);
+  assert.deepEqual(await answer(await h.call(post('/nonce', {}, { 'x-hz-device': dev.id }))), { status: 401, json: { error: 'no-device' } });
+  assert.equal(liveNonces(h.db, dev.id, h.clock.ms), 0, 'no nonce was made');
+});
+
+test('L2: a nonce of a device stamped removed after its id was checked is not spent', async () => {
+  const h = harness();
+  const dev = await registeredDevice(h, ADDRESS);
+  const request = await signed(h.call, dev, '/reverify', {});
+  removedMidFlight(h, dev.id, FIND_DEVICE, { nonces: false });
+  assert.equal((await answer(await h.call(request))).status, 401);
+  assert.equal(liveNonces(h.db, dev.id, h.clock.ms), 1, 'the nonce stayed unspent');
+});
+
+test('L2: a device removed after its signed sign-in passed the checks gets no ticket', async () => {
+  const h = harness();
+  const device = await registeredDevice(h, ADDRESS);
+  const tickets = () => h.db.sqlite.prepare('SELECT COUNT(*) AS n FROM ticket').get().n;
+  const before = tickets();
+  const request = await signedSignIn(h, device, ADDRESS, '203.0.113.9');
+  removedMidFlight(h, device.id, SPEND_NONCE);
+  assert.deepEqual(await answer(await h.call(request)), { status: 401, json: { error: 'no-device' } });
+  assert.equal(tickets(), before, 'no ticket was stored');
+  h.env.DB = h.db;
+  assert.equal((await h.call(signInRequest(ADDRESS, PASSWORD, '203.0.113.9'))).status, 200, 'NEGATIVE CONTROL: the owner still signs in unsigned');
+});
+
 // ---- the nonce cap (A2 open point 2) ----
 
 test('a device holds at most five live nonces', async () => {
