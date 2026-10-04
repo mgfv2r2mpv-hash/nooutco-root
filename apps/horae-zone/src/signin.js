@@ -22,7 +22,9 @@
  * passwords from a few requesters no longer hold back the owner's right one.
  * A request signed by a registered device of the account skips the address
  * bucket and its backoff, and still pays the requester bucket (security
- * review H2): an address in backoff holds back a new device, never a known one. Its
+ * review H2) and the pair bucket (second review, item 7), so a stolen device
+ * guesses at perPairHour an hour per requester, not at the requester cap:
+ * an address in backoff holds back a new device, never a known one. Its
  * ticket is stored only while that device is not removed, checked in the
  * same statement (security review L2), so a removal landing mid-flight wins.
  *
@@ -97,9 +99,10 @@ export async function signIn({ db, device, body, now, env, request }) {
   const addressBucket = `signin-address:${addressKey}`;
   const pairBucket = `signin-pair:${addressKey}:${requester}`;
   const perRequester = { bucket: `signin-requester:${requester}`, limit: SIGNIN_LIMITS.perRequesterHour };
-  const buckets = known ? [perRequester] : [
+  const perPair = { bucket: pairBucket, limit: SIGNIN_LIMITS.perPairHour };
+  const buckets = known ? [perRequester, perPair] : [
     perRequester,
-    { bucket: pairBucket, limit: SIGNIN_LIMITS.perPairHour },
+    perPair,
     { bucket: addressBucket, limit: SIGNIN_LIMITS.perAddressHour, quietMs: backoffMs(await failuresAt(db, addressBucket, now)) },
   ];
   if (!(await admitThrottle(db, now, SIGNIN_LIMITS.windowMs, buckets))) throw new Refusal("slow-down", 429);
@@ -111,6 +114,10 @@ export async function signIn({ db, device, body, now, env, request }) {
     const stored = await db.prepare(`INSERT INTO ticket (digest, account_id, key_digest, expires_at, used) SELECT ?, ?, ?, ?, 0 WHERE ${LIVE_DEVICE} RETURNING digest`)
       .bind(...values, device.id).first();
     if (!stored) throw new Refusal("no-device", 401);
+    // After the ticket, not in its batch: the ticket's statement must report
+    // whether the device was still live. Should this one fail, the success
+    // stays counted, which holds the device back and never lets a guess by.
+    await releaseThrottle(db, pairBucket, now).run();
   } else {
     await db.batch([
       db.prepare("INSERT INTO ticket (digest, account_id, key_digest, expires_at, used) VALUES (?, ?, ?, ?, 0)").bind(...values),

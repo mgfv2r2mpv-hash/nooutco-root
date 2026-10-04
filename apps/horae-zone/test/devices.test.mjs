@@ -267,6 +267,45 @@ test('item 4: the per-address ceiling is 100 failures an hour, and only failures
   assert.equal(h.db.sqlite.prepare('SELECT COUNT(*) AS n FROM throttle WHERE bucket = ?').get(bucket).n, SIGNIN_LIMITS.perAddressHour - 1, 'the success took no place');
 });
 
+// ---- second review, item 7: a known device still pays the pair bucket ----
+
+const signedGuess = (h, device, address, ip, password) =>
+  signed(h.call, device, '/signin', { email: address, password, keyDigest: ANY_KEY_DIGEST }, { headers: { 'cf-connecting-ip': ip } });
+
+test('item 7: a registered device guessing passwords from one requester is held by the pair bucket', async () => {
+  const h = harness();
+  const device = await registeredDevice(h, ADDRESS);
+  assert.ok(SIGNIN_LIMITS.perPairHour < SIGNIN_LIMITS.perRequesterHour, 'the pair cap is reached before the requester cap');
+  for (let i = 0; i < SIGNIN_LIMITS.perPairHour; i += 1) {
+    assert.deepEqual(await answer(await h.call(await signedGuess(h, device, ADDRESS, '198.51.100.7', `wrong password ${i}!`))),
+      { status: 401, json: { error: 'bad-login' } }, `failure ${i + 1}`);
+  }
+  assert.deepEqual(await answer(await h.call(await signedSignIn(h, device, ADDRESS, '198.51.100.7'))), HELD, 'even the right password');
+  assert.equal((await h.call(await signedSignIn(h, device, ADDRESS, '203.0.113.9'))).status, 200, 'NEGATIVE CONTROL: another requester');
+});
+
+test('item 7: a known device\'s wrong passwords share the pair bucket with unsigned tries from the same requester', async () => {
+  const h = harness();
+  const device = await registeredDevice(h, ADDRESS);
+  for (let i = 0; i < SIGNIN_LIMITS.perPairHour - 1; i += 1) {
+    assert.equal((await h.call(signInRequest(ADDRESS, `wrong password ${i}!`, '198.51.100.7'))).status, 401, `unsigned failure ${i + 1}`);
+  }
+  assert.equal((await h.call(await signedGuess(h, device, ADDRESS, '198.51.100.7', 'one signed wrong password'))).status, 401);
+  assert.deepEqual(await answer(await h.call(await signedSignIn(h, device, ADDRESS, '198.51.100.7'))), HELD);
+});
+
+test('item 7 NEGATIVE CONTROL: a known device\'s own successes take no place in the pair bucket and still skip the address bucket', async () => {
+  const h = harness();
+  const device = await registeredDevice(h, ADDRESS);
+  for (let i = 0; i < SIGNIN_LIMITS.perPairHour + 1; i += 1) {
+    assert.equal((await h.call(await signedSignIn(h, device, ADDRESS, '192.0.2.10'))).status, 200, `success ${i + 1}`);
+  }
+  assert.equal((await h.call(await signedGuess(h, device, ADDRESS, '192.0.2.10', 'a wrong password'))).status, 401, 'the pair bucket is not full');
+  const addressKey = await (await accountKeys(h.env)).addressKey(ADDRESS);
+  assert.equal(h.db.sqlite.prepare('SELECT COUNT(*) AS n FROM throttle WHERE bucket = ?').get(`signin-address:${addressKey}`).n, 0,
+    'a known device takes no place in the address bucket');
+});
+
 test('H2 NEGATIVE CONTROL: a device of another account does not lift the address bucket', async () => {
   const h = harness();
   await signUp(h, ADDRESS);
