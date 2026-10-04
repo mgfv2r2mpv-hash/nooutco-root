@@ -72,6 +72,13 @@ export async function ruleLimits(db, accountId, now, rule, { renewLink = true } 
   throw new Refusal("slow-down", 429);
 }
 
+// Whether the account's code path is closed, read without writing (a state
+// that cannot be read counts as closed). A pending device's try asks this
+// and changes nothing (security review item 2).
+export async function pathClosed(db, accountId) {
+  return (await readLimits(db, accountId)).state.pathLocked;
+}
+
 // The reopen link's token, looked up by its hash, spent once.
 export async function spendReopen(db, now, token) {
   const hash = await sha256Hex(token);

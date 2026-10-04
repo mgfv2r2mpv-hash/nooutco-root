@@ -157,3 +157,13 @@ CREATE TABLE IF NOT EXISTS limits (
 );
 
 CREATE INDEX IF NOT EXISTS limits_reopen_hash ON limits (reopen_hash);
+
+-- A5 security review item 2: one row per code try by a pending device, when
+-- it was admitted. A pending device gets a few a day and none of them reach
+-- the account's limits row. Rows older than a day are purged hourly.
+CREATE TABLE IF NOT EXISTS pending_try (
+  device_id    TEXT    NOT NULL,
+  at           INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS pending_try_device_at ON pending_try (device_id, at);
