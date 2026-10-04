@@ -4,6 +4,8 @@
  * limits.mjs, unchanged: 3 wrong codes in one 30-second window lock that
  * window and mail the account's address, and 2 locked windows in a row or 4
  * in a day close the code path until the single-use emailed link reopens it.
+ * Horae Zone adds one rule of its own: 12 wrong codes in a day, from any
+ * device in the lockout, close the path the same way (A5 re-review item 4).
  *
  * STATE. One limits row per account holds the engine state as JSON, written
  * by compare-and-swap on its version column, so requests arriving together
@@ -18,7 +20,7 @@
  * the path-closed note carries the link.
  */
 import {
-  emptyState, parseState, needsFreshLink, issueUnlock, spendUnlock, UNLOCK_TTL_MS, WINDOW_MS,
+  emptyState, parseState, needsFreshLink, issueUnlock, spendUnlock, settle, windowOf, UNLOCK_TTL_MS, WINDOW_MS, DAY_MS,
 } from "../../../packages/account-engine/src/limits.mjs";
 import { fragmentLink } from "../../../packages/account-engine/src/mailer.mjs";
 import { Refusal, b64url } from "./checks.js";
@@ -73,6 +75,44 @@ export async function ruleLimits(db, accountId, now, rule, { renewLink = true } 
   throw new Refusal("slow-down", 429);
 }
 
+// ---- A5 re-review item 4: the day cap (open point 10). ----
+// Wrong codes from every device in the account's lockout count toward one
+// cap a day, whatever window they fall in, so a guesser who stops short of
+// a window lock still meets it. The count is the engine state's own window
+// records (it keeps a day of them), so the rule needs no new state. It is
+// Horae Zone's, layered on the engine's rules, which JanusMirror shares.
+export const WRONG_PER_ACCOUNT_DAY = 12;
+
+export function wrongToday(state, now) {
+  const oldest = windowOf(now - DAY_MS);
+  return Object.entries(state.windows).reduce((n, [w, r]) => (Number(w) > oldest ? n + (r.wrong ?? 0) : n), 0);
+}
+
+// Closes the path when this ruling added a wrong code and the day's count
+// reached the cap. Only an added wrong code closes it, so the link reopens a
+// path at the cap, and the next wrong code that day closes it again.
+export function capDay(before, ruled, now) {
+  const count = wrongToday(ruled.state, now);
+  if (ruled.state.pathLocked || count < WRONG_PER_ACCOUNT_DAY || count <= wrongToday(before, now)) return ruled;
+  return {
+    ...ruled,
+    state: { ...ruled.state, pathLocked: true, unlock: null },
+    events: [...ruled.events, { kind: "path-lock", reason: "day-cap" }],
+  };
+}
+
+// The engine's settle, with the day cap applied to the wrong codes it counts.
+export function settleCapped(state, now) {
+  return capDay(state, settle(state, now), now);
+}
+
+// Whether one more try fits today: tries in flight count as wrong until they
+// settle, so tries arriving together never pass the cap. A path the link
+// reopened at the cap gets one try at a time.
+export function dayHasRoom(state, now) {
+  return state.pending.length < Math.max(1, WRONG_PER_ACCOUNT_DAY - wrongToday(state, now));
+}
+
 // Whether the account's code path is closed, read without writing (a state
 // that cannot be read counts as closed). A pending device's try asks this
 // and changes nothing (security review item 2).
@@ -112,12 +152,18 @@ function windowNote(event) {
   };
 }
 
+function closedLine(event) {
+  if (!event) return "Code entry for this account is closed, and the last reopen link had expired.";
+  if (event.reason === "day-cap") return `${WRONG_PER_ACCOUNT_DAY} wrong authenticator codes were entered for this account in one day.`;
+  const rule = event.reason === "four-in-a-day" ? "four times in one day" : "in two windows in a row";
+  return `Wrong authenticator codes paused code entry for this account ${rule}.`;
+}
+
 function closedNote(event, link) {
-  const rule = event?.reason === "four-in-a-day" ? "four times in one day" : "in two windows in a row";
   return {
     subject: "Horae Zone: code entry closed",
     text: [
-      event ? `Wrong authenticator codes paused code entry for this account ${rule}.` : "Code entry for this account is closed, and the last reopen link had expired.",
+      closedLine(event),
       "Code entry stays closed until this link is opened:",
       link,
       `Works once. Expires ${LINK_HOURS} hours after it was sent.`,

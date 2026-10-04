@@ -42,7 +42,7 @@
  * defaults, listed for the owner in the design review: the plan does not fix
  * them.
  */
-import { sameHex, admit, settle, confirm, reject, CONFIRM_MS, DAY_MS } from "../../../packages/account-engine/src/limits.mjs";
+import { sameHex, admit, confirm, reject, CONFIRM_MS, DAY_MS } from "../../../packages/account-engine/src/limits.mjs";
 import { fragmentLink } from "../../../packages/account-engine/src/mailer.mjs";
 import { responderReply, unlockChannelFor } from "../../../packages/account-engine/src/pake.mjs";
 import { hotp, windowOf, clockOffset } from "../../../packages/account-engine/src/totp.mjs";
@@ -50,7 +50,9 @@ import { ristretto255 } from "../../../packages/account-engine/vendor/noble/curv
 import { Refusal, LIVE_DEVICE, ACCOUNT_CHANGER, b64url, fromB64url, findDevice } from "./checks.js";
 import { hasOnly, keysOrUnavailable } from "./signup.js";
 import { openSeed, seedBoxKey } from "./otp.js";
-import { ruleLimits, pathClosed, lockNotes, mailAfter, reopenedNote, spendReopen, pendingNotes } from "./lockout.js";
+import {
+  ruleLimits, pathClosed, lockNotes, mailAfter, reopenedNote, spendReopen, pendingNotes, settleCapped, capDay, dayHasRoom,
+} from "./lockout.js";
 
 export const UNLOCK_LIMITS = Object.freeze({
   ticketTtlMs: 5 * 60 * 1000,
@@ -134,11 +136,14 @@ function randomCode() {
 }
 
 // A try by a device that has proved the code: admitted into the account's
-// lockout, whose events become the mail sent after the answer.
+// lockout, whose events become the mail sent after the answer. The day cap
+// (A5 re-review item 4) closes the path at the 12th wrong code of the day and
+// admits no more tries in flight than the day has left.
 async function admitAccountTry({ db, device, now, exchange, clock, keys, mailer, reopenBase }) {
   const clockOffMs = clockOffset(clock, now);
   const ruled = await ruleLimits(db, device.account_id, now, (state) => {
-    const settled = settle(state, now);
+    const settled = settleCapped(state, now);
+    if (!settled.state.pathLocked && !dayHasRoom(settled.state, now)) return { ...settled, ok: false };
     const admitted = admit(settled.state, now, exchange, { clockOffMs });
     return { state: admitted.state, ok: admitted.ok, events: settled.events };
   });
@@ -234,7 +239,7 @@ function matchedStep(candidates, digest) {
 // start.
 async function closedAtFinish(db, accountId, now, exchange) {
   return ruleLimits(db, accountId, now, (state) => {
-    const settled = settle(state, now);
+    const settled = settleCapped(state, now);
     const closed = settled.state.pathLocked;
     return { state: closed ? confirm(settled.state, exchange) : settled.state, events: settled.events, closed };
   });
@@ -270,10 +275,10 @@ export async function finishUnlock({ db, device, body, now, env, mailer }) {
   ).bind(step, device.id, row.account_id, step, row.enrolment, device.id, device.id).first());
   if (!accepted) await findDevice(db, device.id);
   const ruled = await ruleLimits(db, row.account_id, now, (state) => {
-    const settled = settle(state, now);
+    const settled = settleCapped(state, now);
     if (accepted) return { state: confirm(settled.state, body.exchange), events: settled.events };
     const rejected = reject(settled.state, now, body.exchange);
-    return { state: rejected.state, events: [...settled.events, ...rejected.events] };
+    return capDay(settled.state, { state: rejected.state, events: [...settled.events, ...rejected.events] }, now);
   });
   // A wrong try by a pending device mails the owner (A5 re-review item 3).
   const pendingWrong = !accepted && device.pending ? await pendingNotes(db, row.account_id, now, PENDING_TRIES_PER_ACCOUNT_DAY) : [];
