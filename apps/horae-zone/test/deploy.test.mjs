@@ -711,6 +711,51 @@ test('every environment name the service reads is handled by the deploy script',
   for (const name of handled) assert.ok(read.has(name), `${name} is set by the deploy script but src/ never reads it`);
 });
 
+// DEPLOY.md by its "## " sections, each with its code spans taken out.
+function deployDoc() {
+  const text = readFileSync(path.join(ROOT, 'DEPLOY.md'), 'utf8');
+  const sections = {};
+  for (const part of text.split(/^## /m).slice(1)) {
+    const [heading, ...body] = part.split('\n');
+    sections[heading.trim()] = body.join('\n');
+  }
+  return { text, sections, plain: (name) => sections[name].replace(/```[\s\S]*?```/g, '').replace(/`[^`]*`/g, '') };
+}
+
+test('DEPLOY.md names every value the script asks for, generates and puts', () => {
+  const { text, sections } = deployDoc();
+  const asks = sections['What it asks'];
+  const does = sections['What it does'];
+  assert.ok(asks && does, 'DEPLOY.md keeps its "What it asks" and "What it does" sections');
+  for (const s of CATALOG.filter((s) => s.source === 'asked')) assert.ok(asks.includes(`\`${s.name}\``), `"What it asks" names \`${s.name}\``);
+  for (const s of CATALOG.filter((s) => s.source === 'generated')) assert.ok(does.includes(`\`${s.name}\``), `"What it does" names the generated \`${s.name}\``);
+  for (const name of SECRET_NAMES) assert.ok(does.includes(`\`${name}\``), `"What it does" names the secret \`${name}\``);
+  assert.ok(does.includes('--new-ticket-key'), '"What it does" names --new-ticket-key');
+  // A5 is built: its seed and ticket keys are their own secrets, not derived or to come.
+  assert.doesNotMatch(text, /arrives with A5/);
+  assert.doesNotMatch(text, /no separate[^.]*ticket key/);
+  assert.match(sections['What to expect at the end'], new RegExp(`Schema applied\\s+${TABLES.length} tables present`));
+});
+
+test('every message DEPLOY.md quotes is one the script prints', async () => {
+  const { plain } = deployDoc();
+  const quoted = ['What it asks', 'What it does'].flatMap((s) => [...plain(s).matchAll(/"([^"\n]+)"/g)].map((m) => m[1]));
+  assert.ok(quoted.length >= 4, `DEPLOY.md quotes the script (found ${quoted.length})`);
+  const stored = (state = {}) => mockWrangler({ dbPresent: true, existingSecrets: ['HZ_ACCOUNT_KEY', 'HZ_SEED_KEY', 'HZ_TICKET_KEY'], ...state });
+  const runs = [
+    harness(),
+    harness({ wrangler: stored() }),
+    harness({ wrangler: mockWrangler({ workerExists: true }) }),
+    harness({ wrangler: mockWrangler({ workerExists: true }), replaceWorker: 'n' }),
+    harness({ wrangler: stored({ secretListOut: '{}' }) }),
+    harness({ argv: ['--new-account-key'], replaceKey: 'n', wrangler: stored() }),
+    harness({ argv: ['--new-ticket-key'], replaceTicketKey: 'n', wrangler: stored() }),
+  ];
+  for (const h of runs) await deploy(h.deps);
+  const printed = runs.map((h) => h.output()).join('\n');
+  for (const q of quoted) assert.ok(printed.includes(q), `DEPLOY.md quotes "${q}", which the script never prints`);
+});
+
 test('the hidden prompt never echoes what is typed, and piped lines are read in turn', async () => {
   const input = new PassThrough();
   const output = new PassThrough();
