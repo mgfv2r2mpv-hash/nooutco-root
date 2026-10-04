@@ -192,6 +192,7 @@ test.describe('the live paste script', () => {
     expect(report.results[2].pass).toBe(false);
     expect(report.results[3].fails).toMatch(/goal not named/);
 
+    expect(await page.evaluate(() => window.parentShapeReport.results.length)).toBe(4);
     expect(sent).toHaveLength(4);
     expect(sent.every((s) => s.tool === 'parent' && s.schema && s.keys.includes('summary'))).toBe(true);
     expect(sent[0].suffix).toMatch(/^STYLE CARD[\s\S]*SHAPE$/);
