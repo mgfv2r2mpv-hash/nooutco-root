@@ -653,9 +653,52 @@ function prefersLessMotion() {
   }
 }
 
+/* EARLIER ROUNDS, folded into one chip above a later round's questions.
+   Approved 3 Oct 2026: by round two the questions he answered are gone from
+   the panel, and he wanted them in reach without them taking the room the new
+   round needs. Closed by default, so the new round leads; open, it lists each
+   earlier question with what was answered under it, round by round. Display
+   only: what the model reads is the Q:/A: block the engine sends. */
+function EarlierRounds({ rounds }) {
+  const [open, setOpen] = React.useState(false);
+  const count = rounds.reduce((n, r) => n + r.pairs.filter((p) => p.question).length, 0);
+  if (!count) return null;
+  return (
+    <div className="earlier-rounds" data-earlier-rounds={count}>
+      <button
+        type="button"
+        className="earlier-rounds-chip"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+      >
+        {count} answered earlier <span aria-hidden="true">{open ? "▴" : "▾"}</span>
+      </button>
+      {/* Its own scroll, because in bar mode the panel has no height cap and
+          an opened list must not push past the bottom of a phone. */}
+      {open && (
+        <div className="earlier-rounds-list">
+          {rounds.map((r) => (
+            <div key={r.round} className="earlier-round" data-earlier-round={r.round}>
+              {rounds.length > 1 && <p className="earlier-round-label">Round {r.round}</p>}
+              {r.pairs.map((p, i) => (
+                <div key={i} className="earlier-pair">
+                  {p.question && <p className="earlier-q">{p.question}</p>}
+                  {p.answers.length
+                    ? p.answers.map((a, j) => <p key={j} className="earlier-a">{a}</p>)
+                    : <p className="earlier-a earlier-a-none">Not refined</p>}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function RevisionPanel({
   open, onToggle, thread, annotation, onClearAnnotation,
-  draft, onDraft, onSend, onAskAdvice, canAsk, onExportPairs, pairCount, loading, questions, sendLockSeconds, inPlaceChars, skipHeld, unread, quality, suggestionDisposition, onApproveSuggestion, placedQuestions, pendingAnswers,
+  draft, onDraft, onSend, onAskAdvice, canAsk, onExportPairs, pairCount, loading, questions, answeredRounds, sendLockSeconds, inPlaceChars, skipHeld, unread, quality, suggestionDisposition, onApproveSuggestion, placedQuestions, pendingAnswers,
   suggestState, suggestionAccepted, onToggleSuggestion, onEditSuggestion, acceptedSuggestions, suggestionPicked,
   loggedIn,
   intro,
@@ -1101,6 +1144,11 @@ function RevisionPanel({
             </div>
           </div>
         ))}
+        {/* Drawn whether or not this round's questions sit on the page, since
+            the earlier rounds are only ever here. */}
+        {awaitingQuestions && Array.isArray(answeredRounds) && answeredRounds.length > 0 && (
+          <EarlierRounds rounds={answeredRounds} />
+        )}
         {/* Only drawn when it holds something. In bar mode every question is
             on the page, and an empty block here would cost the phone a row. */}
         {awaitingQuestions && !everyQuestionPlaced && (
