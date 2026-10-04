@@ -1522,6 +1522,11 @@ function App() {
      to ask against the SAME text, and re-deriving it would mean running the PHI
      gate again over a value that has already been through it. */
   const passIntakeRef = React.useRef("");
+  /* The draft's intake, the same text as S.draftIntake, held where finalize()
+     can read it in the same tick it is set: finalize runs inside draftNote,
+     before the state update lands. A tool's normalizeOutput gets it as
+     ctx.intake for defaults that depend on what the notes say. */
+  const draftIntakeRef = React.useRef("");
   const [copied, setCopied] = React.useState(null);
   const [copiedPrompt, setCopiedPrompt] = React.useState(false);
   const [loggedIn, setLoggedIn] = React.useState(() => !!(window.NotesGate && NotesGate.isLoggedIn()));
@@ -2121,7 +2126,7 @@ function App() {
       ? { ...restored, hints: (Array.isArray(restored.hints) ? restored.hints : []).concat(injected) }
       : restored;
 
-    const normalized = (normalizer || tool.normalizeOutput)(withHints);
+    const normalized = (normalizer || tool.normalizeOutput)(withHints, { intake: draftIntakeRef.current });
     const stripped = window.NoteAbsence
       ? window.NoteAbsence.scrubNote(normalized)
       : { output: normalized, cut: 0, flagged: 0 };
@@ -2825,6 +2830,7 @@ function App() {
       ...tool.inputs.filter((f) => f.type === "textarea").map((f) => String(scrubbedValues[f.id] || "")),
       String(extra || ""),
     ].join("\n");
+    draftIntakeRef.current = draftIntake;
     patchS({ draftIntake });
     try {
       let userMsg = tool.buildUserPrompt(scrubbedValues);

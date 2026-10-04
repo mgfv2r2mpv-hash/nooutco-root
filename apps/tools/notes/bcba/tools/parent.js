@@ -123,7 +123,7 @@ RULES\n\
 - NAME EVERY GOAL. Name each goal as the notes write it, with its data line, in the summary. A goal the author adds in an answer to a follow-up question is a goal of this note like the others. Never state a count of goals (\"all three parent goals\") that the list in the notes does not support, and never claim a result for all of them when one of them says otherwise.\n\
 - A parenthetical in the notes is load-bearing, not an aside. Definitions, legends, precursors and exclusions written in parentheses carry into the note. Under a sentence ceiling they are the first thing to survive, never the first thing cut.\n\
 - Plain, precise clinical language - no filler, no elevated vocabulary.\n\
-- \"individualsPresent\": Parent/Caregiver, Client and Technician are present by default. Leave one out only when the notes say so, for instance \"follow up when the BT is present\" or \"client was not present\". A technician the notes place in any part of the session was present.\n\n\
+- \"individualsPresent\": Parent/Caregiver, Client and Technician are present by default. Leave one out only when the notes say so, for instance \"follow up when the BT is present\" or \"client was not present\". A technician the notes place in any part of the session was present. Anyone else is checked only when the notes place them in the session: someone who reported something, sent a message or asked for a meeting (a teacher reporting from school, say) is not present unless the notes say they were there. This governs the checkboxes only. The summary still names them and what they reported.\n\n\
 CHECKBOX INFERENCE: For each group return ONLY verbatim values from the allowed list. Infer conservatively - only options clearly supported by the notes. Single-selects: one verbatim value or \"\".\n\
 - caregiverResponse: the third option (responding, generalization occurring, no barriers) only when the notes say generalization is occurring AND name no barrier. A missed step, a missed or late prompt, prompting the caregiver needed, or any resistance means the second option, however good the rest of the data is. The first option only for large barriers or resistance.\n\
 - progressStatus: this is a parent training note, so the caregivers' goal progress weighs more than the client's goal progress. A client goal at 0 of 3 beside caregiver goals at 85 to 100 percent is moderate progress, not minimal.\n\n\
@@ -185,7 +185,40 @@ TERMINOLOGY (non-negotiable)\n\
     return { kept: kept.join("\n"), hints: hints };
   }
 
-  function normalizeOutput(raw) {
+  /* TWO DEFAULTS HE RULED, HELD BY CODE. Approved 2026-10-04 (Q7, "accepted").
+     The prompt already states both, and his two live runs that day still
+     left Technician out of 3 of 6 drafts and Caregiver Response wrong or blank
+     in 3 of 8. The Follow Up check above is code and held in 8 of 8, so these
+     are code too. Both only ever ADD a checkbox or fill a blank one: nothing
+     here removes a person or a word the notes name.
+
+     They run only on a real draft, where the engine passes the intake it was
+     written from (ctx.intake, scrubbed, so a BT reads "[BT]"). */
+  var BT = "\\[?(?:bt|rbt|technician|tech)\\]?";
+  var BT_ABSENT = new RegExp(
+    "\\b(?:no|without(?:\\s+(?:the|a))?)\\s+" + BT + "(?![a-z])" +
+    "|" + BT + "\\s+(?:was\\s+|is\\s+)?(?:absent|not\\s+(?:present|there|in\\s+session)|out\\s+(?:today|sick)|did\\s+not\\s+attend|didn'?t\\s+attend|cancell?ed)" +
+    "|when\\s+(?:the\\s+)?" + BT + "\\s+is\\s+(?:present|there|back)" +
+    "|\\b(?:caregivers?|parents?|client)\\s+and\\s+(?:caregivers?|parents?|client)\\s+only\\b",
+    "i");
+
+  function holdDefaults(out, intake) {
+    var hints = [];
+    // Technician is present unless the notes say the BT was not there.
+    var present = out.individualsPresent;
+    if (present.indexOf("Technician") === -1 && !BT_ABSENT.test(intake)) {
+      present = INDIVIDUALS.filter(function (v) { return v === "Technician" || present.indexOf(v) !== -1; });
+    }
+    // A blank Caregiver Response becomes the middle option, and says so.
+    var response = out.caregiverResponse;
+    if (!response) {
+      response = CAREGIVER_RESPONSES[1];
+      hints.push({ section: "caregiverResponse", code: "thin_section", detail: "Notes say nothing on caregiver response; set to the middle option. Check it." });
+    }
+    return { individualsPresent: present, caregiverResponse: response, hints: hints };
+  }
+
+  function normalizeOutput(raw, ctx) {
     var o = raw && typeof raw === "object" ? raw : {};
     var out = {};
     Object.keys(GROUP_OPTIONS).forEach(function (key) {
@@ -199,7 +232,12 @@ TERMINOLOGY (non-negotiable)\n\
     // it moves to hints, where gaps belong, and never reaches the signed note.
     var moved = splitFollowupQuestions(out.followup);
     out.followup = moved.kept;
-    out.hints = normalizeHints((Array.isArray(o.hints) ? o.hints : []).concat(moved.hints), HINT_CATALOG, SECTION_IDS);
+    var held = ctx && typeof ctx.intake === "string" ? holdDefaults(out, ctx.intake) : null;
+    if (held) {
+      out.individualsPresent = held.individualsPresent;
+      out.caregiverResponse = held.caregiverResponse;
+    }
+    out.hints = normalizeHints((Array.isArray(o.hints) ? o.hints : []).concat(moved.hints, held ? held.hints : []), HINT_CATALOG, SECTION_IDS);
     // The three revision keys the engine reads back. Kept separate from the
     // note's own fields because they never reach the EHR: an answer is shown
     // in the panel and a routing decision is consumed before render.

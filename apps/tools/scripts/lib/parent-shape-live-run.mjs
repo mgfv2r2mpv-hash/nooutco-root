@@ -32,7 +32,7 @@ export async function runParentShapeLive(CASES, checkParentDraft) {
   const card = gate.styleCard ? await gate.styleCard.get().catch(() => null) : null;
   const styleBlock = (card && card.block) || '';
 
-  const finalize = (parsed, map) => {
+  const finalize = (parsed, map, intake) => {
     const restored = window.NotesScrub.restoreOutput(parsed, map);
     const hollow = window.NoteHollow;
     const misplaced = hollow && tool.strategyOwnership ? hollow.misplaced(restored, tool.strategyOwnership) : [];
@@ -41,7 +41,9 @@ export async function runParentShapeLive(CASES, checkParentDraft) {
     const withHints = injected.length
       ? { ...restored, hints: (Array.isArray(restored.hints) ? restored.hints : []).concat(injected) }
       : restored;
-    const normalized = tool.normalizeOutput(withHints);
+    // The intake goes in as the engine passes it, so defaults that read the
+    // notes (parent.js holdDefaults) run here as they do in a real draft.
+    const normalized = tool.normalizeOutput(withHints, { intake });
     const stripped = window.NoteAbsence ? window.NoteAbsence.scrubNote(normalized).output : normalized;
     return hollow ? hollow.passNote(stripped, narrative).output : stripped;
   };
@@ -67,7 +69,8 @@ export async function runParentShapeLive(CASES, checkParentDraft) {
       responseSchema: tool.responseSchema || null,
     });
     if (!r || !r.parsed) throw new Error('the draft came back without a note');
-    return { draft: finalize(r.parsed, rev.map), voice: Boolean(styleBlock || voiceBlock) };
+    const intake = `${scrub(c.intake)}\n${extra}`;
+    return { draft: finalize(r.parsed, rev.map, intake), voice: Boolean(styleBlock || voiceBlock) };
   };
 
   const results = [];
