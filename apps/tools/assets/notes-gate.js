@@ -1004,7 +1004,15 @@
    // Language", "Follow Visual Schedule", "Transitions Between Activities")
    // still left as tokens. Same test as above.
    "Bx Reduction Climbing Stand Add Deliver Present Demand Token Board " +
-   "First-Then Language Follow Visual Schedule Picture Point Between Activities")
+   "First-Then Language Follow Visual Schedule Picture Point Between Activities " +
+   // Added 2026-10-04 from the PHI census (Kaleb picked this slice on his
+   // Masking Quality review): colour words in a target or a material ("the Red
+   // card", "Blue blocks") were the largest class of words masked by mistake.
+   // Same test as above, so the colours that are also surnames or places stay
+   // masked: Brown, White, Black, Green, Gray, Tan, Orange. Pink, Teal and
+   // Lavender stay off as doubtful. Crystal, Amber, Jade and Ruby are first
+   // names, and the first-names list keeps masking them on its own.
+   "Yellow Blue Red Purple Turquoise Beige Maroon Navy")
     .split(/\s+/).forEach(function (w) { if (w) PROGRAM_WORDS[w.toLowerCase()] = true; });
 
   /* GOAL AND SECTION HEADERS AFTER A ROLE WORD. "Client Goals:" and "Parent
