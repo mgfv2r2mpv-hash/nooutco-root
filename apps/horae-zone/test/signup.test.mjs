@@ -258,6 +258,108 @@ test('a start sends the same statements whether or not the address has an accoun
   assert.equal(live, 1, 'only the fresh address holds a code that can verify');
 });
 
+// M2 (security review): an invisible format character or a look-alike
+// letter in the local part made a new address key for the same mailbox, so
+// the per-address limits did not hold. Such addresses are refused as shape,
+// at sign-up and at sign-in, before any write.
+test('M2: an address with a format or zero-width character, or a non-ASCII local part, is refused as shape', async () => {
+  const h = harness();
+  const zw = (c) => String.fromCharCode(c);
+  const bad = [
+    `new${zw(0x200b)}-user@example.test`,
+    `new-user${zw(0x200d)}@example.test`,
+    `${zw(0xfeff)}new-user@example.test`,
+    `new${zw(0x00ad)}-user@example.test`,
+    `new-user@exa${zw(0x200c)}mple.test`,
+    `new-user@example.test${zw(0x2060)}`,
+    `n${zw(0x0435)}w-user@example.test`,
+    `${zw(0xff4e)}ew-user@example.test`,
+  ];
+  for (const email of bad) {
+    assert.deepEqual(await answer(await start(h, email)), { status: 400, json: { error: 'shape' } }, JSON.stringify(email));
+    assert.deepEqual(await answer(await verify(h, { email, code: '000000' })), { status: 400, json: { error: 'shape' } }, JSON.stringify(email));
+    assert.deepEqual(await answer(await h.call(post('/signin', { email, password: PASSWORD }, { 'cf-connecting-ip': IP }))), { status: 400, json: { error: 'shape' } }, JSON.stringify(email));
+  }
+  assert.deepEqual(h.mail, []);
+  assert.deepEqual(challenges(h.db), []);
+  assert.equal(h.db.sqlite.prepare('SELECT COUNT(*) AS n FROM throttle').get().n, 0, 'a refused address is not counted');
+});
+
+test('NEGATIVE CONTROL: an ASCII local part with a non-ASCII domain, a dot or a plus still starts', async () => {
+  const h = harness();
+  for (const [email, ip] of [['first.last@example.test', '192.0.2.50'], ['new-user+notes@example.test', '192.0.2.51'], ['new-user@bücher.example.test', '192.0.2.52']]) {
+    assert.deepEqual(await answer(await start(h, email, ip)), { status: 200, json: { ok: true } }, email);
+  }
+  assert.equal(h.mail.length, 3);
+});
+
+// M2: every '+tag' of one mailbox was its own address, so the per-address
+// start limit did not bound mail to that mailbox. Tagged starts share one
+// bucket per mailbox (the address with the tag stripped). The account key
+// stays the full address, and the plain address keeps its own bucket, so a
+// flood of tags cannot stop the owner's own sign-up.
+test('M2: starts for every +tag of one mailbox share one limit, and the plain address is not held by it', async () => {
+  const h = harness();
+  for (let i = 0; i < SIGNUP_LIMITS.codesPerMailboxHour; i += 1) {
+    assert.equal((await start(h, `new-user+t${i}@example.test`, `192.0.2.${60 + i}`)).status, 200);
+  }
+  const mailed = h.mail.length;
+  assert.deepEqual(await answer(await start(h, 'new-user+another@example.test', '192.0.2.90')), { status: 429, json: { error: 'slow-down' } });
+  assert.deepEqual(await answer(await start(h, 'NEW-USER+Upper@example.test', '192.0.2.91')), { status: 429, json: { error: 'slow-down' } }, 'case does not make a new mailbox');
+  assert.equal(h.mail.length, mailed, 'no mail once the mailbox is limited');
+  assert.equal((await start(h, 'other+t0@example.test', '192.0.2.92')).status, 200, 'another mailbox is not limited');
+  assert.equal((await start(h, ADDRESS, '192.0.2.93')).status, 200, 'the plain address still starts');
+  assert.equal((await verify(h, { code: codeFrom(h), ip: '192.0.2.93' })).status, 200);
+  h.clock.ms = T0 + SIGNUP_LIMITS.windowMs;
+  assert.equal((await start(h, 'new-user+late@example.test', '192.0.2.94')).status, 200, 'the limit lifts after its window');
+});
+
+test('M2 NEGATIVE CONTROL: the account key stays the full address, tag included', async () => {
+  const h = harness();
+  await start(h, 'new-user+notes@example.test');
+  assert.equal((await verify(h, { email: 'new-user+notes@example.test', code: codeFrom(h, 'new-user+notes@example.test') })).status, 200);
+  const keys = await accountKeys(h.env);
+  const [row] = accounts(h.db);
+  assert.equal(row.address_key, await keys.addressKey('new-user+notes@example.test'));
+  assert.notEqual(row.address_key, await keys.addressKey(ADDRESS));
+  await start(h, ADDRESS, '192.0.2.95');
+  assert.equal((await verify(h, { code: codeFrom(h), ip: '192.0.2.95' })).status, 200, 'the plain address makes its own account');
+  assert.equal(accounts(h.db).length, 2);
+});
+
+// M2: nothing bounded the codes sent in a day across every address and
+// requester. A global daily cap does, from configuration (HZ_CODES_PER_DAY)
+// with a safe default; a value that is set but is not a whole number of 1 or
+// more stops sign-up starts instead of opening the cap.
+test('M2: codes sent are capped per day across every address and requester', async () => {
+  const h = harness({ env: { HZ_CODES_PER_DAY: '2' } });
+  assert.equal((await start(h, 'one@example.test', '192.0.2.70')).status, 200);
+  assert.equal((await start(h, 'two@example.test', '192.0.2.71')).status, 200);
+  assert.deepEqual(await answer(await start(h, 'three@example.test', '192.0.2.72')), { status: 429, json: { error: 'slow-down' } });
+  assert.equal(h.mail.length, 2);
+  h.clock.ms = T0 + SIGNUP_LIMITS.windowMs;
+  assert.deepEqual(await answer(await start(h, 'three@example.test', '192.0.2.73')), { status: 429, json: { error: 'slow-down' } }, 'an hour does not lift a daily cap');
+  h.clock.ms = T0 + SIGNUP_LIMITS.dayMs;
+  assert.equal((await start(h, 'three@example.test', '192.0.2.74')).status, 200, 'the cap lifts after a day');
+  assert.equal(h.mail.length, 3);
+});
+
+test('M2: without configuration the daily cap is the default, and a bad value refuses starts', async () => {
+  assert.ok(Number.isInteger(SIGNUP_LIMITS.codesPerDay) && SIGNUP_LIMITS.codesPerDay >= 1);
+  const h = harness();
+  const from = h.db.bound.length;
+  assert.equal((await start(h)).status, 200);
+  const throttle = h.db.bound.slice(from).find((s) => /INSERT INTO throttle/.test(s.sql));
+  assert.ok(throttle.values.includes('codes-day'), 'the start pays the daily bucket');
+  assert.ok(throttle.values.includes(SIGNUP_LIMITS.codesPerDay), 'at the default limit');
+  for (const bad of ['0', '-1', '1.5', 'many', '']) {
+    const b = harness({ env: { HZ_CODES_PER_DAY: bad } });
+    assert.deepEqual(await answer(await start(b)), { status: 503, json: { error: 'unavailable' } }, JSON.stringify(bad));
+    assert.deepEqual(b.mail, []);
+    assert.deepEqual(challenges(b.db), []);
+  }
+});
+
 test('an address that is not an address, extra fields, or a password outside the length rule are refused as shape', async () => {
   const h = harness();
   for (const email of ['', 'no-at-sign', 'two@@example.test', 'a b@example.test', `${'x'.repeat(250)}@example.test`, 7, null]) {

@@ -35,6 +35,9 @@ export const SIGNUP_LIMITS = Object.freeze({
   triesPerAddressHour: 15,
   triesPerAddressRequesterHour: 5,
   codesPerAddressHour: 3,
+  codesPerMailboxHour: 3,
+  codesPerDay: 500,
+  dayMs: 24 * 60 * 60 * 1000,
   startsPerRequesterHour: 10,
   verifiesPerRequesterHour: 20,
   windowMs: 60 * 60 * 1000,
@@ -43,8 +46,14 @@ export const SIGNUP_LIMITS = Object.freeze({
 });
 
 const MAX_ADDRESS = 254;
-const ADDRESS = /^[^\s@\p{Cc}]+@[^\s@\p{Cc}]+\.[^\s@\p{Cc}]+$/u;
+// M2 (security review): no control or format character anywhere (a
+// zero-width or soft-hyphen character made a new address key for the same
+// mailbox), and the local part is printable ASCII (no look-alike letters).
+const ADDRESS = /^[^\s@\p{Cc}\p{Cf}]+@[^\s@\p{Cc}\p{Cf}]+\.[^\s@\p{Cc}\p{Cf}]+$/u;
+const LOCAL = /^[\x21-\x7e]+@/;
 const CODE = /^\d{6}$/;
+// The one bucket with no key: every start counts toward the daily cap.
+export const DAILY_BUCKET = "codes-day";
 const CODE_SPACE = 1_000_000;
 // A live code for one address; binds address_key, codeTries, now.
 const LIVE = "address_key = ? AND used = 0 AND tries < ? AND expires_at > ?";
@@ -66,8 +75,33 @@ export const hasOnly = (body, keys) => {
 };
 
 export function addressOf(value) {
-  if (typeof value !== "string" || value.length > MAX_ADDRESS || !ADDRESS.test(value)) throw new Refusal("shape", 400);
+  if (typeof value !== "string" || value.length > MAX_ADDRESS || !ADDRESS.test(value) || !LOCAL.test(value)) {
+    throw new Refusal("shape", 400);
+  }
   return value.toLowerCase();
+}
+
+// M2: the mailbox a tagged address delivers to, with the "+tag" stripped,
+// for the start limit only (the account key stays the full address). An
+// untagged address is its own mailbox and already has its own bucket, so
+// this is null for it and a flood of tags never holds the plain address.
+function taggedMailbox(address) {
+  const at = address.lastIndexOf("@");
+  const plus = address.indexOf("+");
+  return plus >= 0 && plus < at ? `${address.slice(0, plus)}${address.slice(at)}` : null;
+}
+
+// M2: the global daily cap on codes, from HZ_CODES_PER_DAY when set. A value
+// that is set but is not a whole number of 1 or more stops starts rather
+// than opening the cap.
+function codesPerDayOf(env) {
+  const value = env.HZ_CODES_PER_DAY;
+  if (value === undefined || value === null) return SIGNUP_LIMITS.codesPerDay;
+  const n = typeof value === "string" && /^\d+$/.test(value) ? Number(value) : value;
+  if (!Number.isSafeInteger(n) || n < 1) {
+    throw new Refusal("unavailable", 503);
+  }
+  return n;
 }
 
 function passwordOf(value) {
@@ -130,6 +164,7 @@ export async function startSignup({ db, body, now, env, request, mailer }) {
   const address = addressOf(body.email);
   const keys = await keysOrUnavailable(env);
   if (!mailer) throw new Refusal("unavailable", 503);
+  const codesPerDay = codesPerDayOf(env);
   let link;
   const code = newCode();
   try {
@@ -139,9 +174,12 @@ export async function startSignup({ db, body, now, env, request, mailer }) {
   }
   const addressKey = await keys.addressKey(address);
   const requester = await keys.requesterKey(requesterOf(request));
+  const mailbox = taggedMailbox(address);
   const admitted = await admitThrottle(db, now, SIGNUP_LIMITS.windowMs, [
     { bucket: `start-requester:${requester}`, limit: SIGNUP_LIMITS.startsPerRequesterHour },
     { bucket: `start-address:${addressKey}`, limit: SIGNUP_LIMITS.codesPerAddressHour },
+    ...(mailbox ? [{ bucket: `start-mailbox:${await keys.addressKey(mailbox)}`, limit: SIGNUP_LIMITS.codesPerMailboxHour }] : []),
+    { bucket: DAILY_BUCKET, limit: codesPerDay, windowMs: SIGNUP_LIMITS.dayMs },
   ]);
   if (!admitted) throw new Refusal("slow-down", 429);
   const digest = await keys.codeDigest(addressKey, code);

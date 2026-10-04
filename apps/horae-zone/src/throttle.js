@@ -1,6 +1,7 @@
 /**
  * Sliding-window rate limits kept in D1. A bucket is a closed prefix and a
- * keyed hash (never an address or a connecting address in the clear). One
+ * keyed hash (never an address or a connecting address in the clear), or a
+ * closed name with no key for a global cap (DAILY_BUCKET in signup.js). One
  * statement checks every bucket and records a row in each only when all are
  * under their limit, so two requests cannot both take the last place and a
  * refused request is not counted. Rows past the window are purged hourly
@@ -8,13 +9,12 @@
  */
 
 // Returns true when the request is admitted (and counted), false when any
-// bucket is full.
+// bucket is full. A bucket's own windowMs, when given, replaces windowMs.
 export async function admitThrottle(db, now, windowMs, buckets) {
-  const since = now - windowMs;
   const pick = buckets.map(() => "SELECT ? AS bucket").join(" UNION ALL ");
   const under = buckets.map(() => "(SELECT COUNT(*) FROM throttle WHERE bucket = ? AND at > ?) < ?").join(" AND ");
   // Placeholders in text order: `at`, the picked buckets, then each count check.
-  const values = [now, ...buckets.map((b) => b.bucket), ...buckets.flatMap((b) => [b.bucket, since, b.limit])];
+  const values = [now, ...buckets.map((b) => b.bucket), ...buckets.flatMap((b) => [b.bucket, now - (b.windowMs ?? windowMs), b.limit])];
   const { results } = await db.prepare(
     `INSERT INTO throttle (bucket, at) SELECT bucket, ? FROM (${pick}) WHERE ${under} RETURNING bucket`,
   ).bind(...values).all();

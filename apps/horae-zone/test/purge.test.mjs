@@ -65,6 +65,19 @@ test('a purge removes spent, used-up and expired email codes and rate-limit rows
   assert.deepEqual(db.sqlite.prepare('SELECT at FROM throttle ORDER BY at').all().map((r) => r.at), [T0 - SIGNUP_LIMITS.windowMs + 1, T0]);
 });
 
+// M2: the daily cap on codes counts rows in the 'codes-day' bucket for a
+// day, so the hourly purge keeps them that long and clears them after.
+test('M2: a purge keeps daily-cap rows for a day and clears them after', async () => {
+  const { db } = harness();
+  for (const at of [T0 - SIGNUP_LIMITS.dayMs - 1, T0 - SIGNUP_LIMITS.dayMs, T0 - SIGNUP_LIMITS.dayMs + 1, T0 - SIGNUP_LIMITS.windowMs - 1, T0]) {
+    db.sqlite.prepare('INSERT INTO throttle (bucket, at) VALUES (?, ?)').run('codes-day', at);
+  }
+  db.sqlite.prepare('INSERT INTO throttle (bucket, at) VALUES (?, ?)').run('b', T0 - SIGNUP_LIMITS.windowMs - 1);
+  await purgeExpired(db, T0);
+  assert.deepEqual(db.sqlite.prepare('SELECT bucket, at FROM throttle ORDER BY at').all().map((r) => [r.bucket, r.at]),
+    [['codes-day', T0 - SIGNUP_LIMITS.dayMs + 1], ['codes-day', T0 - SIGNUP_LIMITS.windowMs - 1], ['codes-day', T0]]);
+});
+
 test('NEGATIVE CONTROL: a purge keeps a fresh nonce working and every audit row inside 6 years', async () => {
   const h = harness();
   const dev = await addDevice(h.db);
