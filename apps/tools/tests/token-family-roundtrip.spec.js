@@ -44,11 +44,14 @@ const PAGE = '/notes/bt/';
    (colours, ABA terms, a toy brand) that must come BACK, and two names with a
    role cue in front of them that must NOT. */
 const INTAKE =
-  'Client Jacob labeled Blue, Red and Yellow cards correctly. ' +
+  'Client Jacob labeled Cerulean, Fuchsia and Aqua cards correctly. ' +
   'Data collected on Mand, Tact and Echoic trials. ' +
   'Preferred play with the Paw Patrol figures. Mom Sarah called about Thursday.';
 
-const ROUND_TRIPPED = ['Blue', 'Red', 'Yellow', 'Mand', 'Tact', 'Echoic'];
+// Colours the scrub still tokenises. Blue, Red, Yellow and Turquoise were the
+// examples here until 2026-10-04, when they joined the program word list and
+// stopped leaving as tokens.
+const ROUND_TRIPPED = ['Cerulean', 'Fuchsia', 'Aqua', 'Mand', 'Tact', 'Echoic'];
 const WITHHELD = ['Jacob', 'Sarah'];
 
 const NOTE = {
@@ -286,7 +289,7 @@ test.describe('path 2, a revision', () => {
     // here is the same defect one click earlier.
     const diff = await page.locator('.diff-view').first().innerText();
     expect(diff).not.toMatch(tokenFamily());
-    expect(diff, 'the revision carried no round-tripped word, so it proved nothing').toContain('Blue');
+    expect(diff, 'the revision carried no round-tripped word, so it proved nothing').toContain('Cerulean');
   });
 
   test('and it is gone from the note once the revision is accepted', async ({ page }) => {
@@ -294,7 +297,7 @@ test.describe('path 2, a revision', () => {
     await page.locator('.diff-accept').click();
     const noteText = await readNote(page);
     expect(noteText).not.toMatch(tokenFamily());
-    for (const word of ['Blue', 'Red', 'Yellow']) {
+    for (const word of ['Cerulean', 'Fuchsia', 'Aqua']) {
       expect(noteText, `"${word}" did not survive the revision`).toContain(word);
     }
   });
@@ -438,7 +441,7 @@ test.describe('path 5, per-section Copy', () => {
     const buttons = page.getByTestId('generated-note').getByRole('button', { name: 'Copy', exact: true });
     for (let i = 0; i < await buttons.count(); i++) await buttons.nth(i).click();
     const all = (await copiedFrom(page)).join('\n');
-    for (const word of ['Blue', 'Red', 'Yellow']) {
+    for (const word of ['Cerulean', 'Fuchsia', 'Aqua']) {
       expect(all, `"${word}" was not on the clipboard`).toContain(word);
     }
     for (const word of WITHHELD) {
@@ -459,12 +462,12 @@ test.describe('path 5, per-section Copy', () => {
     expect(copied.length, 'Copy All put nothing on the clipboard').toBeGreaterThan(0);
     const all = copied[copied.length - 1];
     expect(all).not.toMatch(tokenFamily());
-    expect(all, 'Copy All copied an empty note').toContain('Blue');
+    expect(all, 'Copy All copied an empty note').toContain('Cerulean');
   });
 });
 
 /* ── 6. the saved draft after a reload ──────────────────────────────────── */
-/* [[T3]] is a number. The ledger is what says 3 was "Blue", and it used to live
+/* [[T3]] is a number. The ledger is what says 3 was "Cerulean", and it used to live
    in one React ref and nowhere else, so closing the tab destroyed the only copy
    and every opaque token in that note became permanent.
  *
@@ -520,7 +523,7 @@ test.describe('path 6, the saved draft after a reload', () => {
     await drive(page);
     const raw = await page.evaluate(() => localStorage.getItem('notes_draft_bt::map') || '');
     expect(raw, 'nothing was written').not.toEqual('');
-    for (const word of ['Blue', 'Mand', 'Paw Patrol']) {
+    for (const word of ['Cerulean', 'Mand', 'Paw Patrol']) {
       expect(raw, `"${word}" is on disk in the clear`).not.toContain(word);
     }
   });
@@ -558,12 +561,12 @@ test.describe('path 7, a cleared note does not seed the next one', () => {
     await page.getByRole('button', { name: /^Clear/ }).click();
     await expect(page.getByRole('textbox', { name: /Skill Acquisition/i })).toHaveValue('');
 
-    await promptFor(page, 'Client sorted the Turquoise cards during Echoic trials.');
+    await promptFor(page, 'Client sorted the Teal cards during Echoic trials.');
 
     const words = await ledger(page);
     const numbers = Object.keys(words);
     expect(numbers.length, 'the new note issued nothing, so this proves nothing').toBeGreaterThan(0);
-    expect(Object.values(words), 'the new note never tokenised its own word').toContain('Turquoise');
+    expect(Object.values(words), 'the new note never tokenised its own word').toContain('Teal');
 
     /* Every number this note issued, restored through the same reshaped shapes a
        model returns. A ledger carrying the cleared note's entry hands "Magenta"
@@ -574,7 +577,7 @@ test.describe('path 7, a cleared note does not seed the next one', () => {
       sentence,
     );
     expect(restored, 'the cleared note word came back through the in-memory map').not.toContain('Magenta');
-    expect(restored).toContain('Turquoise');
+    expect(restored).toContain('Teal');
     expect(restored).not.toMatch(tokenFamily());
   });
 });
@@ -600,8 +603,8 @@ const PARENT_NOTE = {
   progressStatus: '', summary: '', followup: '', hints: [],
 };
 
-const SUP_INTAKE = 'BT ran the Blue, Red and Yellow card array with the client and scored nine of ten.';
-const PARENT_INTAKE = 'Caregiver practiced manding with the Magenta, Turquoise and Lavender tokens at home.';
+const SUP_INTAKE = 'BT ran the Cerulean, Fuchsia and Aqua card array with the client and scored nine of ten.';
+const PARENT_INTAKE = 'Caregiver practiced manding with the Magenta, Teal and Lavender tokens at home.';
 
 test.describe('path 8, switching tools and coming back', () => {
   test('the revision restores against this tool ledger, not the other one', async ({ page }) => {
@@ -657,10 +660,10 @@ test.describe('path 8, switching tools and coming back', () => {
     const noteText = await readNote(page);
     expect(noteText, 'the revision proved nothing').not.toContain('proved nothing');
     expect(noteText, 'a token survived the tool switch').not.toMatch(tokenFamily());
-    for (const word of ['Blue', 'Red', 'Yellow']) {
+    for (const word of ['Cerulean', 'Fuchsia', 'Aqua']) {
       expect(noteText, `"${word}" was lost across the tool switch`).toContain(word);
     }
-    for (const word of ['Magenta', 'Turquoise', 'Lavender']) {
+    for (const word of ['Magenta', 'Teal', 'Lavender']) {
       expect(noteText, `"${word}" came from the OTHER tool ledger`).not.toContain(word);
     }
   });
