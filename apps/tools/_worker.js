@@ -35,6 +35,32 @@ const EXACT_REDIRECTS = {
 // its own address.
 const NOTE_TOOL_PATH = /^\/notes\/(sup|assess|parent|sap)\/?$/;
 
+// The pages a Horae Zone email link opens: /account/ (sign-up code) and
+// /account/reopen/ (reopen token). The code rides in the URL fragment, and a
+// browser never sends the fragment to a server, so it is in no request line,
+// no access log and no Referer, and this Worker never sees it. These headers
+// keep the page itself from doing anything with it: no connect-src means the
+// browser refuses any fetch, and only this site's own script and styles load.
+// The web font tokens.css @imports is refused too, on purpose. Set here and
+// not in _headers, because a _worker.js puts Pages in advanced mode, where
+// _headers is never applied.
+const ACCOUNT_LINK_PATH = /^\/account(\/|$)/;
+const ACCOUNT_LINK_HEADERS = {
+  "Content-Security-Policy":
+    "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; " +
+    "base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+  "Referrer-Policy": "no-referrer",
+  "X-Frame-Options": "DENY",
+  "X-Content-Type-Options": "nosniff",
+  "Cache-Control": "no-store",
+};
+
+function withAccountLinkHeaders(response) {
+  const headers = new Headers(response.headers);
+  for (const [name, value] of Object.entries(ACCOUNT_LINK_HEADERS)) headers.set(name, value);
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
 export default {
   // ctx only so the knowledge fetch log can be written after the response goes
   // out. Nothing a clinician waits on depends on it.
@@ -208,6 +234,10 @@ export default {
         const rest = next.includes('?') ? '' : url.pathname.slice(old.length).replace(/^\//, '');
         return Response.redirect(new URL(next + rest, request.url).href, 301);
       }
+    }
+
+    if (ACCOUNT_LINK_PATH.test(url.pathname)) {
+      return withAccountLinkHeaders(await env.ASSETS.fetch(request));
     }
 
     const assetRequest = NOTE_TOOL_PATH.test(url.pathname)

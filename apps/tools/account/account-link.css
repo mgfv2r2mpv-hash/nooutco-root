@@ -1,0 +1,76 @@
+/* The Horae Zone link pages. Colours, type and radii come from /tokens.css.
+   The web font that file @imports is refused by this path's CSP on purpose, so
+   these pages set type in the system stack the token falls back to. */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-sans);
+  background: #eef1ea;
+  color: var(--slate-900);
+  min-height: 100vh;
+  padding: 28px 22px 56px;
+  line-height: var(--leading-normal);
+}
+
+.wrap { max-width: 560px; margin: 0 auto; }
+
+.brand { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
+.brand img { width: 40px; height: 40px; }
+.brand .name {
+  font-size: var(--text-lg); font-weight: var(--weight-heavy); color: var(--sage-700);
+  letter-spacing: var(--tracking-tight); line-height: var(--leading-tight);
+}
+.brand .name span { color: var(--sage-500); }
+
+.card {
+  background: var(--white);
+  border: 1.5px solid var(--sage-200);
+  border-radius: var(--radius-2xl);
+  padding: 28px 24px;
+}
+
+h1 {
+  font-size: var(--text-2xl); font-weight: var(--weight-bold);
+  color: var(--sage-800); line-height: var(--leading-snug);
+  margin-bottom: 18px;
+}
+
+.code {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-wide);
+  color: var(--slate-900);
+  background: var(--sage-50);
+  border: 1.5px solid var(--sage-200);
+  border-radius: var(--radius-xl);
+  padding: 18px 16px;
+  word-break: break-all;
+  user-select: all;
+  -webkit-user-select: all;
+}
+
+.actions { display: flex; align-items: center; gap: 14px; margin: 16px 0 18px; flex-wrap: wrap; }
+
+.copy {
+  font: inherit;
+  font-size: var(--text-lg); font-weight: var(--weight-semibold);
+  color: var(--white);
+  background: var(--sage-700);
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 12px 28px;
+  min-height: 44px;
+  cursor: pointer;
+}
+.copy:hover { background: var(--sage-800); }
+.copy:focus-visible { outline: 3px solid var(--blue-500); outline-offset: 2px; }
+
+.status { font-size: var(--text-md); font-weight: var(--weight-semibold); color: var(--green-800); }
+
+.line { font-size: var(--text-lg); color: var(--slate-700); }
+
+.missing p { font-size: var(--text-lg); color: var(--slate-700); }
+.missing p + p { margin-top: 8px; }
