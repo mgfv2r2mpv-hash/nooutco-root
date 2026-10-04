@@ -973,6 +973,28 @@ test('every message DEPLOY.md quotes is one the script prints', async () => {
   for (const q of quoted) assert.ok(printed.includes(q), `DEPLOY.md quotes "${q}", which the script never prints`);
 });
 
+test('DEPLOY.md gives the skip rule the script prints, says when it is required, and names --check-only', async () => {
+  const { sections, plain } = deployDoc();
+  const byHand = sections['By hand, in the dashboard'];
+  assert.ok(byHand, 'DEPLOY.md keeps its "By hand, in the dashboard" section');
+  assertSkipRule(byHand);
+  assert.match(byHand, /required when the zone runs Super Bot Fight Mode/);
+  // Free Bot Fight Mode runs outside the Ruleset Engine, so no Skip rule reaches it.
+  assert.match(byHand, /Bot Fight Mode[^.]*cannot be skipped/);
+  assert.match(byHand, /turn Bot Fight Mode off/);
+  assert.doesNotMatch(byHand, /managed rule or Bot Fight Mode|only if a managed rule/, 'the old D-22 wording is gone');
+  assert.match(sections['The one command'], /node bin\/deploy\.mjs --check-only/);
+  assert.match(byHand, /node bin\/deploy\.mjs --check-only/);
+
+  // What the doc quotes from a challenged run and from --check-only, the script prints.
+  const runs = [harness({ route: CHALLENGED, recheck: ['n'] }), checkOnly({ route: CHALLENGED }), checkOnly({ missingConfig: true })];
+  for (const h of runs) await deploy(h.deps);
+  const printed = runs.map((h) => h.output()).join('\n');
+  const quoted = ['The one command', 'By hand, in the dashboard'].flatMap((s) => [...plain(s).matchAll(/"([^"\n]+)"/g)].map((m) => m[1]));
+  assert.ok(quoted.length >= 3, `the skip rule and --check-only quote the script (found ${quoted.length})`);
+  for (const q of quoted) assert.ok(printed.includes(q), `DEPLOY.md quotes "${q}", which the script never prints`);
+});
+
 test('the hidden prompt never echoes what is typed, and piped lines are read in turn', async () => {
   const input = new PassThrough();
   const output = new PassThrough();
