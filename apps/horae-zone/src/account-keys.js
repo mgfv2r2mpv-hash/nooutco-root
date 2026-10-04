@@ -6,8 +6,12 @@
  *                   an email code and a rate-limit bucket are filed under
  *   address box   - AES-GCM sealing of the address, bound to its address key,
  *                   so the address is never stored in the clear
- *   code digest   - HMAC of an email code under its address key: the only form
- *                   of a code that is stored
+ *   code digest   - HMAC of an email code under its address key: the form a
+ *                   code is checked against
+ *   link box      - AES-GCM sealing of a live email code, bound to its address
+ *                   key, so a start at the per-address cap can mail the newest
+ *                   live link again (second security review, item 3); the box
+ *                   is dropped when the code is spent
  *   requester key - HMAC of the connecting address, the per-device rate-limit
  *                   bucket before a device has a registered key
  *   login pepper  - HMAC over the PBKDF2 output of the account password (NFKC
@@ -42,15 +46,36 @@ function readSecret(text) {
   }
 }
 
+// AES-GCM under `key` with a random nonce, bound to `bound` (an address key)
+// as additional data: nonce then ciphertext, base64url.
+async function seal(key, text, bound) {
+  const iv = crypto.getRandomValues(new Uint8Array(NONCE_BYTES));
+  const sealed = await subtle().encrypt({ name: "AES-GCM", iv, additionalData: enc.encode(bound) }, key, enc.encode(text));
+  const out = new Uint8Array(NONCE_BYTES + sealed.byteLength);
+  out.set(iv);
+  out.set(new Uint8Array(sealed), NONCE_BYTES);
+  return b64url(out);
+}
+
+async function open(key, box, bound) {
+  const bytes = fromB64url(box);
+  if (!bytes || bytes.length <= NONCE_BYTES) throw new Error("box: unexpected shape");
+  const iv = bytes.subarray(0, NONCE_BYTES);
+  const plain = await subtle().decrypt({ name: "AES-GCM", iv, additionalData: enc.encode(bound) }, key, bytes.subarray(NONCE_BYTES));
+  return new TextDecoder().decode(plain);
+}
+
 export async function accountKeys(env) {
   const secret = readSecret(env?.HZ_ACCOUNT_KEY);
   if (!secret || secret.length < MIN_SECRET_BYTES) return null;
   const base = await subtle().importKey("raw", secret, "HKDF", false, ["deriveKey"]);
   secret.fill(0);
   const hmac = { name: "HMAC", hash: "SHA-256", length: 256 };
-  const [addressMac, boxKey, codeMac, requesterMac, pepper, ticketMac] = await Promise.all([
+  const aes = { name: "AES-GCM", length: 256 };
+  const [addressMac, boxKey, linkKey, codeMac, requesterMac, pepper, ticketMac] = await Promise.all([
     derive(base, "address key", hmac, ["sign"]),
-    derive(base, "address box", { name: "AES-GCM", length: 256 }, ["encrypt", "decrypt"]),
+    derive(base, "address box", aes, ["encrypt", "decrypt"]),
+    derive(base, "link box", aes, ["encrypt", "decrypt"]),
     derive(base, "code digest", hmac, ["sign"]),
     derive(base, "requester key", hmac, ["sign"]),
     derive(base, "login pepper", hmac, ["sign"]),
@@ -64,23 +89,12 @@ export async function accountKeys(env) {
     codeDigest: (addressKey, code) => mac(codeMac, `${addressKey}:${code}`),
     ticketDigest: (ticket) => mac(ticketMac, ticket),
 
-    async sealAddress(address, addressKey) {
-      const iv = crypto.getRandomValues(new Uint8Array(NONCE_BYTES));
-      const sealed = await subtle().encrypt({ name: "AES-GCM", iv, additionalData: enc.encode(addressKey) }, boxKey, enc.encode(address));
-      const out = new Uint8Array(NONCE_BYTES + sealed.byteLength);
-      out.set(iv);
-      out.set(new Uint8Array(sealed), NONCE_BYTES);
-      return b64url(out);
-    },
-
+    sealAddress: (address, addressKey) => seal(boxKey, address, addressKey),
     // Throws when the box was sealed under another secret or another address key.
-    async openAddress(box, addressKey) {
-      const bytes = fromB64url(box);
-      if (!bytes || bytes.length <= NONCE_BYTES) throw new Error("address box: unexpected shape");
-      const iv = bytes.subarray(0, NONCE_BYTES);
-      const plain = await subtle().decrypt({ name: "AES-GCM", iv, additionalData: enc.encode(addressKey) }, boxKey, bytes.subarray(NONCE_BYTES));
-      return new TextDecoder().decode(plain);
-    },
+    openAddress: (box, addressKey) => open(boxKey, box, addressKey),
+    sealLink: (code, addressKey) => seal(linkKey, code, addressKey),
+    // Throws when the box was sealed under another secret or another address key.
+    openLink: (box, addressKey) => open(linkKey, box, addressKey),
 
     // The stored login hash: "pbkdf2-sha256$<iterations>$<hex>", with its own
     // random salt per account. The password is NFKC-normalised first, so the

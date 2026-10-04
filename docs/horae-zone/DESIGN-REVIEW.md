@@ -207,11 +207,11 @@ It never holds a vault key, a session key, vault data or PHI.
 | File | Does |
 |---|---|
 | `src/signup.js` | `POST /account {email}` and `POST /account/email/verify {email, code, password}`, plus `SIGNUP_LIMITS` |
-| `src/account-keys.js` | `accountKeys(env)`. HKDF from the one Worker secret `HZ_ACCOUNT_KEY` gives a separate key for each use: the address key, the address box, the code digest, the requester key and the login pepper (A4 adds the ticket digest). `hashLogin` is PBKDF2-SHA256 at 100,000 iterations over a random 16-byte salt per account, then HMAC under the pepper |
+| `src/account-keys.js` | `accountKeys(env)`. HKDF from the one Worker secret `HZ_ACCOUNT_KEY` gives a separate key for each use: the address key, the address box, the code digest, the requester key and the login pepper (A4 adds the ticket digest; the second review, item 3, adds the link box). `hashLogin` is PBKDF2-SHA256 at 100,000 iterations over a random 16-byte salt per account, then HMAC under the pepper |
 | `src/throttle.js` | `admitThrottle(db, now, windowMs, buckets)`: one `INSERT ... SELECT` that checks every bucket and records a row in each only when all are under their limit. A bucket may carry its own window (the daily cap, M2) |
 | `src/index.js` | A URL with any query string is refused `shape` before any check. Handlers get `env`, the request and a mailer. A handler may return `after`, work that runs through `ctx.waitUntil` after the answer and its `ok` audit row, and that audits a failure word of its own (`mail-failed`) |
-| `src/retention.js` | The hourly purge also removes spent, used-up and expired email codes, and rate-limit rows past their window (a day for the daily cap) |
-| `schema.sql` | `account` (id, address_key unique, address_box, login_hash, login_salt, created_at), `challenge` (address_key, digest, expires_at, tries, used) and `throttle` (bucket, at) |
+| `src/retention.js` | The hourly purge also removes spent and expired email codes, and rate-limit rows past their window (a day for the daily cap) |
+| `schema.sql` | `account` (id, address_key unique, address_box, login_hash, login_salt, created_at), `challenge` (address_key, digest, link_box, expires_at, tries, used) and `throttle` (bucket, at) |
 | engine `src/mailer.mjs`, `src/limits.mjs` | See the provenance table under A1 |
 | `.github/workflows/horae-zone-test.yml` | Also runs when `packages/account-engine/src/**` or `vendor/**` changes, since the service now imports the engine |
 
@@ -224,11 +224,11 @@ It never holds a vault key, a session key, vault data or PHI.
 3. **Codes:**
    - 6 digits, drawn uniformly (32-bit values past the last whole million are drawn again).
    - Single use, alive 10 minutes. Up to 3 are live for an address at once, and a newer code never replaces an older one (changed by H1 below).
-   - Stored only as an HMAC digest under a key derived from the service secret, bound to the address key.
+   - Stored only as an HMAC digest under a key derived from the service secret, bound to the address key (since the second review, item 3, also sealed while live, so a start at the cap can mail it again).
    - Compared with the engine's `sameHex`, never `===`.
 4. **A try is counted before the compare.** The verify takes its places in the try limits and a try on every live code (`UPDATE ... RETURNING`) and only then compares, so guesses sent together cannot pass the try limits. It compares with every live code's digest, with no early exit. The first right try spends that code with a second `UPDATE ... WHERE used = 0`.
 5. **No answer says whether an address has an account.** `/account` answers `{ok:true}` for a new address and an existing one, takes the same rate-limit places for both, sends the same statements for both (M1 below), and mails only a new address. A verify for an address that was never sent a code is `bad-code`, like a wrong code.
-6. **Rate limits are atomic, and a refused request is not counted.** Starts are limited per address and per requester, per mailbox for a tagged address, and per day across everyone (M2). Tries are limited per requester, per address, and per address for one requester (H1). Before a device has a key, the requester is the connecting address (`cf-connecting-ip`), stored only as a keyed hash. A request without one is refused as `shape` (L3 below).
+6. **Rate limits are atomic, and a refused request is not counted.** Starts are limited per address and per requester, per mailbox for a tagged address, and per day across everyone (M2). Tries are limited per requester and per address for one requester (H1; the per-address try cap went in the second review, item 2). Since the second review, item 3, a start past the per-address or per-mailbox cap is not refused: it is counted under its requester and the daily cap, and re-sends the newest live link instead of minting. Before a device has a key, the requester is the connecting address (`cf-connecting-ip`), stored only as a keyed hash. A request without one is refused as `shape` (L3 below).
 7. **Shape before the rate limit.** A malformed body is refused before the throttle, so it neither counts nor spends a try.
 8. **The address is stored sealed.** AES-GCM under a derived key, with the address key as associated data, so a box cannot be moved to another row. Lookups use the keyed address hash.
 9. **The password is stored as a peppered slow hash.** 100,000 PBKDF2 iterations is the most the Workers runtime allows. The HMAC pepper means a copied table cannot be guessed against without the Worker secret. The password is NFKC-normalised before the hash (M5 below).
@@ -243,13 +243,14 @@ Safe defaults the plan does not fix. Each is one constant in `src/signup.js`.
 |---|---|---|---|
 | 1 | How long an email code lives | 10 minutes | `SIGNUP_LIMITS.codeTtlMs` |
 | 2 | ~~Code tries at one address per hour, from everyone (H1)~~ | - | **Removed** by the second review, item 2: with a 128-bit token the cap only let strangers hold the owner's link at `slow-down` |
-| 3 | Codes mailed to one address per hour, and codes live at once | 3 and 3 | `codesPerAddressHour`, `liveCodes` |
+| 3 | Codes minted for one address per hour, and codes live at once | 3 and 5 (live raised from 3 by the second review, item 3) | `codesPerAddressHour`, `liveCodes` |
 | 4 | Sign-up starts per connecting address per hour | 10 | `startsPerRequesterHour` |
 | 5 | Code tries per connecting address per hour, and at one address from one connecting address (H1) | 20 and 5 | `verifiesPerRequesterHour`, `triesPerAddressRequesterHour` |
 | 6 | Account password length | 12 to 256 characters | `passwordMin`, `passwordMax` |
-| 7 | The mail wording (second review, item 1: no code to type): subject "Horae Zone sign-up link", then "Link for the device signing up:", the link, "Works once. Expires 10 minutes after it was sent." and "No account is made without this link." | As written | `codeMessage` |
+| 7 | The mail wording (second review, item 1: no code to type): subject "Horae Zone sign-up link", then "Link for the device signing up:", the link, "Works once. Expires within N minutes." (N is the link's remaining life, rounded up: 10 for a new link, less for a re-sent one, item 3) and "No account is made without this link." | As written | `codeMessage` |
 | 8 | Codes mailed per hour across every `+tag` of one mailbox (M2) | 3 | `codesPerMailboxHour` |
 | 9 | Codes sent per day across every address and requester (M2) | 500, or `HZ_CODES_PER_DAY` when set (a plain Worker variable, not a secret) | `codesPerDay` |
+| 10 | Re-sends of the newest live link per hour, per address and per mailbox across its `+tag`s, once the start cap is reached (second review, item 3). Mail to one address is bounded at 3 minted plus 3 re-sent an hour | 3 | `resendsPerAddressHour` |
 
 ### Security review findings and what changed
 
@@ -325,6 +326,7 @@ A second review of `8ebe205a` found that what was left of H1, H2 and M2 had one 
 |---|---|---|
 | 1 | The email secret is a 128-bit random token in the link fragment; the mail shows no code to type | A3 |
 | 2 | No address-level verify cap and no per-code try ceiling, so strangers' wrong tries never make the owner's link answer 429 or end it | A3 |
+| 3 | A start at the per-address cap answers the same 200 and re-sends the newest live link instead of minting, under a re-send cap; up to 5 live codes per address | A3 |
 
 **Item 1: the email secret becomes unguessable.** The code already rode in the link fragment and was clicked, not typed, so a 6-digit code bought nothing but guessability.
 
@@ -342,6 +344,21 @@ Tests: in `test/signup.test.mjs`, "item 2: 15 strangers' wrong tries from 3 requ
 
 Left as is: one requester still gets 5 tries at one address and 20 in all per hour, so a single connecting address cannot use `/account/email/verify` as a load lever.
 
+**Item 3: a stranger's starts no longer stop the owner getting a link.** At the per-address start cap (3 an hour) a start answered `slow-down`, so 3 starts by a stranger held the owner's own start at 429 for the hour.
+
+What changed (`src/signup.js`, `src/account-keys.js`, `schema.sql`):
+- A start takes its place under the requester cap and the daily cap first; either one full is still `slow-down`, since both are the requester's own or everyone's, and neither says anything about the address.
+- Then the start tries the per-address bucket (and the per-mailbox bucket for a tagged address). Under the cap it mints as before. At the cap it answers the same `{ok:true}` and, instead of minting, takes a place in a re-send bucket (`resend-address`, and `resend-mailbox` for a tagged address, each `resendsPerAddressHour`, 3) and mails the newest live link for the address again. Every start at the cap takes that place, mailed or not, so an address with an account (which has no live link) sends the same statements as one without (M1). Past the re-send cap, or with no live link, nothing is mailed and the answer is still `{ok:true}`.
+- To mail a link again the service needs the token, which item 1 stored only as its digest. Each new code is now also sealed in `challenge.link_box`: AES-GCM under its own HKDF key ("link box"), bound to the address key, the same construction as the address box. The digest is still what a try is checked against. The box is set to NULL when the code is spent, and expired rows go in the hourly purge. A box that does not open (sealed under another secret) counts as no live link.
+- `liveCodes` is 5 (was 3). The mint cap stays 3 an hour, so the live cap is never what stops a mint inside one window.
+- The mail says "Expires within N minutes", N being the link's remaining life rounded up, since a re-sent link has less than 10 minutes left.
+
+Tests (`test/signup.test.mjs`): "item 3: 3 strangers' starts, then the owner's start still gets a working link mailed" (the newest live link is mailed again, no code is minted, and it verifies), "item 3: the mail count per address per hour stays bounded" (40 starts from 20 requesters mail 6 links, mint 3 codes, and the caps lift after the window), "item 3: at the cap an expired link is never sent again", "item 3: at the cap an address with an account is sent nothing, with the same statements as one without" and "item 3: a live link is kept sealed for a re-send, and dropped once spent". "sign-up starts are rate limited per address", which pinned the 429, is replaced by the first two. The M2 tag test now expects `{ok:true}` with no mail and no new code past the mailbox cap, and the limits test pins `liveCodes` 5, `codesPerAddressHour` 3 and a re-send cap.
+
+Left as is (residual):
+- A bounded mail count is a cap a stranger can fill. A stranger who sends 6 starts at one address inside a minute mails the owner 3 working links and 3 copies, and then the owner's later starts in that hour mail nothing once those links expire (10 minutes). Every link the stranger causes still goes to the owner, the per-requester cap (10 an hour) bounds one connecting address, and Turnstile or a WAF rate rule on `/account` at the first deploy is the second layer.
+- The token is now recoverable from a copied table together with `HZ_ACCOUNT_KEY`, for as long as the code is live (at most 10 minutes). The table alone gives nothing, and anyone with both can already open every address box.
+
 ### Open points for the reviewer
 
 | # | Point | Where | Proposed resolution |
@@ -350,7 +367,7 @@ Left as is: one requester still gets 5 tries at one address and 20 in all per ho
 | 2 | When two right tries race, the loser answers `bad-code` though its code was right | `verifySignup` | Accept; the winner made the account |
 | 3 | The mail goes out through `ctx.waitUntil`. If the Worker is stopped before the send, the code is stored but never mailed, and nothing is audited | `src/index.js` | Accept; the user asks for another code |
 | 4 | Not run against a real Resend or a real `wrangler dev`, because wrangler is not installed in the authoring environment, so the bundle with its `../../../packages/account-engine` imports is unchecked by wrangler. The engine's runtimes test loads `mailer.mjs` in `workerd` and Chromium | - | The reviewer runs the `wrangler dev` smoke test in the test plan |
-| 5 | Changing `HZ_ACCOUNT_KEY` makes every stored address key, address box, code digest and login hash unusable | `src/account-keys.js` | A rotation plan (keep the old secret to re-derive) before the first real account |
+| 5 | Changing `HZ_ACCOUNT_KEY` makes every stored address key, address box, code digest, link box and login hash unusable | `src/account-keys.js` | A rotation plan (keep the old secret to re-derive) before the first real account |
 | 6 | A non-ASCII domain is taken as written, so spellings a mail system maps to one domain make separate address keys (M2 residual) | `addressOf` in `src/signup.js` | Convert the domain to its ASCII form (`new URL`'s host does this in Workers) before the address key, RED first |
 
 ### Out of scope for A3
