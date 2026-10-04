@@ -93,12 +93,14 @@ test.describe('the word after a role cue is not a person just for sitting there'
 
   test('the clinician keeps their own verb, which is what the note is built from', async ({ page }) => {
     await loggedIn(page);
-    const r = await scrubOf(page, 'Client labeled Blue, Red and Yellow cards.');
+    // Colours the scrub still tokenises: Blue, Red and Yellow joined the
+    // program word list on 2026-10-04 and stopped leaving as tokens.
+    const r = await scrubOf(page, 'Client labeled Cerulean, Fuchsia and Aqua cards.');
     expect(r.scrubbed).toContain('labeled');
     // The colours are still taken, and they still come back: that half was
     // already right and this change must not trade it away.
     expect(r.restores.length).toBe(3);
-    expect(r.scrubbed).not.toContain('Blue');
+    expect(r.scrubbed).not.toContain('Cerulean');
   });
 });
 
