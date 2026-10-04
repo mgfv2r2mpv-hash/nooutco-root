@@ -276,8 +276,8 @@ test.describe('below the bar the tool will not draft yet', () => {
   test('an empty Send is held, and a line says what unlocks it', async ({ page }) => {
     await ask(page, oneQuestion(55));
     await expect(page.getByText(/Question number 1 /)).toBeVisible({ timeout: 20000 });
-    await expect(page.locator('.revision-send')).toBeDisabled();
-    await expect(page.locator('[data-skip-held]')).toContainText('Generates after one answer');
+    await expect(page.locator('.revision-send')).toHaveCount(0);
+    await expect(page.locator('[data-skip-held]')).toContainText('Send opens after one question above is answered.');
   });
 
   test('a chosen suggestion is an answer, so it opens the gate', async ({ page }) => {
@@ -286,7 +286,7 @@ test.describe('below the bar the tool will not draft yet', () => {
     /* Nothing arrives chosen (his ruling, 2 Oct 2026), so the gate holds until
        one is. Choosing it opens the gate, and the wait with it (proposed with
        that ruling: a chosen suggestion counts as an answer for Send). */
-    await expect(page.locator('[data-skip-held]')).toContainText('Generates after one chosen suggestion');
+    await expect(page.locator('[data-skip-held]')).toContainText('Send opens after one question above is picked or answered.');
     await page.locator('[data-suggestion-tick="0:0"]').click();
     await expect(page.locator('[data-skip-held]')).toHaveCount(0);
     await expect(page.locator('[data-send-lock]')).toHaveCount(0);
@@ -300,7 +300,7 @@ test.describe('below the bar the tool will not draft yet', () => {
     await own.press('Enter');
     await own.fill('');
     await own.press('Enter');
-    await expect(page.locator('[data-skip-held]')).toContainText('Generates after one chosen suggestion');
+    await expect(page.locator('[data-skip-held]')).toContainText('Send opens after one question above is picked or answered.');
   });
 
   test('at the bar Send is open, with no wait on it', async ({ page }) => {

@@ -259,6 +259,6 @@ test.describe('a finding on its own never holds the draft back', () => {
     });
 
     await expect(page.locator('[data-skip-held]')).toHaveCount(1);
-    await expect(page.locator('.revision-send')).toBeDisabled();
+    await expect(page.locator('.revision-send')).toHaveCount(0);
   });
 });

@@ -216,7 +216,7 @@ test.describe('Regenerate starts a new process from the intake', () => {
     await expect(page.locator('[data-question-answer="0"]')).toBeVisible({ timeout: 20000 });
     await expect(page.locator('[data-question-answer="0"]')).toHaveValue('');
     // A new round 1 with nothing written: locked, as for a new note.
-    await expect(page.locator('.revision-send')).toBeDisabled();
+    await expect(page.locator('.revision-send')).toHaveCount(0);
     await expect(page.locator('[data-send-lock]')).toBeVisible();
 
     /* Nothing arrives chosen (2 Oct 2026), so below the bar the gate holds an
@@ -254,7 +254,7 @@ test.describe('the Send lock after Regenerate', () => {
     await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
     const send = page.locator('.revision-send');
     const lock = page.locator('[data-send-lock]');
-    await expect(send).toBeDisabled();
+    await expect(send).toHaveCount(0);
 
     // One Send is the first feedback, so the second round opens straight away.
     await page.locator('.revision-input').fill('He ran to the door twice.');
@@ -266,17 +266,17 @@ test.describe('the Send lock after Regenerate', () => {
     // Regenerate mid-conversation: a new note, so round 1 locks again.
     await press(page, 'Regenerate');
     await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
-    await expect(send).toBeDisabled();
+    await expect(send).toHaveCount(0);
     await expect(lock).toBeVisible();
     await expect(lock).toHaveText(/\b(60|59|58)s\b/, { timeout: 2000 });
-    await expect(page.locator('.revision-input')).toHaveAttribute('aria-describedby', 'revision-send-lock');
+    await expect(page.locator('.revision-input')).toHaveAttribute('aria-describedby', /revision-send-lock/);
     expect(seen.notes).toHaveLength(0);
 
     /* A short answer, because with nothing arriving chosen (2 Oct 2026) the
        gate below the bar holds an untouched round after the minute too. Short
        of 25 characters it leaves the wait running. */
     await page.locator('.revision-input').fill('Twice.');
-    await expect(send).toBeDisabled();
+    await expect(send).toHaveCount(0);
     await page.clock.runFor(61_000);
     await expect(send).toBeEnabled();
     await expect(lock).toHaveCount(0);

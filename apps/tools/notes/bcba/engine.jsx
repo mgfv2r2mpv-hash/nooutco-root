@@ -3546,9 +3546,11 @@ function App() {
     return "default";
   };
 
-  // Editing does not accept: a technician can reword one they have undone and
-  // leave it undone. The two flags are independent because the two decisions
-  // are - what it should say, and whether it should be there at all.
+  /* SAVING AN EDIT CHOOSES THE ROW. His review of #235: "On save, it selects
+     that item if unselected." This used to be the other way round, with the
+     wording and the standing kept apart so a row could be reworded and left
+     undone. A saved edit is now a decision to use those words, on the panel
+     row and on the aid row alike. */
   const editSuggestion = (key, text) => {
     const prev = (S.suggestState || {})[key] || {};
     const next = { ...(S.suggestState || {}), [key]: { ...prev, text: text } };
@@ -3558,13 +3560,8 @@ function App() {
        deselects every preloaded row; saving it empty un-picks it, which is
        how the question goes back to having no answer at all. */
     const parts = String(key).split(":");
-    /* A ROW NOBODY HAS DECIDED ABOUT IS CHOSEN BY REWORDING IT. With no
-       pre-pick every row arrives undecided, and the aid row offers Edit on
-       one; saving words into a row and having them quietly left out would be
-       the opposite of his 2 Oct 2026 ruling, that clicking an unchosen box
-       picks it and opens it for editing. A row they explicitly undid stays
-       undone when reworded, as the line above has always said. */
-    if (parts[1] !== "own" && typeof prev.reverted !== "boolean") {
+    // Picking it drops its alternatives and the own row, as a checkmark does.
+    if (parts[1] !== "own") {
       const qi = Number(parts[0]);
       const n = suggestionCount(qi);
       for (let j = 0; j < n; j++) {

@@ -279,7 +279,7 @@ test.describe('the Send lock covers the BCBA drafters too', () => {
     if (await rev.isVisible({ timeout: 1500 }).catch(() => false)) await rev.click();
 
     await expect(page.getByText('How long was the observation?')).toBeVisible({ timeout: 15000 });
-    await expect(page.locator('.revision-send')).toBeDisabled();
+    await expect(page.locator('.revision-send')).toHaveCount(0);
     await expect(page.locator('[data-send-lock]')).toHaveText(/\b\d+s\b/);
     await expect(page.locator('.send-lock-bar')).toBeVisible();
   });

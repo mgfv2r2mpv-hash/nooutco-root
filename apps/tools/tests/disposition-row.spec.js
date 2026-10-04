@@ -192,6 +192,23 @@ test.describe('what the tool added', () => {
     await expect(row(page, '0:0').locator('.dz-mark')).toHaveText('edited');
   });
 
+  /* His review of #235: "On save, it selects that item if unselected." Even a
+     row that was taken back out is chosen again by saving an edit into it. */
+  test('saving an edit into a removed row chooses it again', async ({ page }) => {
+    await ask(page, ONE);
+    await row(page, '0:0').click({ timeout: 20000 });
+    await page.locator('[data-disposition-revert="0:0"]').click();
+    await row(page, '0:0').click();
+    await page.locator('[data-disposition-revert="0:0"]').click();
+    await expect(row(page, '0:0')).toHaveAttribute('data-disposition-state', 'reverted');
+
+    await row(page, '0:0').click();
+    await page.locator('[data-disposition-editbtn="0:0"]').click();
+    await page.locator('[data-disposition-edit="0:0"]').fill('He settled on the floor inside a minute.');
+    await page.locator('[data-disposition-save="0:0"]').click();
+    await expect(row(page, '0:0')).toHaveAttribute('data-disposition-state', 'edited');
+  });
+
   test('removing it says removed and leaves the sentence readable', async ({ page }) => {
     await ask(page, ONE);
     // Chosen first, since nothing arrives chosen, then removed.

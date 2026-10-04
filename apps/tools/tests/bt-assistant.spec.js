@@ -331,7 +331,7 @@ test.describe('triage questions before drafting', () => {
     test('84 waits the full minute', async ({ page }) => {
       const send = await openQuestions(page, triageWith({ readiness: 84 }));
       await startsAt(page, 60);
-      await expect(send).toBeDisabled();
+      await expect(send).toHaveCount(0);
     });
 
     const nextRound = (extra) => ({
@@ -354,7 +354,7 @@ test.describe('triage questions before drafting', () => {
       await page.goto('/notes/bt/');
       await fillRequiredAndGenerate(page);
       await expect(page.locator('[data-skip-held]')).toBeVisible();
-      await expect(page.locator('.revision-send')).toBeDisabled();
+      await expect(page.locator('.revision-send')).toHaveCount(0);
       await page.locator('.revision-input').fill('twice');
       await page.locator('.revision-send').click();
       await expect(page.getByText(/for how long/i)).toBeVisible();
@@ -380,7 +380,7 @@ test.describe('triage questions before drafting', () => {
       const send = await openQuestions(page, triageWith({}));
       await startsAt(page, 60);
       await page.clock.runFor(55_000);
-      await expect(send).toBeDisabled();
+      await expect(send).toHaveCount(0);
     });
 
     test('answering can carry the next round over the bar, and then it is free', async ({ page }) => {

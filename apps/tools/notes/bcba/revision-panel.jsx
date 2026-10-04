@@ -391,6 +391,15 @@ function SuggestionRow({ id, text, original, accepted, alternatives, own, onTogg
   }, [accepted]);
 
   const save = () => { if (dirty) onEdit(buffer); };
+  /* Saving chooses the row, so the field opens for it the way a pick does.
+     Idempotent: the same words saved again change nothing. */
+  const saveAndPick = () => {
+    if (!dirty) return;
+    if (!own) wantFocus.current = true;
+    onEdit(buffer);
+  };
+  // Back to what was saved. Pressed twice, the second press finds nothing to drop.
+  const discard = () => setBuffer(text || "");
   const revert = () => {
     /* One behaviour in both states, which is why one control carries both
        colours: put back what NoMe offered. For the empty row there was never a
@@ -462,21 +471,40 @@ function SuggestionRow({ id, text, original, accepted, alternatives, own, onTogg
 
       <span className="cx-ctl tg-suggestion-ctl">
         {unsaved ? (
-          /* THE YELLOW PENCIL: words nobody saved, on a row that lost the pick.
-             Pressing it puts the row back with those words in it. For the own
-             row that is a save, because saving is what makes it the answer. */
-          <button
-            type="button"
-            className="tg-pencil is-unsaved"
-            data-suggestion-pencil={id}
-            data-suggestion-dirty="1"
-            title="Unsaved edit, not chosen. Press to choose it with the edit."
-            aria-label="Unsaved edit, not chosen. Choose this row with the edit."
-            onClick={own ? save : pick}
-          >
-            &#9998;
-            <span className="tg-unsaved-dot" aria-hidden="true" />
-          </button>
+          /* THE AMBER PAIR: words nobody saved, on a row that lost the pick.
+             His review of #235: "Clicking with unsaved also leaves an amber
+             icon to revert to suggestion / discard edits idempotent with save.
+             On save, it selects that item if unselected."
+
+             The pencil saves the words and so chooses the row (editSuggestion
+             picks on save). The arrow throws the unsaved words away and puts
+             back what was saved, which is NoMe's wording unless an edit was
+             saved before. Both read from the props, not from a count of
+             presses, so a second press does what the first did. */
+          <React.Fragment>
+            <button
+              type="button"
+              className="tg-pencil is-unsaved"
+              data-suggestion-pencil={id}
+              data-suggestion-dirty="1"
+              title="Unsaved edit, not chosen. Press to save it and choose this row."
+              aria-label="Unsaved edit, not chosen. Save it and choose this row."
+              onClick={saveAndPick}
+            >
+              &#9998;
+              <span className="tg-unsaved-dot" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              className="tg-revert is-unsaved"
+              data-suggestion-revert={id}
+              title={own ? "Discard the unsaved words." : "Discard the unsaved edit and keep the suggestion."}
+              aria-label={own ? "Unsaved edit, not chosen. Discard the unsaved words." : "Unsaved edit, not chosen. Discard it and keep the suggestion."}
+              onClick={discard}
+            >
+              &#8617;
+            </button>
+          </React.Fragment>
         ) : ownKept ? (
           /* Their own words are there but a preloaded row was checked after. The
              text is kept; this makes it the choice again, ipso facto. */
@@ -799,6 +827,22 @@ function RevisionPanel({
   const canSend = !loading && !sendLocked &&
     (awaitingQuestions ? (hasWords || !skipHeld) : hasWords);
   const sendIfAllowed = () => { if (canSend) onSend(); };
+  /* NO GREYED SEND WHILE A ROUND IS HELD. His review of #235: "Instead of the
+     disabled-out 'Generate' button, have it say 'Please respond to some items
+     above to proceed' or something like that but better." Two states hold a
+     round, and in both a note on state stands where Send was:
+
+       heldRound   below the readiness bar with nothing chosen or typed (the
+                   gate); the line says what opens it
+       sendLocked  the minute on unanswered revisions; its own note, with the
+                   countdown and the drain bar, moves into Send's place
+
+     Send while a call runs ("Sending") and Send after the draft with nothing
+     typed are not a held round, and keep the button. */
+  const heldRound = awaitingQuestions && !!skipHeld && !hasWords;
+  const sendWaiting = !loading && (sendLocked || heldRound);
+  const describedBy = [sendLocked ? "revision-send-lock" : "", heldRound ? "revision-send-held" : ""]
+    .filter(Boolean).join(" ") || undefined;
 
   /* THE FLOOR PLAN'S OTHER HALF. Moving the questions onto the page is only
      half the fix: measured on an iPhone 14 profile, this panel is 465px of a
@@ -1059,7 +1103,7 @@ function RevisionPanel({
         ))}
         {/* Only drawn when it holds something. In bar mode every question is
             on the page, and an empty block here would cost the phone a row. */}
-        {awaitingQuestions && (skipHeld || !everyQuestionPlaced) && (
+        {awaitingQuestions && !everyQuestionPlaced && (
           <div style={{ margin: "4px 0 10px" }}>
             {/* A question already drawn on the page beside the box it asks about
                 is not drawn again here. Asking the same thing twice, in two
@@ -1138,15 +1182,8 @@ function RevisionPanel({
                 )}
               </div>
             ))}
-            {skipHeld && (
-              /* Send stays, and this line names the one state that opens it:
-                 answer something. */
-              <div className="skip-held" data-skip-held="1">
-                {hasSuggestions && !acceptedSuggestions
-                  ? "Generates after one chosen suggestion or one answer."
-                  : "Generates after one answer."}
-              </div>
-            )}
+            {/* The held line moved to the footer, where Send stands (his
+                review of #235), so this block holds only questions now. */}
           </div>
         )}
         {loading && <Bubble role="assistant" muted>Working…</Bubble>}
@@ -1227,17 +1264,6 @@ function RevisionPanel({
             <p className="revision-asks-foot">Not sent. Sends as one request.</p>
           </div>
         )}
-        {/* THE LOCK, AS A NOTE ON STATE. His UI rule: plain notes on state,
-            condition and consequence, never talking to the person. The bar
-            drains so the wait visibly goes somewhere. */}
-        {!signedOut && sendLocked && (
-          <div className="send-lock" id="revision-send-lock" data-send-lock={sendLock.left}>
-            <span>{"Send locked · " + sendLock.left + "s · opens at " + SEND_UNLOCK_CHARS + " characters typed or a suggestion chosen"}</span>
-            <div className="send-lock-bar" aria-hidden="true">
-              <span style={{ width: ((sendLock.total - sendLock.left) / sendLock.total) * 100 + "%" }} />
-            </div>
-          </div>
-        )}
         {/* MIC, BOX, SEND, in that order on screen and in the DOM, so Tab walks
             it the way it is drawn. His ruling, 2026-09-28: "Move microphone to
             be left of that text field, leave send on the right, text field in
@@ -1307,25 +1333,48 @@ function RevisionPanel({
                   : "Change or added detail"
             }
             className="revision-input"
-            /* A disabled Send leaves the tab order, so a screen-reader user
-               never lands on the button its note is attached to. The field is
-               where they are when Enter does nothing, so it carries the note
-               too. */
-            aria-describedby={sendLocked ? "revision-send-lock" : undefined}
+            /* With Send replaced by its notes, the field is where a
+               screen-reader user is when Enter does nothing, so it carries
+               the notes. */
+            aria-describedby={describedBy}
           />
-          <button
-            type="submit"
-            /* An answer typed under the question it answers is still an
-               answer, and with questions on screen an empty Send is the accept
-               path. canSend holds all of it, including the lock. */
-            disabled={!canSend}
-            className="icon-btn revision-send"
-            title={sendLocked ? "Locked " + sendLock.left + "s" : "Send"}
-            aria-describedby={sendLocked ? "revision-send-lock" : undefined}
-          >
-            {loading ? <span className="icon-btn-wait" aria-hidden="true">…</span> : <SendGlyph />}
-            <span className="icon-btn-say">{loading ? "Sending" : "Send"}</span>
-          </button>
+          {sendWaiting ? (
+            /* WHERE SEND STANDS, A NOTE ON STATE. His UI rule: plain notes on
+               state, condition and consequence, never talking to the person.
+               The lock's bar drains so the wait visibly goes somewhere. Its
+               own row under the field, because a sentence does not fit a 46px
+               square. */
+            <div className="send-wait" data-send-wait="1">
+              {sendLocked && (
+                <div className="send-lock" id="revision-send-lock" data-send-lock={sendLock.left}>
+                  <span>{"Send locked · " + sendLock.left + "s · opens at " + SEND_UNLOCK_CHARS + " characters typed or a suggestion chosen"}</span>
+                  <div className="send-lock-bar" aria-hidden="true">
+                    <span style={{ width: ((sendLock.total - sendLock.left) / sendLock.total) * 100 + "%" }} />
+                  </div>
+                </div>
+              )}
+              {heldRound && (
+                <p className="skip-held" id="revision-send-held" data-skip-held="1">
+                  {hasSuggestions
+                    ? "Send opens after one question above is picked or answered."
+                    : "Send opens after one question above is answered."}
+                </p>
+              )}
+            </div>
+          ) : (
+            <button
+              type="submit"
+              /* An answer typed under the question it answers is still an
+                 answer, and with questions on screen an empty Send is the
+                 accept path. canSend holds all of it, including the lock. */
+              disabled={!canSend}
+              className="icon-btn revision-send"
+              title="Send"
+            >
+              {loading ? <span className="icon-btn-wait" aria-hidden="true">…</span> : <SendGlyph />}
+              <span className="icon-btn-say">{loading ? "Sending" : "Send"}</span>
+            </button>
+          )}
         </div>}
         {/* ONE LINE OF FINE PRINT, NOT THREE. The rule about names, the rule
             about PHI and what the Enter key does were a centred paragraph, a
