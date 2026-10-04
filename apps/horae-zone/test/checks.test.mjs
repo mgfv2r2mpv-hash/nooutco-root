@@ -85,7 +85,9 @@ test('admin routes refuse a device whose account is not an admin', async () => {
 
 test('open routes take a JSON object and answer not-built until their slice lands', async () => {
   const h = harness();
-  for (const p of byCheck('open')) assert.equal(await reason(await h.call(post(p, {}))), 'not-built', p);
+  const unbuilt = byCheck('open').filter((p) => !ROUTES[p].handler);
+  assert.ok(unbuilt.length > 0);
+  for (const p of unbuilt) assert.equal(await reason(await h.call(post(p, {}))), 'not-built', p);
 });
 
 test('anything but a POST of a JSON object under the size cap is refused', async () => {
@@ -103,6 +105,18 @@ test('anything but a POST of a JSON object under the size cap is refused', async
     assert.equal(res.status, status, word);
     assert.equal(await reason(res), word);
   }
+});
+
+test('a request with a query string is refused as shape before any check or handler', async () => {
+  const h = harness();
+  const dev = await addDevice(h.db);
+  for (const p of ['/signin?x=1', '/account?email=a%40example.test', '/nonce?n=1', '/reverify?code=482913']) {
+    const res = await h.call(post(p, {}, { 'x-hz-device': dev.id }));
+    assert.equal(res.status, 400, p);
+    assert.equal(await reason(res), 'shape', p);
+  }
+  assert.equal(h.db.sqlite.prepare('SELECT COUNT(*) AS n FROM nonce').get().n, 0, 'no nonce was issued');
+  assert.equal(JSON.stringify(auditRows(h.db)).includes('482913'), false);
 });
 
 test('an unknown path is refused as no-route and audited as unknown', async () => {

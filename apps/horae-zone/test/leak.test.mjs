@@ -50,6 +50,34 @@ test('no route or audit row carries a body, code, seed, PIN or email text', asyn
   assertClean(logs.join('\n'), 'console output');
 });
 
+// A3: a real sign-up, so the address, the code and the password reach the
+// code paths that hash, seal and mail them. The mail sink is the one place
+// the address and code may appear.
+test('a sign-up leaves no address, email code or password in any answer, table, bound value or log', async (t) => {
+  const logs = captureConsole(t);
+  const h = harness();
+  const address = 'leak-canary@example.test';
+  const password = 'CANARY-password-9c1d-long';
+  const seen = [];
+  const send = async (p, body) => { seen.push(await everything(await h.call(post(p, body, { 'cf-connecting-ip': '192.0.2.50' })))); };
+  await send('/account', { email: address });
+  const code = new URL(h.mail[0].text.match(/https:\/\/\S+/)[0]).hash.slice(1);
+  await send('/account/email/verify', { email: address, code: code === '000000' ? '000001' : '000000', password });
+  await send('/account/email/verify', { email: address, code, password });
+  await send('/account', { email: address });
+  await send('/account/email/verify', { email: address, code, password });
+  assert.equal(h.db.sqlite.prepare('SELECT COUNT(*) AS n FROM account').get().n, 1, 'the sign-up went through');
+  const dump = `${JSON.stringify(h.db.sqlite.prepare('SELECT * FROM audit').all())}${JSON.stringify(h.db.bound.map((b) => b.values))}`;
+  // The code is matched as a whole number, so it is not found inside a
+  // 13-digit timestamp that happens to hold the same 6 digits.
+  for (const value of [address, new RegExp(`(?<![0-9])${code}(?![0-9])`), password]) {
+    const carries = (text) => (typeof value === 'string' ? text.includes(value) : value.test(text));
+    for (const text of seen) assert.equal(carries(text), false, 'a response carries a sign-up value');
+    assert.equal(carries(dump), false, 'the audit table or a bound statement carries a sign-up value');
+    assert.equal(carries(logs.join('\n')), false, 'console output carries a sign-up value');
+  }
+});
+
 test('NEGATIVE CONTROL: the canary check catches a planted echo', async () => {
   const routes = { ...ROUTES, '/echo': { checks: 'open', handler: async ({ body }) => ({ status: 200, json: body }) } };
   const h = harness();
