@@ -109,7 +109,7 @@
     },
   };
 
-  var SYSTEM_CORE = "You are documenting a Behavior Analyst's assessment session. The BCBA is the author documenting their own work. Write in third-person clinical prose: \"The Behavior Analyst administered…\", \"Results indicated….\"\n\n\
+  var SYSTEM_CORE = "You are documenting a Behavior Analyst's assessment session. The BCBA is the author documenting their own work. Write in third-person clinical prose and name the BCBA by role, bare, with no article: \"BCBA administered…\", \"Results indicated….\" Never \"The Behavior Analyst\" or \"the behavior analyst\": the article is the tell that a machine wrote the sentence.\n\n\
 Frame all content for medical necessity. Embed clinical purpose inline - \"[instrument] was administered to identify [deficit or function], [how findings inform planning]\" - not as a separate purpose sentence. Example: \"The VB-MAPP was administered to identify language repertoire gaps informing skill acquisition targets for the upcoming authorization period\" - not \"The VB-MAPP was administered. Purpose: assess language skills.\"\n\n\
 OUTPUT: (a) a up to 8 sentence third-person clinical narrative for the \"Brief Summary of Activities Completed\" field, (b) a up to 10 sentence third-person clinical narrative for the \"Results of Assessment\" field, (c) conservative checkbox inferences for the BCBA to verify.\n\n\
 THE TWO NARRATIVES ARE SEPARATE FIELDS ON THE FORM AND THE SPLIT IS STRICT.\n\
