@@ -34,7 +34,7 @@ A bad answer is asked again, up to 3 times. All answers are asked before anythin
 1. Finds the D1 database `horae-zone`, or creates it (from an empty temp folder, so wrangler cannot edit `wrangler.toml`).
 2. Writes `wrangler.deploy.toml` next to `wrangler.toml`: the real database id, the route `horae-zone.nooutco.me` as a Custom domain (always proxied, so `cf-connecting-ip` comes from the Cloudflare edge), `workers_dev = false`, and the daily limit when you gave one. It holds no secret and is gitignored. The committed `wrangler.toml` keeps its zero id and no route (`test/config.test.mjs`).
 3. Applies `schema.sql` to the remote database. Every statement is `IF NOT EXISTS`, so a rerun changes nothing.
-4. Deploys the Worker, then puts each secret (keeping an `HZ_ACCOUNT_KEY` already set) with `wrangler secret put`, the value on stdin: `HZ_ACCOUNT_KEY`, `RESEND_KEY`, `HZ_MAIL_FROM`, `HZ_ALERT_TO`, `HZ_LINK_BASE`.
+4. Reads the Worker's secret list (names only), then deploys the Worker and puts each secret (keeping an `HZ_ACCOUNT_KEY` already set) with `wrangler secret put`, the value on stdin: `HZ_ACCOUNT_KEY`, `RESEND_KEY`, `HZ_MAIL_FROM`, `HZ_ALERT_TO`, `HZ_LINK_BASE`. A list the script cannot read stops the run before the deploy, with the Worker and its secrets untouched ("could not read the secret list; nothing was changed"); only wrangler's "Worker not found" on a first deploy reads as no secrets yet.
 5. Skips the owner's admin role (A5c is not built yet) and says so.
 6. Checks everything and prints the checklist.
 

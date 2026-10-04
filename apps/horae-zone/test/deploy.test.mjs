@@ -35,6 +35,8 @@ function mockWrangler(state = {}) {
   const calls = [];
   const db = { present: state.dbPresent ?? false };
   const secretsSet = new Set(state.existingSecrets ?? []);
+  // As wrangler 4 does: a Worker that was never deployed has no secret list.
+  let deployed = state.workerExists ?? secretsSet.size > 0;
   const ok = (stdout = '') => ({ code: 0, stdout, stderr: '' });
   async function run(args, opts = {}) {
     calls.push({ args, input: opts.input, cwd: opts.cwd, env: opts.env });
@@ -44,8 +46,11 @@ function mockWrangler(state = {}) {
     if (cmd === 'd1 create') { db.present = true; return ok(`database_id = "${FAKE_DB_ID}"`); }
     if (cmd === 'd1 execute' && args.includes('--file')) return ok('[{"success":true}]');
     if (cmd === 'd1 execute') return ok(JSON.stringify([{ results: (state.tables ?? TABLES).map((name) => ({ name })), success: true }]));
+    if (cmd === 'deploy --config') deployed = true;
     if (cmd === 'deploy --config') return ok(state.deployOut ?? `Uploaded horae-zone\nDeployed horae-zone triggers\n  ${HOSTNAME} (custom domain)\n  schedule: 0 * * * *\nCurrent Version ID: v1`);
     if (cmd === 'secret put') { secretsSet.add(args[2]); return ok(`Success! Uploaded secret ${args[2]}`); }
+    if (cmd === 'secret list' && state.secretListFail) return { code: 1, stdout: '', stderr: state.secretListFail };
+    if (cmd === 'secret list' && !deployed) return { code: 1, stdout: '', stderr: '✘ [ERROR] Worker "horae-zone" not found.\n\nIf this is a new Worker, run `wrangler deploy` first to create it.' };
     if (cmd === 'secret list') return ok(state.secretListOut ?? JSON.stringify([...secretsSet].filter((n) => n !== state.dropSecret).map((name) => ({ name, type: 'secret_text' }))));
     return { code: 1, stdout: '', stderr: `mock: unknown command ${args.join(' ')}` };
   }
@@ -252,7 +257,7 @@ test('a wrangler failure is reported with its output scrubbed, and the run stops
   assert.equal(result.ok, false);
   assert.match(h.output(), /wrangler deploy failed/);
   assert.equal(h.output().includes(GENERATED), false);
-  assert.equal(w.calls.some((c) => c.args[0] === 'secret'), false, 'no secret is put after a failed deploy');
+  assert.equal(w.calls.some((c) => c.args[0] === 'secret' && c.args[1] === 'put'), false, 'no secret is put after a failed deploy');
 });
 
 test('a rerun keeps the account key already set, unless --new-account-key is given', async () => {
@@ -268,6 +273,41 @@ test('a rerun keeps the account key already set, unless --new-account-key is giv
   await deploy(h2.deps);
   assert.equal(h2.wrangler.calls.find((c) => c.args[0] === 'secret' && c.args[2] === 'HZ_ACCOUNT_KEY')?.input, GENERATED);
   assertNoSecretAnywhere(h2);
+});
+
+// Review 2026-10-04 item 1: an unreadable secret list once read as "no
+// secrets", so a rerun replaced HZ_ACCOUNT_KEY and lost every account.
+test('a secret list that is not an array of named entries stops the run before deploy, and the account key is not replaced', async () => {
+  const shapes = {
+    'a single object': JSON.stringify({ name: 'HZ_ACCOUNT_KEY', type: 'secret_text' }),
+    'an object wrapper': JSON.stringify({ result: [{ name: 'HZ_ACCOUNT_KEY', type: 'secret_text' }] }),
+    'an entry with no string name': JSON.stringify([{ name: 'HZ_ACCOUNT_KEY' }, { type: 'secret_text' }]),
+    'no JSON at all': 'Secret Name: HZ_ACCOUNT_KEY',
+  };
+  for (const [shape, out] of Object.entries(shapes)) {
+    const h = harness({ wrangler: mockWrangler({ dbPresent: true, existingSecrets: ['HZ_ACCOUNT_KEY'], secretListOut: out }) });
+    const result = await deploy(h.deps);
+    assert.equal(result.ok, false, shape);
+    assert.match(h.output(), /could not read the secret list; nothing was changed; rerun, or pass --new-account-key if you mean to replace it/, shape);
+    assert.equal(h.wrangler.calls.some((c) => c.args[0] === 'deploy'), false, `${shape}: no deploy`);
+    assert.equal(h.wrangler.calls.some((c) => c.args[0] === 'secret' && c.args[1] === 'put'), false, `${shape}: no secret put`);
+    assertNoSecretAnywhere(h);
+  }
+});
+
+test('a failed secret list read stops before deploy; only "Worker not found" reads as no secrets yet', async () => {
+  const h = harness({ wrangler: mockWrangler({ dbPresent: true, existingSecrets: ['HZ_ACCOUNT_KEY'], secretListFail: '✘ [ERROR] A request to the Cloudflare API failed. Authentication error [code: 10000]' }) });
+  const result = await deploy(h.deps);
+  assert.equal(result.ok, false);
+  assert.match(h.output(), /could not read the secret list; nothing was changed/);
+  assert.equal(h.wrangler.calls.some((c) => c.args[0] === 'deploy' || (c.args[0] === 'secret' && c.args[1] === 'put')), false);
+
+  const first = harness({ wrangler: mockWrangler({ dbPresent: true }) });
+  const r = await deploy(first.deps);
+  assert.equal(r.ok, true, first.output());
+  const order = first.wrangler.calls.map((c) => c.args.slice(0, 2).join(' '));
+  assert.ok(order.indexOf('secret list') < order.indexOf('deploy --config'), 'the secret list is read before the deploy');
+  assert.equal(first.wrangler.calls.find((c) => c.args[2] === 'HZ_ACCOUNT_KEY')?.input, GENERATED, 'a first deploy sets the key');
 });
 
 test('the generated account key is 32 random bytes, base64url, and the service accepts it', async () => {
