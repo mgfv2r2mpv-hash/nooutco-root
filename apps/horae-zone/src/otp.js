@@ -5,9 +5,11 @@
  * POST /otp/enrol {ticket}, signed by a registered device and carrying a live
  * /signin ticket of the same account, answers {secret, uri} once: the base32
  * seed and its otpauth URI, for the QR. The ticket is spent first, and only
- * when it was issued to the signing device's account, so another account's
- * ticket is refused and stays live. A second enrolment answers enrolled and
- * carries no seed.
+ * when it was issued to the signing device's account and bound to its own
+ * keys (security review M3), so another account's ticket, or one named for
+ * other keys, is refused and stays live. A second enrolment answers enrolled
+ * and carries no seed. A removal of the device that lands mid-flight wins
+ * (L2): the spend and the insert re-check it, and the answer is no-device.
  *
  * CUSTODY. The seed is 20 random bytes, stored only sealed: AES-GCM under a
  * key HKDF derives from the Worker secret HZ_SEED_KEY (base64url, at least
@@ -21,7 +23,8 @@
  * reaches only /nonce and /unlock until a code it proves is accepted.
  */
 import { base32Encode, otpauthUri } from "../../../packages/account-engine/src/totp.mjs";
-import { Refusal, b64url, fromB64url } from "./checks.js";
+import { Refusal, LIVE_DEVICE, b64url, fromB64url, findDevice } from "./checks.js";
+import { deviceKeyDigest } from "./devices.js";
 import { hasOnly, keysOrUnavailable } from "./signup.js";
 
 // The label the authenticator app shows. The wording is the owner's to change.
@@ -77,16 +80,27 @@ export async function enrolOtp({ db, device, body, now, env }) {
   const boxKey = await seedBoxKey(env);
   if (!boxKey) throw new Refusal("unavailable", 503);
   const keys = await keysOrUnavailable(env);
+  // The ticket must name the signing device's own keys (security review M3),
+  // and the spend and the insert re-check the device is not removed (L2).
+  const own = await db.prepare("SELECT sign_key, agree_key FROM device WHERE id = ? AND removed_at IS NULL").bind(device.id).first();
+  if (!own) throw new Refusal("no-device", 401);
   const spent = await db.prepare(
-    "UPDATE ticket SET used = 1 WHERE digest = ? AND account_id = ? AND used = 0 AND expires_at > ? RETURNING account_id",
-  ).bind(await keys.ticketDigest(body.ticket), device.account_id, now).first();
-  if (!spent) throw new Refusal("bad-ticket", 401);
+    `UPDATE ticket SET used = 1 WHERE digest = ? AND account_id = ? AND key_digest = ? AND used = 0 AND expires_at > ? AND ${LIVE_DEVICE} RETURNING account_id`,
+  ).bind(await keys.ticketDigest(body.ticket), device.account_id, await deviceKeyDigest(own.sign_key, own.agree_key), now, device.id).first();
+  if (!spent) {
+    await findDevice(db, device.id); // refuses no-device when the removal is what stopped it
+    throw new Refusal("bad-ticket", 401);
+  }
   const seed = crypto.getRandomValues(new Uint8Array(SEED_BYTES));
   const box = await sealSeed(boxKey, device.account_id, seed);
   const made = await db.prepare(
-    "INSERT INTO otp (account_id, box, last_step, created_at) VALUES (?, ?, 0, ?) ON CONFLICT (account_id) DO NOTHING RETURNING account_id",
-  ).bind(device.account_id, box, now).first();
-  if (!made) throw new Refusal("enrolled", 409);
+    `INSERT INTO otp (account_id, box, last_step, created_at) SELECT ?, ?, 0, ? WHERE ${LIVE_DEVICE} ON CONFLICT (account_id) DO NOTHING RETURNING account_id`,
+  ).bind(device.account_id, box, now, device.id).first();
+  if (!made) {
+    seed.fill(0);
+    await findDevice(db, device.id);
+    throw new Refusal("enrolled", 409);
+  }
   await db.prepare("UPDATE device SET pending = 1 WHERE account_id = ? AND id != ? AND removed_at IS NULL")
     .bind(device.account_id, device.id).run();
   const json = { secret: base32Encode(seed), uri: otpauthUri({ key: seed, ...OTP_LABEL }) };
