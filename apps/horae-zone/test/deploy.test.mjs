@@ -315,6 +315,34 @@ test('the checklist fails the item that is wrong: a 5xx route, a missing secret,
   assert.equal(statusOf(r6, 'Edge rule'), 'FAIL');
 });
 
+// The text of one step: from "Step n." to the next "Step n+1." (or the end).
+const stepText = (out, n) => {
+  const from = out.indexOf(`Step ${n}.`);
+  const to = out.indexOf(`Step ${n + 1}.`, from);
+  return out.slice(from, to === -1 ? undefined : to);
+};
+
+test('Step 4 prints only the rate rule; the hostname and DNS checks come after the deploy', async () => {
+  const h = harness();
+  await deploy(h.deps);
+  const out = h.output();
+  const four = stepText(out, 4);
+  assert.match(four, /Rate rule on sign-up and sign-in/);
+  // Before the deploy no Worker named horae-zone exists, so its Domains & Routes page cannot be found.
+  assert.doesNotMatch(four, /Domains & Routes|Workers & Pages|Proxied|DNS > Records/);
+  assert.doesNotMatch(four, /Skip|Bot Fight Mode/);
+  const seven = stepText(out, 7);
+  assert.match(seven, /Check after the deploy/);
+  assert.match(seven, new RegExp(`Workers & Pages > horae-zone > Settings > Domains & Routes: ${HOSTNAME.replace(/\./g, '\\.')} listed as a Custom domain`));
+  assert.match(seven, /DNS > Records: the horae-zone row shows Proxy status "Proxied"/);
+
+  const lines = [];
+  await deploy({ argv: ['--dry-run'], root: ROOT, write: (t) => lines.push(t) });
+  const dry = lines.join('\n');
+  assert.doesNotMatch(stepText(dry, 4), /Domains & Routes|Proxied/);
+  assert.match(stepText(dry, 7), /Check after the deploy[\s\S]*Domains & Routes/);
+});
+
 test('NEGATIVE CONTROL: a planted token in a check\'s output is caught', async () => {
   const planted = JSON.stringify([...SECRET_NAMES.map((name) => ({ name, type: 'secret_text' })), { name: 'LEAK', value: GENERATED }]);
   const h = harness({ wrangler: mockWrangler({ secretListOut: planted }) });
