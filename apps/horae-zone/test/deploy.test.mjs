@@ -57,7 +57,7 @@ function mockWrangler(state = {}) {
   return { run, calls };
 }
 
-function harness({ wrangler = mockWrangler(), argv = [], answers = ANSWERS, confirm = 'y', edge = 'y', route = { status: 405, body: '{"error":"method"}', ray: true } } = {}) {
+function harness({ wrangler = mockWrangler(), argv = [], answers = ANSWERS, confirm = 'y', edge = 'y', replaceKey, route ={ status: 405, body: '{"error":"method"}', ray: true } } = {}) {
   const lines = [];
   const files = new Map();
   const fetched = [];
@@ -66,6 +66,7 @@ function harness({ wrangler = mockWrangler(), argv = [], answers = ANSWERS, conf
     asked.push({ question, hidden, name });
     if (name === 'confirm-account') return confirm;
     if (name === 'confirm-edge') return edge;
+    if (name === 'confirm-replace-key' && replaceKey !== undefined) return replaceKey;
     if (name in answers) return answers[name];
     throw new Error(`unexpected prompt ${name}`);
   };
@@ -269,7 +270,7 @@ test('a rerun keeps the account key already set, unless --new-account-key is giv
   assert.match(h.output(), /Kept HZ_ACCOUNT_KEY/);
   assert.equal(statusOf(result, 'Secret HZ_ACCOUNT_KEY'), 'PASS');
 
-  const h2 = harness({ argv: ['--new-account-key'], wrangler: mockWrangler({ dbPresent: true, existingSecrets: ['HZ_ACCOUNT_KEY'] }) });
+  const h2 = harness({ argv: ['--new-account-key'], replaceKey: 'replace', wrangler: mockWrangler({ dbPresent: true, existingSecrets: ['HZ_ACCOUNT_KEY'] }) });
   await deploy(h2.deps);
   assert.equal(h2.wrangler.calls.find((c) => c.args[0] === 'secret' && c.args[2] === 'HZ_ACCOUNT_KEY')?.input, GENERATED);
   assertNoSecretAnywhere(h2);
@@ -308,6 +309,43 @@ test('a failed secret list read stops before deploy; only "Worker not found" rea
   const order = first.wrangler.calls.map((c) => c.args.slice(0, 2).join(' '));
   assert.ok(order.indexOf('secret list') < order.indexOf('deploy --config'), 'the secret list is read before the deploy');
   assert.equal(first.wrangler.calls.find((c) => c.args[2] === 'HZ_ACCOUNT_KEY')?.input, GENERATED, 'a first deploy sets the key');
+});
+
+// Review 2026-10-04 item 2: --new-account-key replaced a stored key with no
+// confirmation, so one stray flag lost every account.
+test('--new-account-key over a stored key prints the consequence and replaces it only on the typed word replace', async () => {
+  const stored = () => mockWrangler({ dbPresent: true, existingSecrets: ['HZ_ACCOUNT_KEY'] });
+  const yes = harness({ argv: ['--new-account-key'], replaceKey: 'replace', wrangler: stored() });
+  await deploy(yes.deps);
+  const prompt = yes.asked.find((a) => a.name === 'confirm-replace-key');
+  assert.ok(prompt, 'the replacement is confirmed through a prompt');
+  assert.equal(prompt.hidden, false);
+  assert.match(yes.output(), /every enrolment, ticket and account becomes unusable/);
+  const order = yes.wrangler.calls.map((c) => c.args.slice(0, 2).join(' '));
+  assert.equal(yes.wrangler.calls.find((c) => c.args[0] === 'secret' && c.args[2] === 'HZ_ACCOUNT_KEY')?.input, GENERATED);
+  assert.ok(order.indexOf('secret list') < order.indexOf('deploy --config'));
+  assertNoSecretAnywhere(yes);
+
+  for (const answer of ['', 'y', 'yes', 'REPLACE', 'replace it']) {
+    const no = harness({ argv: ['--new-account-key'], replaceKey: answer, wrangler: stored() });
+    const result = await deploy(no.deps);
+    assert.equal(result.ok, false, `answer ${JSON.stringify(answer)}`);
+    assert.match(no.output(), /HZ_ACCOUNT_KEY not replaced; nothing was changed/, `answer ${JSON.stringify(answer)}`);
+    assert.equal(no.wrangler.calls.some((c) => c.args[0] === 'deploy' || (c.args[0] === 'secret' && c.args[1] === 'put')), false, `answer ${JSON.stringify(answer)}: no deploy, no secret put`);
+  }
+});
+
+test('--new-account-key asks too when the secret list is unreadable, and not on a first deploy', async () => {
+  const unreadable = harness({ argv: ['--new-account-key'], replaceKey: 'n', wrangler: mockWrangler({ dbPresent: true, existingSecrets: ['HZ_ACCOUNT_KEY'], secretListOut: '{}' }) });
+  const result = await deploy(unreadable.deps);
+  assert.equal(result.ok, false);
+  assert.ok(unreadable.asked.some((a) => a.name === 'confirm-replace-key'), 'an unknown list may hold a key, so the replacement is confirmed');
+  assert.equal(unreadable.wrangler.calls.some((c) => c.args[0] === 'deploy' || (c.args[0] === 'secret' && c.args[1] === 'put')), false);
+
+  const first = harness({ argv: ['--new-account-key'], wrangler: mockWrangler({ dbPresent: true }) });
+  const r = await deploy(first.deps);
+  assert.equal(r.ok, true, first.output());
+  assert.equal(first.asked.some((a) => a.name === 'confirm-replace-key'), false, 'a Worker never deployed has no key to replace');
 });
 
 test('the generated account key is 32 random bytes, base64url, and the service accepts it', async () => {

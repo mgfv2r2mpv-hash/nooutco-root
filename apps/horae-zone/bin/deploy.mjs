@@ -7,7 +7,8 @@
  *   node bin/deploy.mjs --dry-run   print every step and command; nothing is
  *                                   run, asked, written or fetched
  *   --new-account-key               replace an HZ_ACCOUNT_KEY already set (every
- *                                   stored account becomes unreadable)
+ *                                   stored account becomes unreadable); asks
+ *                                   for the typed word replace first
  *
  * Steps: confirm the Cloudflare account; ask the values only the owner has
  * (the Resend key on a hidden prompt); create or find the D1 database, write
@@ -219,11 +220,21 @@ async function secretsBeforeDeploy(ctx, newAccountKey) {
   }
 }
 
+// --new-account-key over a key that is set, or may be (an unreadable list):
+// only the typed word replace goes on, and anything else stops before deploy.
+async function confirmReplaceKey(ctx, deps, existing) {
+  ctx.say(`  --new-account-key: HZ_ACCOUNT_KEY ${existing ? "is already set" : "may already be set (the secret list could not be read)"}.`);
+  ctx.say("  If it is replaced, every enrolment, ticket and account becomes unusable, and none can be recovered.");
+  const answer = (await deps.ask({ name: "confirm-replace-key", question: "  Type replace to replace it (anything else stops): ", hidden: false })).trim();
+  if (answer !== "replace") throw new Stop("HZ_ACCOUNT_KEY not replaced; nothing was changed. Rerun without --new-account-key to keep it.");
+}
+
 // A new HZ_ACCOUNT_KEY makes every stored account unreadable, so a rerun
 // keeps the one already set unless --new-account-key says otherwise.
-async function deployWorker(ctx, values, newAccountKey) {
+async function deployWorker(ctx, deps, values, newAccountKey) {
   ctx.say("Step 5. Deploy the Worker, then put each secret");
   const existing = await secretsBeforeDeploy(ctx, newAccountKey);
+  if (newAccountKey && (existing === null || existing.has("HZ_ACCOUNT_KEY"))) await confirmReplaceKey(ctx, deps, existing);
   const keep = !newAccountKey && existing.has("HZ_ACCOUNT_KEY");
   const out = await ctx.wrangler(COMMANDS.deploy);
   ctx.item("Worker deployed", "PASS", `horae-zone, route ${HOSTNAME} (Custom domain)`);
@@ -312,6 +323,7 @@ function dryRun(deps) {
     "  prompt: is the rate rule in place?",
     "Step 5. Deploy the Worker, then put each secret",
     `  ${show(COMMANDS.secretList)}   (an HZ_ACCOUNT_KEY already set is kept unless --new-account-key; an unreadable list stops here)`,
+    "  with --new-account-key over a key that is set (or an unreadable list): prompt, type replace or the run stops",
     `  ${show(COMMANDS.deploy)}`,
     ...SECRET_NAMES.map((n) => `  ${put(n)}`),
     "Step 6. Owner as administrator",
@@ -339,7 +351,7 @@ export async function deploy(deps) {
     const values = await collectAnswers(ctx, full);
     await prepareDatabase(ctx, full, values);
     const edgeConfirmed = await edgeRule(ctx, full);
-    const deployOut = await deployWorker(ctx, values, argv.includes("--new-account-key"));
+    const deployOut = await deployWorker(ctx, full, values, argv.includes("--new-account-key"));
     adminStep(ctx);
     await runChecks(ctx, full, deployOut, edgeConfirmed);
   } catch (err) {
