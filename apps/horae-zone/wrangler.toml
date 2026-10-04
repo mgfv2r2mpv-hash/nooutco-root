@@ -5,12 +5,12 @@
 # WAF skip rule for the device routes, ruling D-22) is added at that deploy, on
 # the owner's word. test/config.test.mjs fails if a route appears here first.
 #
-# SECRETS are never in this file. The deploy script (plan §4) sets them with
-# `wrangler secret put` from hidden prompts on stdin: PIN pepper, seed sealing
-# key, ticket signing key, Resend key. The operator alert address
-# (HZ_ALERT_TO, src/signup.js item 5) is set the same way and never written
-# here; HZ_CODES_PER_DAY, the mail plan's daily limit, is set at deploy when
-# the plan's limit is not the default 3000.
+# SECRETS are never in this file. The deploy script (bin/deploy.mjs, plan §4,
+# DEPLOY.md) sets them with `wrangler secret put`, each value on stdin:
+# HZ_ACCOUNT_KEY (generated; the PIN pepper, ticket key and sealing keys
+# derive from it), RESEND_KEY (hidden prompt), HZ_MAIL_FROM, HZ_ALERT_TO and
+# HZ_LINK_BASE. HZ_CODES_PER_DAY, the mail plan's daily limit, goes in the
+# deploy-only config when the plan's limit is not the default 3000.
 
 name = "horae-zone"
 main = "src/index.js"
@@ -27,6 +27,7 @@ crons = ["0 * * * *"]
 [[d1_databases]]
 binding = "DB"
 database_name = "horae-zone"
-# The deploy script creates the database and writes its id here. Local dev
+# The deploy script creates the database and writes its id into the
+# gitignored wrangler.deploy.toml, never here. Local dev
 # (`wrangler dev --local`) uses an on-disk sqlite file and ignores the id.
 database_id = "00000000-0000-0000-0000-000000000000"
