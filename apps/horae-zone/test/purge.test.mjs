@@ -90,6 +90,20 @@ test('item 5: a purge keeps the daily alert row for a day and clears it after', 
     [['alert-day', T0 - SIGNUP_LIMITS.windowMs - 1]]);
 });
 
+// LOW-2: an account's wrong reset factors count for a day, one bucket per
+// account; purged after an hour, the day cap would never fill.
+test('LOW-2: a purge keeps each account\'s wrong reset rows for a day and clears them after', async () => {
+  const { db } = harness();
+  for (const at of [T0 - SIGNUP_LIMITS.dayMs - 1, T0 - SIGNUP_LIMITS.dayMs, T0 - SIGNUP_LIMITS.dayMs + 1, T0 - SIGNUP_LIMITS.windowMs - 1]) {
+    db.sqlite.prepare('INSERT INTO throttle (bucket, at) VALUES (?, ?)').run('pin-reset-wrong:acct-1', at);
+  }
+  db.sqlite.prepare('INSERT INTO throttle (bucket, at) VALUES (?, ?)').run('pin-reset-try:acct-1', T0 - SIGNUP_LIMITS.windowMs - 1);
+  await purgeExpired(db, T0);
+  assert.deepEqual(db.sqlite.prepare('SELECT bucket, at FROM throttle ORDER BY at').all().map((r) => [r.bucket, r.at]),
+    [['pin-reset-wrong:acct-1', T0 - SIGNUP_LIMITS.dayMs + 1], ['pin-reset-wrong:acct-1', T0 - SIGNUP_LIMITS.windowMs - 1]],
+    'the wrong rows stay a day, and (NEGATIVE CONTROL) the hourly try bucket still goes after its hour');
+});
+
 test('NEGATIVE CONTROL: a purge keeps a fresh nonce working and every audit row inside 6 years', async () => {
   const h = harness();
   const dev = await addDevice(h.db);

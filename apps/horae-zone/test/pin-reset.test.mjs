@@ -203,6 +203,61 @@ test('reset tries and reset mails are capped per account, each hour', async () =
   assert.deepEqual(await pinCall(h, dev, '/pin/reset', { pin: SECOND, password: PASSWORD, ticket: await ticketFor(h, dev) }), RESET, 'an hour on, the right factors reset');
 });
 
+// ---- wrong factors, each day (security review LOW-2) ----
+
+const DAY_MS = 24 * HOUR_MS;
+const EASY_PIN = '123456';
+const SLOW_DOWN = { status: 429, json: { error: 'slow-down' } };
+const PAUSED = 'Horae Zone: app PIN reset paused';
+
+test('wrong reset factors are capped per account each day at the code path\'s 12, and the owner is told at most each hour', async () => {
+  const h = harness();
+  const dev = await pinnedDevice(h, ADDRESS, FIRST);
+  const wrong = { pin: SECOND, password: WRONG_PASSWORD, emailCode: WRONG_EMAIL_CODE };
+  const told = () => h.mail.filter((m) => m.to === ADDRESS && m.subject === PAUSED).length;
+  const right = async () => ({ pin: SECOND, password: PASSWORD, emailCode: await mailedCode(h, dev) });
+
+  // Hour A: right factors with a listed PIN take an hourly place and no day
+  // place; four wrong fill the hour, and the hourly refusal tells nobody.
+  assert.equal((await pinCall(h, dev, '/pin/reset', { pin: EASY_PIN, password: PASSWORD, ticket: await ticketFor(h, dev) })).json.error, 'too-easy');
+  const atA = h.clock.ms;
+  for (let n = 0; n < 4; n += 1) assert.deepEqual(await pinCall(h, dev, '/pin/reset', wrong), BAD_RESET, `hour A, wrong ${n + 1}`);
+  assert.deepEqual(await pinCall(h, dev, '/pin/reset', wrong), SLOW_DOWN, 'the hour is full');
+  assert.equal(told(), 0, 'NEGATIVE CONTROL: the hourly cap mails nobody');
+
+  // Hours B and C: five and three more make twelve wrong in the day. The
+  // twelfth is answered as any wrong one, and tells the owner.
+  h.clock.ms += HOUR_MS;
+  for (let n = 0; n < 5; n += 1) assert.deepEqual(await pinCall(h, dev, '/pin/reset', wrong), BAD_RESET, `hour B, wrong ${n + 1}`);
+  h.clock.ms += HOUR_MS;
+  for (let n = 0; n < 2; n += 1) assert.deepEqual(await pinCall(h, dev, '/pin/reset', wrong), BAD_RESET, `hour C, wrong ${n + 1}`);
+  assert.equal(told(), 0, 'eleven wrong tell nobody');
+  assert.deepEqual(await pinCall(h, dev, '/pin/reset', wrong), BAD_RESET, 'the twelfth wrong');
+  assert.equal(told(), 1, 'the twelfth wrong tells the owner');
+
+  // The day is full: even right factors wait, with no time in the answer,
+  // and the owner hears again only an hour on.
+  assert.deepEqual(await pinCall(h, dev, '/pin/reset', await right()), SLOW_DOWN, 'right factors wait');
+  assert.equal(told(), 1, 'no second note within the hour');
+  h.clock.ms += HOUR_MS;
+  assert.deepEqual(await pinCall(h, dev, '/pin/reset', await right()), SLOW_DOWN, 'the hourly cap is clear, the day is not');
+  assert.equal(told(), 2, 'an hour on, the owner is told again');
+  assert.deepEqual(await pinCall(h, dev, '/pin/reset', await right()), SLOW_DOWN);
+  assert.equal(told(), 2, 'at most once an hour');
+  assert.equal((await pinCall(h, dev, '/pin/verify', { pin: FIRST })).status, 200, 'the PIN is as it was');
+  const paused = h.mail.find((m) => m.subject === PAUSED);
+  assert.equal(/\d/.test(paused.subject + paused.text), false, 'the note carries no number');
+  assert.equal(/https?:/.test(paused.text), false, 'the note carries no link');
+
+  // The day rolls: hour A's four wrong leave it only a full day after they came.
+  h.clock.ms = atA + DAY_MS - 1;
+  const last = await right();
+  assert.deepEqual(await pinCall(h, dev, '/pin/reset', last), SLOW_DOWN, 'NEGATIVE CONTROL: the day is not over a moment early');
+  h.clock.ms += 1;
+  assert.deepEqual(await pinCall(h, dev, '/pin/reset', last), RESET, 'a day on, the right factors reset');
+  assert.equal((await pinCall(h, dev, '/pin/verify', { pin: SECOND, ticket: await ticketFor(h, dev) })).status, 200, 'the reset PIN opens, with the code a day on');
+});
+
 // ---- custody, mail and configuration ----
 
 test('no PIN, password or email code is stored or bound in clear, and the owner is told of the reset with no number', async () => {
