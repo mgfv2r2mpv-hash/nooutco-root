@@ -18,8 +18,9 @@
  * everything and print a PASS/FAIL checklist.
  *
  * A secret value is never on a command line, in a child's environment, in a
- * file or in the output: every printed line passes through scrub(), and a
- * check whose output carries a value fails (test/deploy.test.mjs).
+ * file or in the output: every printed line passes through scrub(), which
+ * also masks each value's JSON-escaped and URL-encoded forms, and a check
+ * whose output carries a value fails (test/deploy.test.mjs).
  *
  * Why a generated config file rather than --var or flags: the database id
  * has to sit in the [[d1_databases]] block, which no wrangler flag sets, and
