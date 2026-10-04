@@ -44,9 +44,9 @@ try {
   installed = null;
 }
 
-test('the installed private package loads all 2,913 PINs', { skip: installed ? false : 'private package not installed' }, async () => {
+test('the installed private package loads all 3,413 PINs', { skip: installed ? false : 'private package not installed' }, async () => {
   const list = await loadPinBlocklist();
-  assert.equal(list.length, 2913);
+  assert.equal(list.length, 3413);
   const { pinAllowed } = createPinRules(list);
   for (const pin of fixture.PINS) assert.deepEqual(pinAllowed(pin), { ok: false, reason: 'too-easy', message: PIN_TOO_EASY }, pin);
 });

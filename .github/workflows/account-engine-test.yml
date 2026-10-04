@@ -9,7 +9,7 @@ name: Account Engine Tests
 # in the private repo mgfv2r2mpv-hash/pin-blocklist; the public suite runs on a
 # five-PIN fixture and passes without it. When the read-only deploy key is set
 # as the secret PIN_BLOCKLIST_DEPLOY_KEY, the job also checks out the private
-# package and the live test ("the installed private package loads all 2,913
+# package and the live test ("the installed private package loads all 3,413
 # PINs") runs instead of skipping. Without the secret (not yet created, or a
 # fork's pull request) those steps are skipped, never failed.
 
@@ -74,7 +74,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: mgfv2r2mpv-hash/pin-blocklist
-          ref: v1.0.0
+          ref: v1.1.0
           ssh-key: ${{ secrets.PIN_BLOCKLIST_DEPLOY_KEY }}
           persist-credentials: false
           path: _private/pin-blocklist
