@@ -78,6 +78,29 @@ Any FAIL line names what is wrong. A fresh Custom domain can take a minute to an
 
 The script never prints a secret value, never puts one on a command line or in a file, and fails a check whose output carries one (`test/deploy.test.mjs`, "NEGATIVE CONTROL: a planted token in a check's output is caught"). The mask also covers each value's JSON-escaped and URL-encoded forms, so an address like `"Horae Zone" <mail@...>` echoed back as `\"Horae Zone\"` or `%22Horae%20Zone%22` is masked too.
 
+## Break glass: unlock an account the offline block locked
+
+Until A5c ships `/admin/unlock-account`, nothing in the product unlocks an account that a device locked through `/pin/blocked` (ten wrong PINs offline, then the device's report). Every device route of that account answers `account-locked` (423), and the owner was mailed "Horae Zone: account locked". This runbook is the one way out, and it writes to the live database, so run it only for an owner who asked, after the owner has shown the inbox is theirs (for example by forwarding that note). Whether `/pin/blocked` stays routed before A5c is Kaleb's ruling (`docs/horae-zone/DESIGN-REVIEW.md`, A5b, Decisions for Kaleb row 24, MEDIUM-1).
+
+The database keeps no address in the clear, so the lock is found by its time. From the repo root, in Mac Terminal, on a Mac where `node bin/deploy.mjs` has run (it writes the gitignored `wrangler.deploy.toml` with the real database id):
+
+1. List the locks, newest first:
+
+   ```
+   cd apps/horae-zone
+   wrangler d1 execute horae-zone --remote --config wrangler.deploy.toml --command "SELECT account_id, locked_at FROM account_lock ORDER BY locked_at DESC"
+   ```
+
+   `locked_at` is milliseconds since 1970 (UTC). Pick the row whose time matches the owner's "account locked" note. When more than one row is near that time, stop and do not guess.
+
+2. Delete that one row, the same statement `unlockAccount` in `src/account-lock.js` runs, with the id from step 1 in place of `ACCOUNT_ID`:
+
+   ```
+   wrangler d1 execute horae-zone --remote --config wrangler.deploy.toml --command "DELETE FROM account_lock WHERE account_id = 'ACCOUNT_ID' RETURNING account_id"
+   ```
+
+   One row back means the account is unlocked; no row means the id did not match and nothing changed. The owner's devices then answer as before, the PIN included (unlocking resets no PIN and reopens no closed PIN or code entry, which keep their own emailed links).
+
 ## By hand, in the dashboard
 
 The script prints these with exact clicks: the rate rule on POST `/account` and `/signin` (required at the first deploy, `docs/horae-zone/DESIGN-REVIEW.md` A3 item 13), confirming the hostname shows as Proxied, and a skip rule only if a managed rule or Bot Fight Mode challenges the app's calls (D-22).
