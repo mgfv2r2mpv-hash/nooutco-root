@@ -10,7 +10,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SIGNUP_LIMITS, OWNER_TICKET_TTL_MS } from '../src/signup.js';
 import {
-  harness, post, deviceKeys, keyDigestOf, registerRequest, signInRequest, addDevice, PASSWORD, LINK_BASE, T0,
+  harness, post, deviceKeys, keyDigestOf, registerRequest, signInRequest, addDevice, signUp, PASSWORD, LINK_BASE, T0,
 } from './helpers.mjs';
 
 const OWNER = 'owner@example.test';
@@ -214,4 +214,28 @@ test('MEDIUM-1 NEGATIVE CONTROL: two verifies of one fresh link together issue o
   ]);
   assert.deepEqual([a.status, b.status].sort(), [200, 401]);
   assert.equal(ownerTickets(h), 1, 'one owner ticket');
+});
+
+// Item 3: an account whose owner registered the usual way, inside the
+// ticket's life, meets this path exactly as before MEDIUM-1: the start answers
+// ok and mails nothing, the owner's password with any code answers bad-code,
+// no owner ticket is made and the password sign-in answers as it did.
+test('MEDIUM-1 NEGATIVE CONTROL: an account with a registered owner device gets the same refusals as before', async () => {
+  const h = harness();
+  const account = await signUp(h, OWNER);
+  assert.deepEqual(devices(h), [{ owner: 1, pending: 0 }]);
+  pastSignupLink(h);
+  const digest = await keyDigestOf(await deviceKeys());
+  const signinBefore = await answer(await h.call(signInRequest(OWNER, PASSWORD, '192.0.2.80', digest)));
+  const before = h.mail.length;
+  assert.deepEqual(await answer(await start(h, OWNER, '192.0.2.81')), { status: 200, json: { ok: true } });
+  assert.equal(h.mail.length, before, 'nothing mailed');
+  assert.equal(liveCodes(h), 0, 'no live link');
+  assert.deepEqual(await answer(await h.call(verifyRequest(OWNER, 'A'.repeat(22), digest, { ip: '192.0.2.82' }))), { status: 401, json: { error: 'bad-code' } });
+  assert.equal(ownerTickets(h), 0, 'no owner ticket');
+  const signinAfter = await answer(await h.call(signInRequest(OWNER, PASSWORD, '192.0.2.83', digest)));
+  assert.equal(signinAfter.status, signinBefore.status);
+  assert.deepEqual(Object.keys(signinAfter.json).sort(), Object.keys(signinBefore.json).sort());
+  assert.deepEqual(devices(h), [{ owner: 1, pending: 0 }], 'the owner device is unchanged');
+  assert.equal(h.db.sqlite.prepare('SELECT id FROM account').get().id, account);
 });
