@@ -112,12 +112,27 @@ export async function signUp(h, email, { password = PASSWORD, ip = '192.0.2.10' 
   return h.db.sqlite.prepare('SELECT id FROM account ORDER BY created_at DESC, rowid DESC LIMIT 1').get().id;
 }
 
-export function signInRequest(email, password = PASSWORD, ip = '192.0.2.10') {
-  return post('/signin', { email, password }, { 'cf-connecting-ip': ip });
+// The key digest /signin binds a ticket to (security review M3): SHA-256 of
+// the raw sign point then the raw agree point, base64url. Written here apart
+// from src/devices.js, so the tests pin the form a device computes.
+export async function keyDigestOf({ signKey, agreeKey }) {
+  const bytes = (text) => Uint8Array.from(atob(text.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
+  const both = new Uint8Array([...bytes(signKey), ...bytes(agreeKey)]);
+  return b64url(new Uint8Array(await crypto.subtle.digest('SHA-256', both)));
 }
 
+// Obviously fake: the digest shape over 32 bytes of 9, for a sign-in whose
+// ticket no test registers.
+export const ANY_KEY_DIGEST = b64url(new Uint8Array(32).fill(9));
+
+export function signInRequest(email, password = PASSWORD, ip = '192.0.2.10', keyDigest = ANY_KEY_DIGEST) {
+  return post('/signin', { email, password, keyDigest }, { 'cf-connecting-ip': ip });
+}
+
+// `keys` (from deviceKeys) binds the ticket to the device that will register it.
 export async function signIn(h, email, options = {}) {
-  const res = await h.call(signInRequest(email, options.password, options.ip));
+  const keyDigest = options.keys ? await keyDigestOf(options.keys) : ANY_KEY_DIGEST;
+  const res = await h.call(signInRequest(email, options.password, options.ip, keyDigest));
   if (res.status !== 200) throw new Error(`sign-in answered ${res.status}`);
   return (await res.json()).ticket;
 }
@@ -139,7 +154,7 @@ export function registerRequest(ticket, keys) {
 export async function registeredDevice(h, email, { fresh = true } = {}) {
   const account = fresh ? await signUp(h, email) : null;
   const keys = await deviceKeys();
-  const res = await h.call(registerRequest(await signIn(h, email), keys));
+  const res = await h.call(registerRequest(await signIn(h, email, { keys }), keys));
   if (res.status !== 200) throw new Error(`register answered ${res.status}`);
   const { device } = await res.json();
   return { id: device, account, key: keys.key, signKey: keys.signKey };

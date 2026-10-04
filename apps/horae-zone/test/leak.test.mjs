@@ -8,7 +8,7 @@ import path from 'node:path';
 import { ROUTES } from '../src/routes.js';
 import { createHandler } from '../src/index.js';
 import { NONCE_TTL_MS } from '../src/checks.js';
-import { harness, addDevice, makeAdmin, post, signed, everyRow, signUp, signInRequest, deviceKeys, registerRequest, ROOT } from './helpers.mjs';
+import { harness, addDevice, makeAdmin, post, signed, everyRow, signUp, signInRequest, deviceKeys, registerRequest, keyDigestOf, ROOT } from './helpers.mjs';
 
 // Fixed, fake test values: a body marker, a 6-digit code, a base32 seed, a
 // PIN and an address on a reserved domain.
@@ -101,11 +101,11 @@ test('sign-in, register and remove leave no address, password or ticket in any a
   };
   await keep(signInRequest(address, `${password}-wrong`));
   await keep(signInRequest('no-account-canary@example.test', password));
-  const handed = await keep(signInRequest(address, password));
+  const keys = await deviceKeys();
+  const handed = await keep(signInRequest(address, password, undefined, await keyDigestOf(keys)));
   const handout = seen.pop();
   const { ticket } = await handed.json();
   assert.ok(handout.includes(ticket), 'NEGATIVE CONTROL: the sign-in answer carries the ticket');
-  const keys = await deviceKeys();
   await keep(post('/device/register', { ticket, signKey: 'off', agreeKey: keys.agreeKey }));
   const { device } = await (await keep(registerRequest(ticket, keys))).json();
   await keep(registerRequest(ticket, keys));

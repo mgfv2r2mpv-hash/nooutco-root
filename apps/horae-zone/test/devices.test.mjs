@@ -1,10 +1,11 @@
 // A4, devices (plan §3.3 "First device" step 3 and "Each further device"
-// steps 1 and 2; §3.5 "Lost device"). POST /signin takes the address and the
-// account password and answers a single-use ticket; POST /device/register
-// takes that ticket and the device's two public keys; POST /device/remove,
+// steps 1 and 2; §3.5 "Lost device"). POST /signin takes the address, the
+// account password and the digest of the device's keys, and answers a
+// single-use ticket; POST /device/register takes that ticket and the two
+// public keys it was bound to; POST /device/remove,
 // signed by a device of the same account, stops a device at once. Until A5
-// no account has an authenticator code, so /signin asks only for the
-// address and password; A5 adds the code, RED first.
+// no account has an authenticator code, so /signin asks for no code; A5
+// adds the code, RED first.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -12,7 +13,7 @@ import { SIGNIN_LIMITS } from '../src/signin.js';
 import { LIVE_NONCES_PER_DEVICE, NONCE_TTL_MS } from '../src/checks.js';
 import {
   harness, post, signed, nonceFor, addDevice, auditRows, everyRow,
-  signUp, signIn, signInRequest, deviceKeys, registerRequest, registeredDevice, PASSWORD, ROOT, T0,
+  signUp, signIn, signInRequest, deviceKeys, registerRequest, registeredDevice, keyDigestOf, ANY_KEY_DIGEST, PASSWORD, ROOT, T0,
 } from './helpers.mjs';
 
 // Fixed, fake values: reserved-domain addresses and TEST-NET requesters.
@@ -98,11 +99,12 @@ test('a sign-in for an address with no account hashes a password like a wrong pa
   assert.equal(derive.mock.callCount() - forWrong, forWrong);
 });
 
-test('a sign-in body must be exactly an address and a password', async () => {
+test('a sign-in body must be exactly an address, a password and a key digest', async () => {
   const h = harness();
   await signUp(h, ADDRESS);
-  for (const body of [{ email: ADDRESS }, { password: PASSWORD }, { email: ADDRESS, password: PASSWORD, extra: 1 },
-    { email: 'not-an-address', password: PASSWORD }, { email: ADDRESS, password: 42 }]) {
+  const keyDigest = ANY_KEY_DIGEST;
+  for (const body of [{ email: ADDRESS, keyDigest }, { password: PASSWORD, keyDigest }, { email: ADDRESS, password: PASSWORD, keyDigest, extra: 1 },
+    { email: 'not-an-address', password: PASSWORD, keyDigest }, { email: ADDRESS, password: 42, keyDigest }]) {
     assert.deepEqual(await answer(await h.call(post('/signin', body))), { status: 400, json: { error: 'shape' } }, JSON.stringify(Object.keys(body)));
   }
 });
@@ -139,7 +141,7 @@ async function strangersFill(h, address) {
 }
 
 const signedSignIn = (h, device, address, ip, options = {}) =>
-  signed(h.call, device, '/signin', { email: address, password: PASSWORD }, { ...options, headers: { 'cf-connecting-ip': ip } });
+  signed(h.call, device, '/signin', { email: address, password: PASSWORD, keyDigest: ANY_KEY_DIGEST }, { ...options, headers: { 'cf-connecting-ip': ip } });
 
 test('H2: after ten wrong passwords from ten requesters, the owner signs in from a registered device', async () => {
   const h = harness();
@@ -196,20 +198,22 @@ test('H2: a sign-in that names a device must carry its good signature, never fal
   const device = await registeredDevice(h, ADDRESS);
   const tampered = await signedSignIn(h, device, ADDRESS, '203.0.113.9', { tamper: { path: '/device/remove' } });
   assert.deepEqual(await answer(await h.call(tampered)), { status: 401, json: { error: 'bad-signature' } });
-  const unknown = post('/signin', { email: ADDRESS, password: PASSWORD }, { 'cf-connecting-ip': '203.0.113.9', 'x-hz-device': 'no-such-device' });
+  const unknown = post('/signin', { email: ADDRESS, password: PASSWORD, keyDigest: ANY_KEY_DIGEST }, { 'cf-connecting-ip': '203.0.113.9', 'x-hz-device': 'no-such-device' });
   assert.deepEqual(await answer(await h.call(unknown)), { status: 401, json: { error: 'no-device' } });
   h.db.sqlite.prepare('UPDATE device SET removed_at = ? WHERE id = ?').run(T0, device.id);
   assert.deepEqual(await answer(await h.call(await signedSignIn(h, { ...device }, ADDRESS, '203.0.113.9', { nonce: 'x'.repeat(43) }))),
     { status: 401, json: { error: 'no-device' } }, 'a removed device is refused');
 });
 
-test('a ticket is stored only as a keyed digest, bound to its account', async () => {
+test('a ticket is stored only as a keyed digest, bound to its account and its device keys', async () => {
   const h = harness();
   const account = await signUp(h, ADDRESS);
-  const ticket = await signIn(h, ADDRESS);
+  const keys = await deviceKeys();
+  const ticket = await signIn(h, ADDRESS, { keys });
   const rows = h.db.sqlite.prepare('SELECT * FROM ticket').all().map((r) => ({ ...r }));
   assert.equal(rows.length, 1);
   assert.equal(rows[0].account_id, account);
+  assert.equal(rows[0].key_digest, await keyDigestOf(keys));
   assert.match(rows[0].digest, /^[0-9a-f]{64}$/);
   assert.equal(everyRow(h.db).includes(ticket), false, 'the ticket is in no table');
   assert.equal(JSON.stringify(h.db.bound.map((b) => b.values)).includes(ticket), false, 'the ticket is in no bound value');
@@ -225,7 +229,7 @@ test('/device/register requires the ticket from /signin', async () => {
   const madeUp = 'A'.repeat(43);
   assert.deepEqual(await answer(await h.call(registerRequest(madeUp, keys))), { status: 401, json: { error: 'bad-ticket' } });
   assert.deepEqual(devices(h.db), [], 'no device without the ticket');
-  const ticket = await signIn(h, ADDRESS);
+  const ticket = await signIn(h, ADDRESS, { keys });
   const res = await answer(await h.call(registerRequest(ticket, keys)));
   assert.equal(res.status, 200);
   assert.deepEqual(Object.keys(res.json), ['device']);
@@ -241,34 +245,37 @@ test('/device/register requires the ticket from /signin', async () => {
 test('a ticket registers one device only', async () => {
   const h = harness();
   await signUp(h, ADDRESS);
-  const ticket = await signIn(h, ADDRESS);
-  assert.equal((await h.call(registerRequest(ticket, await deviceKeys()))).status, 200);
-  assert.deepEqual(await answer(await h.call(registerRequest(ticket, await deviceKeys()))), { status: 401, json: { error: 'bad-ticket' } });
+  const keys = await deviceKeys();
+  const ticket = await signIn(h, ADDRESS, { keys });
+  assert.equal((await h.call(registerRequest(ticket, keys))).status, 200);
+  assert.deepEqual(await answer(await h.call(registerRequest(ticket, keys))), { status: 401, json: { error: 'bad-ticket' } });
   assert.equal(devices(h.db).length, 1);
 });
 
 test('a ticket expires', async () => {
   const h = harness();
   await signUp(h, ADDRESS);
-  const ticket = await signIn(h, ADDRESS);
+  const keys = await deviceKeys();
+  const ticket = await signIn(h, ADDRESS, { keys });
   h.clock.ms += SIGNIN_LIMITS.ticketTtlMs;
-  assert.deepEqual(await answer(await h.call(registerRequest(ticket, await deviceKeys()))), { status: 401, json: { error: 'bad-ticket' } });
+  assert.deepEqual(await answer(await h.call(registerRequest(ticket, keys))), { status: 401, json: { error: 'bad-ticket' } });
   assert.deepEqual(devices(h.db), []);
 });
 
 test('NEGATIVE CONTROL: a ticket used just inside its life registers the device', async () => {
   const h = harness();
   await signUp(h, ADDRESS);
-  const ticket = await signIn(h, ADDRESS);
+  const keys = await deviceKeys();
+  const ticket = await signIn(h, ADDRESS, { keys });
   h.clock.ms += SIGNIN_LIMITS.ticketTtlMs - 1;
-  assert.equal((await h.call(registerRequest(ticket, await deviceKeys()))).status, 200);
+  assert.equal((await h.call(registerRequest(ticket, keys))).status, 200);
 });
 
 test('a key that is not a P-256 public point is refused as shape, and the ticket is not spent', async () => {
   const h = harness();
   await signUp(h, ADDRESS);
-  const ticket = await signIn(h, ADDRESS);
   const good = await deviceKeys();
+  const ticket = await signIn(h, ADDRESS, { keys: good });
   const offCurve = `BA${'A'.repeat(85)}`; // 65 bytes, 0x04 prefix, not on the curve
   for (const [signKey, agreeKey] of [[offCurve, good.agreeKey], [good.signKey, offCurve], ['not base64url!', good.agreeKey],
     [good.signKey.slice(0, 40), good.agreeKey], [42, good.agreeKey], [good.signKey, null]]) {
@@ -280,13 +287,43 @@ test('a key that is not a P-256 public point is refused as shape, and the ticket
 test('a register body must be exactly a ticket and two keys', async () => {
   const h = harness();
   await signUp(h, ADDRESS);
-  const ticket = await signIn(h, ADDRESS);
   const keys = await deviceKeys();
+  const ticket = await signIn(h, ADDRESS, { keys });
   for (const body of [{ ticket, signKey: keys.signKey }, { ticket, signKey: keys.signKey, agreeKey: keys.agreeKey, account: 'acct-1' },
     { ticket: 7, signKey: keys.signKey, agreeKey: keys.agreeKey }]) {
     assert.deepEqual(await answer(await h.call(post('/device/register', body))), { status: 400, json: { error: 'shape' } });
   }
   assert.equal((await h.call(registerRequest(ticket, keys))).status, 200, 'the ticket still works');
+});
+
+// ---- M3 (security review): a ticket registers only the keys it was signed in for ----
+
+test('M3: a ticket refuses keys other than the ones it was signed in for, and is not spent by them', async () => {
+  const h = harness();
+  await signUp(h, ADDRESS);
+  const mine = await deviceKeys();
+  const theirs = await deviceKeys();
+  const ticket = await signIn(h, ADDRESS, { keys: mine });
+  for (const keys of [theirs, { signKey: theirs.signKey, agreeKey: mine.agreeKey }, { signKey: mine.signKey, agreeKey: theirs.agreeKey }]) {
+    assert.deepEqual(await answer(await h.call(registerRequest(ticket, keys))), { status: 401, json: { error: 'bad-ticket' } });
+  }
+  assert.deepEqual(devices(h.db), [], 'no device for keys the ticket was not signed in for');
+  const res = await answer(await h.call(registerRequest(ticket, mine)));
+  assert.equal(res.status, 200, 'NEGATIVE CONTROL: the keys it was signed in for still register');
+  assert.equal(devices(h.db)[0].sign_key, mine.signKey);
+});
+
+test('M3: a sign-in without a well-formed key digest is refused as shape, before any write', async () => {
+  const h = harness();
+  await signUp(h, ADDRESS);
+  const before = h.db.sqlite.prepare('SELECT COUNT(*) AS n FROM throttle').get().n;
+  for (const keyDigest of [undefined, '', 'A'.repeat(42), 'A'.repeat(44), `${'A'.repeat(42)}=`, `${'A'.repeat(42)}+`, 42, null]) {
+    const body = keyDigest === undefined ? { email: ADDRESS, password: PASSWORD } : { email: ADDRESS, password: PASSWORD, keyDigest };
+    assert.deepEqual(await answer(await h.call(post('/signin', body, { 'cf-connecting-ip': '203.0.113.9' }))), { status: 400, json: { error: 'shape' } },
+      JSON.stringify(keyDigest));
+  }
+  assert.equal(h.db.sqlite.prepare('SELECT COUNT(*) AS n FROM ticket').get().n, 0, 'no ticket was made');
+  assert.equal(h.db.sqlite.prepare('SELECT COUNT(*) AS n FROM throttle').get().n, before, 'a refused body is not counted');
 });
 
 // ---- /device/remove ----
@@ -386,9 +423,9 @@ test('sign-in, register and remove each write one audit row of route and reason'
   await signUp(h, ADDRESS);
   const before = auditRows(h.db).length;
   await h.call(signInRequest(ADDRESS, 'a wrong password here'));
-  const ticket = await signIn(h, ADDRESS);
-  await h.call(registerRequest('A'.repeat(43), await deviceKeys()));
   const keys = await deviceKeys();
+  const ticket = await signIn(h, ADDRESS, { keys });
+  await h.call(registerRequest('A'.repeat(43), await deviceKeys()));
   const { device } = await (await h.call(registerRequest(ticket, keys))).json();
   await h.call(await signed(h.call, { id: device, key: keys.key }, '/device/remove', { device }));
   assert.deepEqual(auditRows(h.db).slice(before), [

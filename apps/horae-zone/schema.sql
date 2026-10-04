@@ -96,11 +96,14 @@ CREATE TABLE IF NOT EXISTS throttle (
 CREATE INDEX IF NOT EXISTS throttle_bucket_at ON throttle (bucket, at);
 
 -- A4, sign-in tickets: only the keyed digest of a ticket /signin handed out,
--- bound to its account. A ticket registers one device and dies after a few
--- minutes; spent and expired rows are purged hourly.
+-- bound to its account and to the SHA-256 digest of the two public keys it
+-- may register (key_digest, security review M3). A ticket registers one
+-- device and dies after a few minutes; spent and expired rows are purged
+-- hourly.
 CREATE TABLE IF NOT EXISTS ticket (
   digest       TEXT    PRIMARY KEY,
   account_id   TEXT    NOT NULL,
+  key_digest   TEXT    NOT NULL,
   expires_at   INTEGER NOT NULL,
   used         INTEGER NOT NULL DEFAULT 0
 );

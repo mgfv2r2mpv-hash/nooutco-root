@@ -130,8 +130,8 @@ test('with no database bound the scheduled purge fails loudly rather than report
 // hourly purge clears spent and expired tickets and keeps a live one.
 test('a purge removes spent and expired sign-in tickets', async () => {
   const { db } = harness();
-  const addTicket = (digest, expiresAt, used) => db.sqlite.prepare('INSERT INTO ticket (digest, account_id, expires_at, used) VALUES (?, ?, ?, ?)')
-    .run(digest, 'acct-1', expiresAt, used);
+  const addTicket = (digest, expiresAt, used) => db.sqlite.prepare('INSERT INTO ticket (digest, account_id, key_digest, expires_at, used) VALUES (?, ?, ?, ?, ?)')
+    .run(digest, 'acct-1', 'K'.repeat(43), expiresAt, used);
   addTicket('a'.repeat(64), T0, 0);
   addTicket('b'.repeat(64), T0 + 1, 1);
   addTicket('c'.repeat(64), T0 + 1, 0);
