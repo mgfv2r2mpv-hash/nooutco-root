@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { initiatorStart, responderReply, initiatorFinish, responderConfirm, generatorFor } from '../src/pake.mjs';
+import { initiatorStart, responderReply, initiatorFinish, responderConfirm, generatorFor, channelFor, unlockChannelFor } from '../src/pake.mjs';
 
 const CHANNEL = 'lp.example.test|pollux';
 
@@ -63,5 +63,31 @@ test('only a 6-digit code is taken', () => {
   const sid = new Uint8Array(16);
   for (const code of ['12345', '1234567', 'abcdef', 123456]) {
     assert.throws(() => generatorFor({ code, channel: CHANNEL, sid }));
+  }
+});
+
+// A5 (A1 open point 3): Horae Zone runs the same exchange at /unlock/start and
+// /unlock/finish, under its own channel label, bound to the one device that
+// signs both requests. The device builds the same label with this function.
+test('a Horae Zone unlock channel names one device and is apart from every JanusMirror channel', () => {
+  assert.equal(unlockChannelFor('dev-A_1'), 'horae-zone-unlock-v1|dev-A_1');
+  assert.notEqual(unlockChannelFor('dev-1'), unlockChannelFor('dev-2'));
+  assert.equal(unlockChannelFor('lp-example').startsWith('janusmirror-e2e|'), false);
+  assert.notEqual(unlockChannelFor('x'), channelFor('x'));
+});
+
+test('an unlock exchange for one device does not finish for another', () => {
+  const { finished } = run({ phoneCode: '123456', serverCodes: ['123456'], channelA: unlockChannelFor('dev-1'), channelB: unlockChannelFor('dev-2') });
+  assert.equal(finished, null);
+});
+
+test('NEGATIVE CONTROL: an unlock exchange finishes for the device it names', () => {
+  const { serverKeys } = run({ phoneCode: '123456', serverCodes: ['123456'], channelA: unlockChannelFor('dev-1'), channelB: unlockChannelFor('dev-1') });
+  assert.ok(serverKeys);
+});
+
+test('an unlock channel takes only a device id', () => {
+  for (const bad of [42, '', 'has space', 'a|b', 'x'.repeat(65), null]) {
+    assert.throws(() => unlockChannelFor(bad), TypeError, String(bad));
   }
 });

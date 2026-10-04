@@ -150,3 +150,17 @@ test('a purge removes spent and expired sign-in tickets', async () => {
   await purgeExpired(db, T0);
   assert.deepEqual(db.sqlite.prepare('SELECT digest FROM ticket').all().map((r) => r.digest), ['c'.repeat(64)]);
 });
+
+// A5: a code exchange dies when it is finished or its confirm time passes
+// (the lockout has already counted an unfinished one), so the hourly purge
+// clears spent and expired exchanges and keeps a live one.
+test('a purge removes finished and expired code exchanges', async () => {
+  const { db } = harness();
+  const addExchange = (id, expiresAt, used) => db.sqlite.prepare('INSERT INTO exchange (id, account_id, device_id, candidates, expires_at, used) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(id, 'acct-1', 'dev-1', '[]', expiresAt, used);
+  addExchange('expired', T0, 0);
+  addExchange('finished', T0 + 1, 1);
+  addExchange('live', T0 + 1, 0);
+  await purgeExpired(db, T0);
+  assert.deepEqual(db.sqlite.prepare('SELECT id FROM exchange').all().map((r) => r.id), ['live']);
+});
