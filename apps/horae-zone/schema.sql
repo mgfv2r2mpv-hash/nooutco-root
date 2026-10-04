@@ -305,3 +305,21 @@ CREATE TABLE IF NOT EXISTS pin_reset (
   digest       TEXT    NOT NULL,
   expires_at   INTEGER NOT NULL
 );
+
+-- The annual PIN review's schedule (plan §3.4 "Annual review"), only on the
+-- server: a row exists once the account snoozed the review this cycle, with
+-- how many snoozes and when the review is due again. With no row the review
+-- is due 365 days after the PIN's set_at (src/pin-review.js). No PIN is kept.
+CREATE TABLE IF NOT EXISTS pin_review (
+  account_id   TEXT    PRIMARY KEY,
+  snoozes      INTEGER NOT NULL,
+  due_at       INTEGER NOT NULL
+);
+
+-- Every write that restarts a PIN's age (a change, a reset, the review's
+-- change) starts a fresh review cycle: the old cycle's snoozes go with it.
+CREATE TRIGGER IF NOT EXISTS pin_restarts_review AFTER UPDATE OF set_at ON pin
+WHEN OLD.set_at <> NEW.set_at
+BEGIN
+  DELETE FROM pin_review WHERE account_id = NEW.account_id;
+END;
