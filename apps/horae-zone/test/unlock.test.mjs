@@ -21,7 +21,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { UNLOCK_LIMITS, TICKET_LABEL } from '../src/unlock.js';
 import { initiatorStart, initiatorFinish, unlockChannelFor } from '../../../packages/account-engine/src/pake.mjs';
-import { CONFIRM_MS } from '../../../packages/account-engine/src/limits.mjs';
+import { CONFIRM_MS, WINDOW_MS } from '../../../packages/account-engine/src/limits.mjs';
 import { b64url, fromB64url } from '../src/checks.js';
 import {
   harness, signed, auditRows, everyRow, registeredDevice, enrolledDevice, codeAt, wrongCodeAt, tryCode,
@@ -245,11 +245,33 @@ test('L2 NEGATIVE CONTROL: a removal of some other device mid-flight does not st
 test('three tries in one window are admitted even when more arrive together', async () => {
   const h = harness();
   const dev = await enrolledDevice(h, ADDRESS);
+  // Two devices, so six nonces can be live at once; the second proves the
+  // code first, so its tries count in the account's windows (security review
+  // item 2: a pending device's do not).
   const other = await secondDevice(h, dev);
+  assert.equal((await tryCode(h, other, await codeAt(dev, h.clock.ms))).finish.status, 200);
+  h.clock.ms += WINDOW_MS;
   const requests = [];
   for (const device of [dev, other, dev, other, dev, other]) {
     const { message } = initiatorStart({ code: await wrongCodeAt(dev, h.clock.ms), channel: unlockChannelFor(device.id) });
     requests.push(await signed(h.call, device, '/unlock/start', { sid: b64url(message.sid), Ya: b64url(message.Ya), clock: h.clock.ms }));
+  }
+  const answers = await Promise.all(requests.map(async (r) => answer(await h.call(r))));
+  assert.equal(answers.filter((a) => a.status === 200).length, 3);
+  for (const a of answers.filter((x) => x.status !== 200)) assert.deepEqual(a, { status: 423, json: { error: 'locked' } });
+});
+
+test('A5 review 2: a pending device\'s 3 tries a day hold when more arrive together', async () => {
+  const h = harness();
+  const dev = await enrolledDevice(h, ADDRESS);
+  const other = await secondDevice(h, dev);
+  // The owner's two wrong codes fill most of the account's window; the
+  // pending device's cap is its own, so it still gets exactly 3.
+  for (let i = 0; i < 2; i += 1) assert.equal((await tryCode(h, dev, await wrongCodeAt(dev, h.clock.ms))).finish.status, 401);
+  const requests = [];
+  for (let i = 0; i < 5; i += 1) {
+    const { message } = initiatorStart({ code: await wrongCodeAt(dev, h.clock.ms), channel: unlockChannelFor(other.id) });
+    requests.push(await signed(h.call, other, '/unlock/start', { sid: b64url(message.sid), Ya: b64url(message.Ya), clock: h.clock.ms }));
   }
   const answers = await Promise.all(requests.map(async (r) => answer(await h.call(r))));
   assert.equal(answers.filter((a) => a.status === 200).length, 3);

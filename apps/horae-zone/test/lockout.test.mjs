@@ -10,9 +10,9 @@
 // A refused start says only `locked`, never which rule, how many or how long.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { WINDOW_MS, CONFIRM_MS, UNLOCK_TTL_MS, parseState } from '../../../packages/account-engine/src/limits.mjs';
+import { WINDOW_MS, CONFIRM_MS, UNLOCK_TTL_MS, DAY_MS, parseState } from '../../../packages/account-engine/src/limits.mjs';
 import {
-  harness, post, auditRows, everyRow, enrolledDevice, codeAt, wrongCodeAt, tryCode, reopenTokenFrom, REOPEN_BASE,
+  harness, post, auditRows, everyRow, enrolledDevice, registeredDevice, codeAt, wrongCodeAt, tryCode, reopenTokenFrom, REOPEN_BASE,
 } from './helpers.mjs';
 
 // Fixed, fake values: reserved-domain addresses.
@@ -243,4 +243,76 @@ test('a refused start and a reopen each write one audit row of route and reason'
     { route: '/nonce', reason: 'ok' }, { route: '/unlock/start', reason: 'locked' },
     { route: '/unlock/reopen', reason: 'ok' }, { route: '/unlock/reopen', reason: 'bad-link' },
   ]);
+});
+
+// ---- A5 security review, item 2 (MEDIUM): a pending device cannot close the path ----
+// A pending device has shown only the password. Its tries count against its
+// own cap (3 a day, a right code included) and never
+// toward the account's windows, so a password thief cannot lock the owner out.
+
+const pendingDevice = async (h, owner) => ({ ...(await registeredDevice(h, ADDRESS, { fresh: false })), seed: owner.seed });
+const pathState = (h) => parseState(h.db.sqlite.prepare('SELECT state FROM limits').get().state);
+
+test('A5 review 2: the probe (a pending device burns tries in two windows) leaves the owner\'s path open', async () => {
+  const h = harness();
+  const owner = await enrolledDevice(h, ADDRESS);
+  const thief = await pendingDevice(h, owner);
+  await lockWindow(h, thief);
+  const same = await rightTry(h, owner);
+  assert.equal(same.start.status, 200, 'the thief\'s wrongs did not lock the owner\'s window');
+  assert.equal(same.finish.status, 200);
+  h.clock.ms += WINDOW_MS;
+  for (let i = 0; i < 3; i += 1) assert.deepEqual((await tryCode(h, thief, await wrongCodeAt(thief, h.clock.ms))).start, LOCKED, 'the thief is past its cap');
+  assert.equal(pathState(h).pathLocked, false);
+  assert.equal(reopenTokenFrom(h, ADDRESS), null, 'no path-closed mail');
+  h.clock.ms += WINDOW_MS;
+  assert.equal((await rightTry(h, owner)).finish.status, 200, 'the owner\'s path is open');
+});
+
+test('A5 review 2: a pending device gets 3 tries a day, a right code included, then the next day 3 more', async () => {
+  const h = harness();
+  const owner = await enrolledDevice(h, ADDRESS);
+  const next = await pendingDevice(h, owner);
+  const first = h.clock.ms;
+  for (let i = 0; i < 3; i += 1) {
+    await wrongTry(h, next);
+    h.clock.ms += 2 * WINDOW_MS;
+  }
+  assert.deepEqual((await rightTry(h, next)).start, LOCKED, 'a right code is refused past the cap');
+  h.clock.ms = first + DAY_MS - 1;
+  assert.deepEqual((await rightTry(h, next)).start, LOCKED, 'the cap holds for a day from the first try');
+  h.clock.ms = first + DAY_MS + WINDOW_MS;
+  assert.equal((await rightTry(h, next)).finish.status, 200, 'a day later the device proves the code');
+  assert.equal(h.db.sqlite.prepare('SELECT pending FROM device WHERE id = ?').get(next.id).pending, 0);
+});
+
+test('A5 review 2 NEGATIVE CONTROL: a pending device\'s tries are its own, so another pending device keeps its 3', async () => {
+  const h = harness();
+  const owner = await enrolledDevice(h, ADDRESS);
+  const thief = await pendingDevice(h, owner);
+  const mine = await pendingDevice(h, owner);
+  await lockWindow(h, thief);
+  h.clock.ms += WINDOW_MS;
+  assert.equal((await rightTry(h, mine)).finish.status, 200);
+});
+
+test('A5 review 2 NEGATIVE CONTROL: a non-pending device\'s wrongs still close the path, for pending devices too', async () => {
+  const h = harness();
+  const owner = await enrolledDevice(h, ADDRESS);
+  const next = await pendingDevice(h, owner);
+  await lockWindow(h, owner);
+  h.clock.ms += WINDOW_MS;
+  await lockWindow(h, owner);
+  assert.equal(pathState(h).pathLocked, true);
+  assert.match(reopenTokenFrom(h, ADDRESS), /^[A-Za-z0-9_-]{43}$/);
+  h.clock.ms += WINDOW_MS;
+  assert.deepEqual((await rightTry(h, owner)).start, LOCKED);
+  assert.deepEqual((await rightTry(h, next)).start, LOCKED, 'a closed path refuses a pending device');
+  // A refusal on a closed path spends none of the device's tries: once the
+  // link reopens the path, two wrong codes and then a right one are its 3.
+  await h.call(post('/unlock/reopen', { token: reopenTokenFrom(h, ADDRESS) }));
+  h.clock.ms += WINDOW_MS;
+  await wrongTry(h, next);
+  await wrongTry(h, next);
+  assert.equal((await rightTry(h, next)).finish.status, 200);
 });

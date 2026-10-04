@@ -35,7 +35,7 @@
  * defaults, listed for the owner in the design review: the plan does not fix
  * them.
  */
-import { sameHex, admit, settle, confirm, reject, CONFIRM_MS } from "../../../packages/account-engine/src/limits.mjs";
+import { sameHex, admit, settle, confirm, reject, CONFIRM_MS, DAY_MS } from "../../../packages/account-engine/src/limits.mjs";
 import { fragmentLink } from "../../../packages/account-engine/src/mailer.mjs";
 import { responderReply, unlockChannelFor } from "../../../packages/account-engine/src/pake.mjs";
 import { hotp, windowOf, clockOffset } from "../../../packages/account-engine/src/totp.mjs";
@@ -43,11 +43,15 @@ import { ristretto255 } from "../../../packages/account-engine/vendor/noble/curv
 import { Refusal, LIVE_DEVICE, b64url, fromB64url, findDevice } from "./checks.js";
 import { hasOnly, keysOrUnavailable } from "./signup.js";
 import { openSeed, seedBoxKey } from "./otp.js";
-import { ruleLimits, lockNotes, mailAfter, reopenedNote, spendReopen } from "./lockout.js";
+import { ruleLimits, pathClosed, lockNotes, mailAfter, reopenedNote, spendReopen } from "./lockout.js";
 
 export const UNLOCK_LIMITS = Object.freeze({
   ticketTtlMs: 5 * 60 * 1000,
 });
+// Tries a pending device gets in any 24 hours, a right code included
+// (security review item 2). An owner's new device needs one; three allow for
+// a mistyped code or a code that changed mid-entry.
+export const PENDING_TRIES_PER_DAY = 3;
 export const TICKET_LABEL = "horae-zone-unlock-ticket-v1";
 
 const SID = /^[A-Za-z0-9_-]{22}$/;
@@ -111,12 +115,9 @@ function randomCode() {
   return String(n % CODE_SPACE).padStart(6, "0");
 }
 
-export async function startUnlock({ db, device, body, now, env, mailer }) {
-  const { sid, Ya, clock } = startBody(body);
-  const { keys, reopenBase } = await configOrUnavailable(env, mailer);
-  const otp = await db.prepare("SELECT box, last_step FROM otp WHERE account_id = ?").bind(device.account_id).first();
-  if (!otp) throw new Refusal("not-enrolled", 409);
-  const exchange = b64url(crypto.getRandomValues(new Uint8Array(EXCHANGE_BYTES)));
+// A try by a device that has proved the code: admitted into the account's
+// lockout, whose events become the mail sent after the answer.
+async function admitAccountTry({ db, device, now, exchange, clock, keys, mailer, reopenBase }) {
   const clockOffMs = clockOffset(clock, now);
   const ruled = await ruleLimits(db, device.account_id, now, (state) => {
     const settled = settle(state, now);
@@ -125,6 +126,36 @@ export async function startUnlock({ db, device, body, now, env, mailer }) {
   });
   const after = mailAfter({ db, keys, mailer, accountId: device.account_id, notes: lockNotes(ruled.events, ruled.token, reopenBase) });
   if (!ruled.ok) throw new Refusal("locked", 423, after);
+  return after;
+}
+
+// A try by a pending device (security review item 2). It has shown only the
+// password, so its tries count against its own cap, in pending_try, and
+// never in the account's lockout: a password thief cannot lock the owner's
+// devices out. A closed path refuses it too, and spends none of its tries.
+// The count and the insert are one statement, so tries arriving together
+// cannot pass the cap. Nothing is mailed: no account rule moved.
+async function admitPendingTry(db, device, now) {
+  if (await pathClosed(db, device.account_id)) throw new Refusal("locked", 423);
+  const counted = await db.prepare(
+    `INSERT INTO pending_try (device_id, at) SELECT ?, ? WHERE ${LIVE_DEVICE} AND (SELECT COUNT(*) FROM pending_try WHERE device_id = ? AND at > ?) < ? RETURNING device_id`,
+  ).bind(device.id, now, device.id, device.id, now - DAY_MS, PENDING_TRIES_PER_DAY).first();
+  if (!counted) {
+    await findDevice(db, device.id); // refuses no-device when the removal is what stopped it
+    throw new Refusal("locked", 423);
+  }
+  return undefined;
+}
+
+export async function startUnlock({ db, device, body, now, env, mailer }) {
+  const { sid, Ya, clock } = startBody(body);
+  const { keys, reopenBase } = await configOrUnavailable(env, mailer);
+  const otp = await db.prepare("SELECT box, last_step FROM otp WHERE account_id = ?").bind(device.account_id).first();
+  if (!otp) throw new Refusal("not-enrolled", 409);
+  const exchange = b64url(crypto.getRandomValues(new Uint8Array(EXCHANGE_BYTES)));
+  const after = device.pending
+    ? await admitPendingTry(db, device, now)
+    : await admitAccountTry({ db, device, now, exchange, clock, keys, mailer, reopenBase });
 
   const seed = await openSeed(env, device.account_id, otp.box);
   const channel = unlockChannelFor(device.id);

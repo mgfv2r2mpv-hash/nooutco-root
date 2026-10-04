@@ -164,3 +164,13 @@ test('a purge removes finished and expired code exchanges', async () => {
   await purgeExpired(db, T0);
   assert.deepEqual(db.sqlite.prepare('SELECT id FROM exchange').all().map((r) => r.id), ['live']);
 });
+
+// A5 security review item 2: a pending device's try only counts toward its
+// cap for a day, so the hourly purge clears tries a day old and keeps newer.
+test('a purge removes a pending device\'s tries once they are a day old', async () => {
+  const { db } = harness();
+  const day = 24 * 60 * 60 * 1000;
+  for (const at of [T0 - day - 1, T0 - day, T0 - day + 1, T0]) db.sqlite.prepare('INSERT INTO pending_try (device_id, at) VALUES (?, ?)').run('dev-1', at);
+  await purgeExpired(db, T0);
+  assert.deepEqual(db.sqlite.prepare('SELECT at FROM pending_try ORDER BY at').all().map((r) => r.at), [T0 - day + 1, T0]);
+});
