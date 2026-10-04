@@ -7,7 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { d1Sqlite } from '../../profile-api/test/helpers/d1-sqlite.js';
 import { createHandler } from '../src/index.js';
-import { signedBytes, b64url } from '../src/checks.js';
+import { signedBytes, b64url, fromB64url } from '../src/checks.js';
 
 export const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const SCHEMA = readFileSync(path.join(ROOT, 'schema.sql'), 'utf8');
@@ -18,6 +18,15 @@ export const ORIGIN = 'https://horae-zone.example.test';
 export const ACCOUNT_KEY = b64url(new Uint8Array(32).fill(7));
 export const LINK_BASE = 'https://horae-zone.example.test/verify';
 
+// A5. Obviously fake: 32 bytes of 9. The deployed seed key is a Worker secret.
+export const SEED_KEY = b64url(new Uint8Array(32).fill(9));
+export const REOPEN_BASE = 'https://horae-zone.example.test/reopen';
+// The unlock-ticket signing key is made fresh for each run and never written
+// down; tests verify a ticket with its public half.
+const ticketPair = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
+export const TICKET_PUBLIC_KEY = ticketPair.publicKey;
+export const TICKET_KEY = JSON.stringify(await crypto.subtle.exportKey('jwk', ticketPair.privateKey));
+
 // `mailer` replaces the sink (a test of a failing send). `env` adds to or
 // overrides the bindings. Deferred work (ctx.waitUntil) is awaited before
 // `call` returns, so a test sees the mail a request sent.
@@ -27,7 +36,10 @@ export function harness({ mailer = null, env = {} } = {}) {
   const mail = [];
   const send = mailer ?? (async (message) => { mail.push(message); return true; });
   const handler = createHandler({ now: () => clock.ms, mailer: send });
-  const bindings = { DB: db, HZ_ACCOUNT_KEY: ACCOUNT_KEY, HZ_LINK_BASE: LINK_BASE, ...env };
+  const bindings = {
+    DB: db, HZ_ACCOUNT_KEY: ACCOUNT_KEY, HZ_LINK_BASE: LINK_BASE,
+    HZ_SEED_KEY: SEED_KEY, HZ_TICKET_KEY: TICKET_KEY, HZ_REOPEN_BASE: REOPEN_BASE, ...env,
+  };
   const call = async (req) => {
     const waits = [];
     const res = await handler(req, bindings, { waitUntil: (p) => waits.push(p) });
@@ -158,4 +170,70 @@ export async function registeredDevice(h, email, { fresh = true } = {}) {
   if (res.status !== 200) throw new Error(`register answered ${res.status}`);
   const { device } = await res.json();
   return { id: device, account, key: keys.key, signKey: keys.signKey };
+}
+
+// A5 flow helpers. The engine is imported when a helper first runs, so the
+// A2 to A4 tests load this file even where the engine lacks an A5 export.
+const engine = async () => ({
+  ...(await import('../../../packages/account-engine/src/pake.mjs')),
+  ...(await import('../../../packages/account-engine/src/totp.mjs')),
+});
+
+const answerOf = async (res) => ({ status: res.status, json: await res.json() });
+
+export async function enrolRequest(call, device, ticket) {
+  return signed(call, device, '/otp/enrol', { ticket });
+}
+
+// Signs up, registers a device and enrols the account's code with a second
+// sign-in ticket; the device comes back holding the seed, as its
+// authenticator app would.
+export async function enrolledDevice(h, email) {
+  const dev = await registeredDevice(h, email);
+  const res = await h.call(await enrolRequest(h.call, dev, await signIn(h, email)));
+  if (res.status !== 200) throw new Error(`enrol answered ${res.status}`);
+  const { secret, uri } = await res.json();
+  const { base32Decode } = await engine();
+  return { ...dev, email, secret, uri, seed: base32Decode(secret) };
+}
+
+// The code an authenticator holding `device.seed` shows at `ms`.
+export async function codeAt(device, ms) {
+  const { totpAt } = await engine();
+  return totpAt(device.seed, ms);
+}
+
+// A code that neither the current nor the previous step accepts at `ms`.
+export async function wrongCodeAt(device, ms) {
+  const { candidateCodes } = await engine();
+  const right = candidateCodes(device.seed, ms);
+  for (let n = 0; ; n += 1) {
+    const code = String(n).padStart(6, '0');
+    if (!right.includes(code)) return code;
+  }
+}
+
+// One code try at /unlock/start and /unlock/finish, run as a device runs it:
+// the code goes into CPace on the device and never into a request. When no
+// reply checks (a wrong code, or a step the service did not offer) the device
+// has no tagA, and a random one is sent so the try is settled at once.
+// `finish: false` stops after the start.
+export async function tryCode(h, device, code, { clock = h.clock.ms, finish = true } = {}) {
+  const { initiatorStart, initiatorFinish, unlockChannelFor } = await engine();
+  const { message, state } = initiatorStart({ code, channel: unlockChannelFor(device.id) });
+  const body = { sid: b64url(message.sid), Ya: b64url(message.Ya), clock };
+  const start = await answerOf(await h.call(await signed(h.call, device, '/unlock/start', body)));
+  if (start.status !== 200 || !finish) return { start };
+  const replies = start.json.replies.map((r) => ({ Yb: fromB64url(r.Yb), tagB: fromB64url(r.tagB) }));
+  const proved = initiatorFinish(state, replies);
+  const tagA = b64url(proved ? proved.tagA : crypto.getRandomValues(new Uint8Array(32)));
+  const done = await answerOf(await h.call(await signed(h.call, device, '/unlock/finish', { exchange: start.json.exchange, tagA })));
+  return { start, proved: Boolean(proved), tagA, finish: done };
+}
+
+// The reopen token from the newest lock mail to `email` that carries a link.
+export function reopenTokenFrom(h, email) {
+  const message = h.mail.filter((m) => m.to === email && m.text.includes(REOPEN_BASE)).at(-1);
+  if (!message) return null;
+  return new URL(message.text.match(/https:\/\/\S+/)[0]).hash.slice(1);
 }

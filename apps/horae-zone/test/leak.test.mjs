@@ -8,7 +8,10 @@ import path from 'node:path';
 import { ROUTES } from '../src/routes.js';
 import { createHandler } from '../src/index.js';
 import { NONCE_TTL_MS } from '../src/checks.js';
-import { harness, addDevice, makeAdmin, post, signed, everyRow, signUp, signInRequest, deviceKeys, registerRequest, keyDigestOf, ROOT } from './helpers.mjs';
+import {
+  harness, addDevice, makeAdmin, post, signed, everyRow, signUp, signIn, signInRequest, deviceKeys, registerRequest, keyDigestOf, ROOT,
+  registeredDevice, enrolRequest, codeAt, wrongCodeAt, tryCode, reopenTokenFrom,
+} from './helpers.mjs';
 
 // Fixed, fake test values: a body marker, a 6-digit code, a base32 seed, a
 // PIN and an address on a reserved domain.
@@ -113,6 +116,66 @@ test('sign-in, register and remove leave no address, password or ticket in any a
     for (const text of seen) assert.equal(text.includes(value), false, 'an answer carries a sign-in value');
     assert.equal(stored.includes(value), false, 'a table or a bound statement carries a sign-in value');
     assert.equal(logs.join('\n').includes(value), false, 'console output carries a sign-in value');
+  }
+});
+
+// A5: a real enrolment, wrong and right code tries, a closed path and a
+// reopen, so the seed, the codes, the tags, the unlock ticket and the reopen
+// token reach the code paths that seal, check, sign and mail them. The seed
+// may appear only in the enrol answer, the ticket only in the answer that
+// hands it out, and the reopen token only in the lock mail.
+test('enrolment, code tries, a lock and a reopen leave no seed, code, tag, ticket or link token anywhere else', async (t) => {
+  const logs = captureConsole(t);
+  const h = harness();
+  const address = 'leak-canary-code@example.test';
+  const seen = [];
+  const keep = async (req) => {
+    const res = await h.call(req);
+    seen.push(await everything(res.clone()));
+    return res;
+  };
+  const dev = await registeredDevice(h, address);
+  const enrolled = await keep(await enrolRequest(h.call, dev, await signIn(h, address)));
+  const enrolAnswer = seen.pop();
+  const { secret } = await enrolled.json();
+  assert.ok(enrolAnswer.includes(secret), 'NEGATIVE CONTROL: the enrol answer carries the seed');
+  const coded = { ...dev, secret, seed: (await import('../../../packages/account-engine/src/totp.mjs')).base32Decode(secret) };
+  const tags = [];
+  const codes = [];
+  const run = async (code) => {
+    codes.push(code);
+    const tried = await tryCode(h, coded, code);
+    if (tried.tagA) tags.push(tried.tagA);
+    seen.push(JSON.stringify(tried.start));
+    if (tried.finish) seen.push(JSON.stringify(tried.finish));
+    return tried;
+  };
+  const right = await run(await codeAt(coded, h.clock.ms));
+  const handout = seen.pop();
+  const { ticket } = right.finish.json;
+  assert.ok(handout.includes(ticket), 'NEGATIVE CONTROL: the finish answer carries the ticket');
+  for (let w = 0; w < 2; w += 1) {
+    h.clock.ms += 30_000;
+    for (let i = 0; i < 3; i += 1) await run(await wrongCodeAt(coded, h.clock.ms));
+  }
+  const token = reopenTokenFrom(h, address);
+  assert.ok(token, 'the path closed and mailed a link');
+  await keep(post('/unlock/reopen', { token }));
+  await keep(post('/unlock/reopen', { token }));
+  const seedHex = [...coded.seed].map((b) => b.toString(16).padStart(2, '0')).join('');
+  const stored = `${everyRow(h.db)}${JSON.stringify(h.db.bound.map((b) => b.values))}`;
+  // A code is matched as a whole token, so it is not found inside a
+  // timestamp, a hex digest or a base64url value that happens to hold the
+  // same 6 digits.
+  const values = [secret, seedHex, ticket, token, ...tags, ...codes.map((c) => new RegExp(`(?<![0-9A-Za-z_-])${c}(?![0-9A-Za-z_-])`))];
+  for (const value of values) {
+    const carries = (text) => (typeof value === 'string' ? text.includes(value) : value.test(text));
+    for (const text of seen) assert.equal(carries(text), false, 'an answer carries a code-path value');
+    assert.equal(carries(stored), false, 'a table or a bound statement carries a code-path value');
+    assert.equal(carries(logs.join('\n')), false, 'console output carries a code-path value');
+  }
+  for (const m of h.mail.filter((x) => x.to === address && !/sign-up/i.test(x.subject))) {
+    for (const value of [secret, seedHex, ticket, ...tags]) assert.equal(m.text.includes(value), false, 'a lock mail carries a code-path value');
   }
 });
 
