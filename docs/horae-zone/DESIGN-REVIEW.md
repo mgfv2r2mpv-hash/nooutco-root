@@ -91,7 +91,7 @@ It never holds a vault key, a session key, vault data or PHI.
    - Decision: a changed, added or missing file fails `test/vendor.test.mjs`.
    - Reason: this is the JanusMirror rule, carried over.
 6. **Not moved yet.**
-   - Decision: `mailer`, `replay`, `jwt` and `sealed-events` each move with the first slice that uses it (A3, A5, and Phase 9 respectively).
+   - Decision: `mailer`, `replay`, `jwt` and `sealed-events` each move with the first slice that uses it (A3, A5, and Phase 9 respectively). The mailer moved in A3; `replay` and `jwt` are still in JanusMirror, since neither A3 nor A4 uses them.
    - Reason: no code is carried without a caller and its tests.
 7. **Test-only dependencies.**
    - Decision: `playwright` 1.56.1 and `workerd`, both pinned exactly as `devDependencies`.
@@ -104,14 +104,14 @@ It never holds a vault key, a session key, vault data or PHI.
 
 | # | Point | Where | Proposed resolution |
 |---|---|---|---|
-| 1 | ~~Redistributing the blocklist in a public repository~~ | — | **Decided** 2026-10-03, "private package" (see the rulings above) |
-| 2 | ~~The "no runs" definition~~ | — | **Decided** 2026-10-03, runs wrap (see the rulings above) |
+| 1 | ~~Redistributing the blocklist in a public repository~~ | - | **Decided** 2026-10-03, "private package" (see the rulings above) |
+| 2 | ~~The "no runs" definition~~ | - | **Decided** 2026-10-03, runs wrap (see the rulings above) |
 | 3 | `pake.mjs` still uses JanusMirror's channel (`janusmirror-e2e|…`) and DST (`JanusMirror-CPace-…`), so JanusMirror can adopt the engine unchanged (A7) | `src/pake.mjs` | Add a channel parameter or a Horae Zone channel label before A5. Keep the DST, or version it with a RED test |
 | 4 | The `limits` renames diverge from JanusMirror until A7 | `src/limits.mjs` | A7 maps JanusMirror's callers to the new names |
 | 5 | `src/probe.mjs` is test support that ships in `src/` | `src/probe.mjs` | Keep it (it is tiny and pure), or move it under `test/` and have the browser and `workerd` loaders embed it from there |
 | 6 | `vendor/refresh-noble.sh` uses BSD `sed -i ''` and `shasum`, so it runs on macOS only (as in JanusMirror) | `vendor/refresh-noble.sh` | Leave it, and document that the refresh runs on a Mac |
 | 7 | The `workerd` test finds a free port by closing a probe listener, which leaves a small race, and waits up to 10 s. The browser test needs a Chromium that Playwright can find (when it could not, the test used to hang the run with its server open; since `df1f0d5` it fails promptly) | `test/runtimes.test.mjs` | Accept it for now. If the race ever fires, pass `127.0.0.1:0` and read the bound port from `workerd`'s output |
-| 8 | ~~There is no CI workflow for the package~~ | — | **Decided** 2026-10-03, "ye": `account-engine-test.yml` |
+| 8 | ~~There is no CI workflow for the package~~ | - | **Decided** 2026-10-03, "ye": `account-engine-test.yml` |
 | 9 | Consumers that vendor the engine (Sass, JanusMirror) must also install `@nooutco/pin-blocklist` and pass `loadPinBlocklist({ importer: () => import('@nooutco/pin-blocklist') })`, so the name resolves in their tree | `src/pin-blocklist-load.mjs` | Each consumer's slice (A7, A8, and the Horae Zone `/pin/set` slice) adds the git dependency and its read key |
 
 ### Out of scope for A1
@@ -178,18 +178,155 @@ It never holds a vault key, a session key, vault data or PHI.
 
 | # | Point | Where | Proposed resolution |
 |---|---|---|---|
-| 1 | `/device/register` is `open`: a device has no key before it registers | `src/routes.js` | A4 must require the ticket from `/signin` before building a handler. A RED test for that goes first in A4 |
-| 2 | `/nonce` needs only a known device id, so anyone holding an id can mint nonces. The purge is **decided** (hourly, decision 6); the cap is not | `src/checks.js` `issueNonce` | A per-device cap on live nonces (for example 5) in A4, and the WAF rate rule at the first deploy |
-| 3 | ~~The `audit` table grows without limit~~ | — | **Decided** 2026-10-03: kept 6 years, purged by the hourly cron (decision 6) |
-| 4 | The signed-bytes builder lives in the service, but Sass and JanusMirror must build the same bytes | `src/checks.js` `signedBytes` | Move it into `packages/account-engine` in A4, with a shared test vector |
+| 1 | ~~`/device/register` is `open`: a device has no key before it registers~~ | - | **Closed in A4**: the handler requires the single-use ticket from `/signin` (RED first, `a55d8771`) |
+| 2 | ~~`/nonce` needs only a known device id, so anyone holding an id can mint nonces~~ | - | **Closed in A4**: at most 5 live nonces per device (RED first, `a55d8771`). The WAF rate rule is still for the first deploy |
+| 3 | ~~The `audit` table grows without limit~~ | - | **Decided** 2026-10-03: kept 6 years, purged by the hourly cron (decision 6) |
+| 4 | ~~The signed-bytes builder lives in the service, but Sass and JanusMirror must build the same bytes~~ | - | **Closed in A4**: `packages/account-engine/src/signed-bytes.mjs`, with the shared vector `test/fixtures/signed-bytes-vector.json` (RED first, `a55d8771`) |
 | 5 | The size check trusts `content-length` only as a fast path. The body is still buffered before the real size is known (the Workers platform caps request bodies) | `src/checks.js` `readBody` | Accept, or stream-read with a byte counter |
 | 6 | The tests import the profile-api helper by relative path, which couples the two apps | `test/helpers.mjs` | Move it to `packages/shared/worker` if a third app needs it |
 | 7 | The D1 id is a zero placeholder | `wrangler.toml` | The deploy script writes the real id. Deploy only on the owner's word |
-| 8 | Not yet run under `wrangler dev --local`, because wrangler is not installed in the authoring environment. A `workerd` smoke test with no D1 bound loaded the Worker, which answered `unavailable` and printed nothing | — | The reviewer runs the `wrangler dev` smoke test in the test plan |
-| 9 | ~~There is no CI workflow~~ | — | **Decided** 2026-10-03, "ye": `horae-zone-test.yml` |
+| 8 | Not yet run under `wrangler dev --local`, because wrangler is not installed in the authoring environment. A `workerd` smoke test with no D1 bound loaded the Worker, which answered `unavailable` and printed nothing | - | The reviewer runs the `wrangler dev` smoke test in the test plan |
+| 9 | ~~There is no CI workflow~~ | - | **Decided** 2026-10-03, "ye": `horae-zone-test.yml` |
 
 ### Out of scope for A2
 
 - Every route handler except `/nonce`.
 - Accounts, email, codes and PINs.
 - Any deploy.
+
+---
+
+## A3: account and email (`apps/horae-zone`, `packages/account-engine`)
+
+**Commits:** `665f3042` (RED: 2 engine files failing on the missing `src/mailer.mjs` and the unexported `sameHex`; 4 Horae Zone tests failing on the missing `src/signup.js` and the query-string rule; every A2 test still passing), then `0fb336ea` (GREEN). After GREEN: Horae Zone 54/54, engine 58 (57 pass, 1 skip), profile-api 195/195.
+
+**Plan tests:** "sign-up needs the email code" and "the email code rides in the fragment", both in `test/signup.test.mjs`.
+
+### What is in it
+
+| File | Does |
+|---|---|
+| `src/signup.js` | `POST /account {email}` and `POST /account/email/verify {email, code, password}`, plus `SIGNUP_LIMITS` |
+| `src/account-keys.js` | `accountKeys(env)`. HKDF from the one Worker secret `HZ_ACCOUNT_KEY` gives a separate key for each use: the address key, the address box, the code digest, the requester key and the login pepper (A4 adds the ticket digest). `hashLogin` is PBKDF2-SHA256 at 100,000 iterations over a random 16-byte salt per account, then HMAC under the pepper |
+| `src/throttle.js` | `admitThrottle(db, now, windowMs, buckets)`: one `INSERT ... SELECT` that checks every bucket and records a row in each only when all are under their limit |
+| `src/index.js` | A URL with any query string is refused `shape` before any check. Handlers get `env`, the request and a mailer. A handler may return `after`, work that runs through `ctx.waitUntil` after the answer and its `ok` audit row, and that audits a failure word of its own (`mail-failed`) |
+| `src/retention.js` | The hourly purge also removes spent, used-up and expired email codes, and rate-limit rows past their window |
+| `schema.sql` | `account` (id, address_key unique, address_box, login_hash, login_salt, created_at), `challenge` (address_key, digest, expires_at, tries, used) and `throttle` (bucket, at) |
+| engine `src/mailer.mjs`, `src/limits.mjs` | See the provenance table under A1 |
+| `.github/workflows/horae-zone-test.yml` | Also runs when `packages/account-engine/src/**` or `vendor/**` changes, since the service now imports the engine |
+
+**New refusal words:** `bad-code` (401) and `slow-down` (429). New audit-only word: `mail-failed`.
+
+### Decisions
+
+1. **Sign-up needs the email code.** `/account` makes no account, it mails a code. Only `/account/email/verify` with the live code makes the account, and the password is set in that same request (plan §3.3, first device, steps 1 and 2).
+2. **The code rides in the fragment.** The mail carries `HZ_LINK_BASE#<code>`, built by the engine's `fragmentLink`, which refuses a base that is not https or already has a query or fragment. The code is also in the mail as text, so it can be typed. It is never in a query string (the service refuses any query string), a response body, an audit row or a log.
+3. **Codes:**
+   - 6 digits, drawn uniformly (32-bit values past the last whole million are drawn again).
+   - Single use, alive 10 minutes, dead after 5 wrong tries. A newer code replaces the older one for the address.
+   - Stored only as an HMAC digest under a key derived from the service secret, bound to the address key.
+   - Compared with the engine's `sameHex`, never `===`.
+4. **A try is counted before the compare.** The verify takes a try with `UPDATE ... RETURNING` and only then compares, so guesses sent together cannot pass the try limit. The first right try spends the code with a second `UPDATE ... WHERE used = 0`.
+5. **No answer says whether an address has an account.** `/account` answers `{ok:true}` for a new address and an existing one, takes the same rate-limit places for both, and mails only a new address. A verify for an address that was never sent a code is `bad-code`, like a wrong code.
+6. **Rate limits are atomic, and a refused request is not counted.** Starts are limited per address and per requester, tries per requester. Before a device has a key, the requester is the connecting address (`cf-connecting-ip`), stored only as a keyed hash.
+7. **Shape before the rate limit.** A malformed body is refused before the throttle, so it neither counts nor spends a try.
+8. **The address is stored sealed.** AES-GCM under a derived key, with the address key as associated data, so a box cannot be moved to another row. Lookups use the keyed address hash.
+9. **The password is stored as a peppered slow hash.** 100,000 PBKDF2 iterations is the most the Workers runtime allows. The HMAC pepper means a copied table cannot be guessed against without the Worker secret.
+10. **The mail transport is injected.** Tests pass a sink and never send mail. Production builds the engine mailer from `HZ_MAIL_FROM` and `RESEND_KEY`. Either one missing, a missing or short `HZ_ACCOUNT_KEY`, or a bad `HZ_LINK_BASE` answers `unavailable`, and nothing is written.
+11. **The mail runs after the answer.** A failed send is audited `mail-failed` and changes nothing else.
+
+### Decisions for Kaleb
+
+Safe defaults the plan does not fix. Each is one constant in `src/signup.js`.
+
+| # | Point | Default now | Where |
+|---|---|---|---|
+| 1 | How long an email code lives | 10 minutes | `SIGNUP_LIMITS.codeTtlMs` |
+| 2 | Wrong tries before a code dies | 5 | `codeTries` |
+| 3 | Codes mailed to one address per hour | 3 | `codesPerAddressHour` |
+| 4 | Sign-up starts per connecting address per hour | 10 | `startsPerRequesterHour` |
+| 5 | Code tries per connecting address per hour | 20 | `verifiesPerRequesterHour` |
+| 6 | Account password length | 12 to 256 characters | `passwordMin`, `passwordMax` |
+| 7 | The mail wording: subject "Horae Zone sign-up code", then "Sign-up code: <code>", "Works once. Expires 10 minutes after it was sent.", the link, and "No account is made without this code." | As written | `codeMessage` |
+
+### Open points for the reviewer
+
+| # | Point | Where | Proposed resolution |
+|---|---|---|---|
+| 1 | Before a device has a key, "per device" means per connecting address. Users behind one address (a clinic network) share a bucket, and a changing address escapes it | `requesterOf` in `src/signup.js` | Accept for now; the WAF rate rule at the first deploy adds a second layer |
+| 2 | When two right tries race, the loser answers `bad-code` though its code was right | `verifySignup` | Accept; the winner made the account |
+| 3 | The mail goes out through `ctx.waitUntil`. If the Worker is stopped before the send, the code is stored but never mailed, and nothing is audited | `src/index.js` | Accept; the user asks for another code |
+| 4 | Not run against a real Resend or a real `wrangler dev`, because wrangler is not installed in the authoring environment, so the bundle with its `../../../packages/account-engine` imports is unchecked by wrangler. The engine's runtimes test loads `mailer.mjs` in `workerd` and Chromium | - | The reviewer runs the `wrangler dev` smoke test in the test plan |
+| 5 | Changing `HZ_ACCOUNT_KEY` makes every stored address key, address box, code digest and login hash unusable | `src/account-keys.js` | A rotation plan (keep the old secret to re-derive) before the first real account |
+
+### Out of scope for A3
+
+- Real mail, real secrets and any deploy.
+- The authenticator code and its enrolment, and the code-path lockout email (A5).
+- The PIN (A5b) and account recovery (A6).
+
+---
+
+## A4: devices (`apps/horae-zone`, `packages/account-engine`)
+
+**Commits:** `a55d8771` (RED: Horae Zone 57 tests, 3 failing on the missing `src/signin.js`, a `/signin` that handed out no ticket and the missing `ticket` table; the engine's `signed-bytes.test.mjs` failing on its missing module; every A2 and A3 test still passing), then `75158c79` (GREEN). After GREEN: Horae Zone 81/81, engine 64 (63 pass, 1 skip without the private package), profile-api 195/195.
+
+**Plan tests:** "a request with no registered device signature is refused" and "a removed device is refused at once", both in `test/devices.test.mjs`.
+
+**A2 open points closed, each RED first:** 1 (`/device/register` needs the `/signin` ticket), 2 (a cap on live nonces) and 4 (`signedBytes` in the engine, with a shared vector).
+
+### What is in it
+
+| File | Does |
+|---|---|
+| `src/signin.js` | `POST /signin {email, password}` answers `{ticket}` or a uniform `bad-login`, plus `SIGNIN_LIMITS` |
+| `src/devices.js` | `POST /device/register {ticket, signKey, agreeKey}` answers `{device}`. `POST /device/remove {device}`, signed, answers `{ok:true}` |
+| `src/checks.js` | `LIVE_NONCES_PER_DEVICE = 5`. `/nonce` is one `INSERT ... SELECT ... WHERE` live count under the cap `RETURNING`. `signedBytes` is imported from the engine and re-exported, with no local builder |
+| `src/account-keys.js` | A sixth derived key, the ticket digest |
+| `src/retention.js` | The purge also removes spent or expired tickets, and clears rate-limit rows past the longer of the sign-up and sign-in windows |
+| `schema.sql` | `device.agree_key` (nullable; changed in place, since no database exists yet), a `ticket` table (digest, account_id, expires_at, used), and indexes on `device(account_id)` and `nonce(device_id, used, expires_at)` |
+| engine `src/signed-bytes.mjs`, `test/fixtures/signed-bytes-vector.json` | See the provenance table under A1 |
+
+**New refusal words:** `bad-login` (401) and `bad-ticket` (401). `slow-down` (429) also answers a sixth live nonce.
+
+### Decisions
+
+1. **Registration needs the ticket from `/signin`.** The route stays `open`, because a device has no key to sign with yet, and the handler takes exactly `{ticket, signKey, agreeKey}`. The ticket is 32 random bytes, handed out once, stored only as a keyed digest bound to its account, alive 5 minutes, and spent by the same `UPDATE ... RETURNING` that checks it, so it registers one device.
+2. **The keys are checked before the ticket is spent.** Each must be a raw P-256 public point that WebCrypto imports (ECDSA for `signKey`, ECDH for `agreeKey`). An off-curve or malformed key is `shape`, and the ticket stays live.
+3. **Sign-in does not say whether an account exists.** A wrong password and an unknown address both answer `bad-login`, and the unknown address still runs one full password hash with a fixed throwaway salt, so both take the same time. Tries are limited per address (from any requester) and per requester (across addresses).
+4. **Sign-in takes any stored password length.** `/signin` checks only 1 to 256 characters, so a later change to the sign-up length rule never locks out an older account.
+5. **A removed device is refused at once.** `/device/remove` stamps `removed_at` and spends that device's live nonces in one batch. The A2 device check already refuses a removed device on every route, so its next request fails.
+6. **Remove reaches only the caller's account, and answers the same way every time.** Both statements match only a device of the signing device's account. An unknown id or another account's device also gets `{ok:true}`, so the answer never confirms that a device exists. A device can remove itself.
+7. **A removed device keeps its row**, marked with when it was removed.
+8. **Five live nonces per device.** The count and the insert are one statement, so requests sent together cannot pass the cap. A spent or expired nonce frees its place. Five leaves room for a device sending a few signed requests at once, and a stolen device id can no longer fill the table.
+9. **`signedBytes` lives in the engine.** Sass and JanusMirror import the same function. The shared vector pins the bytes and both a raw and a DER signature, so every consumer can test against it, and Horae Zone's own test accepts the vector's signatures.
+
+### Decisions for Kaleb
+
+| # | Point | Default now | Where |
+|---|---|---|---|
+| 1 | How long a sign-in ticket lives | 5 minutes | `SIGNIN_LIMITS.ticketTtlMs` |
+| 2 | Sign-in tries per address per hour | 10 | `SIGNIN_LIMITS.perAddressHour` |
+| 3 | Sign-in tries per connecting address per hour | 20 | `SIGNIN_LIMITS.perRequesterHour` |
+| 4 | Live nonces per device | 5 | `LIVE_NONCES_PER_DEVICE` |
+| 5 | Who may remove a device: any signed device of the account, itself included, with no fresh Face ID, password or code. Plan §3.5 says "Remove it on the admin or account screen" and does not say what proof that screen asks for | No extra proof | `removeDevice` |
+| 6 | How long removed device rows are kept | No purge | `src/retention.js` |
+
+### Open points for the reviewer
+
+| # | Point | Where | Proposed resolution |
+|---|---|---|---|
+| 1 | Sign-in asks no authenticator code yet, because no account has one until A5 (plan §3.6: "Email + password + code") | `src/signin.js` | A5 adds the code to `/signin`, RED first |
+| 2 | `/device/register` has no rate limit of its own | `src/devices.js` | Accept: the ticket is 256-bit and single use |
+| 3 | A ticket is not bound to the keys it will register, so whoever holds it during its 5 minutes picks the keys | `src/devices.js` | Accept for A4. A later slice could have `/signin` take `signKey` and register in one step |
+| 4 | No cap on devices per account | `src/devices.js` | Decide with the account screen slice |
+| 5 | App Attest is not checked (plan §3.6: "later") | `src/devices.js` | A later slice |
+| 6 | `device.agree_key` is nullable, because the A2 tests and the vector test add devices without one. `/device/register` always sets it | `schema.sql` | Make it `NOT NULL` once the test helpers pass one |
+| 7 | Removing a device does not revoke its Cloudflare and Anthropic tokens; the plan puts that in a runbook | - | The runbook in Sass `docs/ios.md` |
+| 8 | The A2 leak sweep now lets each unspent nonce expire between routes, because open routes never spend the nonce the sweep fetches for them, and the cap would refuse the sixth | `test/leak.test.mjs` | None; what the sweep checks is unchanged |
+
+### Out of scope for A4
+
+- The authenticator code, unlock and its lockout (A5), the PIN (A5b), admin actions (A5c) and recovery (A6).
+- Bringing a vault to a new device (`/pair/offer`, `/pair/take`).
+- Any change to Sass or JanusMirror, and any deploy.
