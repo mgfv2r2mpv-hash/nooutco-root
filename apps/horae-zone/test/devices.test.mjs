@@ -566,7 +566,7 @@ function removedMidFlight(h, id, after, { nonces = true } = {}) {
   h.env.DB = { ...db, prepare: (sql) => (sql.startsWith(after) ? wrap(db.prepare(sql)) : db.prepare(sql)) };
 }
 
-const FIND_DEVICE = 'SELECT id, account_id, sign_key FROM device';
+const FIND_DEVICE = 'SELECT id, account_id, sign_key, pending FROM device';
 const SPEND_NONCE = 'UPDATE nonce SET used = 1 WHERE value';
 
 test('L2: a device removed after its checks passed cannot remove another device', async () => {

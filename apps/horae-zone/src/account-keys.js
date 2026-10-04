@@ -19,6 +19,8 @@
  *                   against without the secret
  *   ticket digest - HMAC of a sign-in ticket: the only form of a ticket that
  *                   is stored (A4)
+ *   tag digest    - HMAC of a CPace confirmation tag the service expects, bound
+ *                   to its exchange: the only form of a tag that is stored (A5)
  * A missing or short secret gives null, and the account routes then answer
  * unavailable without writing anything.
  */
@@ -72,7 +74,7 @@ export async function accountKeys(env) {
   secret.fill(0);
   const hmac = { name: "HMAC", hash: "SHA-256", length: 256 };
   const aes = { name: "AES-GCM", length: 256 };
-  const [addressMac, boxKey, linkKey, codeMac, requesterMac, pepper, ticketMac] = await Promise.all([
+  const [addressMac, boxKey, linkKey, codeMac, requesterMac, pepper, ticketMac, tagMac] = await Promise.all([
     derive(base, "address key", hmac, ["sign"]),
     derive(base, "address box", aes, ["encrypt", "decrypt"]),
     derive(base, "link box", aes, ["encrypt", "decrypt"]),
@@ -80,6 +82,7 @@ export async function accountKeys(env) {
     derive(base, "requester key", hmac, ["sign"]),
     derive(base, "login pepper", hmac, ["sign"]),
     derive(base, "ticket digest", hmac, ["sign"]),
+    derive(base, "tag digest", hmac, ["sign"]),
   ]);
   const mac = async (key, text) => hex(await subtle().sign("HMAC", key, enc.encode(text)));
 
@@ -88,6 +91,7 @@ export async function accountKeys(env) {
     requesterKey: (requester) => mac(requesterMac, requester),
     codeDigest: (addressKey, code) => mac(codeMac, `${addressKey}:${code}`),
     ticketDigest: (ticket) => mac(ticketMac, ticket),
+    tagDigest: (exchange, tag) => mac(tagMac, `${exchange}:${tag}`),
 
     sealAddress: (address, addressKey) => seal(boxKey, address, addressKey),
     // Throws when the box was sealed under another secret or another address key.

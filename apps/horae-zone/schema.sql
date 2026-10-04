@@ -1,8 +1,9 @@
 -- Horae Zone, the nooutco account service. A2: what the route checks use.
 -- A3: accounts, email-code challenges and rate-limit rows. A4: a device's
--- agreement key and sign-in tickets. No database has been made from this
--- file yet, so A4 adds agree_key to the device table in place; once one
--- exists, later slices add their tables as additive migrations.
+-- agreement key and sign-in tickets. A5: the sealed seed, code exchanges,
+-- the code-path lockout and a device's pending flag. No database has been
+-- made from this file yet, so A4 and A5 change the device table in place;
+-- once one exists, later slices add their tables as additive migrations.
 --
 -- WHAT MAY NOT GO IN HERE: a request body, a code, a seed in the clear, a PIN,
 -- vault or session keys, or PHI. Columns hold opaque ids, public keys,
@@ -13,14 +14,16 @@
 -- A device's public P-256 signing key and agreement key (raw uncompressed
 -- points, base64url). The private halves never leave the device's Secure
 -- Enclave. A removed device keeps its row, stamped removed_at, and every
--- route refuses it.
+-- route refuses it. A5: pending is 1 for a device of an account with a code
+-- that has not proved the code yet; it reaches only /nonce and /unlock.
 CREATE TABLE IF NOT EXISTS device (
   id          TEXT    PRIMARY KEY,
   account_id  TEXT    NOT NULL,
   sign_key    TEXT    NOT NULL,
   agree_key   TEXT,
   created_at  INTEGER NOT NULL,
-  removed_at  INTEGER
+  removed_at  INTEGER,
+  pending     INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS device_account_id ON device (account_id);
@@ -114,3 +117,43 @@ CREATE TABLE IF NOT EXISTS ticket (
 );
 
 CREATE INDEX IF NOT EXISTS ticket_expires_at ON ticket (expires_at);
+
+-- A5, the one authenticator code. The seed is stored only in box, sealed with
+-- AES-GCM under a key derived from the Worker secret HZ_SEED_KEY and bound to
+-- the account id (src/otp.js). last_step is the newest 30-second step whose
+-- code was accepted; no step at or before it is offered again, so a code is
+-- accepted once.
+CREATE TABLE IF NOT EXISTS otp (
+  account_id   TEXT    PRIMARY KEY,
+  box          TEXT    NOT NULL,
+  last_step    INTEGER NOT NULL DEFAULT 0,
+  created_at   INTEGER NOT NULL
+);
+
+-- A5, one CPace exchange per /unlock/start, finished once by the device that
+-- started it. candidates holds only keyed digests of the tags the service
+-- expects (with the step each would accept), never a tag or a code. Spent
+-- and expired rows are purged hourly.
+CREATE TABLE IF NOT EXISTS exchange (
+  id           TEXT    PRIMARY KEY,
+  account_id   TEXT    NOT NULL,
+  device_id    TEXT    NOT NULL,
+  candidates   TEXT    NOT NULL,
+  expires_at   INTEGER NOT NULL,
+  used         INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS exchange_expires_at ON exchange (expires_at);
+
+-- A5, the code-path lockout per account: the engine's limits.mjs state as
+-- JSON (wrong counts per window, unsettled exchanges, locked windows, and
+-- only a hash of a reopen link), written by compare-and-swap on version.
+-- reopen_hash repeats state.unlock.hash so /unlock/reopen can find the row.
+CREATE TABLE IF NOT EXISTS limits (
+  account_id   TEXT    PRIMARY KEY,
+  state        TEXT    NOT NULL,
+  version      INTEGER NOT NULL DEFAULT 0,
+  reopen_hash  TEXT
+);
+
+CREATE INDEX IF NOT EXISTS limits_reopen_hash ON limits (reopen_hash);

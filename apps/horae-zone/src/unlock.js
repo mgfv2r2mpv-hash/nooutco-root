@@ -1,0 +1,191 @@
+/**
+ * A5, the code check (plan §3.1, §3.6 /unlock/start, /unlock/finish and
+ * /unlock/reopen). The device proves the account's code with CPace (the
+ * engine's pake.mjs), keyed by the code under unlockChannelFor(device), so
+ * the code never crosses the wire. Start and finish are signed by the same
+ * registered device; a pending device may use them (src/routes.js).
+ *
+ *   /unlock/start  {sid, Ya, clock}   -> {exchange, replies: [{Yb, tagB}] x2}
+ *   /unlock/finish {exchange, tagA}   -> {ticket}
+ *   /unlock/reopen {token}            -> {ok: true}
+ *
+ * STEPS. The service offers the current 30-second step and the previous one,
+ * never the next (zero forward drift, one step back), and never a step at or
+ * before the account's last accepted one. A step it withholds is still
+ * answered, with a reply for a random code, so both answers look alike. A
+ * code is accepted by one atomic update of last_step, so of two exchanges
+ * proving one code only the first finished is accepted, on any device.
+ *
+ * CUSTODY. An exchange row keeps only keyed digests of the tagA values the
+ * service expects (src/account-keys.js tagDigest), compared with sameHex. It
+ * dies at CONFIRM_MS, the lockout's confirm time, and is spent by its first
+ * finish, from its own device only. Every refusal at finish is bad-code: a
+ * wrong code, an unknown, spent or expired exchange, another device's.
+ *
+ * TICKET. The service's ECDSA P-256 signature (Worker secret HZ_TICKET_KEY,
+ * a private JWK) over `${TICKET_LABEL}.${payload}`, the payload base64url
+ * JSON {v, account, device, at, exp}. The limits below are the agent's safe
+ * defaults, listed for the owner in the design review: the plan does not fix
+ * them.
+ */
+import { sameHex, admit, settle, confirm, reject, CONFIRM_MS } from "../../../packages/account-engine/src/limits.mjs";
+import { fragmentLink } from "../../../packages/account-engine/src/mailer.mjs";
+import { responderReply, unlockChannelFor } from "../../../packages/account-engine/src/pake.mjs";
+import { hotp, windowOf, clockOffset } from "../../../packages/account-engine/src/totp.mjs";
+import { ristretto255 } from "../../../packages/account-engine/vendor/noble/curves/ed25519.js";
+import { Refusal, b64url, fromB64url } from "./checks.js";
+import { hasOnly, keysOrUnavailable } from "./signup.js";
+import { openSeed, seedBoxKey } from "./otp.js";
+import { ruleLimits, lockNotes, mailAfter, reopenedNote, spendReopen } from "./lockout.js";
+
+export const UNLOCK_LIMITS = Object.freeze({
+  ticketTtlMs: 5 * 60 * 1000,
+});
+export const TICKET_LABEL = "horae-zone-unlock-ticket-v1";
+
+const SID = /^[A-Za-z0-9_-]{22}$/;
+const POINT = /^[A-Za-z0-9_-]{43}$/;
+const EXCHANGE = /^[A-Za-z0-9_-]{22}$/;
+const TAG = /^[A-Za-z0-9_-]{43}$/;
+const TOKEN = /^[A-Za-z0-9_-]{43}$/;
+const EXCHANGE_BYTES = 16;
+const CODE_SPACE = 1_000_000;
+const enc = new TextEncoder();
+
+// A ristretto255 point a CPace reply can be built on: a valid encoding that is
+// not the identity.
+function isPoint(bytes) {
+  try {
+    return !ristretto255.Point.fromBytes(bytes).is0();
+  } catch {
+    return false;
+  }
+}
+
+function startBody(body) {
+  if (!hasOnly(body, ["sid", "Ya", "clock"])) throw new Refusal("shape", 400);
+  if (typeof body.sid !== "string" || !SID.test(body.sid) || typeof body.Ya !== "string" || !POINT.test(body.Ya)) throw new Refusal("shape", 400);
+  if (!Number.isSafeInteger(body.clock)) throw new Refusal("shape", 400);
+  const sid = fromB64url(body.sid);
+  const Ya = fromB64url(body.Ya);
+  if (sid.length !== 16 || Ya.length !== 32 || !isPoint(Ya)) throw new Refusal("shape", 400);
+  return { sid, Ya, clock: body.clock };
+}
+
+async function ticketKey(env) {
+  try {
+    const jwk = JSON.parse(env.HZ_TICKET_KEY);
+    return await crypto.subtle.importKey("jwk", jwk, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
+  } catch {
+    return null;
+  }
+}
+
+function reopenBaseOk(base) {
+  try {
+    fragmentLink(base, "x");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Everything a code try needs, checked before anything is admitted or
+// stored; a missing or bad value answers unavailable.
+async function configOrUnavailable(env, mailer) {
+  const [seedKey, signKey] = await Promise.all([seedBoxKey(env), ticketKey(env)]);
+  if (!seedKey || !signKey || !mailer || !reopenBaseOk(env.HZ_REOPEN_BASE)) throw new Refusal("unavailable", 503);
+  return { keys: await keysOrUnavailable(env), signKey, reopenBase: env.HZ_REOPEN_BASE };
+}
+
+// Any 6-digit code, for the reply to a step the service withholds.
+function randomCode() {
+  const [n] = crypto.getRandomValues(new Uint32Array(1));
+  return String(n % CODE_SPACE).padStart(6, "0");
+}
+
+export async function startUnlock({ db, device, body, now, env, mailer }) {
+  const { sid, Ya, clock } = startBody(body);
+  const { keys, reopenBase } = await configOrUnavailable(env, mailer);
+  const otp = await db.prepare("SELECT box, last_step FROM otp WHERE account_id = ?").bind(device.account_id).first();
+  if (!otp) throw new Refusal("not-enrolled", 409);
+  const exchange = b64url(crypto.getRandomValues(new Uint8Array(EXCHANGE_BYTES)));
+  const clockOffMs = clockOffset(clock, now);
+  const ruled = await ruleLimits(db, device.account_id, now, (state) => {
+    const settled = settle(state, now);
+    const admitted = admit(settled.state, now, exchange, { clockOffMs });
+    return { state: admitted.state, ok: admitted.ok, events: settled.events };
+  });
+  const after = mailAfter({ db, keys, mailer, accountId: device.account_id, notes: lockNotes(ruled.events, ruled.token, reopenBase) });
+  if (!ruled.ok) throw new Refusal("locked", 423, after);
+
+  const seed = await openSeed(env, device.account_id, otp.box);
+  const channel = unlockChannelFor(device.id);
+  const step = windowOf(now);
+  const replies = [];
+  const candidates = [];
+  for (const s of [step, step - 1]) {
+    const offered = s > otp.last_step;
+    const { replies: [reply], pending: [expect] } = responderReply({ codes: [offered ? hotp(seed, s) : randomCode()], channel, sid, Ya });
+    replies.push({ Yb: b64url(reply.Yb), tagB: b64url(reply.tagB) });
+    if (offered) candidates.push({ step: s, digest: await keys.tagDigest(exchange, b64url(expect.tagA)) });
+  }
+  seed.fill(0);
+  await db.prepare("INSERT INTO exchange (id, account_id, device_id, candidates, expires_at, used) VALUES (?, ?, ?, ?, ?, 0)")
+    .bind(exchange, device.account_id, device.id, JSON.stringify(candidates), now + CONFIRM_MS).run();
+  return { status: 200, json: { exchange, replies }, after };
+}
+
+
+async function signTicket(signKey, claims) {
+  const payload = b64url(enc.encode(JSON.stringify(claims)));
+  const sig = await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, signKey, enc.encode(`${TICKET_LABEL}.${payload}`));
+  return `${payload}.${b64url(new Uint8Array(sig))}`;
+}
+
+// The step whose expected tag matches, or null. Every candidate is compared,
+// so the time taken does not say which one matched.
+function matchedStep(candidates, digest) {
+  let step = null;
+  for (const c of candidates) if (sameHex(digest, c.digest)) step = c.step;
+  return step;
+}
+
+export async function finishUnlock({ db, device, body, now, env, mailer }) {
+  if (!hasOnly(body, ["exchange", "tagA"])) throw new Refusal("shape", 400);
+  if (typeof body.exchange !== "string" || !EXCHANGE.test(body.exchange) || typeof body.tagA !== "string" || !TAG.test(body.tagA)) {
+    throw new Refusal("shape", 400);
+  }
+  const { keys, signKey, reopenBase } = await configOrUnavailable(env, mailer);
+  const row = await db.prepare(
+    "UPDATE exchange SET used = 1 WHERE id = ? AND device_id = ? AND used = 0 AND expires_at > ? RETURNING account_id, candidates",
+  ).bind(body.exchange, device.id, now).first();
+  if (!row) throw new Refusal("bad-code", 401);
+  const step = matchedStep(JSON.parse(row.candidates), await keys.tagDigest(body.exchange, body.tagA));
+  // A code is accepted once: only an update that moves last_step forward wins.
+  const accepted = step !== null && Boolean(await db.prepare(
+    "UPDATE otp SET last_step = ? WHERE account_id = ? AND last_step < ? RETURNING account_id",
+  ).bind(step, row.account_id, step).first());
+  const ruled = await ruleLimits(db, row.account_id, now, (state) => {
+    const settled = settle(state, now);
+    if (accepted) return { state: confirm(settled.state, body.exchange), events: settled.events };
+    const rejected = reject(settled.state, now, body.exchange);
+    return { state: rejected.state, events: [...settled.events, ...rejected.events] };
+  });
+  const after = mailAfter({ db, keys, mailer, accountId: row.account_id, notes: lockNotes(ruled.events, ruled.token, reopenBase) });
+  if (!accepted) throw new Refusal("bad-code", 401, after);
+  await db.prepare("UPDATE device SET pending = 0 WHERE id = ?").bind(device.id).run();
+  const ticket = await signTicket(signKey, { v: 1, account: row.account_id, device: device.id, at: now, exp: now + UNLOCK_LIMITS.ticketTtlMs });
+  return { status: 200, json: { ticket }, after };
+}
+
+// The link reopens the code path and nothing else: no ticket, key or seed.
+// An unknown, spent or expired token answers bad-link alike.
+export async function reopenUnlock({ db, body, now, env, mailer }) {
+  if (!hasOnly(body, ["token"]) || typeof body.token !== "string" || !TOKEN.test(body.token)) throw new Refusal("shape", 400);
+  const keys = await keysOrUnavailable(env);
+  if (!mailer) throw new Refusal("unavailable", 503);
+  const accountId = await spendReopen(db, now, body.token);
+  if (!accountId) throw new Refusal("bad-link", 401);
+  return { status: 200, json: { ok: true }, after: mailAfter({ db, keys, mailer, accountId, notes: [reopenedNote()] }) };
+}

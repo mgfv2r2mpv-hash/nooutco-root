@@ -30,11 +30,14 @@ export const LIVE_NONCES_PER_DEVICE = 5;
 // while that device is not removed (security review L2).
 export const LIVE_DEVICE = "EXISTS (SELECT 1 FROM device WHERE id = ? AND removed_at IS NULL)";
 
+// `after` is work the refusal leaves for after its answer and audit row (A5:
+// a lock mail), run the way a handler's after-work is.
 export class Refusal extends Error {
-  constructor(reason, status) {
+  constructor(reason, status, after = undefined) {
     super(reason);
     this.reason = reason;
     this.status = status;
+    this.after = after;
   }
 }
 
@@ -92,7 +95,7 @@ export async function findDevice(db, id) {
   // Ids are opaque base64url-style tokens; anything else is refused before it
   // reaches a query.
   if (typeof id !== "string" || !/^[A-Za-z0-9_-]{1,64}$/.test(id)) throw new Refusal("no-device", 401);
-  const row = await db.prepare("SELECT id, account_id, sign_key FROM device WHERE id = ? AND removed_at IS NULL").bind(id).first();
+  const row = await db.prepare("SELECT id, account_id, sign_key, pending FROM device WHERE id = ? AND removed_at IS NULL").bind(id).first();
   if (!row) throw new Refusal("no-device", 401);
   return row;
 }

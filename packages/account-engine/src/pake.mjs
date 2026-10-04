@@ -34,6 +34,16 @@ const CODE_RE = /^[0-9]{6}$/;
 // for Pollux cannot pair with Castor.
 export const channelFor = (origin) => `janusmirror-e2e|${String(origin).toLowerCase()}`;
 
+// Horae Zone runs the same exchange at /unlock/start and /unlock/finish. Its
+// channel names the one registered device that signs both requests, so an
+// exchange cannot finish for another device, and its label keeps it apart
+// from every JanusMirror channel. The device builds the same label.
+const DEVICE_ID = /^[A-Za-z0-9_-]{1,64}$/;
+export function unlockChannelFor(device) {
+  if (typeof device !== 'string' || !DEVICE_ID.test(device)) throw new TypeError('pake: unlock channel needs a device id');
+  return `horae-zone-unlock-v1|${device}`;
+}
+
 // Length-prefixed concatenation, so no two different inputs hash alike.
 function lv(...parts) {
   const out = [];

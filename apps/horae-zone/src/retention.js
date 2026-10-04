@@ -40,9 +40,10 @@ function checkedYears(value) {
 
 // Spent or expired nonces go (a spent row can never be accepted again, and a
 // deleted one is refused the same way), spent and expired email
-// codes and sign-in tickets likewise, rate-limit rows at or past the longest
-// window (no count reads them again; the daily cap and alert rows after a day), and
-// audit rows older than the cutoff.
+// codes and sign-in tickets likewise, finished and expired code exchanges
+// (A5: the lockout counted an unfinished one when its confirm time passed),
+// rate-limit rows at or past the longest window (no count reads them again;
+// the daily cap and alert rows after a day), and audit rows older than the cutoff.
 export async function purgeExpired(db, now, { auditYears = RETENTION.auditYears } = {}) {
   const cutoff = auditCutoff(now, checkedYears(auditYears));
   const throttleWindow = Math.max(SIGNUP_LIMITS.windowMs, SIGNIN_LIMITS.windowMs);
@@ -50,6 +51,7 @@ export async function purgeExpired(db, now, { auditYears = RETENTION.auditYears 
     db.prepare("DELETE FROM nonce WHERE used = 1 OR expires_at <= ?").bind(now),
     db.prepare("DELETE FROM challenge WHERE used = 1 OR expires_at <= ?").bind(now),
     db.prepare("DELETE FROM ticket WHERE used = 1 OR expires_at <= ?").bind(now),
+    db.prepare("DELETE FROM exchange WHERE used = 1 OR expires_at <= ?").bind(now),
     db.prepare("DELETE FROM throttle WHERE at <= ? AND (bucket NOT IN (?, ?) OR at <= ?)")
       .bind(now - throttleWindow, DAILY_BUCKET, ALERT_BUCKET, now - SIGNUP_LIMITS.dayMs),
     db.prepare("DELETE FROM audit WHERE at < ?").bind(cutoff),
