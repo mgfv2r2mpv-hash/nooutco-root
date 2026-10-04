@@ -169,8 +169,35 @@ export async function registeredDevice(h, email, { fresh = true } = {}) {
   const res = await h.call(registerRequest(await signIn(h, email, { keys }), keys));
   if (res.status !== 200) throw new Error(`register answered ${res.status}`);
   const { device } = await res.json();
-  return { id: device, account, key: keys.key, signKey: keys.signKey };
+  return { id: device, account, key: keys.key, signKey: keys.signKey, agreeKey: keys.agreeKey };
 }
+
+// The database the handler sees, with a removal of device `id` landing the
+// moment a statement starting with `after` has run: past the device checks,
+// before the handler's own writes (security review L2). `nonces: false`
+// stamps the row only, so the nonce spend is what has to notice.
+export function removedMidFlight(h, id, after, { nonces = true } = {}) {
+  const db = h.db;
+  let landed = false;
+  const land = () => {
+    if (landed) return;
+    landed = true;
+    if (nonces) db.sqlite.prepare('UPDATE nonce SET used = 1 WHERE device_id = ?').run(id);
+    db.sqlite.prepare('UPDATE device SET removed_at = ? WHERE id = ?').run(h.clock.ms, id);
+  };
+  const wrap = (s) => ({
+    ...s,
+    bind: (...values) => wrap(s.bind(...values)),
+    first: async () => { const r = await s.first(); land(); return r; },
+    all: async () => { const r = await s.all(); land(); return r; },
+    run: async () => { const r = await s.run(); land(); return r; },
+  });
+  h.env.DB = { ...db, prepare: (sql) => (sql.startsWith(after) ? wrap(db.prepare(sql)) : db.prepare(sql)) };
+}
+
+// The first statements of a signed request, for removedMidFlight.
+export const FIND_DEVICE = 'SELECT id, account_id, sign_key, pending FROM device';
+export const SPEND_NONCE = 'UPDATE nonce SET used = 1 WHERE value';
 
 // A5 flow helpers. The engine is imported when a helper first runs, so the
 // A2 to A4 tests load this file even where the engine lacks an A5 export.
@@ -185,12 +212,18 @@ export async function enrolRequest(call, device, ticket) {
   return signed(call, device, '/otp/enrol', { ticket });
 }
 
+// A sign-in ticket bound to an already registered device's own keys, the one
+// kind /otp/enrol spends (security review M3).
+export function enrolTicket(h, email, device) {
+  return signIn(h, email, { keys: device });
+}
+
 // Signs up, registers a device and enrols the account's code with a second
-// sign-in ticket; the device comes back holding the seed, as its
-// authenticator app would.
+// sign-in ticket bound to its keys; the device comes back holding the seed,
+// as its authenticator app would.
 export async function enrolledDevice(h, email) {
   const dev = await registeredDevice(h, email);
-  const res = await h.call(await enrolRequest(h.call, dev, await signIn(h, email)));
+  const res = await h.call(await enrolRequest(h.call, dev, await enrolTicket(h, email, dev)));
   if (res.status !== 200) throw new Error(`enrol answered ${res.status}`);
   const { secret, uri } = await res.json();
   const { base32Decode } = await engine();

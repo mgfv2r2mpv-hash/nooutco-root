@@ -17,7 +17,7 @@ import { SIGNIN_LIMITS } from '../src/signin.js';
 import { b64url } from '../src/checks.js';
 import {
   harness, post, signed, auditRows, everyRow, signUp, signIn, registeredDevice, registerRequest, deviceKeys,
-  enrolRequest, enrolledDevice, codeAt, tryCode, SEED_KEY,
+  enrolRequest, enrolTicket, enrolledDevice, codeAt, tryCode, removedMidFlight, SPEND_NONCE, SEED_KEY,
 } from './helpers.mjs';
 
 // Fixed, fake values: reserved-domain addresses.
@@ -36,14 +36,14 @@ const pendingOf = (db, id) => db.sqlite.prepare('SELECT pending FROM device WHER
 test('the seed is returned once and never again', async () => {
   const h = harness();
   const dev = await registeredDevice(h, ADDRESS);
-  const first = await answer(await h.call(await enrolRequest(h.call, dev, await signIn(h, ADDRESS))));
+  const first = await answer(await h.call(await enrolRequest(h.call, dev, await enrolTicket(h, ADDRESS, dev))));
   assert.equal(first.status, 200);
   assert.deepEqual(Object.keys(first.json).sort(), ['secret', 'uri']);
   const { secret, uri } = first.json;
   assert.match(secret, /^[A-Z2-7]{32}$/, 'a 20-byte seed in base32');
   assert.equal(uri, otpauthUri({ key: base32Decode(secret), ...OTP_LABEL }));
   // A second enrolment, with a fresh ticket, is refused and carries no seed.
-  const again = await answer(await h.call(await enrolRequest(h.call, dev, await signIn(h, ADDRESS))));
+  const again = await answer(await h.call(await enrolRequest(h.call, dev, await enrolTicket(h, ADDRESS, dev))));
   assert.deepEqual(again, { status: 409, json: { error: 'enrolled' } });
   // Nothing after the one answer carries it: not a code try, a table, a
   // bound value or an audit row.
@@ -71,7 +71,7 @@ test('enrolment needs a live sign-in ticket of the signing device\'s account', a
   assert.deepEqual(await answer(await h.call(await enrolRequest(h.call, dev, theirs))), { status: 401, json: { error: 'bad-ticket' } });
   assert.equal((await h.call(registerRequest(theirs, theirKeys))).status, 200, 'the refusal did not spend the other account\'s ticket');
   assert.deepEqual(await answer(await h.call(await enrolRequest(h.call, dev, 'A'.repeat(43)))), { status: 401, json: { error: 'bad-ticket' } });
-  const expired = await signIn(h, ADDRESS);
+  const expired = await enrolTicket(h, ADDRESS, dev);
   h.clock.ms += SIGNIN_LIMITS.ticketTtlMs;
   assert.deepEqual(await answer(await h.call(await enrolRequest(h.call, dev, expired))), { status: 401, json: { error: 'bad-ticket' } });
   assert.deepEqual(otpRows(h.db), [], 'no seed without a live ticket of this account');
@@ -80,10 +80,70 @@ test('enrolment needs a live sign-in ticket of the signing device\'s account', a
 test('a ticket enrols once: the ticket that enrolled cannot enrol again or register a device', async () => {
   const h = harness();
   const dev = await registeredDevice(h, ADDRESS);
-  const keys = await deviceKeys();
-  const ticket = await signIn(h, ADDRESS, { keys });
+  const ticket = await enrolTicket(h, ADDRESS, dev);
   assert.equal((await h.call(await enrolRequest(h.call, dev, ticket))).status, 200);
-  assert.deepEqual(await answer(await h.call(registerRequest(ticket, keys))), { status: 401, json: { error: 'bad-ticket' } });
+  assert.deepEqual(await answer(await h.call(registerRequest(ticket, dev))), { status: 401, json: { error: 'bad-ticket' } });
+});
+
+// Security review M3, carried to A5 (open point 9): a ticket names the keys
+// it was issued for, and enrolment spends it only for the device holding
+// them, as /device/register does.
+test('enrolment spends only a ticket bound to the signing device\'s own keys', async () => {
+  const h = harness();
+  const dev = await registeredDevice(h, ADDRESS);
+  const otherKeys = await deviceKeys();
+  const forOther = await signIn(h, ADDRESS, { keys: otherKeys });
+  assert.deepEqual(await answer(await h.call(await enrolRequest(h.call, dev, forOther))), { status: 401, json: { error: 'bad-ticket' } });
+  assert.deepEqual(await answer(await h.call(await enrolRequest(h.call, dev, await signIn(h, ADDRESS)))), { status: 401, json: { error: 'bad-ticket' } }, 'a ticket bound to no device');
+  assert.deepEqual(otpRows(h.db), [], 'no seed for a ticket named for other keys');
+  assert.equal((await h.call(registerRequest(forOther, otherKeys))).status, 200, 'the refusal did not spend the ticket');
+});
+
+test('NEGATIVE CONTROL: a ticket bound to the signing device\'s keys enrols', async () => {
+  const h = harness();
+  const dev = await registeredDevice(h, ADDRESS);
+  assert.equal((await h.call(await enrolRequest(h.call, dev, await signIn(h, ADDRESS, { keys: dev })))).status, 200);
+  assert.equal(otpRows(h.db).length, 1);
+});
+
+// Security review L2, carried to A5 (open point 8): a removal of the
+// enrolling device that lands after its request passed the checks wins.
+const SPEND_TICKET = 'UPDATE ticket SET used = 1';
+const NO_DEVICE = { status: 401, json: { error: 'no-device' } };
+
+test('L2: a device removed after its signed enrol passed the checks gets no seed, and the ticket stays unspent', async () => {
+  const h = harness();
+  const dev = await registeredDevice(h, ADDRESS);
+  const other = await registeredDevice(h, ADDRESS, { fresh: false });
+  const ticket = await enrolTicket(h, ADDRESS, dev);
+  const tickets = () => h.db.sqlite.prepare('SELECT used FROM ticket').all().map((r) => r.used);
+  const before = tickets();
+  const request = await enrolRequest(h.call, dev, ticket);
+  removedMidFlight(h, dev.id, SPEND_NONCE);
+  assert.deepEqual(await answer(await h.call(request)), NO_DEVICE);
+  assert.deepEqual(otpRows(h.db), [], 'no seed was stored');
+  assert.deepEqual(tickets(), before, 'the ticket was not spent');
+  assert.equal(pendingOf(h.db, other.id), 0, 'the other device was not held back');
+});
+
+test('L2: a device removed after its enrol ticket was spent stores no seed', async () => {
+  const h = harness();
+  const dev = await registeredDevice(h, ADDRESS);
+  const other = await registeredDevice(h, ADDRESS, { fresh: false });
+  const request = await enrolRequest(h.call, dev, await enrolTicket(h, ADDRESS, dev));
+  removedMidFlight(h, dev.id, SPEND_TICKET);
+  assert.deepEqual(await answer(await h.call(request)), NO_DEVICE);
+  assert.deepEqual(otpRows(h.db), [], 'no seed was stored');
+  assert.equal(pendingOf(h.db, other.id), 0, 'the other device was not held back');
+});
+
+test('L2 NEGATIVE CONTROL: a removal of some other device mid-flight does not stop an enrol', async () => {
+  const h = harness();
+  const dev = await registeredDevice(h, ADDRESS);
+  const request = await enrolRequest(h.call, dev, await enrolTicket(h, ADDRESS, dev));
+  removedMidFlight(h, 'never-registered', SPEND_TICKET);
+  assert.equal((await h.call(request)).status, 200);
+  assert.equal(otpRows(h.db).length, 1);
 });
 
 test('enrolment needs a signed request from a registered device', async () => {
@@ -97,7 +157,7 @@ test('enrolment needs a signed request from a registered device', async () => {
 test('an enrol body must be exactly one ticket', async () => {
   const h = harness();
   const dev = await registeredDevice(h, ADDRESS);
-  const ticket = await signIn(h, ADDRESS);
+  const ticket = await enrolTicket(h, ADDRESS, dev);
   for (const body of [{}, { ticket: 7 }, { ticket, secret: 'JBSWY3DPEHPK3PXP' }, { ticket: 'short' }]) {
     assert.deepEqual(await answer(await h.call(await signed(h.call, dev, '/otp/enrol', body))), { status: 400, json: { error: 'shape' } });
   }
@@ -127,7 +187,7 @@ test('without the seed key, enrolment answers unavailable and stores nothing', a
   for (const HZ_SEED_KEY of [undefined, b64url(new Uint8Array(16).fill(9)), 'not base64url!']) {
     const h = harness({ env: { HZ_SEED_KEY } });
     const dev = await registeredDevice(h, ADDRESS);
-    assert.deepEqual(await answer(await h.call(await enrolRequest(h.call, dev, await signIn(h, ADDRESS)))), { status: 503, json: { error: 'unavailable' } });
+    assert.deepEqual(await answer(await h.call(await enrolRequest(h.call, dev, await enrolTicket(h, ADDRESS, dev)))), { status: 503, json: { error: 'unavailable' } });
     assert.deepEqual(otpRows(h.db), []);
   }
 });
@@ -153,7 +213,7 @@ test('a device registered before enrolment must prove a code after it', async ()
   const h = harness();
   const first = await registeredDevice(h, ADDRESS);
   const early = await registeredDevice(h, ADDRESS, { fresh: false });
-  const res = await answer(await h.call(await enrolRequest(h.call, first, await signIn(h, ADDRESS))));
+  const res = await answer(await h.call(await enrolRequest(h.call, first, await enrolTicket(h, ADDRESS, first))));
   assert.equal(res.status, 200);
   assert.equal(pendingOf(h.db, early.id), 1);
   assert.equal((await answer(await h.call(await signed(h.call, early, '/reverify', {})))).json.error, 'no-device');
@@ -174,7 +234,7 @@ test('NEGATIVE CONTROL: the enrolling device and devices of an account with no c
 test('enrolment writes one audit row of route and reason', async () => {
   const h = harness();
   const dev = await registeredDevice(h, ADDRESS);
-  const ticket = await signIn(h, ADDRESS);
+  const ticket = await enrolTicket(h, ADDRESS, dev);
   const before = auditRows(h.db).length;
   await h.call(await enrolRequest(h.call, dev, ticket));
   await h.call(await enrolRequest(h.call, dev, ticket));
