@@ -248,31 +248,35 @@ test('L2: a device removed after its signed start passed the checks gets no exch
   assert.equal(h.db.sqlite.prepare('SELECT COUNT(*) AS n FROM exchange').get().n, 0, 'no exchange was stored');
 });
 
+// A5 re-review item 2: a pending device tries a code only once the owner's
+// first accepted code has confirmed the enrolment, so these two start there.
 test('L2: a device removed after its signed finish passed the checks gets no ticket, and the code is not used up', async () => {
   const h = harness();
-  const dev = await enrolledDevice(h, ADDRESS);
+  const dev = await confirmedDevice(h, ADDRESS);
   const other = await secondDevice(h, dev);
+  const before = lastStep(h);
   const code = await codeAt(dev, h.clock.ms);
   const { exchange, tagA } = await startOnly(h, dev, code);
   const request = await signedFinish(h, dev, exchange, tagA);
   removedMidFlight(h, dev.id, SPEND_NONCE);
   assert.deepEqual(await answer(await h.call(request)), NO_DEVICE);
   assert.equal(exchangeUsed(h, exchange), 0, 'the exchange was not spent');
-  assert.equal(lastStep(h), 0, 'the code was not accepted');
+  assert.equal(lastStep(h), before, 'the code was not accepted');
   h.env.DB = h.db;
   assert.equal((await tryCode(h, other, code)).finish.status, 200, 'NEGATIVE CONTROL: the same code still unlocks a live device');
 });
 
 test('L2: a device removed after its exchange was spent does not use up the code', async () => {
   const h = harness();
-  const dev = await enrolledDevice(h, ADDRESS);
+  const dev = await confirmedDevice(h, ADDRESS);
   const other = await secondDevice(h, dev);
+  const before = lastStep(h);
   const code = await codeAt(dev, h.clock.ms);
   const { exchange, tagA } = await startOnly(h, dev, code);
   const request = await signedFinish(h, dev, exchange, tagA);
   removedMidFlight(h, dev.id, SPEND_EXCHANGE);
   assert.deepEqual(await answer(await h.call(request)), NO_DEVICE);
-  assert.equal(lastStep(h), 0, 'the code was not accepted');
+  assert.equal(lastStep(h), before, 'the code was not accepted');
   h.env.DB = h.db;
   assert.equal((await tryCode(h, other, code)).finish.status, 200, 'the same code still unlocks a live device');
 });

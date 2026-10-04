@@ -9,7 +9,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   harness, post, signed, deviceKeys, keyDigestOf, registerRequest, signIn, signInRequest,
-  registeredDevice, enrolledDevice, enrolTicket, enrolRequest, tryCode, codeAt, auditRows, PASSWORD,
+  registeredDevice, enrolledDevice, confirmedDevice, enrolTicket, enrolRequest, tryCode, codeAt, auditRows, PASSWORD,
+  landsMidFlight, nonceFor,
 } from './helpers.mjs';
 
 const OWNER = 'owner@example.test';
@@ -149,4 +150,85 @@ test('probe F2: a password thief cannot swap the owner\'s unconfirmed seed', asy
   assert.deepEqual({ ...h.db.sqlite.prepare('SELECT box, enrolment FROM otp').get() }, { ...box });
   const tried = await tryCode(h, owner, await codeAt(owner, h.clock.ms));
   assert.equal(tried.finish.status, 200);
+});
+
+// A5 re-review, item 2: a pending device changes nothing, and until the first
+// accepted code confirms the enrolment only the owner device may enrol,
+// re-enrol or remove a device. The checks are in the writes themselves, so a
+// device whose standing changes mid-flight changes nothing either.
+const NOT_OWNER = { status: 403, json: { error: 'not-owner' } };
+const otpRow = (h) => h.db.sqlite.prepare('SELECT box, enrolment, confirmed_by FROM otp').get();
+const isLive = (h, id) => h.db.sqlite.prepare('SELECT removed_at FROM device WHERE id = ?').get(id).removed_at === null;
+const pendingTries = (h) => h.db.sqlite.prepare('SELECT COUNT(*) AS n FROM pending_try').get().n;
+
+test('re-review 2: a password thief\'s pending device does not block the owner\'s enrolment', async () => {
+  const h = harness();
+  const owner = await registeredDevice(h, OWNER);
+  await thiefDevice(h, OWNER);
+  const enrolled = await answer(await h.call(await enrolRequest(h.call, owner, await enrolTicket(h, OWNER, owner))));
+  assert.equal(enrolled.status, 200, JSON.stringify(enrolled.json));
+  assert.deepEqual(Object.keys(enrolled.json).sort(), ['secret', 'uri']);
+});
+
+test('re-review 2: a pending device cannot confirm the enrolment, so the owner device is never held back', async () => {
+  const h = harness();
+  const owner = await enrolledDevice(h, OWNER);
+  // The owner's own second phone, holding the seed: still pending.
+  const second = await registeredDevice(h, OWNER, { fresh: false, ip: IP });
+  const early = await tryCode(h, { ...second, seed: owner.seed }, await codeAt(owner, h.clock.ms));
+  assert.deepEqual(early.start, { status: 409, json: { error: 'not-enrolled' } });
+  assert.deepEqual({ ...deviceRow(h, owner.id) }, { owner: 1, pending: 0 });
+  assert.equal(otpRow(h).confirmed_by, null);
+  assert.equal(pendingTries(h), 0, 'the refused start spent none of the account\'s pending tries');
+  assert.equal((await tryCode(h, owner, await codeAt(owner, h.clock.ms))).finish.status, 200, 'the owner confirms');
+  assert.equal(otpRow(h).confirmed_by, owner.id);
+  h.clock.ms += 30_000;
+  assert.equal((await tryCode(h, { ...second, seed: owner.seed }, await codeAt(owner, h.clock.ms))).finish.status, 200, 'then the second phone proves it');
+  assert.deepEqual({ ...deviceRow(h, second.id) }, { owner: 0, pending: 0 });
+  assert.deepEqual({ ...deviceRow(h, owner.id) }, { owner: 1, pending: 0 });
+});
+
+test('re-review 2: before the first accepted code, a device that is not the owner cannot enrol or remove, even when not pending', async () => {
+  const h = harness();
+  const owner = await enrolledDevice(h, OWNER);
+  const before = { ...otpRow(h) };
+  const other = await registeredDevice(h, OWNER, { fresh: false, ip: IP });
+  h.db.sqlite.prepare('UPDATE device SET pending = 0 WHERE id = ?').run(other.id); // a row changed by hand
+  assert.deepEqual(await answer(await h.call(await signed(h.call, other, '/device/remove', { device: owner.id }))), NOT_OWNER);
+  assert.ok(isLive(h, owner.id), 'the owner device stays');
+  assert.deepEqual(await answer(await h.call(await enrolRequest(h.call, other, await enrolTicket(h, OWNER, other)))), NOT_OWNER);
+  assert.deepEqual({ ...otpRow(h) }, before, 'the unconfirmed seed stays');
+  assert.deepEqual(auditRows(h.db).at(-1), { route: '/otp/enrol', reason: 'not-owner' });
+});
+
+test('re-review 2: the enrolment re-checks the owner flag in its own writes', async () => {
+  const h = harness();
+  const owner = await registeredDevice(h, OWNER);
+  const request = await enrolRequest(h.call, owner, await enrolTicket(h, OWNER, owner));
+  landsMidFlight(h, 'UPDATE ticket SET used = 1', (db) => db.sqlite.prepare('UPDATE device SET owner = 0 WHERE id = ?').run(owner.id));
+  assert.deepEqual(await answer(await h.call(request)), NOT_OWNER);
+  assert.equal(h.db.sqlite.prepare('SELECT COUNT(*) AS n FROM otp').get().n, 0, 'no seed was stored');
+});
+
+test('re-review 2: a removal re-checks the caller\'s standing in its own writes', async () => {
+  const h = harness();
+  const owner = await confirmedDevice(h, OWNER);
+  const other = await registeredDevice(h, OWNER, { fresh: false, ip: IP });
+  assert.equal((await tryCode(h, { ...other, seed: owner.seed }, await codeAt(owner, h.clock.ms))).finish.status, 200);
+  await nonceFor(h.call, owner); // a live nonce of the owner device
+  const request = await signed(h.call, other, '/device/remove', { device: owner.id });
+  // Held back between the device checks and the removal's writes.
+  landsMidFlight(h, 'SELECT 1 AS may_change', (db) => db.sqlite.prepare('UPDATE device SET pending = 1 WHERE id = ?').run(other.id));
+  await h.call(request);
+  assert.ok(isLive(h, owner.id), 'the owner device stays');
+  assert.equal(h.db.sqlite.prepare('SELECT COUNT(*) AS n FROM nonce WHERE device_id = ? AND used = 0').get(owner.id).n, 1, 'its nonce stays live');
+});
+
+test('re-review 2 NEGATIVE CONTROL: after the first accepted code, a device that proved a code may remove another, the owner\'s included', async () => {
+  const h = harness();
+  const owner = await confirmedDevice(h, OWNER);
+  const other = await registeredDevice(h, OWNER, { fresh: false, ip: IP });
+  assert.equal((await tryCode(h, { ...other, seed: owner.seed }, await codeAt(owner, h.clock.ms))).finish.status, 200);
+  assert.deepEqual(await answer(await h.call(await signed(h.call, other, '/device/remove', { device: owner.id }))), { status: 200, json: { ok: true } });
+  assert.equal(isLive(h, owner.id), false);
 });

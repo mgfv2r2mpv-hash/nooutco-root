@@ -30,6 +30,19 @@ export const LIVE_NONCES_PER_DEVICE = 5;
 // while that device is not removed (security review L2).
 export const LIVE_DEVICE = "EXISTS (SELECT 1 FROM device WHERE id = ? AND removed_at IS NULL)";
 
+// A condition bound to a device id: that device may change its account (A5
+// re-review, item 2). It is live and not pending, and until the first
+// accepted code confirms the account's enrolment it is also the owner device.
+// The writes that enrol, re-enrol or remove a device carry it, so a device
+// whose standing changes mid-flight changes nothing.
+export const ACCOUNT_CHANGER = `EXISTS (SELECT 1 FROM device AS caller WHERE caller.id = ? AND caller.removed_at IS NULL AND caller.pending = 0
+  AND (caller.owner = 1 OR EXISTS (SELECT 1 FROM otp WHERE otp.account_id = caller.account_id AND otp.confirmed_by IS NOT NULL)))`;
+
+// Whether the device may change its account, read without writing.
+export async function mayChangeAccount(db, deviceId) {
+  return Boolean(await db.prepare(`SELECT 1 AS may_change WHERE ${ACCOUNT_CHANGER}`).bind(deviceId).first());
+}
+
 // `after` is work the refusal leaves for after its answer and audit row (A5:
 // a lock mail), run the way a handler's after-work is.
 export class Refusal extends Error {
