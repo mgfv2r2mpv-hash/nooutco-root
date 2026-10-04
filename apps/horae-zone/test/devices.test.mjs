@@ -11,6 +11,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { SIGNIN_LIMITS } from '../src/signin.js';
 import { LIVE_NONCES_PER_DEVICE, NONCE_TTL_MS } from '../src/checks.js';
+import { accountKeys } from '../src/account-keys.js';
 import {
   harness, post, signed, nonceFor, addDevice, auditRows, everyRow,
   signUp, signIn, signInRequest, deviceKeys, registerRequest, registeredDevice, keyDigestOf, ANY_KEY_DIGEST, PASSWORD, ROOT, T0,
@@ -137,17 +138,6 @@ test('a sign-in body must be exactly an address, a password and a key digest', a
   }
 });
 
-test('sign-in tries are rate limited per address, from any requester', async () => {
-  const h = harness();
-  await signUp(h, ADDRESS);
-  for (let i = 0; i < SIGNIN_LIMITS.perAddressHour; i += 1) {
-    assert.equal((await h.call(signInRequest(ADDRESS, `wrong password ${i}!`, `198.51.100.${i + 1}`))).status, 401);
-  }
-  assert.deepEqual(await answer(await h.call(signInRequest(ADDRESS, PASSWORD, '203.0.113.9'))), { status: 429, json: { error: 'slow-down' } });
-  h.clock.ms += SIGNIN_LIMITS.windowMs + 1;
-  assert.equal((await h.call(signInRequest(ADDRESS, PASSWORD, '203.0.113.9'))).status, 200, 'NEGATIVE CONTROL: the window passes');
-});
-
 test('sign-in tries are rate limited per requester, across addresses', async () => {
   const h = harness();
   await signUp(h, ADDRESS);
@@ -160,10 +150,11 @@ test('sign-in tries are rate limited per requester, across addresses', async () 
 
 // ---- H2 (security review): strangers cannot lock the owner out of /signin ----
 
-// Fills ADDRESS's per-address bucket with wrong passwords, each from its own
-// requester, the way a stranger spread over many addresses would.
+// Puts ADDRESS into backoff (second review, item 4) with wrong passwords,
+// each from its own requester, the way a stranger spread over many addresses
+// would: one failure past backoffAfter.
 async function strangersFill(h, address) {
-  for (let i = 0; i < SIGNIN_LIMITS.perAddressHour; i += 1) {
+  for (let i = 0; i < SIGNIN_LIMITS.backoffAfter + 1; i += 1) {
     await h.call(signInRequest(address, `wrong password ${i}!`, `198.51.100.${i + 1}`));
   }
 }
@@ -171,12 +162,14 @@ async function strangersFill(h, address) {
 const signedSignIn = (h, device, address, ip, options = {}) =>
   signed(h.call, device, '/signin', { email: address, password: PASSWORD, keyDigest: ANY_KEY_DIGEST }, { ...options, headers: { 'cf-connecting-ip': ip } });
 
-test('H2: after ten wrong passwords from ten requesters, the owner signs in from a registered device', async () => {
+const HELD = { status: 429, json: { error: 'slow-down' } };
+
+test('H2: with the address in backoff, the owner signs in from a registered device', async () => {
   const h = harness();
   const device = await registeredDevice(h, ADDRESS);
   await strangersFill(h, ADDRESS);
-  assert.deepEqual(await answer(await h.call(signInRequest(ADDRESS, PASSWORD, '203.0.113.9'))), { status: 429, json: { error: 'slow-down' } },
-    'NEGATIVE CONTROL: an unsigned try is still held by the full address bucket');
+  assert.deepEqual(await answer(await h.call(signInRequest(ADDRESS, PASSWORD, '203.0.113.9'))), HELD,
+    'NEGATIVE CONTROL: an unsigned try is still held by the backoff');
   const res = await answer(await h.call(await signedSignIn(h, device, ADDRESS, '203.0.113.9')));
   assert.equal(res.status, 200);
   assert.match(res.json.ticket, /^[A-Za-z0-9_-]{43}$/);
@@ -185,22 +178,93 @@ test('H2: after ten wrong passwords from ten requesters, the owner signs in from
 test('H2: a successful sign-in is not counted against the address', async () => {
   const h = harness();
   await signUp(h, ADDRESS);
-  for (let i = 0; i < SIGNIN_LIMITS.perAddressHour; i += 1) {
+  for (let i = 0; i < SIGNIN_LIMITS.backoffAfter + 1; i += 1) {
     assert.equal((await h.call(signInRequest(ADDRESS, PASSWORD, `198.51.100.${i + 1}`))).status, 200, `success ${i + 1}`);
   }
   assert.deepEqual(await answer(await h.call(signInRequest(ADDRESS, 'a wrong password', '203.0.113.9'))), { status: 401, json: { error: 'bad-login' } });
   assert.equal((await h.call(signInRequest(ADDRESS, PASSWORD, '203.0.113.10'))).status, 200);
 });
 
-test('H2: wrong passwords alone still fill the address bucket, and a success does not empty it', async () => {
+test('H2: wrong passwords alone count toward the backoff, and a success does not clear them', async () => {
   const h = harness();
   await signUp(h, ADDRESS);
-  for (let i = 0; i < SIGNIN_LIMITS.perAddressHour - 1; i += 1) {
+  for (let i = 0; i < SIGNIN_LIMITS.backoffAfter; i += 1) {
     assert.equal((await h.call(signInRequest(ADDRESS, `wrong password ${i}!`, `198.51.100.${i + 1}`))).status, 401);
   }
-  assert.equal((await h.call(signInRequest(ADDRESS, PASSWORD, '203.0.113.9'))).status, 200, 'room for one more try');
+  assert.equal((await h.call(signInRequest(ADDRESS, PASSWORD, '203.0.113.9'))).status, 200, 'not in backoff yet');
   assert.equal((await h.call(signInRequest(ADDRESS, 'one wrong password more', '203.0.113.10'))).status, 401, 'the success took no place');
-  assert.deepEqual(await answer(await h.call(signInRequest(ADDRESS, PASSWORD, '203.0.113.11'))), { status: 429, json: { error: 'slow-down' } });
+  assert.deepEqual(await answer(await h.call(signInRequest(ADDRESS, PASSWORD, '203.0.113.11'))), HELD);
+});
+
+// ---- second review, item 4: no hard per-address lock on /signin ----
+
+test('item 4: ten strangers\' wrong passwords from ten requesters, then the owner\'s right password from a new device signs in', async () => {
+  const h = harness();
+  await signUp(h, ADDRESS);
+  for (let i = 0; i < 10; i += 1) {
+    assert.equal((await h.call(signInRequest(ADDRESS, `wrong password ${i}!`, `198.51.100.${i + 1}`))).status, 401, `stranger ${i + 1}`);
+  }
+  const res = await answer(await h.call(signInRequest(ADDRESS, PASSWORD, '203.0.113.9')));
+  assert.equal(res.status, 200);
+  assert.match(res.json.ticket, /^[A-Za-z0-9_-]{43}$/);
+});
+
+test('item 4: a single requester hammering one address is refused', async () => {
+  const h = harness();
+  await signUp(h, ADDRESS);
+  for (let i = 0; i < SIGNIN_LIMITS.perPairHour; i += 1) {
+    assert.equal((await h.call(signInRequest(ADDRESS, `wrong password ${i}!`, '198.51.100.7'))).status, 401, `failure ${i + 1}`);
+  }
+  assert.ok(SIGNIN_LIMITS.perPairHour < SIGNIN_LIMITS.backoffAfter, 'the pair cap is reached before the address backs off');
+  assert.deepEqual(await answer(await h.call(signInRequest(ADDRESS, PASSWORD, '198.51.100.7'))), HELD, 'even the right password');
+  assert.equal((await h.call(signInRequest(ADDRESS, PASSWORD, '203.0.113.9'))).status, 200, 'NEGATIVE CONTROL: another requester');
+});
+
+test('item 4 NEGATIVE CONTROL: the owner\'s own successes from one requester take no place in the pair bucket', async () => {
+  const h = harness();
+  await signUp(h, ADDRESS);
+  for (let i = 0; i < SIGNIN_LIMITS.perPairHour + 1; i += 1) {
+    assert.equal((await h.call(signInRequest(ADDRESS, PASSWORD, '192.0.2.10'))).status, 200, `success ${i + 1}`);
+  }
+  assert.deepEqual(await answer(await h.call(signInRequest(ADDRESS, 'a wrong password', '192.0.2.10'))), { status: 401, json: { error: 'bad-login' } });
+});
+
+test('item 4: past backoffAfter failures the address answers slow-down whatever the password, for a delay that doubles and never passes 15 minutes', async () => {
+  const MAX = 15 * 60 * 1000;
+  assert.ok(SIGNIN_LIMITS.backoffMaxMs <= MAX, 'backoff never exceeds 15 minutes');
+  const h = harness();
+  await signUp(h, ADDRESS);
+  let n = 0;
+  const fresh = () => `198.51.100.${(n += 1)}`;
+  for (let i = 0; i < SIGNIN_LIMITS.backoffAfter + 1; i += 1) {
+    assert.equal((await h.call(signInRequest(ADDRESS, `wrong password ${i}!`, fresh()))).status, 401, `failure ${i + 1}`);
+  }
+  const delays = [0, 1, 2, 3, 4, 5].map((k) => Math.min(SIGNIN_LIMITS.backoffBaseMs * 2 ** k, SIGNIN_LIMITS.backoffMaxMs));
+  assert.equal(delays.at(-1), SIGNIN_LIMITS.backoffMaxMs, 'the steps below reach the cap');
+  for (const [k, delay] of delays.entries()) {
+    assert.deepEqual(await answer(await h.call(signInRequest(ADDRESS, PASSWORD, fresh()))), HELD, `step ${k}: the right password is held`);
+    assert.deepEqual(await answer(await h.call(signInRequest(ADDRESS, 'a wrong password', fresh()))), HELD, `step ${k}: a wrong one gets the same answer`);
+    h.clock.ms += delay - 1;
+    assert.deepEqual(await answer(await h.call(signInRequest(ADDRESS, PASSWORD, fresh()))), HELD, `step ${k}: still held 1 ms before ${delay} ms`);
+    h.clock.ms += 1;
+    assert.equal((await h.call(signInRequest(ADDRESS, `wrong password step ${k}`, fresh()))).status, 401, `step ${k}: tried again after ${delay} ms`);
+  }
+  h.clock.ms += SIGNIN_LIMITS.backoffMaxMs;
+  assert.equal((await h.call(signInRequest(ADDRESS, PASSWORD, fresh()))).status, 200, 'the owner signs in once the capped backoff has passed');
+});
+
+test('item 4: the per-address ceiling is 100 failures an hour, and only failures fill it', async () => {
+  assert.equal(SIGNIN_LIMITS.perAddressHour, 100);
+  const h = harness();
+  await signUp(h, ADDRESS);
+  const bucket = `signin-address:${await (await accountKeys(h.env)).addressKey(ADDRESS)}`;
+  // Failures spread over the hour, the newest well past the capped backoff.
+  const add = h.db.sqlite.prepare('INSERT INTO throttle (bucket, at) VALUES (?, ?)');
+  for (let i = 0; i < SIGNIN_LIMITS.perAddressHour; i += 1) add.run(bucket, h.clock.ms - SIGNIN_LIMITS.backoffMaxMs - 1 - i * 1000);
+  assert.deepEqual(await answer(await h.call(signInRequest(ADDRESS, PASSWORD, '203.0.113.9'))), HELD, 'at the ceiling');
+  h.db.sqlite.prepare('DELETE FROM throttle WHERE rowid = (SELECT MIN(rowid) FROM throttle WHERE bucket = ?)').run(bucket);
+  assert.equal((await h.call(signInRequest(ADDRESS, PASSWORD, '203.0.113.9'))).status, 200, 'one under the ceiling');
+  assert.equal(h.db.sqlite.prepare('SELECT COUNT(*) AS n FROM throttle WHERE bucket = ?').get(bucket).n, SIGNIN_LIMITS.perAddressHour - 1, 'the success took no place');
 });
 
 test('H2 NEGATIVE CONTROL: a device of another account does not lift the address bucket', async () => {

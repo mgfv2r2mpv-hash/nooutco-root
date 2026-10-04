@@ -9,12 +9,19 @@
  */
 
 // Returns true when the request is admitted (and counted), false when any
-// bucket is full. A bucket's own windowMs, when given, replaces windowMs.
+// bucket is full. A bucket's own windowMs, when given, replaces windowMs. A
+// bucket's quietMs, when above 0, also refuses while the bucket has a row
+// newer than quietMs (a backoff, src/signin.js), in the same statement.
 export async function admitThrottle(db, now, windowMs, buckets) {
   const pick = buckets.map(() => "SELECT ? AS bucket").join(" UNION ALL ");
-  const under = buckets.map(() => "(SELECT COUNT(*) FROM throttle WHERE bucket = ? AND at > ?) < ?").join(" AND ");
-  // Placeholders in text order: `at`, the picked buckets, then each count check.
-  const values = [now, ...buckets.map((b) => b.bucket), ...buckets.flatMap((b) => [b.bucket, now - (b.windowMs ?? windowMs), b.limit])];
+  const quiet = (b) => (b.quietMs ?? 0) > 0;
+  const under = buckets.map((b) => "(SELECT COUNT(*) FROM throttle WHERE bucket = ? AND at > ?) < ?"
+    + (quiet(b) ? " AND NOT EXISTS (SELECT 1 FROM throttle WHERE bucket = ? AND at > ?)" : "")).join(" AND ");
+  // Placeholders in text order: `at`, the picked buckets, then each bucket's checks.
+  const values = [now, ...buckets.map((b) => b.bucket), ...buckets.flatMap((b) => [
+    b.bucket, now - (b.windowMs ?? windowMs), b.limit,
+    ...(quiet(b) ? [b.bucket, now - b.quietMs] : []),
+  ])];
   const { results } = await db.prepare(
     `INSERT INTO throttle (bucket, at) SELECT bucket, ? FROM (${pick}) WHERE ${under} RETURNING bucket`,
   ).bind(...values).all();
