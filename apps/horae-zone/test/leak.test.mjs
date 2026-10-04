@@ -10,7 +10,7 @@ import { createHandler } from '../src/index.js';
 import { NONCE_TTL_MS } from '../src/checks.js';
 import {
   harness, addDevice, makeAdmin, post, signed, everyRow, signUp, signIn, signInRequest, deviceKeys, registerRequest, keyDigestOf, ROOT,
-  registeredDevice, enrolRequest, codeAt, wrongCodeAt, tryCode, reopenTokenFrom,
+  registeredDevice, enrolRequest, enrolTicket, codeAt, wrongCodeAt, tryCode, reopenTokenFrom,
 } from './helpers.mjs';
 
 // Fixed, fake test values: a body marker, a 6-digit code, a base32 seed, a
@@ -135,7 +135,7 @@ test('enrolment, code tries, a lock and a reopen leave no seed, code, tag, ticke
     return res;
   };
   const dev = await registeredDevice(h, address);
-  const enrolled = await keep(await enrolRequest(h.call, dev, await signIn(h, address)));
+  const enrolled = await keep(await enrolRequest(h.call, dev, await enrolTicket(h, address, dev)));
   const enrolAnswer = seen.pop();
   const { secret } = await enrolled.json();
   assert.ok(enrolAnswer.includes(secret), 'NEGATIVE CONTROL: the enrol answer carries the seed');

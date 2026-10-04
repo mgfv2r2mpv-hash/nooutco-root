@@ -15,6 +15,7 @@ import { accountKeys } from '../src/account-keys.js';
 import {
   harness, post, signed, nonceFor, addDevice, auditRows, everyRow,
   signUp, signIn, signInRequest, deviceKeys, registerRequest, registeredDevice, keyDigestOf, ANY_KEY_DIGEST, PASSWORD, ROOT, T0,
+  removedMidFlight, FIND_DEVICE, SPEND_NONCE,
 } from './helpers.mjs';
 
 // Fixed, fake values: reserved-domain addresses and TEST-NET requesters.
@@ -542,32 +543,8 @@ test('a removed device keeps its row, marked with when it was removed', async ()
 });
 
 // ---- L2 (security review): a removal landing mid-flight wins ----
-
-// The database the handler sees, with a removal of `id` landing the moment a
-// statement starting with `after` has run: past the device checks, before
-// the handler's own writes. `nonces: false` stamps the row only, so the
-// nonce spend is what has to notice.
-function removedMidFlight(h, id, after, { nonces = true } = {}) {
-  const db = h.db;
-  let landed = false;
-  const land = () => {
-    if (landed) return;
-    landed = true;
-    if (nonces) db.sqlite.prepare('UPDATE nonce SET used = 1 WHERE device_id = ?').run(id);
-    db.sqlite.prepare('UPDATE device SET removed_at = ? WHERE id = ?').run(h.clock.ms, id);
-  };
-  const wrap = (s) => ({
-    ...s,
-    bind: (...values) => wrap(s.bind(...values)),
-    first: async () => { const r = await s.first(); land(); return r; },
-    all: async () => { const r = await s.all(); land(); return r; },
-    run: async () => { const r = await s.run(); land(); return r; },
-  });
-  h.env.DB = { ...db, prepare: (sql) => (sql.startsWith(after) ? wrap(db.prepare(sql)) : db.prepare(sql)) };
-}
-
-const FIND_DEVICE = 'SELECT id, account_id, sign_key, pending FROM device';
-const SPEND_NONCE = 'UPDATE nonce SET used = 1 WHERE value';
+// removedMidFlight, FIND_DEVICE and SPEND_NONCE are in helpers.mjs, shared
+// with the A5 tests.
 
 test('L2: a device removed after its checks passed cannot remove another device', async () => {
   const h = harness();

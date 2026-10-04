@@ -25,7 +25,7 @@ import { CONFIRM_MS } from '../../../packages/account-engine/src/limits.mjs';
 import { b64url, fromB64url } from '../src/checks.js';
 import {
   harness, signed, auditRows, everyRow, registeredDevice, enrolledDevice, codeAt, wrongCodeAt, tryCode,
-  TICKET_PUBLIC_KEY, ROOT, T0,
+  TICKET_PUBLIC_KEY, ROOT, T0, removedMidFlight, SPEND_NONCE,
 } from './helpers.mjs';
 
 // Fixed, fake values: reserved-domain addresses.
@@ -163,6 +163,81 @@ test('a code two steps old, or the next step\'s, is refused', async () => {
     assert.deepEqual(tried.finish, BAD_CODE);
   }
   assert.equal((await tryCode(h, dev, await codeAt(dev, h.clock.ms))).finish.status, 200, 'NEGATIVE CONTROL: the current step\'s code');
+});
+
+// ---- security review L2, carried to A5 (open point 8) ----
+// A removal of the device that lands after its request passed the checks
+// wins: no exchange, no accepted code, no ticket.
+
+const NO_DEVICE = { status: 401, json: { error: 'no-device' } };
+const SPEND_EXCHANGE = 'UPDATE exchange SET used = 1';
+const MOVE_STEP = 'UPDATE otp SET last_step';
+const lastStep = (h) => h.db.sqlite.prepare('SELECT last_step FROM otp').get().last_step;
+const exchangeUsed = (h, id) => h.db.sqlite.prepare('SELECT used FROM exchange WHERE id = ?').get(id).used;
+
+async function signedFinish(h, device, exchange, tagA) {
+  return signed(h.call, device, '/unlock/finish', { exchange, tagA });
+}
+
+test('L2: a device removed after its signed start passed the checks gets no exchange', async () => {
+  const h = harness();
+  const dev = await enrolledDevice(h, ADDRESS);
+  const { message } = initiatorStart({ code: await codeAt(dev, h.clock.ms), channel: unlockChannelFor(dev.id) });
+  const request = await signed(h.call, dev, '/unlock/start', { sid: b64url(message.sid), Ya: b64url(message.Ya), clock: h.clock.ms });
+  removedMidFlight(h, dev.id, SPEND_NONCE);
+  assert.deepEqual(await answer(await h.call(request)), NO_DEVICE);
+  assert.equal(h.db.sqlite.prepare('SELECT COUNT(*) AS n FROM exchange').get().n, 0, 'no exchange was stored');
+});
+
+test('L2: a device removed after its signed finish passed the checks gets no ticket, and the code is not used up', async () => {
+  const h = harness();
+  const dev = await enrolledDevice(h, ADDRESS);
+  const other = await secondDevice(h, dev);
+  const code = await codeAt(dev, h.clock.ms);
+  const { exchange, tagA } = await startOnly(h, dev, code);
+  const request = await signedFinish(h, dev, exchange, tagA);
+  removedMidFlight(h, dev.id, SPEND_NONCE);
+  assert.deepEqual(await answer(await h.call(request)), NO_DEVICE);
+  assert.equal(exchangeUsed(h, exchange), 0, 'the exchange was not spent');
+  assert.equal(lastStep(h), 0, 'the code was not accepted');
+  h.env.DB = h.db;
+  assert.equal((await tryCode(h, other, code)).finish.status, 200, 'NEGATIVE CONTROL: the same code still unlocks a live device');
+});
+
+test('L2: a device removed after its exchange was spent does not use up the code', async () => {
+  const h = harness();
+  const dev = await enrolledDevice(h, ADDRESS);
+  const other = await secondDevice(h, dev);
+  const code = await codeAt(dev, h.clock.ms);
+  const { exchange, tagA } = await startOnly(h, dev, code);
+  const request = await signedFinish(h, dev, exchange, tagA);
+  removedMidFlight(h, dev.id, SPEND_EXCHANGE);
+  assert.deepEqual(await answer(await h.call(request)), NO_DEVICE);
+  assert.equal(lastStep(h), 0, 'the code was not accepted');
+  h.env.DB = h.db;
+  assert.equal((await tryCode(h, other, code)).finish.status, 200, 'the same code still unlocks a live device');
+});
+
+test('L2: a device removed after its code was accepted gets no ticket and stays held back', async () => {
+  const h = harness();
+  const dev = await enrolledDevice(h, ADDRESS);
+  const other = await secondDevice(h, dev);
+  const { exchange, tagA } = await startOnly(h, other, await codeAt(dev, h.clock.ms));
+  const request = await signedFinish(h, other, exchange, tagA);
+  removedMidFlight(h, other.id, MOVE_STEP);
+  const res = await answer(await h.call(request));
+  assert.deepEqual(res, NO_DEVICE);
+  assert.equal(h.db.sqlite.prepare('SELECT pending FROM device WHERE id = ?').get(other.id).pending, 1, 'the removed device was not cleared');
+});
+
+test('L2 NEGATIVE CONTROL: a removal of some other device mid-flight does not stop a start or a finish', async () => {
+  const h = harness();
+  const dev = await enrolledDevice(h, ADDRESS);
+  removedMidFlight(h, 'never-registered', SPEND_NONCE);
+  const tried = await tryCode(h, dev, await codeAt(dev, h.clock.ms));
+  assert.equal(tried.start.status, 200);
+  assert.equal(tried.finish.status, 200);
+  assert.ok(await readTicket(tried.finish.json.ticket));
 });
 
 // ---- the window cap, when tries arrive together ----
