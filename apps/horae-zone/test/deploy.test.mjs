@@ -470,6 +470,18 @@ test('every wrangler call runs with WRANGLER_LOG_SANITIZE=true, over a shell tha
   }
 });
 
+test('a wrangler that exits before reading its stdin is reported by its exit code, not a crash', async () => {
+  // A big input guarantees the pipe fills, so the write hits a closed pipe (EPIPE).
+  const bin = mkdtempSync(path.join(tmpdir(), 'hz-fake-wrangler-'));
+  try {
+    writeFileSync(path.join(bin, 'wrangler'), '#!/bin/sh\nexit 3\n', { mode: 0o755 });
+    const res = await runWrangler(['secret', 'put', 'HZ_FAKE'], { input: 'x'.repeat(4 << 20), env: { PATH: `${bin}${path.delimiter}${process.env.PATH}` } });
+    assert.equal(res.code, 3);
+  } finally {
+    rmSync(bin, { recursive: true, force: true });
+  }
+});
+
 test('the generated account key is 32 random bytes, base64url, and the service accepts it', async () => {
   const h = harness();
   await deploy(h.deps);

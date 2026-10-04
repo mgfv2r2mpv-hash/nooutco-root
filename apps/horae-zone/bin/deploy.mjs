@@ -417,6 +417,10 @@ export function runWrangler(args, { input, cwd, env } = {}) {
     child.stderr.on("data", (d) => { stderr += d; });
     child.on("error", (err) => resolve({ code: 127, stdout, stderr: err.code === "ENOENT" ? "wrangler is not on PATH (npm i -g wrangler)" : err.message }));
     child.on("close", (code) => resolve({ code: code ?? 1, stdout, stderr }));
+    // A wrangler that quits before reading stdin closes the pipe (EPIPE). Its
+    // exit code already reports the failure through "close", so the write
+    // error must not crash the run.
+    child.stdin.on("error", () => {});
     child.stdin.end(input ?? "");
   });
 }
