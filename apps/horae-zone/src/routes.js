@@ -9,10 +9,11 @@
  * A route with no handler answers not-built, only after its checks pass.
  */
 import { issueNonce } from "./checks.js";
+import { startSignup, verifySignup } from "./signup.js";
 
 export const ROUTES = Object.freeze({
-  "/account": { checks: "open" },
-  "/account/email/verify": { checks: "open" },
+  "/account": { checks: "open", handler: startSignup },
+  "/account/email/verify": { checks: "open", handler: verifySignup },
   "/signin": { checks: "open" },
   // A4 adds the sign-in ticket this route will require; a device has no key
   // registered yet, so it cannot sign.

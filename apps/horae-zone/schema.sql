@@ -1,5 +1,6 @@
--- Horae Zone, the nooutco account service. A2 skeleton: only what the route
--- checks use. Later slices add their tables as additive migrations.
+-- Horae Zone, the nooutco account service. A2: what the route checks use.
+-- A3: accounts, email-code challenges and rate-limit rows. Later slices add
+-- their tables as additive migrations.
 --
 -- WHAT MAY NOT GO IN HERE: a request body, a code, a seed in the clear, a PIN,
 -- vault or session keys, or PHI. Columns hold opaque ids, public keys,
@@ -45,3 +46,40 @@ CREATE TABLE IF NOT EXISTS audit (
 );
 
 CREATE INDEX IF NOT EXISTS audit_at ON audit (at);
+
+-- A3, account + email. An account is filed under its address key (an HMAC of
+-- the lowercased address under a key derived from HZ_ACCOUNT_KEY); the
+-- address itself is only in address_box, sealed with AES-GCM bound to that
+-- key. The login hash is "pbkdf2-sha256$<iterations>$<hex>", peppered with a
+-- derived key, over a random per-account salt (src/account-keys.js).
+CREATE TABLE IF NOT EXISTS account (
+  id           TEXT    PRIMARY KEY,
+  address_key  TEXT    NOT NULL UNIQUE,
+  address_box  TEXT    NOT NULL,
+  login_hash   TEXT    NOT NULL,
+  login_salt   TEXT    NOT NULL,
+  created_at   INTEGER NOT NULL
+);
+
+-- The live sign-up challenge per address: only the keyed digest of the
+-- emailed code, never the code. A newer challenge replaces the older one.
+-- Spent, used-up and expired rows are refused and purged hourly.
+CREATE TABLE IF NOT EXISTS challenge (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  address_key  TEXT    NOT NULL,
+  digest       TEXT    NOT NULL,
+  expires_at   INTEGER NOT NULL,
+  tries        INTEGER NOT NULL DEFAULT 0,
+  used         INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS challenge_address_key ON challenge (address_key);
+
+-- Rate-limit rows: a closed prefix and a keyed hash, and when. Rows past the
+-- window are purged hourly (src/throttle.js, src/retention.js).
+CREATE TABLE IF NOT EXISTS throttle (
+  bucket       TEXT    NOT NULL,
+  at           INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS throttle_bucket_at ON throttle (bucket, at);

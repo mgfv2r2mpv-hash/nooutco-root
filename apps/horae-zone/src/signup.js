@@ -1,0 +1,165 @@
+/**
+ * A3, account + email (plan §3.3 "First device", steps 1 and 2).
+ *
+ * POST /account {email} mails a single-use 6-digit code to an address that
+ * has no account yet, and answers {ok:true} either way, so no answer says
+ * whether an address already has an account. The code rides in the link's
+ * fragment, which a browser never sends to a server.
+ *
+ * POST /account/email/verify {email, code, password} makes the account only
+ * when the code is the live one for that address. Each try is reserved before
+ * the compare (so parallel guesses cannot pass the try limit), the compare is
+ * sameHex over keyed digests, and a code is spent by the first right try.
+ *
+ * The limits below are the agent's safe defaults, listed for the owner in the
+ * design review ("Decisions for Kaleb"): the plan does not fix them.
+ */
+import { sameHex } from "../../../packages/account-engine/src/limits.mjs";
+import { fragmentLink } from "../../../packages/account-engine/src/mailer.mjs";
+import { Refusal } from "./checks.js";
+import { accountKeys } from "./account-keys.js";
+import { admitThrottle } from "./throttle.js";
+
+export const SIGNUP_LIMITS = Object.freeze({
+  codeTtlMs: 10 * 60 * 1000,
+  codeTries: 5,
+  codesPerAddressHour: 3,
+  startsPerRequesterHour: 10,
+  verifiesPerRequesterHour: 20,
+  windowMs: 60 * 60 * 1000,
+  passwordMin: 12,
+  passwordMax: 256,
+});
+
+const MAX_ADDRESS = 254;
+const ADDRESS = /^[^\s@\p{Cc}]+@[^\s@\p{Cc}]+\.[^\s@\p{Cc}]+$/u;
+const CODE = /^\d{6}$/;
+const CODE_SPACE = 1_000_000;
+
+const hasOnly = (body, keys) => {
+  const got = Object.keys(body);
+  return got.length === keys.length && keys.every((k) => Object.hasOwn(body, k));
+};
+
+function addressOf(value) {
+  if (typeof value !== "string" || value.length > MAX_ADDRESS || !ADDRESS.test(value)) throw new Refusal("shape", 400);
+  return value.toLowerCase();
+}
+
+function passwordOf(value) {
+  if (typeof value !== "string" || value.length < SIGNUP_LIMITS.passwordMin || value.length > SIGNUP_LIMITS.passwordMax) {
+    throw new Refusal("shape", 400);
+  }
+  return value;
+}
+
+async function keysOrUnavailable(env) {
+  const keys = await accountKeys(env);
+  if (!keys) throw new Refusal("unavailable", 503);
+  return keys;
+}
+
+const requesterOf = (request) => request.headers.get("cf-connecting-ip") || "none";
+
+// A uniform 6-digit code: values past the last whole multiple of CODE_SPACE
+// are drawn again, so no code is likelier than another.
+function newCode() {
+  const limit = Math.floor(2 ** 32 / CODE_SPACE) * CODE_SPACE;
+  for (;;) {
+    const [n] = crypto.getRandomValues(new Uint32Array(1));
+    if (n < limit) return String(n % CODE_SPACE).padStart(6, "0");
+  }
+}
+
+// Plain notes on state; the wording is the owner's to change.
+function codeMessage(to, code, link) {
+  const minutes = SIGNUP_LIMITS.codeTtlMs / 60_000;
+  return {
+    to,
+    subject: "Horae Zone sign-up code",
+    text: [
+      `Sign-up code: ${code}`,
+      `Works once. Expires ${minutes} minutes after it was sent.`,
+      "",
+      "Link for the device signing up:",
+      link,
+      "",
+      "No account is made without this code.",
+    ].join("\n"),
+  };
+}
+
+// The mail runs after the answer and its audit row; a send that fails or
+// throws is audited as mail-failed and changes nothing else.
+function mailAfter(mailer, message) {
+  return async () => {
+    try {
+      return (await mailer(message)) ? null : "mail-failed";
+    } catch {
+      return "mail-failed";
+    }
+  };
+}
+
+export async function startSignup({ db, body, now, env, request, mailer }) {
+  if (!hasOnly(body, ["email"])) throw new Refusal("shape", 400);
+  const address = addressOf(body.email);
+  const keys = await keysOrUnavailable(env);
+  if (!mailer) throw new Refusal("unavailable", 503);
+  let link;
+  const code = newCode();
+  try {
+    link = fragmentLink(env.HZ_LINK_BASE, code);
+  } catch {
+    throw new Refusal("unavailable", 503);
+  }
+  const addressKey = await keys.addressKey(address);
+  const requester = await keys.requesterKey(requesterOf(request));
+  const admitted = await admitThrottle(db, now, SIGNUP_LIMITS.windowMs, [
+    { bucket: `start-requester:${requester}`, limit: SIGNUP_LIMITS.startsPerRequesterHour },
+    { bucket: `start-address:${addressKey}`, limit: SIGNUP_LIMITS.codesPerAddressHour },
+  ]);
+  if (!admitted) throw new Refusal("slow-down", 429);
+  const digest = await keys.codeDigest(addressKey, code);
+  const existing = await db.prepare("SELECT 1 AS yes FROM account WHERE address_key = ?").bind(addressKey).first();
+  if (existing) return { status: 200, json: { ok: true } };
+  // A newer code replaces any older one for the address.
+  await db.batch([
+    db.prepare("DELETE FROM challenge WHERE address_key = ?").bind(addressKey),
+    db.prepare("INSERT INTO challenge (address_key, digest, expires_at, tries, used) VALUES (?, ?, ?, 0, 0)")
+      .bind(addressKey, digest, now + SIGNUP_LIMITS.codeTtlMs),
+  ]);
+  return { status: 200, json: { ok: true }, after: mailAfter(mailer, codeMessage(address, code, link)) };
+}
+
+export async function verifySignup({ db, body, now, env, request }) {
+  if (!hasOnly(body, ["email", "code", "password"])) throw new Refusal("shape", 400);
+  const address = addressOf(body.email);
+  if (typeof body.code !== "string" || !CODE.test(body.code)) throw new Refusal("shape", 400);
+  const password = passwordOf(body.password);
+  const keys = await keysOrUnavailable(env);
+  const requester = await keys.requesterKey(requesterOf(request));
+  const admitted = await admitThrottle(db, now, SIGNUP_LIMITS.windowMs, [
+    { bucket: `verify-requester:${requester}`, limit: SIGNUP_LIMITS.verifiesPerRequesterHour },
+  ]);
+  if (!admitted) throw new Refusal("slow-down", 429);
+  const addressKey = await keys.addressKey(address);
+  const digest = await keys.codeDigest(addressKey, body.code);
+  // The try is counted before the compare.
+  const live = await db.prepare(
+    "UPDATE challenge SET tries = tries + 1 WHERE address_key = ? AND used = 0 AND tries < ? AND expires_at > ? RETURNING id, digest",
+  ).bind(addressKey, SIGNUP_LIMITS.codeTries, now).first();
+  if (!live || !sameHex(digest, live.digest)) throw new Refusal("bad-code", 401);
+  const spent = await db.prepare("UPDATE challenge SET used = 1 WHERE id = ? AND used = 0 RETURNING id").bind(live.id).first();
+  if (!spent) throw new Refusal("bad-code", 401);
+  const login = await keys.hashLogin(password);
+  const box = await keys.sealAddress(address, addressKey);
+  const id = crypto.randomUUID();
+  const made = await db.prepare(
+    "INSERT INTO account (id, address_key, address_box, login_hash, login_salt, created_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (address_key) DO NOTHING RETURNING id",
+  ).bind(id, addressKey, box, login.hash, login.salt, now).first();
+  // Only a race of two right tries reaches here without a row; it answers as
+  // a spent code does.
+  if (!made) throw new Refusal("bad-code", 401);
+  return { status: 200, json: { ok: true } };
+}
