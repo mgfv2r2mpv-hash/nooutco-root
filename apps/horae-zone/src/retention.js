@@ -12,7 +12,7 @@
  * [triggers] must carry purgeCron (test/purge.test.mjs checks they agree).
  */
 
-import { SIGNUP_LIMITS, DAILY_BUCKET } from "./signup.js";
+import { SIGNUP_LIMITS, DAILY_BUCKET, ALERT_BUCKET } from "./signup.js";
 import { SIGNIN_LIMITS } from "./signin.js";
 
 export const RETENTION =Object.freeze({
@@ -41,7 +41,7 @@ function checkedYears(value) {
 // Spent or expired nonces go (a spent row can never be accepted again, and a
 // deleted one is refused the same way), spent and expired email
 // codes and sign-in tickets likewise, rate-limit rows at or past the longest
-// window (no count reads them again; the daily cap's rows after a day), and
+// window (no count reads them again; the daily cap and alert rows after a day), and
 // audit rows older than the cutoff.
 export async function purgeExpired(db, now, { auditYears = RETENTION.auditYears } = {}) {
   const cutoff = auditCutoff(now, checkedYears(auditYears));
@@ -50,8 +50,8 @@ export async function purgeExpired(db, now, { auditYears = RETENTION.auditYears 
     db.prepare("DELETE FROM nonce WHERE used = 1 OR expires_at <= ?").bind(now),
     db.prepare("DELETE FROM challenge WHERE used = 1 OR expires_at <= ?").bind(now),
     db.prepare("DELETE FROM ticket WHERE used = 1 OR expires_at <= ?").bind(now),
-    db.prepare("DELETE FROM throttle WHERE at <= ? AND (bucket <> ? OR at <= ?)")
-      .bind(now - throttleWindow, DAILY_BUCKET, now - SIGNUP_LIMITS.dayMs),
+    db.prepare("DELETE FROM throttle WHERE at <= ? AND (bucket NOT IN (?, ?) OR at <= ?)")
+      .bind(now - throttleWindow, DAILY_BUCKET, ALERT_BUCKET, now - SIGNUP_LIMITS.dayMs),
     db.prepare("DELETE FROM audit WHERE at < ?").bind(cutoff),
   ]);
 }

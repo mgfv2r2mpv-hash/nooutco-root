@@ -78,6 +78,18 @@ test('M2: a purge keeps daily-cap rows for a day and clears them after', async (
     [['codes-day', T0 - SIGNUP_LIMITS.dayMs + 1], ['codes-day', T0 - SIGNUP_LIMITS.windowMs - 1], ['codes-day', T0]]);
 });
 
+// Item 5: the once-a-day alert row lives in 'alert-day'; purged after an
+// hour, the alert would fire again every hour past half the cap.
+test('item 5: a purge keeps the daily alert row for a day and clears it after', async () => {
+  const { db } = harness();
+  for (const at of [T0 - SIGNUP_LIMITS.dayMs - 1, T0 - SIGNUP_LIMITS.windowMs - 1]) {
+    db.sqlite.prepare('INSERT INTO throttle (bucket, at) VALUES (?, ?)').run('alert-day', at);
+  }
+  await purgeExpired(db, T0);
+  assert.deepEqual(db.sqlite.prepare('SELECT bucket, at FROM throttle ORDER BY at').all().map((r) => [r.bucket, r.at]),
+    [['alert-day', T0 - SIGNUP_LIMITS.windowMs - 1]]);
+});
+
 test('NEGATIVE CONTROL: a purge keeps a fresh nonce working and every audit row inside 6 years', async () => {
   const h = harness();
   const dev = await addDevice(h.db);
