@@ -72,7 +72,9 @@ CREATE TABLE IF NOT EXISTS account (
 -- Sign-up challenges: only the keyed digest of each emailed code, never the
 -- code. Up to three per address are live at once and a newer one never
 -- replaces an older one (H1, security review); tries are counted per row.
--- Spent, used-up and expired rows are refused and purged hourly.
+-- Spent, used-up and expired rows are refused and purged hourly. A start for
+-- an address that has an account writes a row born spent (M1, security
+-- review), so both paths do the same write.
 CREATE TABLE IF NOT EXISTS challenge (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
   address_key  TEXT    NOT NULL,

@@ -238,6 +238,26 @@ test('no answer says whether an address already has an account', async () => {
   assert.deepEqual(wrongExisting, wrongFresh);
 });
 
+// M1 (security review): a start for an address with an account skipped the
+// challenge write, so the time to answer said which addresses have accounts.
+// Both paths now send the same statements in the same order.
+test('a start sends the same statements whether or not the address has an account', async () => {
+  const h = harness();
+  await start(h);
+  await verify(h, { code: codeFrom(h) });
+  const sqlOf = async (email, ip) => {
+    const from = h.db.bound.length;
+    assert.equal((await start(h, email, ip)).status, 200);
+    return h.db.bound.slice(from).map((s) => s.sql);
+  };
+  const existing = await sqlOf(ADDRESS, '192.0.2.40');
+  const fresh = await sqlOf('fresh@example.test', '192.0.2.41');
+  assert.ok(fresh.some((sql) => /INSERT INTO challenge/.test(sql)), 'the fresh path writes a code');
+  assert.deepEqual(existing, fresh);
+  const live = h.db.sqlite.prepare('SELECT COUNT(*) AS n FROM challenge WHERE used = 0').get().n;
+  assert.equal(live, 1, 'only the fresh address holds a code that can verify');
+});
+
 test('an address that is not an address, extra fields, or a password outside the length rule are refused as shape', async () => {
   const h = harness();
   for (const email of ['', 'no-at-sign', 'two@@example.test', 'a b@example.test', `${'x'.repeat(250)}@example.test`, 7, null]) {

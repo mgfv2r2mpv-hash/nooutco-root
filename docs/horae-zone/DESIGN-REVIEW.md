@@ -227,7 +227,7 @@ It never holds a vault key, a session key, vault data or PHI.
    - Stored only as an HMAC digest under a key derived from the service secret, bound to the address key.
    - Compared with the engine's `sameHex`, never `===`.
 4. **A try is counted before the compare.** The verify takes its places in the try limits and a try on every live code (`UPDATE ... RETURNING`) and only then compares, so guesses sent together cannot pass the try limits. It compares with every live code's digest, with no early exit. The first right try spends that code with a second `UPDATE ... WHERE used = 0`.
-5. **No answer says whether an address has an account.** `/account` answers `{ok:true}` for a new address and an existing one, takes the same rate-limit places for both, and mails only a new address. A verify for an address that was never sent a code is `bad-code`, like a wrong code.
+5. **No answer says whether an address has an account.** `/account` answers `{ok:true}` for a new address and an existing one, takes the same rate-limit places for both, sends the same statements for both (M1 below), and mails only a new address. A verify for an address that was never sent a code is `bad-code`, like a wrong code.
 6. **Rate limits are atomic, and a refused request is not counted.** Starts are limited per address and per requester. Tries are limited per requester, per address, and per address for one requester (H1). Before a device has a key, the requester is the connecting address (`cf-connecting-ip`), stored only as a keyed hash.
 7. **Shape before the rate limit.** A malformed body is refused before the throttle, so it neither counts nor spends a try.
 8. **The address is stored sealed.** AES-GCM under a derived key, with the address key as associated data, so a box cannot be moved to another row. Lookups use the keyed address hash.
@@ -263,6 +263,14 @@ What changed (`src/signup.js`):
 Tests (`test/signup.test.mjs`): "H1: a second start leaves the first code live, so the owner's code still works", "H1: every live code for an address works, the newest included", "H1: wrong guesses from another requester do not end the owner's code", "H1: tries at one address are still capped across requesters", and "H1: the address cap stops tries before any one code reaches its own try limit". They replace "wrong tries end a code" and "a newer code replaces the older one", which pinned the old behaviour.
 
 Left as is (residual): 15 wrong guesses at one address within an hour, from 3 or more connecting addresses, still hold that address's verifies at `slow-down` until the window passes. No guess ends the owner's code, so a code still inside its 10 minutes works once the cap lifts. Any cap on guesses is a cap a stranger can fill; this one bounds a 6-digit code to 45 in a million per address per hour (15 tries against up to 3 live codes).
+
+**M1 (medium): the time to answer said which addresses have accounts.** `startSignup` looked the address up and, for one with an account, answered before the challenge write, so that path skipped a D1 round trip and a write.
+
+What changed (`src/signup.js`): the separate account lookup is gone. The account check rides inside the challenge `INSERT ... SELECT` (`used` is `EXISTS (SELECT 1 FROM account ...)`), so both paths send the same statements in the same order and write one row. A row for an address with an account is born spent (`used = 1`): it never verifies, never counts toward the live cap, no mail goes out for it, and the hourly purge removes it.
+
+Test (`test/signup.test.mjs`): "a start sends the same statements whether or not the address has an account" compares the statements each start binds (the D1 test double keeps every bound statement) and checks that only the new address holds a code that can verify.
+
+Left as is (residual): the mail for a new address runs after the answer (`ctx.waitUntil`), so it adds no time to the answer, but the two paths still differ in work after the answer is sent.
 
 ### Open points for the reviewer
 

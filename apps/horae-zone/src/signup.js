@@ -145,16 +145,18 @@ export async function startSignup({ db, body, now, env, request, mailer }) {
   ]);
   if (!admitted) throw new Refusal("slow-down", 429);
   const digest = await keys.codeDigest(addressKey, code);
-  const existing = await db.prepare("SELECT 1 AS yes FROM account WHERE address_key = ?").bind(addressKey).first();
-  if (existing) return { status: 200, json: { ok: true } };
   // A newer code joins the live ones and never replaces them; past
   // liveCodes no code is made or mailed (the start limit keeps that from
-  // happening inside one window).
+  // happening inside one window). M1 (security review): the account check
+  // rides inside the same INSERT, so an address with an account runs the
+  // same statement and the same write; its row is born spent (used = 1),
+  // never verifies, and no mail goes out for it.
   const made = await db.prepare(
-    `INSERT INTO challenge (address_key, digest, expires_at, tries, used) SELECT ?, ?, ?, 0, 0
-     WHERE (SELECT COUNT(*) FROM challenge WHERE ${LIVE}) < ? RETURNING id`,
-  ).bind(addressKey, digest, now + SIGNUP_LIMITS.codeTtlMs, addressKey, SIGNUP_LIMITS.codeTries, now, SIGNUP_LIMITS.liveCodes).first();
-  if (!made) return { status: 200, json: { ok: true } };
+    `INSERT INTO challenge (address_key, digest, expires_at, tries, used)
+     SELECT ?, ?, ?, 0, EXISTS (SELECT 1 FROM account WHERE address_key = ?)
+     WHERE (SELECT COUNT(*) FROM challenge WHERE ${LIVE}) < ? RETURNING used`,
+  ).bind(addressKey, digest, now + SIGNUP_LIMITS.codeTtlMs, addressKey, addressKey, SIGNUP_LIMITS.codeTries, now, SIGNUP_LIMITS.liveCodes).first();
+  if (!made || made.used !== 0) return { status: 200, json: { ok: true } };
   return { status: 200, json: { ok: true }, after: mailAfter(mailer, codeMessage(address, code, link)) };
 }
 
