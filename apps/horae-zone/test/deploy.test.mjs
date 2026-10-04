@@ -10,9 +10,9 @@ import { PassThrough } from 'node:stream';
 import { EventEmitter } from 'node:events';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { ROOT } from './helpers.mjs';
+import { ROOT, SCHEMA } from './helpers.mjs';
 import { deploy, runWrangler } from '../bin/deploy.mjs';
-import { CATALOG, LineReader, deployConfig, scrub, HOSTNAME } from '../bin/deploy-parts.mjs';
+import { CATALOG, LineReader, deployConfig, scrub, schemaTables, HOSTNAME } from '../bin/deploy-parts.mjs';
 import { accountKeys } from '../src/account-keys.js';
 
 const FAKE_DB_ID = '11111111-2222-3333-4444-555555555555';
@@ -28,7 +28,9 @@ const ANSWERS = {
   HZ_CODES_PER_DAY: '',
 };
 const SECRET_VALUES = [GENERATED, ANSWERS.RESEND_KEY, ANSWERS.HZ_MAIL_FROM, ANSWERS.HZ_ALERT_TO];
-const TABLES = ['device', 'nonce', 'role', 'audit', 'account', 'challenge', 'throttle', 'ticket'];
+// The tables schema.sql creates, read the way the script reads them, so a new
+// table never needs this file changed.
+const TABLES = schemaTables(SCHEMA);
 const SECRET_NAMES = ['HZ_ACCOUNT_KEY', 'RESEND_KEY', 'HZ_MAIL_FROM', 'HZ_ALERT_TO', 'HZ_LINK_BASE'];
 
 // A wrangler stand-in. `state` decides what each command answers; every call
@@ -233,8 +235,11 @@ test('the checklist fails the item that is wrong: a 5xx route, a missing secret,
   const r3 = await deploy(harness({ wrangler: mockWrangler({ deployOut: 'Deployed horae-zone\n' }) }).deps);
   assert.equal(statusOf(r3, 'Cron trigger'), 'FAIL');
 
-  const r4 = await deploy(harness({ wrangler: mockWrangler({ tables: TABLES.filter((t) => t !== 'ticket') }) }).deps);
-  assert.equal(statusOf(r4, 'Schema applied'), 'FAIL');
+  for (const gone of ['ticket', 'pending_try']) {
+    const r4 = await deploy(harness({ wrangler: mockWrangler({ tables: TABLES.filter((t) => t !== gone) }) }).deps);
+    assert.equal(statusOf(r4, 'Schema applied'), 'FAIL', `${gone} missing`);
+    assert.match(r4.checklist.find((i) => i.item === 'Schema applied').detail, new RegExp(`missing table\\(s\\): ${gone}$`));
+  }
 
   const r5 = await deploy(harness({ route: { status: 405, body: '{"error":"method"}', ray: false } }).deps);
   assert.equal(statusOf(r5, 'Route answers'), 'FAIL', 'an answer without cf-ray did not come through the Cloudflare edge');
@@ -496,6 +501,11 @@ test('a bad answer is asked again, and three bad answers stop the run before any
   assert.equal(result.ok, false);
   assert.equal(h.asked.filter((a) => a.name === 'HZ_LINK_BASE').length, 3);
   assert.equal(h.wrangler.calls.some((c) => c.args[1] === 'create' || c.args[0] === 'deploy' || c.args[0] === 'secret'), false);
+});
+
+test('the schema check expects every table schema.sql creates, A5 tables included', () => {
+  assert.equal(TABLES.length, [...SCHEMA.matchAll(/\bCREATE\s+TABLE\b/gi)].length, 'schemaTables misses a CREATE TABLE');
+  for (const t of ['device', 'ticket', 'otp', 'exchange', 'limits', 'pending_try']) assert.ok(TABLES.includes(t), t);
 });
 
 test('every environment name the service reads is handled by the deploy script', () => {
