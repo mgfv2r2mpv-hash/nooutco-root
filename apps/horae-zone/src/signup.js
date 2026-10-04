@@ -88,7 +88,36 @@ export function addressOf(value) {
   if (typeof value !== "string" || value.length > MAX_ADDRESS || !ADDRESS.test(value) || !LOCAL.test(value)) {
     throw new Refusal("shape", 400);
   }
-  return value.toLowerCase();
+  const at = value.lastIndexOf("@");
+  const address = `${value.slice(0, at).toLowerCase()}@${dnsNameOf(value.slice(at + 1))}`;
+  if (address.length > MAX_ADDRESS) throw new Refusal("shape", 400);
+  return address;
+}
+
+// Item 6 (second security review): the domain as its DNS name, so every
+// spelling of one domain is one address key. One trailing dot (the DNS root)
+// is stripped, then the URL parser maps it to ASCII (IDNA: lower case,
+// full-width letters, composed accents, punycode), and every label of the
+// result is letters, digits and inner hyphens. A domain with any other
+// character, an empty label or an all-digit top label is refused.
+const DOMAIN_CHARS = /^[\p{L}\p{M}\p{N}.-]+$/u;
+const DNS_LABEL = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+const MAX_DOMAIN = 253;
+
+function dnsNameOf(domain) {
+  const bare = domain.endsWith(".") ? domain.slice(0, -1) : domain;
+  if (!DOMAIN_CHARS.test(bare)) throw new Refusal("shape", 400);
+  let name;
+  try {
+    name = new URL(`http://${bare}`).hostname;
+  } catch {
+    throw new Refusal("shape", 400);
+  }
+  const labels = name.split(".");
+  if (name.length > MAX_DOMAIN || labels.length < 2 || !labels.every((l) => DNS_LABEL.test(l)) || /^\d+$/.test(labels.at(-1))) {
+    throw new Refusal("shape", 400);
+  }
+  return name;
 }
 
 // M2: the mailbox a tagged address delivers to, with the "+tag" stripped,
