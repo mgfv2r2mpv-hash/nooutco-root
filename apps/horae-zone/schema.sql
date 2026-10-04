@@ -14,9 +14,11 @@
 -- A device's public P-256 signing key and agreement key (raw uncompressed
 -- points, base64url). The private halves never leave the device's Secure
 -- Enclave. A removed device keeps its row, stamped removed_at, and every
--- route refuses it. A5: pending is 1 for a device of an account with a
--- confirmed code that has not proved the code yet; it reaches only /nonce
--- and /unlock.
+-- route refuses it. A5: pending is 1 for a device that has not proved the
+-- account's code yet; it reaches only /nonce and /unlock. A5 re-review:
+-- owner is 1 for the account's first device, the one the sign-up link's
+-- ticket registered; it starts not pending. Every device registered after it
+-- starts pending, code or no code.
 CREATE TABLE IF NOT EXISTS device (
   id          TEXT    PRIMARY KEY,
   account_id  TEXT    NOT NULL,
@@ -24,7 +26,8 @@ CREATE TABLE IF NOT EXISTS device (
   agree_key   TEXT,
   created_at  INTEGER NOT NULL,
   removed_at  INTEGER,
-  pending     INTEGER NOT NULL DEFAULT 0
+  pending     INTEGER NOT NULL DEFAULT 1,
+  owner       INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS device_account_id ON device (account_id);
@@ -108,13 +111,16 @@ CREATE INDEX IF NOT EXISTS throttle_bucket_at ON throttle (bucket, at);
 -- bound to its account and to the SHA-256 digest of the two public keys it
 -- may register (key_digest, security review M3). A ticket registers one
 -- device and dies after a few minutes; spent and expired rows are purged
--- hourly.
+-- hourly. A5 re-review: owner is 1 for the ticket the sign-up link's verify
+-- handed out, the only kind that registers an owner device, and only while
+-- the account has no device.
 CREATE TABLE IF NOT EXISTS ticket (
   digest       TEXT    PRIMARY KEY,
   account_id   TEXT    NOT NULL,
   key_digest   TEXT    NOT NULL,
   expires_at   INTEGER NOT NULL,
-  used         INTEGER NOT NULL DEFAULT 0
+  used         INTEGER NOT NULL DEFAULT 0,
+  owner        INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS ticket_expires_at ON ticket (expires_at);

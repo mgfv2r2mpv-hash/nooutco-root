@@ -6,9 +6,10 @@
  * CPace code check, its lockout and the reopen link (A5); later handlers
  * arrive with their slices.
  *
- * A device of an account with a code that has not proved the code yet
- * (pending, A5) reaches only the routes marked pendingOk, and every other
- * route answers no-device, as for an unknown device.
+ * A pending device (A5: any device but the owner device the sign-up link
+ * registered, until it proves the account's code) reaches only the routes
+ * marked pendingOk, and every other route answers no-device, as for an
+ * unknown device.
  *
  * What it holds and never holds is in schema.sql. Every request ends in one
  * audit row of route and closed reason word, and work a handler or a refusal

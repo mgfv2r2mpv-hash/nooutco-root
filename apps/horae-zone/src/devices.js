@@ -12,8 +12,11 @@
  * same statement that checks both. Other keys answer bad-ticket and leave the
  * ticket unspent, so a ticket seen in flight neither adds a stranger's device
  * nor uses up the owner's.
- * A5: a device of an account whose code is confirmed (its first code was
- * accepted, A5 security review item 3) starts pending, and reaches only
+ * A5 re-review, root rule: ownership comes from the email inbox, not the
+ * password. A ticket the sign-up link's verify handed out (src/signup.js)
+ * registers the account's first device as its owner device, not pending,
+ * and only while the account has no device. Every other device starts
+ * pending, whether or not a code is enrolled or confirmed, and reaches only
  * /nonce and /unlock until a code it proves is accepted (src/unlock.js).
  *
  * POST /device/remove {device}, signed by a device of the same account,
@@ -23,14 +26,14 @@
  * marked with when it was removed.
  */
 import { Refusal, LIVE_DEVICE, b64url, fromB64url } from "./checks.js";
-import { hasOnly, keysOrUnavailable } from "./signup.js";
+import { hasOnly, keysOrUnavailable, KEY_DIGEST } from "./signup.js";
+
+export { KEY_DIGEST };
 
 const TICKET = /^[A-Za-z0-9_-]{43}$/;
 const DEVICE_ID = /^[A-Za-z0-9_-]{1,64}$/;
 const DEVICE_ID_BYTES = 16;
 const POINT_BYTES = 65;
-// SHA-256, base64url without padding.
-export const KEY_DIGEST = /^[A-Za-z0-9_-]{43}$/;
 
 // The digest /signin binds a ticket to: SHA-256 of the raw sign point then the
 // raw agree point (65 bytes each, so the join is unambiguous), base64url. A
@@ -67,13 +70,17 @@ export async function registerDevice({ db, body, now, env }) {
   if (typeof body.ticket !== "string" || !TICKET.test(body.ticket)) throw new Refusal("shape", 400);
   if (!(await isPoint(body.signKey, "ECDSA")) || !(await isPoint(body.agreeKey, "ECDH"))) throw new Refusal("shape", 400);
   const keys = await keysOrUnavailable(env);
-  const spent = await db.prepare("UPDATE ticket SET used = 1 WHERE digest = ? AND key_digest = ? AND used = 0 AND expires_at > ? RETURNING account_id")
-    .bind(await keys.ticketDigest(body.ticket), await deviceKeyDigest(body.signKey, body.agreeKey), now).first();
+  // An owner ticket is spent only while its account has no device, removed
+  // ones included, so it never makes a second owner.
+  const spent = await db.prepare(
+    `UPDATE ticket SET used = 1 WHERE digest = ? AND key_digest = ? AND used = 0 AND expires_at > ?
+     AND (owner = 0 OR NOT EXISTS (SELECT 1 FROM device WHERE device.account_id = ticket.account_id)) RETURNING account_id, owner`,
+  ).bind(await keys.ticketDigest(body.ticket), await deviceKeyDigest(body.signKey, body.agreeKey), now).first();
   if (!spent) throw new Refusal("bad-ticket", 401);
   const id = b64url(crypto.getRandomValues(new Uint8Array(DEVICE_ID_BYTES)));
-  await db.prepare(
-    "INSERT INTO device (id, account_id, sign_key, agree_key, created_at, pending) VALUES (?, ?, ?, ?, ?, EXISTS (SELECT 1 FROM otp WHERE account_id = ? AND confirmed_by IS NOT NULL))",
-  ).bind(id, spent.account_id, body.signKey, body.agreeKey, now, spent.account_id).run();
+  const owner = spent.owner === 1 ? 1 : 0;
+  await db.prepare("INSERT INTO device (id, account_id, sign_key, agree_key, created_at, pending, owner) VALUES (?, ?, ?, ?, ?, ?, ?)")
+    .bind(id, spent.account_id, body.signKey, body.agreeKey, now, 1 - owner, owner).run();
   return { status: 200, json: { device: id } };
 }
 

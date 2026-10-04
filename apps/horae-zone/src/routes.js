@@ -10,8 +10,9 @@
  *             every signed check, and the handler gets that device; a bad
  *             signature is refused, never treated as unsigned
  * A route with no handler answers not-built, only after its checks pass.
- * pendingOk marks the routes a pending device (an account has a code the
- * device has not proved yet, A5) may reach; every other route refuses it.
+ * pendingOk marks the routes a pending device (A5: a device other than the
+ * owner device that has not proved the account's code) may reach; every
+ * other route refuses it.
  */
 import { issueNonce } from "./checks.js";
 import { startSignup, verifySignup } from "./signup.js";

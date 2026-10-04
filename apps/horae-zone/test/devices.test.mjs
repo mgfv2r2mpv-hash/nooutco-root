@@ -27,6 +27,9 @@ async function answer(res) {
 }
 
 const devices = (db) => db.sqlite.prepare('SELECT * FROM device ORDER BY created_at, rowid').all().map((r) => ({ ...r }));
+// The devices a /signin ticket registered: every one but the owner device the
+// sign-up ticket registered (A5 re-review).
+const added = (db) => devices(db).filter((d) => d.owner === 0);
 const liveNonces = (db, id, now) => db.sqlite.prepare('SELECT COUNT(*) AS n FROM nonce WHERE device_id = ? AND used = 0 AND expires_at > ?').get(id, now).n;
 
 // ---- the plan tests ----
@@ -86,7 +89,7 @@ test('a sign-in with a wrong password or an address with no account is refused a
   const none = await answer(await h.call(signInRequest('no-account@example.test')));
   assert.deepEqual(wrong, { status: 401, json: { error: 'bad-login' } });
   assert.deepEqual(none, wrong);
-  assert.equal(h.db.sqlite.prepare('SELECT COUNT(*) AS n FROM ticket').get().n, 0, 'no ticket was made');
+  assert.equal(h.db.sqlite.prepare('SELECT COUNT(*) AS n FROM ticket WHERE owner = 0').get().n, 0, 'no ticket was made');
 });
 
 test('a sign-in for an address with no account hashes a password like a wrong password does', async (t) => {
@@ -385,7 +388,7 @@ test('a ticket is stored only as a keyed digest, bound to its account and its de
   const account = await signUp(h, ADDRESS);
   const keys = await deviceKeys();
   const ticket = await signIn(h, ADDRESS, { keys });
-  const rows = h.db.sqlite.prepare('SELECT * FROM ticket').all().map((r) => ({ ...r }));
+  const rows = h.db.sqlite.prepare('SELECT * FROM ticket WHERE owner = 0').all().map((r) => ({ ...r }));
   assert.equal(rows.length, 1);
   assert.equal(rows[0].account_id, account);
   assert.equal(rows[0].key_digest, await keyDigestOf(keys));
@@ -403,13 +406,13 @@ test('/device/register requires the ticket from /signin', async () => {
   assert.deepEqual(await answer(await h.call(post('/device/register', { signKey: keys.signKey, agreeKey: keys.agreeKey }))), { status: 400, json: { error: 'shape' } });
   const madeUp = 'A'.repeat(43);
   assert.deepEqual(await answer(await h.call(registerRequest(madeUp, keys))), { status: 401, json: { error: 'bad-ticket' } });
-  assert.deepEqual(devices(h.db), [], 'no device without the ticket');
+  assert.deepEqual(added(h.db), [], 'no device without the ticket');
   const ticket = await signIn(h, ADDRESS, { keys });
   const res = await answer(await h.call(registerRequest(ticket, keys)));
   assert.equal(res.status, 200);
   assert.deepEqual(Object.keys(res.json), ['device']);
   assert.match(res.json.device, /^[A-Za-z0-9_-]{22,64}$/);
-  const [row] = devices(h.db);
+  const [row] = added(h.db);
   assert.equal(row.id, res.json.device);
   assert.equal(row.account_id, account, 'the device joins the account the ticket was issued for');
   assert.equal(row.sign_key, keys.signKey);
@@ -424,7 +427,7 @@ test('a ticket registers one device only', async () => {
   const ticket = await signIn(h, ADDRESS, { keys });
   assert.equal((await h.call(registerRequest(ticket, keys))).status, 200);
   assert.deepEqual(await answer(await h.call(registerRequest(ticket, keys))), { status: 401, json: { error: 'bad-ticket' } });
-  assert.equal(devices(h.db).length, 1);
+  assert.equal(added(h.db).length, 1);
 });
 
 test('a ticket expires', async () => {
@@ -434,7 +437,7 @@ test('a ticket expires', async () => {
   const ticket = await signIn(h, ADDRESS, { keys });
   h.clock.ms += SIGNIN_LIMITS.ticketTtlMs;
   assert.deepEqual(await answer(await h.call(registerRequest(ticket, keys))), { status: 401, json: { error: 'bad-ticket' } });
-  assert.deepEqual(devices(h.db), []);
+  assert.deepEqual(added(h.db), []);
 });
 
 test('NEGATIVE CONTROL: a ticket used just inside its life registers the device', async () => {
@@ -482,10 +485,10 @@ test('M3: a ticket refuses keys other than the ones it was signed in for, and is
   for (const keys of [theirs, { signKey: theirs.signKey, agreeKey: mine.agreeKey }, { signKey: mine.signKey, agreeKey: theirs.agreeKey }]) {
     assert.deepEqual(await answer(await h.call(registerRequest(ticket, keys))), { status: 401, json: { error: 'bad-ticket' } });
   }
-  assert.deepEqual(devices(h.db), [], 'no device for keys the ticket was not signed in for');
+  assert.deepEqual(added(h.db), [], 'no device for keys the ticket was not signed in for');
   const res = await answer(await h.call(registerRequest(ticket, mine)));
   assert.equal(res.status, 200, 'NEGATIVE CONTROL: the keys it was signed in for still register');
-  assert.equal(devices(h.db)[0].sign_key, mine.signKey);
+  assert.equal(added(h.db)[0].sign_key, mine.signKey);
 });
 
 test('M3: a sign-in without a well-formed key digest is refused as shape, before any write', async () => {
@@ -497,7 +500,7 @@ test('M3: a sign-in without a well-formed key digest is refused as shape, before
     assert.deepEqual(await answer(await h.call(post('/signin', body, { 'cf-connecting-ip': '203.0.113.9' }))), { status: 400, json: { error: 'shape' } },
       JSON.stringify(keyDigest));
   }
-  assert.equal(h.db.sqlite.prepare('SELECT COUNT(*) AS n FROM ticket').get().n, 0, 'no ticket was made');
+  assert.equal(h.db.sqlite.prepare('SELECT COUNT(*) AS n FROM ticket WHERE owner = 0').get().n, 0, 'no ticket was made');
   assert.equal(h.db.sqlite.prepare('SELECT COUNT(*) AS n FROM throttle').get().n, before, 'a refused body is not counted');
 });
 
@@ -555,9 +558,9 @@ test('L2: a device removed after its checks passed cannot remove another device'
   await h.call(request);
   assert.notEqual(devices(h.db).find((d) => d.id === caller.id).removed_at, null, 'the removal landed');
   assert.equal(devices(h.db).find((d) => d.id === target.id).removed_at, null, 'the target is untouched');
-  const held = await nonceFor(h.call, target);
+  // The target is pending (A5 re-review), so a nonce is what it can still get.
+  await nonceFor(h.call, target);
   assert.equal(liveNonces(h.db, target.id, h.clock.ms), 1, 'NEGATIVE CONTROL: the target still works');
-  assert.equal((await answer(await h.call(await signed(h.call, target, '/reverify', {}, { nonce: held })))).json.error, 'not-built');
 });
 
 test('L2 NEGATIVE CONTROL: a live device removes another, and itself', async () => {
@@ -643,7 +646,7 @@ test('the service builds signed bytes with the engine function, and accepts the 
   const vector = JSON.parse(readFileSync(`${ROOT}/../../packages/account-engine/test/fixtures/signed-bytes-vector.json`, 'utf8'));
   for (const sig of [vector.sigRaw, vector.sigDer]) {
     const h = harness();
-    h.db.sqlite.prepare('INSERT INTO device (id, account_id, sign_key, created_at) VALUES (?, ?, ?, ?)').run('vector-device', 'acct-v', vector.signKey, h.clock.ms);
+    h.db.sqlite.prepare('INSERT INTO device (id, account_id, sign_key, created_at, pending) VALUES (?, ?, ?, ?, 0)').run('vector-device', 'acct-v', vector.signKey, h.clock.ms);
     h.db.sqlite.prepare('INSERT INTO nonce (value, device_id, expires_at, used) VALUES (?, ?, ?, 0)').run(vector.nonce, 'vector-device', h.clock.ms + 1000);
     const res = await h.call(post(vector.path, vector.body, { 'x-hz-device': 'vector-device', 'x-hz-nonce': vector.nonce, 'x-hz-sig': sig }));
     assert.equal((await res.json()).error, 'not-built', 'the vector signature passed the checks');
@@ -654,14 +657,14 @@ test('the service builds signed bytes with the engine function, and accepts the 
 
 test('sign-in, register and remove each write one audit row of route and reason', async () => {
   const h = harness();
-  await signUp(h, ADDRESS);
+  const owner = await registeredDevice(h, ADDRESS);
   const before = auditRows(h.db).length;
   await h.call(signInRequest(ADDRESS, 'a wrong password here'));
   const keys = await deviceKeys();
   const ticket = await signIn(h, ADDRESS, { keys });
   await h.call(registerRequest('A'.repeat(43), await deviceKeys()));
   const { device } = await (await h.call(registerRequest(ticket, keys))).json();
-  await h.call(await signed(h.call, { id: device, key: keys.key }, '/device/remove', { device }));
+  await h.call(await signed(h.call, owner, '/device/remove', { device }));
   assert.deepEqual(auditRows(h.db).slice(before), [
     { route: '/signin', reason: 'bad-login' },
     { route: '/signin', reason: 'ok' },
