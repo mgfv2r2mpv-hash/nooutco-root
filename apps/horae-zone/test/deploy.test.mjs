@@ -79,16 +79,21 @@ function mockWrangler(state = {}) {
   return { run, calls };
 }
 
-function harness({ wrangler = mockWrangler(), argv = [], answers = ANSWERS, confirm = 'y', edge = 'y', replaceKey, replaceTicketKey, replaceWorker = 'y', ticketKey = FIXED_TICKET_KEY, randomBytes, route = { status: 405, body: '{"error":"method"}', ray: true } } = {}) {
+// route: one answer for every fetch, or a list answered in order (the last
+// repeats). recheck: the answers to "re-check the route now?", in order.
+function harness({ wrangler = mockWrangler(), argv = [], answers = ANSWERS, confirm = 'y', edge = 'y', replaceKey, replaceTicketKey, replaceWorker = 'y', ticketKey = FIXED_TICKET_KEY, randomBytes, route = { status: 405, body: '{"error":"method"}', ray: true }, recheck } = {}) {
   const lines = [];
   const draws = [FIXED_BYTES, FIXED_SEED_BYTES];
   const files = new Map();
   const fetched = [];
   const asked = [];
+  const routes = Array.isArray(route) ? [...route] : [route];
+  const rechecks = recheck === undefined ? undefined : [...recheck];
   const ask = async ({ question, hidden, name }) => {
     asked.push({ question, hidden, name });
     if (name === 'confirm-account') return confirm;
     if (name === 'confirm-edge') return edge;
+    if (name === 'confirm-recheck-route' && rechecks?.length) return rechecks.shift();
     if (name === 'confirm-replace-key' && replaceKey !== undefined) return replaceKey;
     if (name === 'confirm-replace-ticket-key' && replaceTicketKey !== undefined) return replaceTicketKey;
     if (name === 'confirm-replace-worker') return replaceWorker;
@@ -112,7 +117,8 @@ function harness({ wrangler = mockWrangler(), argv = [], answers = ANSWERS, conf
     sleep: async () => {},
     fetchImpl: async (url, init) => {
       fetched.push({ url, init });
-      return new Response(route.body, { status: route.status, headers: route.ray ? { 'cf-ray': 'abc-EWR' } : {} });
+      const answer = routes.length > 1 ? routes.shift() : routes[0];
+      return new Response(answer.body, { status: answer.status, headers: { ...(answer.ray ? { 'cf-ray': 'abc-EWR' } : {}), ...(answer.headers ?? {}) } });
     },
   };
   // ticketKey null leaves the script's own WebCrypto generator in place.
@@ -340,6 +346,70 @@ test('Step 4 prints only the rate rule; the hostname and DNS checks come after t
   const dry = lines.join('\n');
   assert.doesNotMatch(stepText(dry, 4), /Domains & Routes|Proxied/);
   assert.match(stepText(dry, 7), /Check after the deploy[\s\S]*Domains & Routes/);
+});
+
+// What the 4 Oct 2026 deploy met: Super Bot Fight Mode answered the route
+// check with a managed challenge before the Worker saw the request.
+const CHALLENGED = { status: 403, body: '<!DOCTYPE html><html><head><title>Just a moment...</title></head><body></body></html>', ray: true, headers: { 'cf-mitigated': 'challenge' } };
+const ROUTE_OK = { status: 405, body: '{"error":"method"}', ray: true };
+const routeItems = (result) => result.checklist.filter((i) => i.item === 'Route answers');
+
+function assertSkipRule(out) {
+  assert.match(out, /Cloudflare's bot protection is answering before the Worker/);
+  assert.match(out, /Security > Security rules > Create rule > Custom rule/);
+  assert.match(out, new RegExp(`\\(http\\.host eq "${HOSTNAME.replace(/\./g, '\\.')}"\\)`));
+  assert.match(out, /Then take action: Skip/);
+  assert.match(out, /tick only "All Super Bot Fight Mode Rules"/);
+  assert.match(out, /leave "All rate limiting rules" unticked/);
+  assert.match(out, /Place at: First/);
+}
+
+test('a route answered by a Cloudflare challenge fails plainly and prints the exact skip rule', async () => {
+  const h = harness({ route: CHALLENGED, recheck: ['n'] });
+  const result = await deploy(h.deps);
+  const [item] = routeItems(result);
+  assert.equal(item.status, 'FAIL');
+  assert.match(item.detail, /403/);
+  assert.match(item.detail, /Cloudflare's bot protection is answering before the Worker/);
+  assertSkipRule(stepText(h.output(), 7));
+  assert.deepEqual(h.asked.filter((a) => a.name === 'confirm-recheck-route').map((a) => /re-check the route now\? \(y\)/i.test(a.question)), [true]);
+  assert.equal(h.fetched.length, 1, 'n checks the route no more');
+  assert.equal(routeItems(result).length, 1);
+});
+
+test('a challenge page with no cf-mitigated header is read as a challenge too', async () => {
+  const h = harness({ route: { ...CHALLENGED, headers: {}, body: '<html><head><title>Just a moment...</title></head><body><script src="/cdn-cgi/challenge-platform/h/b/orchestrate/chl_page/v1"></script></body></html>' }, recheck: ['n'] });
+  const result = await deploy(h.deps);
+  assert.equal(statusOf(result, 'Route answers'), 'FAIL');
+  assertSkipRule(stepText(h.output(), 7));
+});
+
+test('a re-check after the skip rule turns the route PASS, and redoes no other step', async () => {
+  const base = harness();
+  await deploy(base.deps);
+  const h = harness({ route: [CHALLENGED, ROUTE_OK], recheck: ['y'] });
+  const result = await deploy(h.deps);
+  assert.equal(result.ok, true, h.output());
+  assert.deepEqual(routeItems(result).map((i) => i.status), ['PASS']);
+  assert.equal(h.fetched.length, 2);
+  // The same wrangler calls as a run whose route passed at once: nothing was put, deployed or created twice.
+  assert.deepEqual(h.wrangler.calls.map((c) => c.args), base.wrangler.calls.map((c) => c.args));
+  assert.deepEqual(h.asked.map((a) => a.name).filter((n) => n !== 'confirm-recheck-route'), base.asked.map((a) => a.name));
+  assertNoSecretAnywhere(h);
+});
+
+test('a re-check still challenged asks again; a plain 403 offers no skip rule and no re-check', async () => {
+  const h = harness({ route: [CHALLENGED, CHALLENGED, ROUTE_OK], recheck: ['y', 'y'] });
+  const result = await deploy(h.deps);
+  assert.equal(statusOf(result, 'Route answers'), 'PASS');
+  assert.equal(h.asked.filter((a) => a.name === 'confirm-recheck-route').length, 2);
+
+  // No recheck answer given: the harness throws on the prompt, so none was asked.
+  const plain = harness({ route: { status: 403, body: '{"error":"forbidden"}', ray: true } });
+  const r2 = await deploy(plain.deps);
+  assert.equal(statusOf(r2, 'Route answers'), 'FAIL');
+  assert.doesNotMatch(plain.output(), /is answering before the Worker|Place at: First/);
+  assert.equal(plain.asked.some((a) => a.name === 'confirm-recheck-route'), false);
 });
 
 test('NEGATIVE CONTROL: a planted token in a check\'s output is caught', async () => {
