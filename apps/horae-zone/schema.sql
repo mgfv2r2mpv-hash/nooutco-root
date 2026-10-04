@@ -246,3 +246,14 @@ BEGIN
   INSERT INTO device_check (device_id, account_id, proved_at) VALUES (NEW.device_id, NEW.account_id, NEW.at)
   ON CONFLICT (device_id) DO UPDATE SET proved_at = MAX(device_check.proved_at, excluded.proved_at);
 END;
+
+-- An account locked by the offline block (plan §3.4 "Offline wrong PINs"):
+-- a device that blocked itself after wrong PINs offline reported it, and
+-- every device route of the account refuses account-locked until an
+-- administrator unlocks it (A5c deletes the row through unlockAccount,
+-- src/account-lock.js). No count, PIN or device is kept: the account and
+-- when it locked. Never purged by time.
+CREATE TABLE IF NOT EXISTS account_lock (
+  account_id   TEXT    PRIMARY KEY,
+  locked_at    INTEGER NOT NULL
+);

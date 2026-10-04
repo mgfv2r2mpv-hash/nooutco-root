@@ -12,7 +12,11 @@
  * A route with no handler answers not-built, only after its checks pass.
  * pendingOk marks the routes a pending device (A5: a device other than the
  * owner device that has not proved the account's code) may reach; every
- * other route refuses it.
+ * other route refuses it. lockedOk marks the routes a device of an account
+ * the offline block locked (A5b, src/account-lock.js) may still reach: the
+ * nonce it signs with, and the report itself. Every other device route
+ * answers account-locked, admin routes included, so the device whose PINs
+ * locked the account cannot unlock it.
  */
 import { issueNonce } from "./checks.js";
 import { startSignup, verifySignup } from "./signup.js";
@@ -21,6 +25,7 @@ import { registerDevice, removeDevice } from "./devices.js";
 import { enrolOtp } from "./otp.js";
 import { startUnlock, finishUnlock, reopenUnlock } from "./unlock.js";
 import { setPin, verifyPin } from "./pin.js";
+import { reportBlock } from "./account-lock.js";
 
 export const ROUTES = Object.freeze({
   "/account": { checks: "open", handler: startSignup },
@@ -32,7 +37,7 @@ export const ROUTES = Object.freeze({
   // requires the single-use ticket /signin handed out instead.
   "/device/register": { checks: "open", handler: registerDevice },
   "/device/remove": { checks: "signed", handler: removeDevice },
-  "/nonce": { checks: "device", handler: issueNonce, pendingOk: true },
+  "/nonce": { checks: "device", handler: issueNonce, pendingOk: true, lockedOk: true },
   "/otp/enrol": { checks: "signed", handler: enrolOtp },
   "/unlock/start": { checks: "signed", handler: startUnlock, pendingOk: true },
   "/unlock/finish": { checks: "signed", handler: finishUnlock, pendingOk: true },
@@ -40,6 +45,7 @@ export const ROUTES = Object.freeze({
   "/unlock/reopen": { checks: "open", handler: reopenUnlock },
   "/pin/verify": { checks: "signed", handler: verifyPin },
   "/pin/set": { checks: "signed", handler: setPin },
+  "/pin/blocked": { checks: "signed", handler: reportBlock, lockedOk: true },
   "/pin/reset": { checks: "signed" },
   "/pin/review": { checks: "signed" },
   "/reverify": { checks: "signed" },
@@ -48,5 +54,6 @@ export const ROUTES = Object.freeze({
   "/recover": { checks: "open" },
   "/vault/switch": { checks: "signed" },
   "/admin/unlock-pins": { checks: "admin" },
+  // A5c: its handler calls unlockAccount (src/account-lock.js).
   "/admin/unlock-account": { checks: "admin" },
 });

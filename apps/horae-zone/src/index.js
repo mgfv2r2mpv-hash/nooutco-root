@@ -9,7 +9,9 @@
  * A pending device (A5: any device but the owner device the sign-up link
  * registered, until it proves the account's code) reaches only the routes
  * marked pendingOk, and every other route answers no-device, as for an
- * unknown device.
+ * unknown device. A device of an account the offline block locked (A5b)
+ * reaches only the routes marked lockedOk; every other device route answers
+ * account-locked, read after the device checks.
  *
  * What it holds and never holds is in schema.sql. Every request ends in one
  * audit row of route and closed reason word, and work a handler or a refusal
@@ -29,6 +31,7 @@ import { createMailer } from "../../../packages/account-engine/src/mailer.mjs";
 import { ROUTES } from "./routes.js";
 import { Refusal, readBody, findDevice, checkSignature, isAdmin } from "./checks.js";
 import { purgeExpired } from "./retention.js";
+import { accountLocked } from "./account-lock.js";
 
 const HEADERS = { "content-type": "application/json", "cache-control": "no-store" };
 
@@ -90,6 +93,7 @@ async function run(request, env, ctx, { routes, now, mailer, pinRules }) {
       if (device.pending && !route.pendingOk) throw new Refusal("no-device", 401);
       if (checks === "signed" || checks === "admin") await checkSignature(db, device, request, url.pathname, bytes, now);
       if (checks === "admin" && !(await isAdmin(db, device.account_id))) throw new Refusal("not-admin", 403);
+      if (!route.lockedOk && (await accountLocked(db, device.account_id))) throw new Refusal("account-locked", 423);
     }
     if (!route.handler) throw new Refusal("not-built", 501);
     const out = await route.handler({ db, device, body, now, env, request, mailer: mailer ?? mailerFrom(env), pinRules });
