@@ -121,23 +121,59 @@ test('an email code expires', async () => {
   assert.deepEqual(await answer(await verify(h, { code: codeFrom(h) })), { status: 401, json: { error: 'bad-code' } });
 });
 
-test('wrong tries end a code, so the right code after them is refused', async () => {
+// H1 (security review): a start or a wrong guess by someone else must not
+// end the code the address owner was mailed. A start never deletes a live
+// code, up to SIGNUP_LIMITS.liveCodes stay live together, and a try is
+// compared with each of them.
+test('H1: a second start leaves the first code live, so the owner\'s code still works', async () => {
+  const h = harness();
+  await start(h);
+  const owners = codeFrom(h);
+  await start(h, ADDRESS, '192.0.2.66');
+  assert.equal(h.mail.length, 2, 'the second start mailed a code too');
+  assert.deepEqual(await answer(await verify(h, { code: owners })), { status: 200, json: { ok: true } });
+  assert.equal(accounts(h.db).length, 1);
+});
+
+test('H1: every live code for an address works, the newest included', async () => {
+  const h = harness();
+  for (let i = 0; i < SIGNUP_LIMITS.liveCodes; i += 1) await start(h, ADDRESS, `192.0.2.${40 + i}`);
+  assert.equal(challenges(h.db).length, SIGNUP_LIMITS.liveCodes);
+  assert.equal((await verify(h, { code: codeFrom(h) })).status, 200);
+});
+
+test('H1: wrong guesses from another requester do not end the owner\'s code', async () => {
+  const h = harness();
+  await start(h);
+  const owners = codeFrom(h);
+  for (let i = 0; i < SIGNUP_LIMITS.triesPerAddressRequesterHour; i += 1) {
+    assert.equal((await verify(h, { code: wrongOf(owners), ip: '192.0.2.66' })).status, 401);
+  }
+  assert.deepEqual(await answer(await verify(h, { code: wrongOf(owners), ip: '192.0.2.66' })), { status: 429, json: { error: 'slow-down' } },
+    'one requester gets its share of tries at an address, then slows down');
+  assert.deepEqual(await answer(await verify(h, { code: owners })), { status: 200, json: { ok: true } });
+  assert.equal(accounts(h.db).length, 1);
+});
+
+test('H1: tries at one address are still capped across requesters', async () => {
   const h = harness();
   await start(h);
   const code = codeFrom(h);
-  for (let i = 0; i < SIGNUP_LIMITS.codeTries; i += 1) assert.equal((await verify(h, { code: wrongOf(code) })).status, 401);
-  assert.deepEqual(await answer(await verify(h, { code })), { status: 401, json: { error: 'bad-code' } });
+  const share = SIGNUP_LIMITS.triesPerAddressRequesterHour;
+  for (let i = 0; i < SIGNUP_LIMITS.triesPerAddressHour; i += 1) {
+    assert.equal((await verify(h, { code: wrongOf(code), ip: `192.0.2.${100 + Math.floor(i / share)}` })).status, 401);
+  }
+  assert.deepEqual(await answer(await verify(h, { code: wrongOf(code), ip: '192.0.2.200' })), { status: 429, json: { error: 'slow-down' } });
   assert.deepEqual(accounts(h.db), []);
+  h.clock.ms = T0 + SIGNUP_LIMITS.windowMs;
+  await start(h, ADDRESS, '192.0.2.201');
+  assert.equal((await verify(h, { code: codeFrom(h), ip: '192.0.2.201' })).status, 200, 'the cap lifts after its window');
 });
 
-test('a newer code replaces the older one', async () => {
-  const h = harness();
-  await start(h);
-  const first = codeFrom(h);
-  await start(h);
-  const second = codeFrom(h);
-  if (first !== second) assert.equal((await verify(h, { code: first })).status, 401);
-  assert.equal((await verify(h, { code: second })).status, 200);
+test('H1: the address cap stops tries before any one code reaches its own try limit', () => {
+  assert.ok(SIGNUP_LIMITS.triesPerAddressHour <= SIGNUP_LIMITS.codeTries);
+  assert.ok(SIGNUP_LIMITS.codeTtlMs <= SIGNUP_LIMITS.windowMs, 'a code lives inside one window');
+  assert.ok(SIGNUP_LIMITS.codesPerAddressHour <= SIGNUP_LIMITS.liveCodes, 'the start limit never asks for more live codes than are kept');
 });
 
 test('the code is stored only as a keyed digest', async () => {
