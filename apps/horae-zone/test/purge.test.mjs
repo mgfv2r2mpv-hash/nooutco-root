@@ -112,3 +112,16 @@ test('with no database bound the scheduled purge fails loudly rather than report
     await Promise.all(waits);
   }, /no database/);
 });
+
+// A4: a sign-in ticket dies when it registers a device or expires, so the
+// hourly purge clears spent and expired tickets and keeps a live one.
+test('a purge removes spent and expired sign-in tickets', async () => {
+  const { db } = harness();
+  const addTicket = (digest, expiresAt, used) => db.sqlite.prepare('INSERT INTO ticket (digest, account_id, expires_at, used) VALUES (?, ?, ?, ?)')
+    .run(digest, 'acct-1', expiresAt, used);
+  addTicket('a'.repeat(64), T0, 0);
+  addTicket('b'.repeat(64), T0 + 1, 1);
+  addTicket('c'.repeat(64), T0 + 1, 0);
+  await purgeExpired(db, T0);
+  assert.deepEqual(db.sqlite.prepare('SELECT digest FROM ticket').all().map((r) => r.digest), ['c'.repeat(64)]);
+});
