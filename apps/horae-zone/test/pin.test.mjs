@@ -3,9 +3,9 @@
 // and the PIN, every time, and the code only when the last code this device
 // had accepted is 12 hours old.
 //
-//   /pin/set    {pin, ticket}          -> {ok: true}       the first PIN
-//   /pin/verify {pin}                  -> {ok: true, ...}  under 12 hours
-//   /pin/verify {pin, ticket}          -> {ok: true, ...}  at 12 hours or more
+//   /pin/set    {pin, ticket}          -> {ok: true, grant}  the first PIN
+//   /pin/verify {pin}                  -> {ok: true, grant}  under 12 hours
+//   /pin/verify {pin, ticket}          -> {ok: true, grant}  at 12 hours or more
 //
 // The ticket is /unlock/finish's. The verifier follows the rules the A5
 // security review (item 4) set for it: the kid picks the key, a jti is spent
@@ -14,10 +14,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { b64url, fromB64url } from '../src/checks.js';
-import { PIN_LIMITS } from '../src/pin.js';
+import { PIN_LIMITS, GRANT_LABEL } from '../src/pin.js';
+import { TICKET_LABEL } from '../src/unlock.js';
 import { accountKeys } from '../src/account-keys.js';
 import {
-  harness, post, signed, everyRow, confirmedDevice, registeredDevice, ticketFor, pinCall, pinnedDevice,
+  TICKET_KEY, harness, post, signed, everyRow, confirmedDevice, registeredDevice, ticketFor, pinCall, pinnedDevice,
 } from './helpers.mjs';
 
 // Fixed, fake values: a reserved-domain address and PINs with no run of
@@ -100,6 +101,60 @@ test('a device whose code was never proved with the PIN needs the code at its fi
   const other = { ...(await registeredDevice(h, ADDRESS, { fresh: false })), email: ADDRESS, seed: dev.seed };
   await ticketFor(h, other); // proves the code, clears pending; the ticket is dropped
   assert.deepEqual(await pinCall(h, other, '/pin/verify', { pin: PIN }), { status: 401, json: { error: 'code-needed' } });
+});
+
+// ---- offline (plan §3.3 "Offline and revocation") ----
+
+// The grant's claims when its signature verifies under the public half of
+// the test's HZ_TICKET_KEY with the grant label; otherwise null.
+async function grantClaims(grant) {
+  const [payload, sig, ...rest] = String(grant).split('.');
+  if (rest.length > 0 || !payload || !sig) return null;
+  const { crv, kty, x, y } = JSON.parse(TICKET_KEY);
+  const key = await crypto.subtle.importKey('jwk', { crv, kty, x, y }, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']);
+  const ok = await crypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, key, fromB64url(sig), new TextEncoder().encode(`${GRANT_LABEL}.${payload}`));
+  return ok ? JSON.parse(new TextDecoder().decode(fromB64url(payload))) : null;
+}
+
+test('offline, the PIN alone opens only while the last accepted code is under 12 hours old', async () => {
+  const h = harness();
+  const dev = await confirmedDevice(h, ADDRESS);
+  const first = await ticketFor(h, dev);
+  const provedAt = ticketAt(first);
+  const set = await pinCall(h, dev, '/pin/set', { pin: PIN, ticket: first });
+  assert.equal(set.status, 200);
+  assert.notEqual(GRANT_LABEL, TICKET_LABEL, 'a grant is signed under its own label');
+
+  // Every accepted open hands the device a signed grant; the device checks
+  // the PIN itself offline, and only until the grant's end.
+  for (const answer of [set, await pinCall(h, dev, '/pin/verify', { pin: PIN })]) {
+    assert.deepEqual(Object.keys(answer.json).sort(), ['grant', 'ok'], 'nothing beside the grant: no date, no duration');
+    const claims = await grantClaims(answer.json.grant);
+    assert.ok(claims, 'the grant verifies under the service key and the grant label');
+    assert.equal(claims.until, provedAt + PIN_LIMITS.codeEveryMs, 'the grant ends 12 hours after the last accepted code');
+    assert.equal(claims.device, dev.id);
+    assert.equal(claims.account, dev.account);
+  }
+
+  // An open without the code never extends the 12 hours.
+  h.clock.ms = provedAt + PIN_LIMITS.codeEveryMs - 1;
+  const late = await pinCall(h, dev, '/pin/verify', { pin: PIN });
+  assert.equal((await grantClaims(late.json.grant)).until, provedAt + PIN_LIMITS.codeEveryMs, 'a PIN-only open hands the same end');
+  // The grant's end is where the service itself starts asking the code.
+  h.clock.ms = provedAt + PIN_LIMITS.codeEveryMs;
+  assert.deepEqual(await pinCall(h, dev, '/pin/verify', { pin: PIN }), { status: 401, json: { error: 'code-needed' } });
+  // A fresh code moves the end.
+  const fresh = await ticketFor(h, dev);
+  const renewed = await pinCall(h, dev, '/pin/verify', { pin: PIN, ticket: fresh });
+  assert.equal((await grantClaims(renewed.json.grant)).until, ticketAt(fresh) + PIN_LIMITS.codeEveryMs);
+});
+
+test('a grant is not a ticket, and a ticket is not a grant', async () => {
+  const h = harness();
+  const dev = await pinnedDevice(h, ADDRESS, PIN);
+  const opened = await pinCall(h, dev, '/pin/verify', { pin: PIN });
+  assert.deepEqual(await pinCall(h, dev, '/pin/verify', { pin: PIN, ticket: opened.json.grant }), { status: 401, json: { error: 'bad-ticket' } });
+  assert.equal(await grantClaims(await ticketFor(h, dev)), null, 'NEGATIVE CONTROL: a ticket does not verify as a grant');
 });
 
 // ---- the ticket verifier (A5 security review, item 4) ----

@@ -2,8 +2,8 @@
  * A5b, the app PIN, server side (plan §3.3 "Every app open", §3.4, §3.6
  * /pin/*). One PIN per account, the same on every device.
  *
- *   /pin/set    {pin, ticket}   -> {ok: true}    the account's first PIN
- *   /pin/verify {pin, ticket?}  -> {ok: true}    every app open
+ *   /pin/set    {pin, ticket}   -> {ok: true, grant}   the account's first PIN
+ *   /pin/verify {pin, ticket?}  -> {ok: true, grant}   every app open
  *
  * EVERY OPEN. A signed request (Face ID releases the device's signing key)
  * carrying the PIN, every time; a ticket alone never opens. The code is
@@ -23,6 +23,15 @@
  * was right, so a mistyped PIN does not cost the code. Every refusal of a
  * ticket is bad-ticket.
  *
+ * OFFLINE (§3.3 "Offline and revocation"). Every accepted open hands the
+ * device a grant: {v, kid, account, device, until} signed with HZ_TICKET_KEY
+ * over `${GRANT_LABEL}.${payload}`, so it can never pass as a ticket. `until`
+ * is the device's proved_at plus PIN_LIMITS.codeEveryMs, the moment this
+ * service starts answering code-needed, so an open without the code never
+ * extends it. While the service cannot be reached, the app checks the PIN on
+ * the device and opens only before `until`. The grant is opaque to the user:
+ * no screen shows it or anything read from it.
+ *
  * CUSTODY. The PIN is never stored, bound, logged or echoed: the service keeps
  * only its verifier (src/account-keys.js pinVerifier, PBKDF2 then HMAC under
  * a pepper HKDF derives from HZ_ACCOUNT_KEY) over a random per-account salt.
@@ -34,16 +43,18 @@
  * private blocklist) are injected; without them a PIN cannot be set.
  */
 import { sameHex } from "../../../packages/account-engine/src/limits.mjs";
-import { Refusal, ACCOUNT_CHANGER, LIVE_DEVICE, fromB64url, findDevice, mayChangeAccount } from "./checks.js";
+import { Refusal, ACCOUNT_CHANGER, LIVE_DEVICE, b64url, fromB64url, findDevice, mayChangeAccount } from "./checks.js";
 import { newSalt } from "./account-keys.js";
 import { hasOnly, keysOrUnavailable } from "./signup.js";
-import { TICKET_LABEL, ticketRing } from "./unlock.js";
+import { TICKET_LABEL, ticketKey, ticketRing } from "./unlock.js";
 
 const HOUR_MS = 60 * 60 * 1000;
 
 export const PIN_LIMITS = Object.freeze({
   codeEveryMs: 12 * HOUR_MS,
 });
+
+export const GRANT_LABEL = "horae-zone-offline-grant-v1";
 
 const PIN = /^[0-9]{6}$/;
 const JTI = /^[A-Za-z0-9_-]{22}$/;
@@ -111,6 +122,22 @@ async function spendTicket(db, device, claims) {
   }
 }
 
+async function signKeyOrUnavailable(env) {
+  const signKey = await ticketKey(env);
+  if (!signKey) throw new Refusal("unavailable", 503);
+  return signKey;
+}
+
+// The accepted open's answer: ok and a grant ending 12 hours after this
+// device's last accepted code (read after any spend moved it).
+async function opened(db, device, signKey) {
+  const check = await db.prepare("SELECT proved_at FROM device_check WHERE device_id = ?").bind(device.id).first();
+  const claims = { v: 1, kid: signKey.kid, account: device.account_id, device: device.id, until: check.proved_at + PIN_LIMITS.codeEveryMs };
+  const payload = b64url(enc.encode(JSON.stringify(claims)));
+  const sig = await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, signKey.key, enc.encode(`${GRANT_LABEL}.${payload}`));
+  return { status: 200, json: { ok: true, grant: `${payload}.${b64url(new Uint8Array(sig))}` } };
+}
+
 // The PIN rules' answer as a refusal: shape, or too-easy with its one sentence.
 function allowedOrRefuse(pinRules, pin) {
   const allowed = pinRules.pinAllowed(pin);
@@ -123,6 +150,7 @@ export async function setPin({ db, device, body, now, env, pinRules }) {
   const { pin, ticket } = pinBody(body, { ticketRequired: true });
   if (!pinRules) throw new Refusal("unavailable", 503);
   const keys = await keysOrUnavailable(env);
+  const signKey = await signKeyOrUnavailable(env);
   allowedOrRefuse(pinRules, pin);
   const claims = await ticketOrRefuse(env, ticket, device, now);
   const salt = newSalt();
@@ -140,13 +168,14 @@ export async function setPin({ db, device, body, now, env, pinRules }) {
     throw set ? new Refusal("pin-set", 409) : new Refusal("bad-ticket", 401);
   }
   await spendTicket(db, device, claims);
-  return { status: 200, json: { ok: true } };
+  return opened(db, device, signKey);
 }
 
 export async function verifyPin({ db, device, body, now, env }) {
   const { pin, ticket } = pinBody(body, { ticketRequired: false });
   if (!PIN.test(pin)) throw new Refusal("shape", 400);
   const keys = await keysOrUnavailable(env);
+  const signKey = await signKeyOrUnavailable(env);
   const row = await db.prepare("SELECT verifier, salt FROM pin WHERE account_id = ?").bind(device.account_id).first();
   if (!row) throw new Refusal("no-pin", 409);
   const claims = ticket === null ? null : await ticketOrRefuse(env, ticket, device, now);
@@ -155,5 +184,5 @@ export async function verifyPin({ db, device, body, now, env }) {
   if (codeDue && !claims) throw new Refusal("code-needed", 401);
   if (!sameHex(await keys.pinVerifier(pin, row.salt), row.verifier)) throw new Refusal("bad-pin", 401);
   if (claims) await spendTicket(db, device, claims);
-  return { status: 200, json: { ok: true } };
+  return opened(db, device, signKey);
 }

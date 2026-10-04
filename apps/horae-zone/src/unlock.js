@@ -106,7 +106,7 @@ async function thumbprint({ crv, kty, x, y }) {
   return b64url(new Uint8Array(digest));
 }
 
-async function ticketKey(env) {
+export async function ticketKey(env) {
   try {
     const jwk = JSON.parse(env.HZ_TICKET_KEY);
     const key = await crypto.subtle.importKey("jwk", jwk, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
