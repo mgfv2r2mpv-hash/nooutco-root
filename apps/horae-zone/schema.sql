@@ -85,7 +85,9 @@ CREATE TABLE IF NOT EXISTS account (
 -- never replaces an older one (H1, security review); tries are counted per
 -- row as a record only. Spent and expired rows are refused and purged
 -- hourly. A start for an address that has an account writes a row born
--- spent (M1, security review), so both paths do the same write.
+-- spent (M1, security review), so both paths do the same write; an account
+-- that has never had a device, removed ones included, gets a live row
+-- (MEDIUM-1, final A5 re-review).
 CREATE TABLE IF NOT EXISTS challenge (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
   address_key  TEXT    NOT NULL,

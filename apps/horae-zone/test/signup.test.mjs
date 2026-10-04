@@ -11,7 +11,7 @@ import path from 'node:path';
 import { SIGNUP_LIMITS } from '../src/signup.js';
 import { accountKeys } from '../src/account-keys.js';
 import { b64url } from '../src/checks.js';
-import { harness, post, auditRows, everyRow, ANY_KEY_DIGEST, LINK_BASE, ROOT, T0 } from './helpers.mjs';
+import { harness, post, auditRows, everyRow, addDevice, ANY_KEY_DIGEST, LINK_BASE, ROOT, T0 } from './helpers.mjs';
 
 // Fixed, fake values: reserved-domain addresses, a TEST-NET-1 requester, and
 // a password no one uses.
@@ -50,6 +50,11 @@ const wrongOf = (code) => `${code[0] === 'A' ? 'B' : 'A'}${code.slice(1)}`;
 const NEVER_SENT = 'A'.repeat(22);
 
 const b64urlBytes = (text) => Uint8Array.from(atob(text.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
+
+// MEDIUM-1 (final A5 re-review): an account that never had a device gets a
+// live link from a start, so the tests of an address with an account give
+// the account its owner device, as the app registers it next.
+const withDevice = (h) => addDevice(h.db, { id: 'dev-owner', account: accounts(h.db)[0].id });
 
 async function answer(res) {
   return { status: res.status, json: await res.json() };
@@ -308,6 +313,7 @@ test('item 3: inside a code\'s life an address with an account is sent nothing, 
   const h = harness();
   await start(h);
   assert.equal((await verify(h, { code: codeFrom(h) })).status, 200);
+  await withDevice(h);
   await start(h, 'fresh@example.test', '192.0.2.30');
   const sqlOf = async (email, ip) => {
     const from = h.db.bound.length;
@@ -403,6 +409,7 @@ test('no answer says whether an address already has an account', async () => {
   const h = harness();
   await start(h);
   await verify(h, { code: codeFrom(h) });
+  await withDevice(h);
   const mailed = h.mail.length;
   const existing = await answer(await start(h, 'New-User@Example.TEST', '192.0.2.30'));
   const fresh = await answer(await start(h, 'fresh@example.test', '192.0.2.31'));
@@ -422,6 +429,7 @@ test('a start sends the same statements whether or not the address has an accoun
   const h = harness();
   await start(h);
   await verify(h, { code: codeFrom(h) });
+  await withDevice(h);
   h.clock.ms = T0 + SIGNUP_LIMITS.codeTtlMs;
   const sqlOf = async (email, ip) => {
     const from = h.db.bound.length;
@@ -710,6 +718,7 @@ test('item 5: the alert check sends the same statements whether or not the addre
   const h = harness({ env: { HZ_CODES_PER_DAY: '6', HZ_ALERT_TO: OPERATOR } });
   await start(h);
   await verify(h, { code: codeFrom(h) });
+  await withDevice(h);
   h.clock.ms = T0 + SIGNUP_LIMITS.codeTtlMs; // the spent code's life is over, so both starts mint
   const shape = (s) => s.sql.replace(/\s+/g, ' ');
   const from = h.db.bound.length;

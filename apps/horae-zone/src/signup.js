@@ -2,7 +2,8 @@
  * A3, account + email (plan §3.3 "First device", steps 1 and 2).
  *
  * POST /account {email} mails a single-use link to an address that has no
- * account yet, and answers {ok:true} either way, so no answer says whether an
+ * account yet, or whose account has never had a device (MEDIUM-1, final A5
+ * re-review), and answers {ok:true} either way, so no answer says whether an
  * address already has an account. The link's fragment, which a browser never
  * sends to a server, carries the code: a 128-bit random token in base64url
  * (second security review: a 6-digit code was guessable, so it needed tight
@@ -95,6 +96,9 @@ const LIVE = "address_key = ? AND used = 0 AND expires_at > ?";
 // an account holds a spent one); binds address_key, now. While one is there,
 // a start re-sends instead of minting.
 const UNEXPIRED = "address_key = ? AND expires_at > ?";
+// MEDIUM-1: the account (named `account` in the query) has had a device,
+// removed ones included, the rule an owner ticket is spent under.
+const HAS_HAD_DEVICE = "EXISTS (SELECT 1 FROM device WHERE device.account_id = account.id)";
 
 // The id of the live code whose digest is `digest`, or null. Every digest is
 // compared, with no early exit, so how long this takes does not say which
@@ -241,14 +245,18 @@ function linkOf(env, code) {
 // mint. M1 (security review): the account check rides inside the same
 // INSERT, so an address with an account runs the same statement and the
 // same write; its row is born spent (used = 1), never verifies and is never
-// mailed. Returns { made, sent }; sent is the code to mail when the row is live.
+// mailed. MEDIUM-1 (final A5 re-review): an account that has never had a
+// device, removed ones included (the check the owner ticket is spent under,
+// src/devices.js), gets a live row as an address with no account does, so a
+// client that never registered from its owner ticket has a way back in from
+// the inbox. Returns { made, sent }; sent is the code to mail when the row is live.
 async function mintCode(db, keys, addressKey, now) {
   const code = newCode();
   const digest = await keys.codeDigest(addressKey, code);
   const box = await keys.sealLink(code, addressKey);
   const row = await db.prepare(
     `INSERT INTO challenge (address_key, digest, link_box, expires_at, tries, used)
-     SELECT ?, ?, ?, ?, 0, EXISTS (SELECT 1 FROM account WHERE address_key = ?)
+     SELECT ?, ?, ?, ?, 0, EXISTS (SELECT 1 FROM account WHERE address_key = ? AND ${HAS_HAD_DEVICE})
      WHERE NOT EXISTS (SELECT 1 FROM challenge WHERE ${UNEXPIRED}) RETURNING used`,
   ).bind(addressKey, digest, box, now + SIGNUP_LIMITS.codeTtlMs, addressKey, addressKey, now).first();
   if (!row) return { made: false, sent: null };
