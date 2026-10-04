@@ -19,6 +19,14 @@ node bin/deploy.mjs --dry-run
 
 The dry run lists each prompt with the rule its answer is checked against, each generated key and each secret put as `[masked]` (it generates no key), and the tables and secret names the checklist expects.
 
+After a deploy, to run only the checks and the checklist again (step 6 below), with nothing asked, changed or written:
+
+```
+node bin/deploy.mjs --check-only
+```
+
+It needs no secret: it reads the account, the table list and the secret names (never a value), and fetches the route. It picks the account without asking (the only one logged in, else the one `CLOUDFLARE_ACCOUNT_ID` names) and stops when it cannot tell which. Before the first deploy it stops at once ("wrangler.deploy.toml is not here"). The cron trigger and the rate rule show as SKIPPED with where to look in the dashboard, since a checks-only run has no deploy output and asks nothing.
+
 ## What it asks
 
 The script first prints the wrangler version it found (`wrangler --version`) and stops there if wrangler is missing. Every wrangler call runs with `WRANGLER_LOG_SANITIZE=true`, so a shell that turned wrangler's log redaction off cannot turn it off for this run.
@@ -79,4 +87,16 @@ The script never prints a secret value, never puts one on a command line or in a
 
 ## By hand, in the dashboard
 
-The script prints these with exact clicks: the rate rule on POST `/account` and `/signin` (required at the first deploy, `docs/horae-zone/DESIGN-REVIEW.md` A3 item 13), confirming the hostname shows as Proxied, and a skip rule only if a managed rule or Bot Fight Mode challenges the app's calls (D-22).
+The script prints each of these with its exact clicks, so you can do them while it waits.
+
+1. The rate rule on POST `/account` and `/signin`, required at the first deploy (`docs/horae-zone/DESIGN-REVIEW.md` A3 item 13). Step 4 prints it before the route goes live and asks whether it is in place.
+2. The hostname and DNS checks, printed in the checks step under "Check after the deploy". The Worker and its Custom domain exist only once the deploy has run, so Workers & Pages > horae-zone > Settings > Domains & Routes (the hostname) and DNS (shown as Proxied) are checked then, not before.
+3. The skip rule, required when the zone runs Super Bot Fight Mode. Its definitely automated setting (a managed challenge) answers GET `/account` with a 403 and `cf-mitigated: challenge` before the Worker sees the request, so the route check fails (D-22, seen on the first real deploy, 4 Oct 2026). The script reads that header (or a challenge page) and its FAIL line says "Cloudflare's bot protection is answering before the Worker", then prints the rule:
+   1. dash.cloudflare.com > the nooutco.me zone > Security > Security rules > Create rule > Custom rule.
+   2. Name it horae-zone skip bot protection, click "Edit expression" and paste `(http.host eq "horae-zone.nooutco.me")`.
+   3. Then take action: Skip. Under WAF components to skip, tick only "All Super Bot Fight Mode Rules" and leave "All rate limiting rules" unticked, so the rate rule (item 1) still applies.
+   4. Place at: First, then Deploy.
+
+   Once the rule is in place, type `y` at the script's re-check prompt and it fetches the route again, alone (no other step runs twice). After the run has ended, check again with `node bin/deploy.mjs --check-only`.
+
+   Free Bot Fight Mode (Security > Settings > Bot traffic) runs outside the rule engine, so it cannot be skipped by any custom rule and the skip rule does nothing for it. On a zone running Bot Fight Mode, turn Bot Fight Mode off (or move the zone to Super Bot Fight Mode and add the skip rule), then check again.
