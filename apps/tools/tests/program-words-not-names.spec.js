@@ -44,6 +44,9 @@ const PROGRAM_LINES = [
   'The team reviewed Toileting data, and Task Refusal and Aggression stayed low.',
   'Fidelity was checked on Tolerating Delays and Requesting Breaks.',
   'The technician ran mixed trials on Receptive Identification for the next visit.',
+  // Colour words, added 2026-10-04 from the PHI census.
+  'The client sorted Yellow, Blue and Red blocks, then matched the Purple card.',
+  'BT used the Navy and Maroon bins for Turquoise and Beige items.',
 ];
 
 test.describe('program words in Title Case are not name candidates', () => {
