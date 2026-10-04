@@ -4,17 +4,27 @@
  *
  * SIGNED BYTES. A device signs lv("horae-zone-v1") | lv(nonce) | lv(path) |
  * lv(body), each part length-prefixed (4-byte big-endian), with ECDSA P-256
- * over SHA-256. The Secure Enclave's DER signature and WebCrypto's raw r||s
- * are both accepted. The nonce is single use, bound to the device it was
- * issued to, and lives NONCE_TTL_MS.
+ * over SHA-256. The bytes are built by the engine's signedBytes (A4 moved it
+ * there, with a shared test vector, so Sass and JanusMirror build the same
+ * bytes). The Secure Enclave's DER signature and WebCrypto's raw r||s are
+ * both accepted. The nonce is single use, bound to the device it was issued
+ * to, and lives NONCE_TTL_MS. A device holds at most LIVE_NONCES_PER_DEVICE
+ * live nonces, so a stolen device id cannot fill the nonce table.
  *
  * Every refusal is a closed reason word. Nothing a request carries is echoed,
  * stored or logged.
  */
 
+import { signedBytes } from "../../../packages/account-engine/src/signed-bytes.mjs";
+
+export { signedBytes };
+
 export const MAX_BODY_BYTES = 16 * 1024;
 export const NONCE_TTL_MS = 60_000;
-const LABEL = new TextEncoder().encode("horae-zone-v1");
+// A device signs one request per nonce and a nonce lives NONCE_TTL_MS, so
+// five covers a few requests in flight at once and stays far below anything
+// that could fill the table.
+export const LIVE_NONCES_PER_DEVICE = 5;
 
 export class Refusal extends Error {
   constructor(reason, status) {
@@ -34,19 +44,6 @@ export function fromB64url(text) {
   if (typeof text !== "string" || !/^[A-Za-z0-9_-]+$/.test(text)) return null;
   const s = atob(text.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((text.length + 3) % 4));
   return Uint8Array.from(s, (c) => c.charCodeAt(0));
-}
-
-export function signedBytes(nonce, path, body) {
-  const parts = [LABEL, new TextEncoder().encode(String(nonce)), new TextEncoder().encode(String(path)), body];
-  const out = new Uint8Array(parts.reduce((n, p) => n + 4 + p.length, 0));
-  const view = new DataView(out.buffer);
-  let at = 0;
-  for (const p of parts) {
-    view.setUint32(at, p.length);
-    out.set(p, at + 4);
-    at += 4 + p.length;
-  }
-  return out;
 }
 
 // DER ECDSA-Sig-Value to raw r||s (32 bytes each). Returns null for anything
@@ -124,10 +121,14 @@ export async function isAdmin(db, accountId) {
   return Boolean(row);
 }
 
-// POST /nonce: a fresh challenge for a registered device.
+// POST /nonce: a fresh challenge for a registered device, refused once the
+// device already holds LIVE_NONCES_PER_DEVICE live ones. The count and the
+// insert are one statement, so requests arriving together cannot pass the cap.
 export async function issueNonce({ db, device, now }) {
   const value = b64url(crypto.getRandomValues(new Uint8Array(32)));
-  await db.prepare("INSERT INTO nonce (value, device_id, expires_at, used) VALUES (?, ?, ?, 0)")
-    .bind(value, device.id, now + NONCE_TTL_MS).run();
+  const made = await db.prepare(
+    "INSERT INTO nonce (value, device_id, expires_at, used) SELECT ?, ?, ?, 0 WHERE (SELECT COUNT(*) FROM nonce WHERE device_id = ? AND used = 0 AND expires_at > ?) < ? RETURNING value",
+  ).bind(value, device.id, now + NONCE_TTL_MS, device.id, now, LIVE_NONCES_PER_DEVICE).first();
+  if (!made) throw new Refusal("slow-down", 429);
   return { status: 200, json: { nonce: value } };
 }

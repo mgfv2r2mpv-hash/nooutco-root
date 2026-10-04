@@ -1,6 +1,8 @@
 -- Horae Zone, the nooutco account service. A2: what the route checks use.
--- A3: accounts, email-code challenges and rate-limit rows. Later slices add
--- their tables as additive migrations.
+-- A3: accounts, email-code challenges and rate-limit rows. A4: a device's
+-- agreement key and sign-in tickets. No database has been made from this
+-- file yet, so A4 adds agree_key to the device table in place; once one
+-- exists, later slices add their tables as additive migrations.
 --
 -- WHAT MAY NOT GO IN HERE: a request body, a code, a seed in the clear, a PIN,
 -- vault or session keys, or PHI. Columns hold opaque ids, public keys,
@@ -8,15 +10,20 @@
 -- names; treat "is this column content-free?" as a review gate on every
 -- migration.
 
--- A device's public P-256 signing key (raw uncompressed point, base64url).
--- The private half never leaves the device's Secure Enclave.
+-- A device's public P-256 signing key and agreement key (raw uncompressed
+-- points, base64url). The private halves never leave the device's Secure
+-- Enclave. A removed device keeps its row, stamped removed_at, and every
+-- route refuses it.
 CREATE TABLE IF NOT EXISTS device (
   id          TEXT    PRIMARY KEY,
   account_id  TEXT    NOT NULL,
   sign_key    TEXT    NOT NULL,
+  agree_key   TEXT,
   created_at  INTEGER NOT NULL,
   removed_at  INTEGER
 );
+
+CREATE INDEX IF NOT EXISTS device_account_id ON device (account_id);
 
 -- Single-use challenges a device signs over. Spent or expired rows are
 -- refused, and the hourly scheduled purge deletes them (src/retention.js).
@@ -28,6 +35,7 @@ CREATE TABLE IF NOT EXISTS nonce (
 );
 
 CREATE INDEX IF NOT EXISTS nonce_expires_at ON nonce (expires_at);
+CREATE INDEX IF NOT EXISTS nonce_device_id ON nonce (device_id, used, expires_at);
 
 CREATE TABLE IF NOT EXISTS role (
   account_id  TEXT    NOT NULL,
@@ -83,3 +91,15 @@ CREATE TABLE IF NOT EXISTS throttle (
 );
 
 CREATE INDEX IF NOT EXISTS throttle_bucket_at ON throttle (bucket, at);
+
+-- A4, sign-in tickets: only the keyed digest of a ticket /signin handed out,
+-- bound to its account. A ticket registers one device and dies after a few
+-- minutes; spent and expired rows are purged hourly.
+CREATE TABLE IF NOT EXISTS ticket (
+  digest       TEXT    PRIMARY KEY,
+  account_id   TEXT    NOT NULL,
+  expires_at   INTEGER NOT NULL,
+  used         INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS ticket_expires_at ON ticket (expires_at);

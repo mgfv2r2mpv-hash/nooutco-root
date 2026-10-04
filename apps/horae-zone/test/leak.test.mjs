@@ -7,6 +7,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ROUTES } from '../src/routes.js';
 import { createHandler } from '../src/index.js';
+import { NONCE_TTL_MS } from '../src/checks.js';
 import { harness, addDevice, makeAdmin, post, signed, everyRow, signUp, signInRequest, deviceKeys, registerRequest, ROOT } from './helpers.mjs';
 
 // Fixed, fake test values: a body marker, a 6-digit code, a base32 seed, a
@@ -33,6 +34,10 @@ async function sweep(h, dev) {
   for (const p of Object.keys(ROUTES)) {
     seen.push(await everything(await h.call(post(p, BODY, { 'x-hz-device': CANARIES[4], 'x-hz-nonce': CANARIES[1], 'x-hz-sig': CANARIES[2] }))));
     seen.push(await everything(await h.call(await signed(h.call, dev, p, BODY))));
+    // An open route never spends the nonce it was sent, so each one is let
+    // expire before the next: the device's live-nonce cap would refuse the
+    // sixth.
+    h.clock.ms += NONCE_TTL_MS;
   }
   seen.push(await everything(await h.call(post(`/${CANARIES[0]}/${CANARIES[4]}`, BODY))));
   seen.push(await everything(await h.call(post('/signin', `{"pin":"${CANARIES[3]}"`))));

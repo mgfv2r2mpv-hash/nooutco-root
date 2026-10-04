@@ -10,15 +10,17 @@
  */
 import { issueNonce } from "./checks.js";
 import { startSignup, verifySignup } from "./signup.js";
+import { signIn } from "./signin.js";
+import { registerDevice, removeDevice } from "./devices.js";
 
 export const ROUTES = Object.freeze({
   "/account": { checks: "open", handler: startSignup },
   "/account/email/verify": { checks: "open", handler: verifySignup },
-  "/signin": { checks: "open" },
-  // A4 adds the sign-in ticket this route will require; a device has no key
-  // registered yet, so it cannot sign.
-  "/device/register": { checks: "open" },
-  "/device/remove": { checks: "signed" },
+  "/signin": { checks: "open", handler: signIn },
+  // A device has no key registered yet, so it cannot sign: the handler
+  // requires the single-use ticket /signin handed out instead.
+  "/device/register": { checks: "open", handler: registerDevice },
+  "/device/remove": { checks: "signed", handler: removeDevice },
   "/nonce": { checks: "device", handler: issueNonce },
   "/otp/enrol": { checks: "signed" },
   "/unlock/start": { checks: "signed" },

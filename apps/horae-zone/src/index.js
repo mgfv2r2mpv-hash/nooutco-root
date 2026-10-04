@@ -1,7 +1,8 @@
 /**
  * Horae Zone, the nooutco account service (plan: sass-assistant
  * docs/ios-plan.md §3). The route table and the checks every route passes
- * (A2), sign-up by email code (A3); later handlers arrive with their slices.
+ * (A2), sign-up by email code (A3), sign-in, device registration and removal
+ * and the live-nonce cap (A4); later handlers arrive with their slices.
  *
  * What it holds and never holds is in schema.sql. Every request ends in one
  * audit row of route and closed reason word, and work a handler leaves for

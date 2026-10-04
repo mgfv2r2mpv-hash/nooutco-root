@@ -36,12 +36,12 @@ const ADDRESS = /^[^\s@\p{Cc}]+@[^\s@\p{Cc}]+\.[^\s@\p{Cc}]+$/u;
 const CODE = /^\d{6}$/;
 const CODE_SPACE = 1_000_000;
 
-const hasOnly = (body, keys) => {
+export const hasOnly = (body, keys) => {
   const got = Object.keys(body);
   return got.length === keys.length && keys.every((k) => Object.hasOwn(body, k));
 };
 
-function addressOf(value) {
+export function addressOf(value) {
   if (typeof value !== "string" || value.length > MAX_ADDRESS || !ADDRESS.test(value)) throw new Refusal("shape", 400);
   return value.toLowerCase();
 }
@@ -53,13 +53,13 @@ function passwordOf(value) {
   return value;
 }
 
-async function keysOrUnavailable(env) {
+export async function keysOrUnavailable(env) {
   const keys = await accountKeys(env);
   if (!keys) throw new Refusal("unavailable", 503);
   return keys;
 }
 
-const requesterOf = (request) => request.headers.get("cf-connecting-ip") || "none";
+export const requesterOf = (request) => request.headers.get("cf-connecting-ip") || "none";
 
 // A uniform 6-digit code: values past the last whole multiple of CODE_SPACE
 // are drawn again, so no code is likelier than another.
