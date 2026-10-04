@@ -337,3 +337,70 @@ As in A3.
 
 - The PIN, the 12-hour rule and `/reverify` (A5b), admin actions (A5c) and recovery (A6).
 - Anything that consumes the unlock ticket (A5b, A7).
+
+---
+
+## A5b: the PIN, server side (`apps/horae-zone`, `packages/account-engine`)
+
+### Run
+
+As in A3: `node --test test/*.test.mjs` in `apps/horae-zone`, `npm ci` then `npm test` in `packages/account-engine`, and `node --test --test-concurrency=1 "test/*.test.js"` in `apps/profile-api`.
+
+- **Expected result now:** engine 69 tests (68 pass, 1 skips without the private package; Node, Chromium and `workerd`), Horae Zone 342 tests, 342 pass, and profile-api 195/195. A5b added 61 Horae Zone tests in eight new files, 3 purge tests in `purge.test.mjs`, and 1 engine test (`PIN_LOCKED`); the A5 head `95cf772a` had 278 Horae Zone tests.
+- **Tests that used `/reverify` as the generic not-built signed route** (`checks`, `devices`, `otp`, `purge`) now use `/pair/offer`, since `/reverify` is built. The shared signed-bytes vector (`packages/account-engine/test/fixtures/signed-bytes-vector.json`, shared with Sass and JanusMirror and left unchanged) signs `/reverify` with a body, so its test now expects the handler's `shape` answer and the nonce spent.
+- **No mail is sent.** Every PIN note, reset mail and lock note goes to the injected mail sink, and the tests read the reopen token and the reset code from it.
+- **Test values are fake or made per run,** as in A5. The PIN rules are the engine's five-PIN public fixture (`createPinRules` over `test/fixtures/pin-blocklist.mjs`), injected through `harness({pinRules})`. `HZ_RESET_BASE` is `https://horae-zone.example.test/pin-reset`.
+
+**RED evidence.** Each commit's RED was watched in the run before its build, against a stub that exported only the new constants or answered `not-built`, so the failures were assertions; the counts are in each commit message. To repeat it without the stubs, put back the source before each commit under that commit's own test file and helpers, outside the worktree:
+
+1. For a commit `C` and its file `F`: run `git archive C^ apps/horae-zone packages/account-engine apps/profile-api/test/helpers | tar -x -C /tmp/hz-red` (into an empty `/tmp/hz-red`), then `git show C:apps/horae-zone/test/F > /tmp/hz-red/apps/horae-zone/test/F` and the same for `test/helpers.mjs`.
+2. Link the engine's installed `node_modules` into `/tmp/hz-red/packages/account-engine/`, then run `node --test test/F` in `/tmp/hz-red/apps/horae-zone`.
+3. Remove `/tmp/hz-red` after.
+
+Measured 2026-10-04:
+
+| Commit | File | Before the build (in the run, against the stub) | Repeat, source before the commit |
+|---|---|---|---|
+| `6ad8addc` (test 1) | `pin.test.mjs` | 12 of 12 failing, `not-built` | Fails to load: `ERR_MODULE_NOT_FOUND` for `src/pin.js` |
+| `00efe3de` (test 2) | `pin.test.mjs` | 2 of 2 new tests failing on assertions | Fails to load: no export `GRANT_LABEL` in `src/pin.js` |
+| `6bd0e23d` (test 3) | `pin-block.test.mjs` | 5 of 5 failing on assertions (`no-route`, no mail) | Fails to load: `ERR_MODULE_NOT_FOUND` for `src/account-lock.js` |
+| `63299ecf` (test 4) | `pin-reuse.test.mjs` | 7 of 7 failing (assertions and the missing `pin_lock` table) | Fails to load: no export `PIN_LOCKED` in the engine's `src/pin.mjs` |
+| `e58a3eb1` (online lockout) | `pin-lockout.test.mjs` | 8 of 9 failing, the negative control passing | 10 tests, 9 failing; "NEGATIVE CONTROL: two wrong PINs and then the right one neither lock nor mail" passes |
+| `ddac2b93` (test 6) | `pin-reset.test.mjs` | 8 of 8 failing, `not-built` | Fails to load: `ERR_MODULE_NOT_FOUND` for `src/pin-reset.js` |
+| `06d539f5` (tests 7, 8) | `pin-review.test.mjs` | 7 of 7 failing, `not-built` | Fails to load: `ERR_MODULE_NOT_FOUND` for `src/pin-review.js` |
+| `bf55aa5f` (tests 9, 10) | `reverify.test.mjs` | 7 of 7 failing, `not-built` | Fails to load: `ERR_MODULE_NOT_FOUND` for `src/reverify.js` |
+| `9b3ace78` (test 5) | `pin-plain.test.mjs` | The sweep failing on a real leak: the PIN notes said "30 seconds", "Expires 72 hours" and "12 wrong PINs" | 3 tests, 1 failing: "no user-facing response carries a date, duration, count or hash"; the coverage test and the negative control pass |
+
+### What each file proves
+
+| File | Proves | Negative controls |
+|---|---|---|
+| `test/pin.test.mjs` (added) | **"every open asks for Face ID and the PIN; the code only when the last accepted code is 12 hours old"** and **"offline, the PIN alone opens only while the last accepted code is under 12 hours old"** (plan tests 1 and 2). At 12 hours the open needs the code too, and a fresh code restarts the 12 hours; the 12 hours are per device; a device that never used a code needs it at its first open. Every accepted open answers exactly `{ok, grant}`, and the grant's `until` is the last accepted code plus 12 hours, never moved by a PIN-only open. A grant does not verify as a ticket, nor a ticket as a grant. The ticket verifier: a `jti` is spent once, by the open that accepts it; a wrong PIN does not spend it; it is accepted only on a request its own device signed; a changed, expired, unknown-kid or malformed ticket is refused alike and spends nothing. The first PIN needs a fresh code, and a pending device cannot set one. A PIN too easy to guess is refused with the one sentence; an open with no PIN answers `no-pin`; without the PIN rules no PIN is set. The PIN is in no row or bound value, only its slow, peppered verifier | A right PIN with a fresh ticket opens, and under 12 hours the PIN alone opens |
+| `test/pin-block.test.mjs` (added) | **"ten wrong PINs offline block the device until the service answers, and the service then locks the account until an admin unlocks it"** (plan test 3): after the signed report every device route of the account but `/nonce` and the report answers `account-locked`, a right code and a right PIN included, until `unlockAccount`. The lock is read after the device checks, so an unsigned request learns nothing, and a pending device cannot lock the account. A report from one account locks only that account. The owner is mailed once per lock and at most once an hour, with no digit. The lock row holds the account and its time only, and the report takes no body | Another account's devices keep working |
+| `test/pin-reuse.test.mjs` (added) | **"a replaced PIN is refused with exactly: That PIN is locked for reuse."** (plan test 4). The lock is a keyed hash with a lock-until 365 days on (held equal to `PIN_LIMITS.reuseLockMs`), and the PIN is free again after it. The table locks every replaced PIN, whatever write replaced it. A change needs the current PIN, and the code once this device's last code is 12 hours old. A new PIN too easy to guess gets its sentence; a pending device cannot change the PIN; a change before any PIN answers `no-pin` | A PIN past its lock-until is accepted |
+| `test/pin-lockout.test.mjs` (added) | Plan §3.4's online wrong PINs: three wrong PINs in one window lock it and mail; two in a row or four a day close PIN entry until the link. A change's current PIN counts in the same lockout. Five tries sent together compare exactly 3. Wrong PINs leave code entry open, and wrong codes leave PIN entry open. PIN entry closes per account. 12 wrong PINs a day close it, never more than 2 a window needed. A `code-needed` open is refused before the lockout counts it, and a locked try does not spend a right ticket. The `pin_limits` row keeps only the engine state and a hash of the link. Without the mailer or a reopen base no PIN is compared | `NEGATIVE CONTROL: two wrong PINs and then the right one neither lock nor mail` |
+| `test/pin-plain.test.mjs` (added) | **"no user-facing response carries a date, duration, count or hash"** (plan test 5): one run drives every A5b route through every answer and every A5b mail, then checks each answer's headers (exactly `cache-control` and `content-type`), every key and value (no number, digit, time unit, count word, month or hash-like run) and every mail with its link removed. The grant is the one value left out. The coverage test asserts the run reached 23 answer kinds and all 6 A5b mail subjects | `NEGATIVE CONTROL: the sweep catches a planted date, duration, count or hash`, which also checks that the grant and a link are not flagged |
+| `test/pin-reset.test.mjs` (added) | **"a forgotten PIN resets with any two of code, password and email code, never one"** (plan test 6). A wrong factor beside a right one answers `bad-reset`, never says which, and spends nothing. A reset spends the ticket and the emailed code it used. It locks the old PIN, and a reset to a locked PIN answers the one sentence and spends nothing. The emailed code rides after `#`, dies after its life, and a newer mail replaces it. A pending device can neither ask for the mail nor reset, and a locked account cannot reset. Tries and mails are capped per account each hour. No PIN, password or emailed code is stored or bound in clear, and the owner's note has no number. Without a usable reset base no code is mailed; without the PIN rules no PIN is reset | Each pair of two right factors resets |
+| `test/pin-review.test.mjs` (added) | **"the first four snoozes defer seven days and later ones one day"** and **"the review modal offers exactly Snooze and Change PIN"** (plan tests 7 and 8). A snooze counts only while the review is due, and one that lands while another is in flight counts once (checked by landing a write between the read and the write, and by mutation of the SQL guard). The review takes only `{}` or `{action: "Snooze"}`. An account with no PIN has no review, and a pending device reaches none. Snoozes are per account. The row is the account, a count and a due time, and every new PIN starts a fresh cycle | `{review: false}` before the year is out |
+| `test/reverify.test.mjs` (added) | **"no reverify comes sooner than five minutes after the last"** and **"a cut account locks the app at the next check"** (plan tests 9 and 10). A cut that lands mid-flight still wins: the check answers the cut, never `ok`, and records nothing. Checks never extend the 12 hours: the code is still asked at 12 hours, and no grant comes back. The five minutes are per device. The check takes an empty body, a signature and a device that is not pending. The row holds only which device checked and when | One device's check does not hold back another's |
+| `test/purge.test.mjs` (3 added) | The purge removes spent tickets past their expiry, PIN locks past their lock-until and expired reset codes, and keeps the live ones | The live rows kept |
+| engine `test/pin.test.mjs` (1 added) | `PIN_LOCKED` is exactly "That PIN is locked for reuse." and differs from `PIN_TOO_EASY` | None |
+
+### Manual checks for the reviewer
+
+1. **No PIN in a statement.** `grep -n "bind(" apps/horae-zone/src/pin*.js` lists every bound statement in the PIN files; each binds ids, times, a verifier, a salt or a digest, never the body's `pin`, `password` or `emailCode` (the leak checks in `pin.test.mjs` and `pin-reset.test.mjs` assert the same on every bound value).
+2. **Constant-time compare and no console calls,** as in A5: `grep -rn "digest ===\|=== digest\|console\." apps/horae-zone/src` prints nothing.
+3. **One sentence for reuse.** `grep -rn "locked for reuse" apps/horae-zone/src packages/account-engine/src` prints only the engine's `PIN_LOCKED`.
+4. **No number in an A5b note.** `grep -nE '^\s+"[^"]*[0-9]|subject: "[^"]*[0-9]' apps/horae-zone/src/pin-lockout.js apps/horae-zone/src/pin-reset.js apps/horae-zone/src/account-lock.js` prints nothing.
+5. **Schema is additive.** `git diff 95cf772a -- apps/horae-zone/schema.sql` shows only added lines, each `CREATE ... IF NOT EXISTS`.
+6. **Local smoke test,** as in A5:
+
+   | Request | Expected |
+   |---|---|
+   | `curl -s -X POST -H 'content-type: application/json' -d '{}' localhost:8787/pin/verify` | `{"error":"no-device"}` |
+   | `curl -s -X POST -H 'content-type: application/json' -d '{}' localhost:8787/reverify` | `{"error":"no-device"}` |
+
+### Not in A5b (do not add here)
+
+- The client side of the PIN, the grant and the review modal (A8).
+- `/admin/unlock-account` and the other admin routes (A5c), recovery (A6), the gatekeeper (A7).

@@ -918,3 +918,111 @@ Left as is (accepted, for Kaleb): the mint rules are kept, and a sign-up link th
 
 - The PIN and the 12-hour rule (A5b), admin actions (A5c), recovery and vault switch (A6).
 - Any change to Sass or JanusMirror, real secrets, real mail and any deploy.
+
+---
+
+## A5b: the PIN, server side (`apps/horae-zone`, `packages/account-engine`)
+
+Stacked on A5 (#244, head `95cf772a`), which is in security review. Plan §3.3 ("Every app open", "Offline and revocation"), §3.4 (the PIN) and slice 6 ("A5b, PIN"). The client side (Face ID, the PIN screen, the offline check on the device, the review modal) is the app's, in a later slice; this slice builds what the service answers.
+
+**Commits,** one per plan test or small group, each with its RED watched in the run before the build (the RED counts are in each commit message and in the test plan): `6ad8addc` (test 1), `00efe3de` (test 2), `6bd0e23d` (test 3), `63299ecf` (test 4), `e58a3eb1` (the online wrong-PIN lockout, §3.4), `ddac2b93` (test 6), `06d539f5` (tests 7 and 8), `bf55aa5f` (tests 9 and 10), `9b3ace78` (test 5, last, so its sweep reaches every A5b answer). After the last: Horae Zone 342/342 (278 before A5b), engine 69 (68 pass, 1 skip without the private package; Node, Chromium and `workerd`; the one added test asserts `PIN_LOCKED`), profile-api 195/195.
+
+**Plan tests**, each by its plan name:
+
+| # | Test | File |
+|---|---|---|
+| 1 | "every open asks for Face ID and the PIN; the code only when the last accepted code is 12 hours old" | `test/pin.test.mjs` |
+| 2 | "offline, the PIN alone opens only while the last accepted code is under 12 hours old" | `test/pin.test.mjs` |
+| 3 | "ten wrong PINs offline block the device until the service answers, and the service then locks the account until an admin unlocks it" | `test/pin-block.test.mjs` |
+| 4 | "a replaced PIN is refused with exactly: That PIN is locked for reuse." | `test/pin-reuse.test.mjs` |
+| 5 | "no user-facing response carries a date, duration, count or hash" | `test/pin-plain.test.mjs` |
+| 6 | "a forgotten PIN resets with any two of code, password and email code, never one" | `test/pin-reset.test.mjs` |
+| 7 | "the first four snoozes defer seven days and later ones one day" | `test/pin-review.test.mjs` |
+| 8 | "the review modal offers exactly Snooze and Change PIN" | `test/pin-review.test.mjs` |
+| 9 | "no reverify comes sooner than five minutes after the last" | `test/reverify.test.mjs` |
+| 10 | "a cut account locks the app at the next check" | `test/reverify.test.mjs` |
+
+**Earlier points closed:** the A5 security review's item 4 rules for the ticket's verifier ("What the A5b verifier must do", in A5 above) are built in `src/pin.js`: the kid picks the key, a kid it does not hold is refused before any signature check, the `jti` is spent in the write that accepts the ticket, and only a request the ticket's own device signed can spend it.
+
+### What is in it
+
+| File | Does |
+|---|---|
+| `src/pin.js` | `/pin/set {pin, ticket}` sets the first PIN; `/pin/set {pin, current, ticket?}` changes it; `/pin/verify {pin, ticket?}` is every app open. Each accepted one answers `{ok: true, grant}`. The ticket verifier (kid, own device, `jti` spent once, only after a right PIN). Exports `PIN_LIMITS` (`codeEveryMs` 12 hours, `reuseLockMs` 365 days), `GRANT_LABEL` and the pieces `src/pin-reset.js` shares |
+| `src/pin-lockout.js` | The online wrong-PIN lockout (§3.4): the engine's `limits.mjs` rules in their own `pin_limits` row per account, beside the code path's `limits` row and never mixed with it; the PIN notes (paused, closed with the reopen link, reopened), which carry no number |
+| `src/account-lock.js` | `/pin/blocked {}`: the device's signed report of the offline block, which locks the account. `accountLocked`, and `unlockAccount`, the hook the A5c admin route will call. The lock note to the account's address, at most one an hour |
+| `src/pin-reset.js` | `/pin/reset {}` mails a single-use code in a link fragment; `/pin/reset {pin, ticket?, password?, emailCode?}` resets with any two. Exports `PIN_RESET_LIMITS` and `RESET_NOTE` |
+| `src/pin-review.js` | `/pin/review {}` answers `{review: false}` or `{review: true, actions: ["Snooze", "Change PIN"]}`; `/pin/review {action: "Snooze"}` defers it. Exports `REVIEW_LIMITS` and `REVIEW_ACTIONS` |
+| `src/reverify.js` | `/reverify {}` answers `{ok: true}` at most once every 5 minutes per device, and answers a cut account's refusal first. Exports `REVERIFY_LIMITS` |
+| `src/index.js`, `src/routes.js` | The A5b routes are wired in. After the device and signature checks, a device route answers `account-locked` (423) while the account is locked, except `/nonce` and `/pin/blocked`, which are marked `lockedOk`. `/admin/unlock-account` stays `not-built`, with a comment naming `unlockAccount` |
+| `src/checks.js` | `Refusal` takes an optional user sentence, answered as `message` beside `error` (used only for `too-easy` and `pin-reused`) |
+| `src/lockout.js`, `src/unlock.js` | The lockout's read and write take a path (`code` or `pin`, from a fixed whitelist of two tables). One reopen route, `/unlock/reopen`, serves both paths: the token's table says which path it reopens. `ticketRing(env)` and `ticketKey(env)` are exported for the verifier and the grant |
+| `src/account-keys.js` | A ninth derived key, the PIN pepper; `pinVerifier(pin, salt)` is PBKDF2 (100,000 rounds, the Workers ceiling) then HMAC under that pepper, the same slow hash as the login password |
+| `src/retention.js` | The purge also removes spent tickets past their expiry, PIN locks past their lock-until, and expired reset codes. `account_lock` is never purged by time |
+| `schema.sql` | Nine tables, all additive and `IF NOT EXISTS`: `pin` (account_id, verifier, salt, set_at), `device_check` (device_id, account_id, proved_at), `spent_ticket` (jti, account_id, device_id, at, expires_at), `account_lock` (account_id, locked_at), `pin_lock` (account_id, verifier, locked_until), `pin_limits` (account_id, state, version, reopen_hash), `pin_reset` (account_id, digest, expires_at), `pin_review` (account_id, snoozes, due_at) and `reverify` (device_id, account_id, at). Three triggers: `spent_ticket_proves` moves `device_check.proved_at` in the write that spends a ticket, `pin_replaced_locks` locks every replaced PIN, and `pin_restarts_review` starts a fresh review cycle with every new PIN. `DEPLOY.md` now says 21 tables present |
+| engine `src/pin.mjs` | `PIN_LOCKED = 'That PIN is locked for reuse.'`, so the device and the service share the one sentence |
+| `bin/deploy-parts.mjs`, `DEPLOY.md`, `wrangler.toml` | The deploy script asks for `HZ_RESET_BASE`, checks it like `HZ_REOPEN_BASE` and puts it as a secret; the catalog coverage test went RED on the new env name first |
+
+**New Worker secret:** `HZ_RESET_BASE` (the https page the reset link opens). No new key: the PIN pepper is derived from `HZ_ACCOUNT_KEY` through `src/account-keys.js`, and the grant is signed with `HZ_TICKET_KEY` under its own label.
+
+**New refusal words:** `no-pin` (409), `pin-set` (409, a first `/pin/set` when a PIN exists), `code-needed` (401), `bad-pin` (401), `too-easy` (400, with the engine's sentence), `pin-reused` (409, with exactly "That PIN is locked for reuse."), `account-locked` (423), `two-needed` (400), `bad-reset` (401) and `not-due` (409). `shape`, `unavailable`, `bad-ticket`, `locked`, `slow-down`, `no-device` and `not-owner` are reused.
+
+### Decisions
+
+1. **Every open is a signed request with the PIN.** Face ID releases the device's signing key, so the signature every device route checks is the Face ID part; the PIN rides in the body, every time. A ticket alone never opens.
+2. **The code is asked per device, at 12 hours.** `device_check.proved_at` is the `at` of the last ticket an open of that device spent, written by the `spent_ticket_proves` trigger in the same write that spends the `jti`. An open needs a ticket when that time is 12 hours old or more, or when the device never spent one, and another device's code never spares this one. `code-needed` comes before the PIN is compared, so a PIN guess there learns nothing.
+3. **The ticket is spent only by a right PIN.** A wrong PIN leaves the ticket live, so a mistyped PIN does not cost the code. A changed, expired, unknown-kid or malformed ticket answers `bad-ticket` alike and spends nothing.
+4. **The first PIN needs a fresh code, and only a device that may change the account sets it** (`ACCOUNT_CHANGER`, in the write: before the first accepted code, the owner device). A pending device never reaches any `/pin` route, so the A5 owner rule holds.
+5. **The PIN is never stored, bound, logged or echoed.** The service keeps a slow, peppered verifier over a random per-account salt. The pepper is HKDF-derived from `HZ_ACCOUNT_KEY`, so a copy of the database alone cannot be searched for the PIN; a copy of the database and that key together can, since six digits are a small space, which is why the online and offline lockouts carry the weight. The salt is kept across changes, so one slow hash compares a new PIN with the current one and every live lock.
+6. **The offline window is a signed grant.** Every accepted open answers `{ok: true, grant}`: base64url `{v, kid, account, device, until}`, then the service's ECDSA P-256 signature over `horae-zone-offline-grant-v1.<payload>` under `HZ_TICKET_KEY`. The label keeps a grant from passing as a ticket, and a ticket from passing as a grant. `until` is `proved_at` plus 12 hours, the moment the service starts answering `code-needed`, so an open without the code never extends it. Offline, the app checks the PIN on the device and opens only before `until`.
+7. **Ten wrong PINs offline lock the account.** The app counts them on the device (client side). When it reaches the service, the device signs `/pin/blocked {}`, and one `account_lock` row locks the account: every device route of the account then answers `account-locked`, read after the device and signature checks so an unsigned request learns nothing. Time, a right code, a right PIN and the reopen link do not unlock it; only `unlockAccount`, which the A5c admin route will call. A pending device cannot report, so a password alone cannot lock an account. The report carries no count, so the service keeps none.
+8. **A replaced PIN is locked from reuse for 365 days.** The `pin_replaced_locks` trigger writes a `pin_lock` row for the old verifier whenever `pin.verifier` changes, so a change, a reset and the review's change all lock it the same way. A new PIN equal to the current one or to a live lock answers `pin-reused` with exactly "That PIN is locked for reuse.", and nothing about which PIN or until when.
+9. **Wrong PINs online run JanusMirror's lockout, in their own state.** Every comparison of a PIN (an open's, or a change's current PIN) is admitted into the account's `pin_limits` row first and settled after: 3 wrong in one window lock it and mail the owner, and 2 locked windows in a row or 4 in a day close PIN entry until the emailed link reopens it. Wrong PINs never close code entry, and wrong codes never close PIN entry.
+10. **The forgotten PIN.** `/pin/reset` resets with any two of the code (an unlock ticket), the account password and an emailed single-use code (128 random bits, after the `#` of a link to `HZ_RESET_BASE`, kept only as a keyed digest), on a signed request from a device that may change the account. One factor answers `two-needed` before anything is read. A wrong factor answers `bad-reset`, the same word whichever it was, and spends nothing. A reset spends the ticket and the emailed code, locks the old PIN, restarts the review and mails the owner a note with no number.
+11. **The annual review is the server's schedule.** Due 365 days after `set_at`. The first four snoozes of a cycle defer it 7 days and every later one 1 day, counted from the snooze. The state is one `pin_review` row per account (a count and a due time), and the device keeps nothing. While due, `/pin/review` names exactly the two actions "Snooze" and "Change PIN".
+12. **`/reverify`, the check.** A signed `{}` from a live device that is not pending answers `{ok: true}`, at most once every 5 minutes per device, keyed on the device's last answered check. A cut answers first: a removed device `no-device`, a locked account `account-locked`, even when the cut lands while the check is in flight. A check never moves `proved_at`, so it never extends the 12 hours and hands back no grant.
+13. **No user-facing answer carries a date, duration, count or hash.** Every A5b answer is a closed word, `{ok: true}`, a boolean, the two action names or one of the two fixed sentences. The A5b mails carry no number either, so "paused for a short while" and "works once, for a short time" stand in for the code path's "30 seconds" and "24 hours". The grant is the one exception, and the user never sees it (decision 6).
+
+### Decisions for Kaleb
+
+Choices the plan leaves open, each with the safe default now in the code. Each is one line to change.
+
+| # | Point | Default now | Where |
+|---|---|---|---|
+| 1 | The offline block is reported on a route of its own, `/pin/blocked`, which is not in the plan's §3.6 route table | New route, signed, empty body | `src/routes.js`, `src/account-lock.js` |
+| 2 | A locked account refuses every device route but `/nonce` and `/pin/blocked`, `/device/remove` and the account's admin routes included, so an admin whose own device locked the account needs another admin (or a deploy-time command) to unlock it | As written | `src/index.js` |
+| 3 | The lock is read before the handler runs, so an open already in flight when the lock lands can still finish; `/reverify` alone re-reads it in its write | As written | `src/index.js`, `src/reverify.js` |
+| 4 | The account-locked note goes to the account's address (the plan names no recipient): "The app blocked itself on one of this account's devices after wrong PINs were entered while it could not reach the service.", "The account is now locked on every device.", "It stays locked until an administrator unlocks it." At most one an hour | As written | `lockedNote` in `src/account-lock.js` |
+| 5 | A change rides on `/pin/set {pin, current, ticket?}`, not a new route; choosing the current PIN as the new one answers the same "That PIN is locked for reuse." | As written | `src/pin.js` |
+| 6 | The reuse lock lasts 365 x 24 hours, not a calendar year. The number is a literal inside the SQL trigger, and a test holds it equal to `PIN_LIMITS.reuseLockMs` | 365 days | `schema.sql` `pin_replaced_locks` |
+| 7 | The online PIN lockout also takes the code path's day cap: 12 wrong PINs a day close PIN entry, though the plan names only JanusMirror's window rules | 12 a day | `src/pin-lockout.js`, `WRONG_PER_ACCOUNT_DAY` in `src/lockout.js` |
+| 8 | One reopen route, `/unlock/reopen`, on the one `HZ_REOPEN_BASE` page, serves both paths; the token's table says which path it reopens | As written | `src/lockout.js`, `src/unlock.js` |
+| 9 | `/pin/verify` and a change answer `unavailable` without the mailer or a valid `HZ_REOPEN_BASE`, since the lockout could not mail its link; the first `/pin/set` compares no PIN and is outside the lockout | As written | `src/pin.js` |
+| 10 | The reset needs its own link base, `HZ_RESET_BASE`, a new deploy prompt, because the emailed code has to be read on the signing device, not on the sign-up or reopen page | New secret | `bin/deploy-parts.mjs`, `DEPLOY.md` |
+| 11 | The reset mail and the reset share the one plan route `/pin/reset`; an empty body asks for the mail | As written | `src/pin-reset.js` |
+| 12 | A reset answers `{ok: true}` with no grant, so the next open is a `/pin/verify` (with the code at 12 hours), and a reset never extends the offline window. All three factors together are accepted too. A reset does not reopen PIN entry the online lockout closed (the emailed reopen link does that) | As written | `src/pin-reset.js` |
+| 13 | The reset limits: 5 tries and 3 mails per account an hour, and a 10-minute life for the emailed code | 5, 3, 10 minutes | `PIN_RESET_LIMITS` in `src/pin-reset.js` |
+| 14 | The review state rides on its own `/pin/review` call after an accepted open, and the open's answer stays `{ok, grant}`. "Change PIN" is served by `/pin/set`'s change, so `/pin/review` accepts only `Snooze` | As written | `src/pin-review.js` |
+| 15 | A snooze defers from the moment of the snooze, not from the due time; the snooze count restarts with every new PIN (change, reset or the review's change); a snooze when nothing is due answers `not-due` | As written | `src/pin-review.js`, `schema.sql` `pin_restarts_review` |
+| 16 | A signed request (Face ID) is enough to read or snooze the review, with no PIN, since the answer is one boolean and the plan allows unlimited snoozes | As written | `src/pin-review.js` |
+| 17 | "A cut account" means the device removed or the account locked by the offline block; an admin's revocation of access beyond those is A5c's | As written | `src/reverify.js` |
+| 18 | The 5-minute gate is per device and keyed on the last answered check; a check too soon answers `slow-down` (429) with no time in it; a pending device answers `no-device` | As written | `REVERIFY_LIMITS` in `src/reverify.js` |
+| 19 | `/reverify` does not carry the offline PIN verifier, so how a PIN changed on another device reaches this device's offline check is left to the client slice | Not built | `src/reverify.js` |
+| 20 | Owner mails count as user-facing, so the A5b PIN notes carry no number, while the A5 code notes (in #244's review) keep JanusMirror's numbers; the two paths' notes now differ. The closed note no longer says which rule closed PIN entry | As written | `src/pin-lockout.js` |
+| 21 | The PIN notes: "Horae Zone: PIN entry paused" ("Wrong app PINs were entered for this account in quick succession.", "PIN entry for this account is paused for a short while.", "No PIN was accepted."); "Horae Zone: PIN entry closed" (which kind of rule, the link, "Works once, for a short time.", "Opening it reopens PIN entry only. The right PIN is still needed on the device."); "Horae Zone: PIN entry reopened"; "Horae Zone: app PIN reset link"; "Horae Zone: app PIN reset" ("The app PIN for this account was reset on one of its devices.", "The old PIN no longer opens the app.") | As written | `src/pin-lockout.js`, `src/pin-reset.js` |
+| 22 | The no-number sweep does not treat "once", "single use" (the plan's single-use rule) or the reason word `two-needed` (the plan's any-two rule) as counts, and leaves the signed grant out, since the device reads it and never shows it although its payload holds a time | As written | `test/pin-plain.test.mjs` |
+| 23 | The PIN rules (the engine's `createPinRules` over the private blocklist) are injected into the handler; the deployed Worker needs the private package wired in before a PIN can be set, and without it `/pin/set` answers `unavailable` | Not wired in the deploy | `src/index.js` `createHandler({pinRules})` |
+
+### Open points for the reviewer
+
+| # | Point | Proposed resolution |
+|---|---|---|
+| 1 | Six digits under a database-and-key leak (decision 5): the pepper protects a database copy alone, not one taken with `HZ_ACCOUNT_KEY` | Accept for A5b: the lockouts bound the online guesser, and the device still needs its signing key and Face ID. Revisit if the threat model adds a full Worker compromise |
+| 2 | The lock read before the handler (Kaleb point 3) leaves an open in flight when the lock lands able to finish | Accept: the lock comes from a report after ten offline wrongs, so the in-flight open is the same device's and the next request is refused |
+| 3 | The A5 code notes and the A5b PIN notes differ in whether they carry numbers (Kaleb point 20) | Align the A5 notes once #244's review closes, in their own commit |
+
+### Out of scope for A5b
+
+- The client: Face ID, the PIN screen, the offline check against the grant, the ten-wrong count on the device, the review modal (A8).
+- `/admin/unlock-account` and the other admin routes (A5c), recovery and the vault switch (A6), the gatekeeper's use of the ticket (A7).
+- Any change to Sass or JanusMirror, real secrets, real mail and any deploy.
