@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createPinRules, PIN_TOO_EASY, PIN_LENGTH } from '../src/pin.mjs';
+import { createPinRules, PIN_TOO_EASY, PIN_LOCKED, PIN_LENGTH } from '../src/pin.mjs';
 import { PINS as FIXTURE } from './fixtures/pin-blocklist.mjs';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -14,6 +14,11 @@ test('a PIN with a run of three, or on the blocklist, is refused as too easy to 
   const runs = ['123905', '905123', '987052', '052987', '000583', '583000', '471777', '890123', '310789'];
   for (const pin of [...runs, ...FIXTURE]) assert.deepEqual(pinAllowed(pin), TOO_EASY, pin);
   assert.equal(PIN_TOO_EASY, 'That PIN is too easy to guess.');
+});
+
+test('a PIN locked from reuse has its own one sentence, apart from too easy', () => {
+  assert.equal(PIN_LOCKED, 'That PIN is locked for reuse.');
+  assert.notEqual(PIN_LOCKED, PIN_TOO_EASY);
 });
 
 test('NEGATIVE CONTROL: six digits with no run and not on the blocklist are allowed', () => {

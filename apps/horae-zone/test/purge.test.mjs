@@ -188,3 +188,15 @@ test('a purge removes spent tickets past their exp and keeps each device\'s code
   assert.deepEqual(db.sqlite.prepare('SELECT jti FROM spent_ticket').all().map((r) => r.jti), ['live']);
   assert.deepEqual({ ...db.sqlite.prepare('SELECT device_id, proved_at FROM device_check').get() }, { device_id: 'dev-1', proved_at: T0 - 60_000 });
 });
+
+// A5b: a replaced PIN's lock row is kept until its lock-until, and no longer;
+// past it the PIN may be chosen again, so the row has nothing left to refuse.
+test('a purge removes PIN reuse locks past their lock-until and keeps live ones', async () => {
+  const { db } = harness();
+  const addLock = (verifier, lockedUntil) => db.sqlite.prepare('INSERT INTO pin_lock (account_id, verifier, locked_until) VALUES (?, ?, ?)')
+    .run('acct-1', verifier, lockedUntil);
+  addLock('expired', T0);
+  addLock('live', T0 + 1);
+  await purgeExpired(db, T0);
+  assert.deepEqual(db.sqlite.prepare('SELECT verifier FROM pin_lock').all().map((r) => r.verifier), ['live']);
+});

@@ -15,6 +15,10 @@
 
 export const PIN_LENGTH = 6;
 export const PIN_TOO_EASY = 'That PIN is too easy to guess.';
+// The one sentence a user sees when a new PIN is one of the account's replaced
+// PINs still locked from reuse (plan §3.4 "Reuse lock"): no date, duration,
+// count or hint of which PIN. Horae Zone answers it; the device shows it.
+export const PIN_LOCKED = 'That PIN is locked for reuse.';
 const SHAPE = /^[0-9]{6}$/;
 const DIGITS = 10;
 const RUN_STEPS = new Set([0, 1, DIGITS - 1]); // repeat, up one, down one (mod 10)

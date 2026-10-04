@@ -2,8 +2,9 @@
  * A5b, the app PIN, server side (plan §3.3 "Every app open", §3.4, §3.6
  * /pin/*). One PIN per account, the same on every device.
  *
- *   /pin/set    {pin, ticket}   -> {ok: true, grant}   the account's first PIN
- *   /pin/verify {pin, ticket?}  -> {ok: true, grant}   every app open
+ *   /pin/set    {pin, ticket}            -> {ok: true, grant}   the account's first PIN
+ *   /pin/set    {pin, current, ticket?}  -> {ok: true, grant}   a change
+ *   /pin/verify {pin, ticket?}           -> {ok: true, grant}   every app open
  *
  * EVERY OPEN. A signed request (Face ID releases the device's signing key)
  * carrying the PIN, every time; a ticket alone never opens. The code is
@@ -41,8 +42,19 @@
  * accepted code, the owner device). A pending device never reaches these
  * routes (src/routes.js). The PIN rules (the engine's createPinRules, fed the
  * private blocklist) are injected; without them a PIN cannot be set.
+ *
+ * A CHANGE (§3.4 "Reuse lock") is an open that also names the new PIN: the
+ * current PIN, and the code under the same 12-hour rule as an open, from a
+ * device that may change the account. The account keeps its salt, so the new
+ * PIN's verifier is compared with the current one and every live pin_lock row
+ * by one slow hash; a match answers pin-reused with PIN_LOCKED, the one
+ * sentence the plan allows, and nothing about which PIN or until when. The
+ * write that replaces the verifier is what locks the old PIN for 365 days
+ * (the pin_replaced_locks trigger, schema.sql), so a reset or the annual
+ * review's change locks it the same way. The change restarts set_at.
  */
-import { sameHex } from "../../../packages/account-engine/src/limits.mjs";
+import { sameHex, DAY_MS } from "../../../packages/account-engine/src/limits.mjs";
+import { PIN_LOCKED } from "../../../packages/account-engine/src/pin.mjs";
 import { Refusal, ACCOUNT_CHANGER, LIVE_DEVICE, b64url, fromB64url, findDevice, mayChangeAccount } from "./checks.js";
 import { newSalt } from "./account-keys.js";
 import { hasOnly, keysOrUnavailable } from "./signup.js";
@@ -52,6 +64,9 @@ const HOUR_MS = 60 * 60 * 1000;
 
 export const PIN_LIMITS = Object.freeze({
   codeEveryMs: 12 * HOUR_MS,
+  // schema.sql's pin_replaced_locks trigger writes this number as a literal;
+  // test/pin-reuse.test.mjs holds the two equal.
+  reuseLockMs: 365 * DAY_MS,
 });
 
 export const GRANT_LABEL = "horae-zone-offline-grant-v1";
@@ -122,6 +137,16 @@ async function spendTicket(db, device, claims) {
   }
 }
 
+// The ticket's claims when one came; refuses code-needed when this device's
+// last code is PIN_LIMITS.codeEveryMs old, or it never had one, and none came.
+async function codeOrRefuse(db, env, ticket, device, now) {
+  const claims = ticket === null ? null : await ticketOrRefuse(env, ticket, device, now);
+  const check = await db.prepare("SELECT proved_at FROM device_check WHERE device_id = ?").bind(device.id).first();
+  const codeDue = !check || now - check.proved_at >= PIN_LIMITS.codeEveryMs;
+  if (codeDue && !claims) throw new Refusal("code-needed", 401);
+  return claims;
+}
+
 async function signKeyOrUnavailable(env) {
   const signKey = await ticketKey(env);
   if (!signKey) throw new Refusal("unavailable", 503);
@@ -147,6 +172,7 @@ function allowedOrRefuse(pinRules, pin) {
 }
 
 export async function setPin({ db, device, body, now, env, pinRules }) {
+  if (body !== null && typeof body === "object" && Object.hasOwn(body, "current")) return changePin({ db, device, body, now, env, pinRules });
   const { pin, ticket } = pinBody(body, { ticketRequired: true });
   if (!pinRules) throw new Refusal("unavailable", 503);
   const keys = await keysOrUnavailable(env);
@@ -178,11 +204,55 @@ export async function verifyPin({ db, device, body, now, env }) {
   const signKey = await signKeyOrUnavailable(env);
   const row = await db.prepare("SELECT verifier, salt FROM pin WHERE account_id = ?").bind(device.account_id).first();
   if (!row) throw new Refusal("no-pin", 409);
-  const claims = ticket === null ? null : await ticketOrRefuse(env, ticket, device, now);
-  const check = await db.prepare("SELECT proved_at FROM device_check WHERE device_id = ?").bind(device.id).first();
-  const codeDue = !check || now - check.proved_at >= PIN_LIMITS.codeEveryMs;
-  if (codeDue && !claims) throw new Refusal("code-needed", 401);
+  const claims = await codeOrRefuse(db, env, ticket, device, now);
   if (!sameHex(await keys.pinVerifier(pin, row.salt), row.verifier)) throw new Refusal("bad-pin", 401);
+  if (claims) await spendTicket(db, device, claims);
+  return opened(db, device, signKey);
+}
+
+// A change's body: the new PIN, the current one, and the ticket where given.
+function changeBody(body) {
+  const hasTicket = Object.hasOwn(body, "ticket");
+  if (!hasOnly(body, hasTicket ? ["pin", "current", "ticket"] : ["pin", "current"])) throw new Refusal("shape", 400);
+  if (typeof body.pin !== "string" || typeof body.current !== "string" || !PIN.test(body.current)) throw new Refusal("shape", 400);
+  if (hasTicket && (typeof body.ticket !== "string" || body.ticket.length > MAX_TICKET)) throw new Refusal("shape", 400);
+  return { pin: body.pin, current: body.current, ticket: hasTicket ? body.ticket : null };
+}
+
+// Whether `verifier` is the account's current PIN or one still locked from reuse.
+async function lockedForReuse(db, accountId, verifier, row, now) {
+  if (sameHex(verifier, row.verifier)) return true;
+  const locks = await db.prepare("SELECT verifier FROM pin_lock WHERE account_id = ? AND locked_until > ?").bind(accountId, now).all();
+  return (locks.results ?? []).some((lock) => sameHex(verifier, lock.verifier));
+}
+
+async function changePin({ db, device, body, now, env, pinRules }) {
+  const { pin, current, ticket } = changeBody(body);
+  if (!pinRules) throw new Refusal("unavailable", 503);
+  const keys = await keysOrUnavailable(env);
+  const signKey = await signKeyOrUnavailable(env);
+  allowedOrRefuse(pinRules, pin);
+  const row = await db.prepare("SELECT verifier, salt FROM pin WHERE account_id = ?").bind(device.account_id).first();
+  if (!row) throw new Refusal("no-pin", 409);
+  const claims = await codeOrRefuse(db, env, ticket, device, now);
+  if (!sameHex(await keys.pinVerifier(current, row.salt), row.verifier)) throw new Refusal("bad-pin", 401);
+  const verifier = await keys.pinVerifier(pin, row.salt);
+  if (await lockedForReuse(db, device.account_id, verifier, row, now)) throw new Refusal("pin-reused", 409, undefined, PIN_LOCKED);
+  // Only over the verifier just checked, never onto a PIN locked meanwhile,
+  // and only from a device that may change the account, checked in the write.
+  const changed = await db.prepare(
+    `UPDATE pin SET verifier = ?, set_at = ? WHERE account_id = ? AND verifier = ? AND ${ACCOUNT_CHANGER}
+     AND NOT EXISTS (SELECT 1 FROM pin_lock WHERE account_id = ? AND verifier = ? AND locked_until > ?)
+     ${claims ? "AND NOT EXISTS (SELECT 1 FROM spent_ticket WHERE jti = ?)" : ""} RETURNING account_id`,
+  ).bind(verifier, now, device.account_id, row.verifier, device.id, device.account_id, verifier, now, ...(claims ? [claims.jti] : [])).first();
+  if (!changed) {
+    await findDevice(db, device.id);
+    if (!(await mayChangeAccount(db, device.id))) throw new Refusal("not-owner", 403);
+    const stored = await db.prepare("SELECT verifier FROM pin WHERE account_id = ?").bind(device.account_id).first();
+    if (!stored || !sameHex(stored.verifier, row.verifier)) throw new Refusal("bad-pin", 401);
+    if (await lockedForReuse(db, device.account_id, verifier, stored, now)) throw new Refusal("pin-reused", 409, undefined, PIN_LOCKED);
+    throw new Refusal("bad-ticket", 401);
+  }
   if (claims) await spendTicket(db, device, claims);
   return opened(db, device, signKey);
 }
