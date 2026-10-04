@@ -7,9 +7,11 @@
  * fragment, which a browser never sends to a server.
  *
  * POST /account/email/verify {email, code, password} makes the account only
- * when the code is the live one for that address. Each try is reserved before
- * the compare (so parallel guesses cannot pass the try limit), the compare is
- * sameHex over keyed digests, and a code is spent by the first right try.
+ * when the code is one of the live ones for that address (up to
+ * SIGNUP_LIMITS.liveCodes; a newer start never ends an older code). Each try
+ * is reserved before the compare (so parallel guesses cannot pass the try
+ * limits), the compare is sameHex over keyed digests against every live code,
+ * and a code is spent by the first right try.
  *
  * The limits below are the agent's safe defaults, listed for the owner in the
  * design review ("Decisions for Kaleb"): the plan does not fix them.
@@ -20,9 +22,18 @@ import { Refusal } from "./checks.js";
 import { accountKeys } from "./account-keys.js";
 import { admitThrottle } from "./throttle.js";
 
+// H1 (security review): a start never ends a live code and a wrong guess
+// never ends one either, so no one but the address owner can spend or kill
+// the owner's code. Guessing is bounded instead by the per-address try cap
+// (triesPerAddressHour), of which one requester gets a share
+// (triesPerAddressRequesterHour). codeTries is each code's own ceiling and
+// is never reached first: a code lives inside one window.
 export const SIGNUP_LIMITS = Object.freeze({
   codeTtlMs: 10 * 60 * 1000,
-  codeTries: 5,
+  liveCodes: 3,
+  codeTries: 15,
+  triesPerAddressHour: 15,
+  triesPerAddressRequesterHour: 5,
   codesPerAddressHour: 3,
   startsPerRequesterHour: 10,
   verifiesPerRequesterHour: 20,
@@ -35,6 +46,19 @@ const MAX_ADDRESS = 254;
 const ADDRESS = /^[^\s@\p{Cc}]+@[^\s@\p{Cc}]+\.[^\s@\p{Cc}]+$/u;
 const CODE = /^\d{6}$/;
 const CODE_SPACE = 1_000_000;
+// A live code for one address; binds address_key, codeTries, now.
+const LIVE = "address_key = ? AND used = 0 AND tries < ? AND expires_at > ?";
+
+// The id of the live code whose digest is `digest`, or null. Every digest is
+// compared, with no early exit, so how long this takes does not say which
+// one matched.
+function matchingId(live, digest) {
+  let match = null;
+  for (const row of live) {
+    if (sameHex(digest, row.digest)) match = row.id;
+  }
+  return match;
+}
 
 export const hasOnly = (body, keys) => {
   const got = Object.keys(body);
@@ -123,12 +147,14 @@ export async function startSignup({ db, body, now, env, request, mailer }) {
   const digest = await keys.codeDigest(addressKey, code);
   const existing = await db.prepare("SELECT 1 AS yes FROM account WHERE address_key = ?").bind(addressKey).first();
   if (existing) return { status: 200, json: { ok: true } };
-  // A newer code replaces any older one for the address.
-  await db.batch([
-    db.prepare("DELETE FROM challenge WHERE address_key = ?").bind(addressKey),
-    db.prepare("INSERT INTO challenge (address_key, digest, expires_at, tries, used) VALUES (?, ?, ?, 0, 0)")
-      .bind(addressKey, digest, now + SIGNUP_LIMITS.codeTtlMs),
-  ]);
+  // A newer code joins the live ones and never replaces them; past
+  // liveCodes no code is made or mailed (the start limit keeps that from
+  // happening inside one window).
+  const made = await db.prepare(
+    `INSERT INTO challenge (address_key, digest, expires_at, tries, used) SELECT ?, ?, ?, 0, 0
+     WHERE (SELECT COUNT(*) FROM challenge WHERE ${LIVE}) < ? RETURNING id`,
+  ).bind(addressKey, digest, now + SIGNUP_LIMITS.codeTtlMs, addressKey, SIGNUP_LIMITS.codeTries, now, SIGNUP_LIMITS.liveCodes).first();
+  if (!made) return { status: 200, json: { ok: true } };
   return { status: 200, json: { ok: true }, after: mailAfter(mailer, codeMessage(address, code, link)) };
 }
 
@@ -139,18 +165,20 @@ export async function verifySignup({ db, body, now, env, request }) {
   const password = passwordOf(body.password);
   const keys = await keysOrUnavailable(env);
   const requester = await keys.requesterKey(requesterOf(request));
+  const addressKey = await keys.addressKey(address);
   const admitted = await admitThrottle(db, now, SIGNUP_LIMITS.windowMs, [
     { bucket: `verify-requester:${requester}`, limit: SIGNUP_LIMITS.verifiesPerRequesterHour },
+    { bucket: `verify-address:${addressKey}`, limit: SIGNUP_LIMITS.triesPerAddressHour },
+    { bucket: `verify-pair:${addressKey}:${requester}`, limit: SIGNUP_LIMITS.triesPerAddressRequesterHour },
   ]);
   if (!admitted) throw new Refusal("slow-down", 429);
-  const addressKey = await keys.addressKey(address);
   const digest = await keys.codeDigest(addressKey, body.code);
-  // The try is counted before the compare.
-  const live = await db.prepare(
-    "UPDATE challenge SET tries = tries + 1 WHERE address_key = ? AND used = 0 AND tries < ? AND expires_at > ? RETURNING id, digest",
-  ).bind(addressKey, SIGNUP_LIMITS.codeTries, now).first();
-  if (!live || !sameHex(digest, live.digest)) throw new Refusal("bad-code", 401);
-  const spent = await db.prepare("UPDATE challenge SET used = 1 WHERE id = ? AND used = 0 RETURNING id").bind(live.id).first();
+  // The try is counted on every live code before the compare.
+  const { results: live } = await db.prepare(`UPDATE challenge SET tries = tries + 1 WHERE ${LIVE} RETURNING id, digest`)
+    .bind(addressKey, SIGNUP_LIMITS.codeTries, now).all();
+  const match = matchingId(live, digest);
+  if (match === null) throw new Refusal("bad-code", 401);
+  const spent = await db.prepare("UPDATE challenge SET used = 1 WHERE id = ? AND used = 0 RETURNING id").bind(match).first();
   if (!spent) throw new Refusal("bad-code", 401);
   const login = await keys.hashLogin(password);
   const box = await keys.sealAddress(address, addressKey);

@@ -69,8 +69,9 @@ CREATE TABLE IF NOT EXISTS account (
   created_at   INTEGER NOT NULL
 );
 
--- The live sign-up challenge per address: only the keyed digest of the
--- emailed code, never the code. A newer challenge replaces the older one.
+-- Sign-up challenges: only the keyed digest of each emailed code, never the
+-- code. Up to three per address are live at once and a newer one never
+-- replaces an older one (H1, security review); tries are counted per row.
 -- Spent, used-up and expired rows are refused and purged hourly.
 CREATE TABLE IF NOT EXISTS challenge (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,

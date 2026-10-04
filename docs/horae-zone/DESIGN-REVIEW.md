@@ -223,12 +223,12 @@ It never holds a vault key, a session key, vault data or PHI.
 2. **The code rides in the fragment.** The mail carries `HZ_LINK_BASE#<code>`, built by the engine's `fragmentLink`, which refuses a base that is not https or already has a query or fragment. The code is also in the mail as text, so it can be typed. It is never in a query string (the service refuses any query string), a response body, an audit row or a log.
 3. **Codes:**
    - 6 digits, drawn uniformly (32-bit values past the last whole million are drawn again).
-   - Single use, alive 10 minutes, dead after 5 wrong tries. A newer code replaces the older one for the address.
+   - Single use, alive 10 minutes. Up to 3 are live for an address at once, and a newer code never replaces an older one (changed by H1 below).
    - Stored only as an HMAC digest under a key derived from the service secret, bound to the address key.
    - Compared with the engine's `sameHex`, never `===`.
-4. **A try is counted before the compare.** The verify takes a try with `UPDATE ... RETURNING` and only then compares, so guesses sent together cannot pass the try limit. The first right try spends the code with a second `UPDATE ... WHERE used = 0`.
+4. **A try is counted before the compare.** The verify takes its places in the try limits and a try on every live code (`UPDATE ... RETURNING`) and only then compares, so guesses sent together cannot pass the try limits. It compares with every live code's digest, with no early exit. The first right try spends that code with a second `UPDATE ... WHERE used = 0`.
 5. **No answer says whether an address has an account.** `/account` answers `{ok:true}` for a new address and an existing one, takes the same rate-limit places for both, and mails only a new address. A verify for an address that was never sent a code is `bad-code`, like a wrong code.
-6. **Rate limits are atomic, and a refused request is not counted.** Starts are limited per address and per requester, tries per requester. Before a device has a key, the requester is the connecting address (`cf-connecting-ip`), stored only as a keyed hash.
+6. **Rate limits are atomic, and a refused request is not counted.** Starts are limited per address and per requester. Tries are limited per requester, per address, and per address for one requester (H1). Before a device has a key, the requester is the connecting address (`cf-connecting-ip`), stored only as a keyed hash.
 7. **Shape before the rate limit.** A malformed body is refused before the throttle, so it neither counts nor spends a try.
 8. **The address is stored sealed.** AES-GCM under a derived key, with the address key as associated data, so a box cannot be moved to another row. Lookups use the keyed address hash.
 9. **The password is stored as a peppered slow hash.** 100,000 PBKDF2 iterations is the most the Workers runtime allows. The HMAC pepper means a copied table cannot be guessed against without the Worker secret.
@@ -242,12 +242,27 @@ Safe defaults the plan does not fix. Each is one constant in `src/signup.js`.
 | # | Point | Default now | Where |
 |---|---|---|---|
 | 1 | How long an email code lives | 10 minutes | `SIGNUP_LIMITS.codeTtlMs` |
-| 2 | Wrong tries before a code dies | 5 | `codeTries` |
-| 3 | Codes mailed to one address per hour | 3 | `codesPerAddressHour` |
+| 2 | Code tries at one address per hour, from everyone (H1) | 15 | `triesPerAddressHour` |
+| 3 | Codes mailed to one address per hour, and codes live at once | 3 and 3 | `codesPerAddressHour`, `liveCodes` |
 | 4 | Sign-up starts per connecting address per hour | 10 | `startsPerRequesterHour` |
-| 5 | Code tries per connecting address per hour | 20 | `verifiesPerRequesterHour` |
+| 5 | Code tries per connecting address per hour, and at one address from one connecting address (H1) | 20 and 5 | `verifiesPerRequesterHour`, `triesPerAddressRequesterHour` |
 | 6 | Account password length | 12 to 256 characters | `passwordMin`, `passwordMax` |
 | 7 | The mail wording: subject "Horae Zone sign-up code", then "Sign-up code: <code>", "Works once. Expires 10 minutes after it was sent.", the link, and "No account is made without this code." | As written | `codeMessage` |
+
+### Security review findings and what changed
+
+A security review of `3c3cac63` asked for these fixes before merge. Each one was test first: the tests below fail on `3c3cac63` and pass after the fix.
+
+**H1 (high): anyone could lock a chosen address out of sign-up.** `startSignup` deleted the live code for the address before storing a new one, and five wrong tries ended a code, so a stranger could end the owner's code with one start or five guesses.
+
+What changed (`src/signup.js`):
+- A start never deletes or replaces a live code. Up to `liveCodes` (3) codes are live for an address at once, each with its own try count, and the insert checks that count in the same statement. The start limit (3 per address per hour) keeps the cap from being reached inside one window, and every code a stranger starts is mailed to the owner, who can use it.
+- A verify compares with every live code's digest (`sameHex`, no early exit), so the owner's code works whichever start made it.
+- A wrong guess no longer ends a code. Guessing is bounded by the kept per-address try cap (`triesPerAddressHour`, 15, the same total as 3 codes times the old 5 tries) and a share for one requester at one address (`triesPerAddressRequesterHour`, 5). Each code's own ceiling (`codeTries`, now 15) is never reached first, since a code lives inside one window.
+
+Tests (`test/signup.test.mjs`): "H1: a second start leaves the first code live, so the owner's code still works", "H1: every live code for an address works, the newest included", "H1: wrong guesses from another requester do not end the owner's code", "H1: tries at one address are still capped across requesters", and "H1: the address cap stops tries before any one code reaches its own try limit". They replace "wrong tries end a code" and "a newer code replaces the older one", which pinned the old behaviour.
+
+Left as is (residual): 15 wrong guesses at one address within an hour, from 3 or more connecting addresses, still hold that address's verifies at `slow-down` until the window passes. No guess ends the owner's code, so a code still inside its 10 minutes works once the cap lifts. Any cap on guesses is a cap a stranger can fill; this one bounds a 6-digit code to 45 in a million per address per hour (15 tries against up to 3 live codes).
 
 ### Open points for the reviewer
 
