@@ -57,15 +57,6 @@
     return !!obj && Object.prototype.hasOwnProperty.call(obj, key);
   }
 
-  // The mark state with every rewording taken out and every undo left in.
-  function undosOnly(state) {
-    var out = {};
-    Object.keys(state || {}).forEach(function (k) {
-      if (state[k] && state[k].reverted) out[k] = { reverted: true };
-    });
-    return out;
-  }
-
   /**
    * Read the three stages off every section that has marks right now.
    *
@@ -81,7 +72,8 @@
     var sections = corrections && corrections.sections;
     if (!sections || !window.NoteCorrections) return next;
     var state = markState || {};
-    var undos = undosOnly(state);
+    // Every rewording taken out and every undo left in. See corrections.js.
+    var undos = window.NoteCorrections.undosOnly(state);
     Object.keys(sections).forEach(function (id) {
       next[id] = {
         offered: window.NoteCorrections.textFor(sections, id, {}),
@@ -103,7 +95,8 @@
    *
    * @param {object} args
    * @param {string[]} args.ids      narrative section ids, in note order
-   * @param {object} args.draft      the model's last output
+   * @param {object} args.draft      what NoMe last wrote in each section
+   *   (S.nomeText), which a discarded revision does not move
    * @param {object|null} args.book  from observe()
    * @param {object} args.shipped    S.output
    * @returns {Array<{kind, source, own, before, after}>} only the links where
