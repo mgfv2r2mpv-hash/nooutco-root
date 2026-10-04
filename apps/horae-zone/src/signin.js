@@ -1,10 +1,13 @@
 /**
  * A4, sign-in (plan §3.3 "First device" step 3, "Each further device" step 1).
  *
- * POST /signin {email, password} answers {ticket} when the password is the
- * account's, and a uniform 401 bad-login otherwise. An address with no
- * account answers the same way, after hashing the password the same way, so
- * neither the answer nor how long it takes says whether an account exists.
+ * POST /signin {email, password, keyDigest} answers {ticket} when the password
+ * is the account's, and a uniform 401 bad-login otherwise. keyDigest names the
+ * keys the device will register (src/devices.js deviceKeyDigest), and the
+ * ticket registers only those keys (security review M3), so a ticket seen in
+ * flight cannot add someone else's device. An address with no account
+ * answers the same way, after hashing the password the same way, so neither
+ * the answer nor how long it takes says whether an account exists.
  * Tries are rate limited per requester (across addresses, every try) and per
  * address (from any requester, wrong passwords only); a refused try is not
  * counted. A success takes back its place in the address bucket, in the same
@@ -14,16 +17,17 @@
  * who fill the address bucket hold back a new device, never a known one.
  *
  * The ticket is 32 random bytes, handed out once and stored only as a keyed
- * digest bound to its account. It registers one device (src/devices.js) and
- * dies after SIGNIN_LIMITS.ticketTtlMs. Until A5 no account has an
- * authenticator code, so sign-in asks only for the address and the password;
- * A5 adds the code, RED first.
+ * digest bound to its account and its key digest. It registers one device
+ * (src/devices.js) and dies after SIGNIN_LIMITS.ticketTtlMs. Until A5 no
+ * account has an authenticator code, so sign-in asks for no code; A5 adds
+ * the code, RED first.
  *
  * The limits below are the agent's safe defaults, listed for the owner in the
  * design review ("Decisions for Kaleb"): the plan does not fix them.
  */
 import { sameHex } from "../../../packages/account-engine/src/limits.mjs";
 import { Refusal, b64url } from "./checks.js";
+import { KEY_DIGEST } from "./devices.js";
 import { SIGNUP_LIMITS, hasOnly, addressOf, keysOrUnavailable, requesterOf } from "./signup.js";
 import { admitThrottle, releaseThrottle } from "./throttle.js";
 
@@ -47,9 +51,10 @@ function passwordOf(value) {
 }
 
 export async function signIn({ db, device, body, now, env, request }) {
-  if (!hasOnly(body, ["email", "password"])) throw new Refusal("shape", 400);
+  if (!hasOnly(body, ["email", "password", "keyDigest"])) throw new Refusal("shape", 400);
   const address = addressOf(body.email);
   const password = passwordOf(body.password);
+  if (typeof body.keyDigest !== "string" || !KEY_DIGEST.test(body.keyDigest)) throw new Refusal("shape", 400);
   const keys = await keysOrUnavailable(env);
   const addressKey = await keys.addressKey(address);
   const requester = await keys.requesterKey(requesterOf(request));
@@ -64,8 +69,8 @@ export async function signIn({ db, device, body, now, env, request }) {
   const login = await keys.hashLogin(password, account ? account.login_salt : NO_ACCOUNT_SALT);
   if (!account || !sameHex(login.hash, account.login_hash)) throw new Refusal("bad-login", 401);
   const ticket = b64url(crypto.getRandomValues(new Uint8Array(TICKET_BYTES)));
-  const store = db.prepare("INSERT INTO ticket (digest, account_id, expires_at, used) VALUES (?, ?, ?, 0)")
-    .bind(await keys.ticketDigest(ticket), account.id, now + SIGNIN_LIMITS.ticketTtlMs);
+  const store = db.prepare("INSERT INTO ticket (digest, account_id, key_digest, expires_at, used) VALUES (?, ?, ?, ?, 0)")
+    .bind(await keys.ticketDigest(ticket), account.id, body.keyDigest, now + SIGNIN_LIMITS.ticketTtlMs);
   await db.batch(known ? [store] : [store, releaseThrottle(db, addressBucket, now)]);
   return { status: 200, json: { ticket } };
 }

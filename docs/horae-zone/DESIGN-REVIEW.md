@@ -319,19 +319,19 @@ Left as is (residual):
 
 | File | Does |
 |---|---|
-| `src/signin.js` | `POST /signin {email, password}` answers `{ticket}` or a uniform `bad-login`, plus `SIGNIN_LIMITS` |
-| `src/devices.js` | `POST /device/register {ticket, signKey, agreeKey}` answers `{device}`. `POST /device/remove {device}`, signed, answers `{ok:true}` |
+| `src/signin.js` | `POST /signin {email, password, keyDigest}` answers `{ticket}` or a uniform `bad-login`, plus `SIGNIN_LIMITS` (keyDigest added by M3 below) |
+| `src/devices.js` | `POST /device/register {ticket, signKey, agreeKey}` answers `{device}` when the two keys are the ones the ticket was bound to (M3). `POST /device/remove {device}`, signed, answers `{ok:true}`. `deviceKeyDigest` gives the digest a device sends to `/signin` |
 | `src/checks.js` | `LIVE_NONCES_PER_DEVICE = 5`. `/nonce` is one `INSERT ... SELECT ... WHERE` live count under the cap `RETURNING`. `signedBytes` is imported from the engine and re-exported, with no local builder |
 | `src/account-keys.js` | A sixth derived key, the ticket digest |
 | `src/retention.js` | The purge also removes spent or expired tickets, and clears rate-limit rows past the longer of the sign-up and sign-in windows |
-| `schema.sql` | `device.agree_key` (nullable; changed in place, since no database exists yet), a `ticket` table (digest, account_id, expires_at, used), and indexes on `device(account_id)` and `nonce(device_id, used, expires_at)` |
+| `schema.sql` | `device.agree_key` (nullable; changed in place, since no database exists yet), a `ticket` table (digest, account_id, key_digest, expires_at, used; key_digest added by M3), and indexes on `device(account_id)` and `nonce(device_id, used, expires_at)` |
 | engine `src/signed-bytes.mjs`, `test/fixtures/signed-bytes-vector.json` | See the provenance table under A1 |
 
 **New refusal words:** `bad-login` (401) and `bad-ticket` (401). `slow-down` (429) also answers a sixth live nonce.
 
 ### Decisions
 
-1. **Registration needs the ticket from `/signin`.** The route stays `open`, because a device has no key to sign with yet, and the handler takes exactly `{ticket, signKey, agreeKey}`. The ticket is 32 random bytes, handed out once, stored only as a keyed digest bound to its account, alive 5 minutes, and spent by the same `UPDATE ... RETURNING` that checks it, so it registers one device.
+1. **Registration needs the ticket from `/signin`.** The route stays `open`, because a device has no key to sign with yet, and the handler takes exactly `{ticket, signKey, agreeKey}`. The ticket is 32 random bytes, handed out once, stored only as a keyed digest bound to its account and to the digest of the keys it may register (M3 below), alive 5 minutes, and spent by the same `UPDATE ... RETURNING` that checks it, so it registers one device.
 2. **The keys are checked before the ticket is spent.** Each must be a raw P-256 public point that WebCrypto imports (ECDSA for `signKey`, ECDH for `agreeKey`). An off-curve or malformed key is `shape`, and the ticket stays live.
 3. **Sign-in does not say whether an account exists.** A wrong password and an unknown address both answer `bad-login`, and the unknown address still runs one full password hash with a fixed throwaway salt, so both take the same time. Every try is limited per requester (across addresses). Wrong passwords are limited per address (from any requester), and a success is not counted there. A sign-in signed by a registered device of the account skips the address limit (changed by H2 below).
 4. **Sign-in takes any stored password length.** `/signin` checks only 1 to 256 characters, so a later change to the sign-up length rule never locks out an older account.
@@ -367,13 +367,23 @@ Tests (`test/devices.test.mjs`): "H2: after ten wrong passwords from ten request
 
 Left as is (residual): a first device has no key to sign with, so strangers who fill the address bucket still hold back the owner's first sign-in on a new device for up to an hour. A device of the account that has been stolen (its key with it) can try passwords at the per-requester rate without the address cap; removing it (A4 decision 5) stops that at once.
 
+**M3 (medium): a sign-in ticket was not bound to the keys it registers.** `/device/register` took any two keys with a live ticket, so whoever saw the ticket in its 5 minutes (a log, a proxy, a compromised client library) could register their own device on the owner's account, and spend the ticket so the owner's own registration failed. The digest alone would not have been enough had it covered `signKey` only: a stranger could then send the owner's `signKey` with their own `agreeKey`, and what later slices seal to that device would open on the stranger's key.
+
+What changed:
+- `/signin` takes exactly `{email, password, keyDigest}`. `keyDigest` is SHA-256 over the raw sign point then the raw agree point (65 bytes each, so the join is unambiguous), base64url without padding, 43 characters (`deviceKeyDigest` in `src/devices.js`). A missing or malformed digest is `shape`, refused before any write or rate-limit row.
+- The ticket row stores the digest (`ticket.key_digest`, a public value). `/device/register` computes the digest of the keys it was sent and spends the ticket only where both the ticket digest and the key digest match, in the one `UPDATE ... RETURNING`. Other keys answer `bad-ticket` and leave the ticket unspent, so a stranger's try neither registers nor uses up the owner's ticket.
+
+Tests (`test/devices.test.mjs`): "M3: a ticket refuses keys other than the ones it was signed in for, and is not spent by them" (a stranger's two keys, the stranger's `signKey` with the owner's `agreeKey`, and the reverse, then the owner's keys as NEGATIVE CONTROL) and "M3: a sign-in without a well-formed key digest is refused as shape, before any write" fail on `3c3cac63`. On a `3c3cac63` extract with the sign-in helper sending the old two-field body, the first test shows the defect itself: the stranger's keys register (200, expected 401). `test/helpers.mjs` computes the digest on its own (`keyDigestOf`), apart from `src/devices.js`, so the tests pin the form a device computes; the existing register tests now sign in for the keys they register.
+
+Left as is (residual): the ticket is still a bearer value between the owner's own `/signin` and `/device/register`; the binding means only the device holding the private halves of the bound keys can use what it registers.
+
 ### Open points for the reviewer
 
 | # | Point | Where | Proposed resolution |
 |---|---|---|---|
 | 1 | Sign-in asks no authenticator code yet, because no account has one until A5 (plan §3.6: "Email + password + code") | `src/signin.js` | A5 adds the code to `/signin`, RED first |
 | 2 | `/device/register` has no rate limit of its own | `src/devices.js` | Accept: the ticket is 256-bit and single use |
-| 3 | A ticket is not bound to the keys it will register, so whoever holds it during its 5 minutes picks the keys | `src/devices.js` | Accept for A4. A later slice could have `/signin` take `signKey` and register in one step |
+| 3 | ~~A ticket is not bound to the keys it will register, so whoever holds it during its 5 minutes picks the keys~~ | `src/devices.js` | **Closed by M3** (security review, RED first): `/signin` takes the key digest and the ticket registers only those keys |
 | 4 | No cap on devices per account | `src/devices.js` | Decide with the account screen slice |
 | 5 | App Attest is not checked (plan §3.6: "later") | `src/devices.js` | A later slice |
 | 6 | `device.agree_key` is nullable, because the A2 tests and the vector test add devices without one. `/device/register` always sets it | `schema.sql` | Make it `NOT NULL` once the test helpers pass one |

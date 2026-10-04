@@ -10,7 +10,7 @@ import path from 'node:path';
 import { SIGNUP_LIMITS } from '../src/signup.js';
 import { accountKeys } from '../src/account-keys.js';
 import { b64url } from '../src/checks.js';
-import { harness, post, auditRows, everyRow, LINK_BASE, ROOT, T0 } from './helpers.mjs';
+import { harness, post, auditRows, everyRow, ANY_KEY_DIGEST, LINK_BASE, ROOT, T0 } from './helpers.mjs';
 
 // Fixed, fake values: reserved-domain addresses, a TEST-NET-1 requester, and
 // a password no one uses.
@@ -278,7 +278,7 @@ test('M2: an address with a format or zero-width character, or a non-ASCII local
   for (const email of bad) {
     assert.deepEqual(await answer(await start(h, email)), { status: 400, json: { error: 'shape' } }, JSON.stringify(email));
     assert.deepEqual(await answer(await verify(h, { email, code: '000000' })), { status: 400, json: { error: 'shape' } }, JSON.stringify(email));
-    assert.deepEqual(await answer(await h.call(post('/signin', { email, password: PASSWORD }, { 'cf-connecting-ip': IP }))), { status: 400, json: { error: 'shape' } }, JSON.stringify(email));
+    assert.deepEqual(await answer(await h.call(post('/signin', { email, password: PASSWORD, keyDigest: ANY_KEY_DIGEST }, { 'cf-connecting-ip': IP }))), { status: 400, json: { error: 'shape' } }, JSON.stringify(email));
   }
   assert.deepEqual(h.mail, []);
   assert.deepEqual(challenges(h.db), []);
