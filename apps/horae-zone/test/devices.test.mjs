@@ -39,22 +39,22 @@ test('a request with no registered device signature is refused', async () => {
   const dev = await registeredDevice(h, ADDRESS);
   const stranger = await deviceKeys();
   // Unsigned, under the registered id.
-  assert.equal((await answer(await h.call(post('/reverify', {}, { 'x-hz-device': dev.id })))).json.error, 'stale-nonce');
+  assert.equal((await answer(await h.call(post('/pair/offer', {}, { 'x-hz-device': dev.id })))).json.error, 'stale-nonce');
   // Signed by a key that was never registered, under the registered id.
-  const forged = await signed(h.call, { id: dev.id, key: stranger.key }, '/reverify', {});
+  const forged = await signed(h.call, { id: dev.id, key: stranger.key }, '/pair/offer', {});
   assert.deepEqual(await answer(await h.call(forged)), { status: 401, json: { error: 'bad-signature' } });
   // An id that was never registered.
   assert.deepEqual(await answer(await h.call(post('/nonce', {}, { 'x-hz-device': 'never-registered' }))), { status: 401, json: { error: 'no-device' } });
   // A sign-in ticket is not a device signature.
   const ticket = await signIn(h, ADDRESS);
-  assert.equal((await answer(await h.call(post('/reverify', { ticket }, { 'x-hz-device': ticket })))).json.error, 'no-device');
+  assert.equal((await answer(await h.call(post('/pair/offer', { ticket }, { 'x-hz-device': ticket })))).json.error, 'no-device');
 });
 
 test('NEGATIVE CONTROL: a request signed by the registered key passes the device checks', async () => {
   const h = harness();
   const dev = await registeredDevice(h, ADDRESS);
   for (const der of [false, true]) {
-    assert.deepEqual(await answer(await h.call(await signed(h.call, dev, '/reverify', {}, { der }))), { status: 501, json: { error: 'not-built' } });
+    assert.deepEqual(await answer(await h.call(await signed(h.call, dev, '/pair/offer', {}, { der }))), { status: 501, json: { error: 'not-built' } });
   }
 });
 
@@ -64,11 +64,11 @@ test('a removed device is refused at once', async () => {
   const lost = await registeredDevice(h, ADDRESS, { fresh: false });
   const held = await nonceFor(h.call, lost); // a nonce the lost device already holds
   assert.deepEqual(await answer(await h.call(await signed(h.call, keep, '/device/remove', { device: lost.id }))), { status: 200, json: { ok: true } });
-  assert.deepEqual(await answer(await h.call(await signed(h.call, lost, '/reverify', {}, { nonce: held }))), { status: 401, json: { error: 'no-device' } });
+  assert.deepEqual(await answer(await h.call(await signed(h.call, lost, '/pair/offer', {}, { nonce: held }))), { status: 401, json: { error: 'no-device' } });
   assert.deepEqual(await answer(await h.call(post('/nonce', {}, { 'x-hz-device': lost.id }))), { status: 401, json: { error: 'no-device' } });
   assert.equal(liveNonces(h.db, lost.id, h.clock.ms), 0, 'its live nonces are spent with it');
   // The device that removed it carries on.
-  assert.equal((await answer(await h.call(await signed(h.call, keep, '/reverify', {})))).json.error, 'not-built');
+  assert.equal((await answer(await h.call(await signed(h.call, keep, '/pair/offer', {})))).json.error, 'not-built');
 });
 
 // ---- /signin ----
@@ -519,7 +519,7 @@ test('a device cannot remove a device of another account, and the answer does no
   const theirs = await registeredDevice(h, OTHER);
   assert.deepEqual(await answer(await h.call(await signed(h.call, mine, '/device/remove', { device: theirs.id }))), { status: 200, json: { ok: true } });
   assert.deepEqual(await answer(await h.call(await signed(h.call, mine, '/device/remove', { device: 'never-registered' }))), { status: 200, json: { ok: true } });
-  assert.equal((await answer(await h.call(await signed(h.call, theirs, '/reverify', {})))).json.error, 'not-built', 'theirs still works');
+  assert.equal((await answer(await h.call(await signed(h.call, theirs, '/pair/offer', {})))).json.error, 'not-built', 'theirs still works');
   assert.equal(devices(h.db).find((d) => d.id === theirs.id).removed_at, null);
 });
 
@@ -585,7 +585,7 @@ test('L2: a device removed after its id was checked gets no nonce', async () => 
 test('L2: a nonce of a device stamped removed after its id was checked is not spent', async () => {
   const h = harness();
   const dev = await registeredDevice(h, ADDRESS);
-  const request = await signed(h.call, dev, '/reverify', {});
+  const request = await signed(h.call, dev, '/pair/offer', {});
   removedMidFlight(h, dev.id, FIND_DEVICE, { nonces: false });
   assert.equal((await answer(await h.call(request))).status, 401);
   assert.equal(liveNonces(h.db, dev.id, h.clock.ms), 1, 'the nonce stayed unspent');
@@ -622,7 +622,7 @@ test('a spent or expired nonce frees its place under the cap', async () => {
   const dev = await addDevice(h.db);
   const held = [];
   for (let i = 0; i < LIVE_NONCES_PER_DEVICE; i += 1) held.push(await nonceFor(h.call, dev));
-  await h.call(await signed(h.call, dev, '/reverify', {}, { nonce: held[0] }));
+  await h.call(await signed(h.call, dev, '/pair/offer', {}, { nonce: held[0] }));
   assert.equal((await h.call(post('/nonce', {}, { 'x-hz-device': dev.id }))).status, 200, 'a spent nonce frees a place');
   assert.equal((await h.call(post('/nonce', {}, { 'x-hz-device': dev.id }))).status, 429);
   h.clock.ms += NONCE_TTL_MS;
@@ -649,7 +649,11 @@ test('the service builds signed bytes with the engine function, and accepts the 
     h.db.sqlite.prepare('INSERT INTO device (id, account_id, sign_key, created_at, pending) VALUES (?, ?, ?, ?, 0)').run('vector-device', 'acct-v', vector.signKey, h.clock.ms);
     h.db.sqlite.prepare('INSERT INTO nonce (value, device_id, expires_at, used) VALUES (?, ?, ?, 0)').run(vector.nonce, 'vector-device', h.clock.ms + 1000);
     const res = await h.call(post(vector.path, vector.body, { 'x-hz-device': 'vector-device', 'x-hz-nonce': vector.nonce, 'x-hz-sig': sig }));
-    assert.equal((await res.json()).error, 'not-built', 'the vector signature passed the checks');
+    // The vector signs /reverify with a body that route refuses as shape, an
+    // answer only its handler gives once the nonce is spent and the signature
+    // checked, so reaching it means the vector signature passed the checks.
+    assert.equal((await res.json()).error, 'shape', 'the vector signature passed the checks');
+    assert.equal(h.db.sqlite.prepare('SELECT used FROM nonce WHERE value = ?').get(vector.nonce).used, 1);
   }
 });
 
