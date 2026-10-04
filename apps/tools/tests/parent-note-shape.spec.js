@@ -131,6 +131,30 @@ test.describe('the checker', () => {
     expect(check(v1, GOOD)).toEqual([]);
   });
 
+  /* Kaleb's first live run, rescored. Two of its failures were the checker's:
+     v1 wrote the count as "2 trials completed with physical prompt" and v4
+     wrote "behavior technician", both right. The rest were the draft's. */
+  test('it scores the first live run: real faults fail, right wording passes', () => {
+    const run = JSON.parse(readFileSync(path.join(ROOT, 'tests/fixtures/parent-live-run-2026-10-04.json'), 'utf8')).drafts;
+    const score = (id) => check(fixture.cases.find((c) => c.id === id), run[id]).join('\n');
+
+    const v1 = score('v1-the-original-shape');
+    expect(v1).not.toMatch(/trial count/);
+    expect(v1).toMatch(/missing "Technician"/);
+    expect(v1).toMatch(/Caregiver Response picked "Parent\/Family is responding/);
+
+    const v2 = score('v2-missed-prompt-and-a-teacher');
+    expect(v2).toMatch(/lists "Teacher"/);
+    expect(v2).toMatch(/goal not named in the summary: "Present Token Board Before Demand"/);
+
+    expect(score('v3-generalization-stated')).toBe('');
+
+    const v4 = score('v4-no-bt-today');
+    expect(v4).not.toMatch(/mentions/);
+    expect(v4).toMatch(/"3 of 1"/);
+    expect(v4).toMatch(/Caregiver Response picked ""/);
+  });
+
   test('every case in the fixture is checkable', () => {
     expect(fixture.cases.length).toBeGreaterThanOrEqual(4);
     for (const c of fixture.cases) {

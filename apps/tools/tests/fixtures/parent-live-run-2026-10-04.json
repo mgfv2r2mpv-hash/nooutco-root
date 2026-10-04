@@ -1,0 +1,33 @@
+{
+  "_about": "The four drafts from Kaleb's first live run of scripts/parent-shape-live.js (2026-10-04 02:11 UTC, tools.nooutco.me after #233 deployed), trimmed to the fields the checker reads. Model output from the invented cases in parent-note-shape.json; no client data. parent-note-shape.spec.js scores them so the checker's reading of a real run is pinned: what it failed for a real fault keeps failing, and the two places it misread a right draft stay fixed.",
+  "drafts": {
+    "v1-the-original-shape": {
+      "individualsPresent": ["Parent/Caregiver", "Client"],
+      "caregiverResponse": "Parent/Family is responding to training and generalization of skills is occurring. There are no barriers with their training.",
+      "progressStatus": "Moderate progress towards goals",
+      "summary": "BCBA met with caregivers to review data on current goals and discuss an upcoming technician transition beginning in two weeks. Client skill goal: Complete Functional One-Step Instructions - client completed 0 of 3 trials (tantrum behavior occurred on 1 trial, 2 trials completed with physical prompt; criterion: gesture prompt). Client behavior goal: Climbing occurred 2 instances during parent training. Parent goals all met criterion: Implement Toilet Training Plan - Prompt to Sit for Interval 2/0 (100%), Prompt to Go to Bathroom 2/0 (100%), Use Timer 2/0 (100%). Parent goal Implement BIP Climbing - Prompt FCR (Antecedent) 6/1 (85%); parents prompted functional communication request 5 times when precursors were observed, climbing occurred 1 of those 5 times.",
+      "followup": "Brief new technician on toilet training procedures and climbing antecedent intervention during onboarding in next 2 weeks.\nReview one-step instruction program with caregivers to reduce physical prompting and establish gesture prompt as criterion."
+    },
+    "v2-missed-prompt-and-a-teacher": {
+      "individualsPresent": ["Parent/Caregiver", "Client", "Technician", "Teacher"],
+      "caregiverResponse": "Parent/Family is trying to learn new strategies, but there are some small barriers to generalization.",
+      "progressStatus": "Moderate progress towards goals",
+      "summary": "Client manded for breaks on 3 of 5 trials at independent level, with 1 elopement instance during the session. Parent goal (Deliver Token/Board present before Demand) met on 4 of 5 trials (80%); parent forgot to present Token/Board once before Demand, after which elopement occurred. Teacher reported the same omission pattern at school and requested a meeting to align implementation.",
+      "followup": "Schedule meeting with teacher and parent to align presentation of Token/Board before Demand across settings and review the connection to elopement behavior.\nPlan next session to include practice with error correction when parent misses the antecedent procedure."
+    },
+    "v3-generalization-stated": {
+      "individualsPresent": ["Parent/Caregiver", "Client", "Technician"],
+      "caregiverResponse": "Parent/Family is responding to training and generalization of skills is occurring. There are no barriers with their training.",
+      "progressStatus": "Substantial progress towards goals",
+      "summary": "Parent Goal 1 (Use First-Then Language at Home): 5/0, 100%. Parent Goal 2 (Use First-Then Language in the Community): 4/0, 100%. Caregiver used First-Then language at the grocery store without a reminder from BCBA, demonstrating generalization across settings. No barriers reported. Client Goal (Waiting 2 minutes): 4/0, 100%.",
+      "followup": "Continue data collection on parent use of First-Then language across settings.\nMonitor for sustained generalization in both home and community contexts."
+    },
+    "v4-no-bt-today": {
+      "individualsPresent": ["Parent/Caregiver", "Client"],
+      "caregiverResponse": "",
+      "progressStatus": "Substantial progress towards goals",
+      "summary": "Parent Goal: Follow Visual Schedule - Point to Next achieved 3 of 1 trial correct at 75%. Client Goal: Transitions Between Activities with visual achieved 3 of 0 at 100%. Data collected on both goals during session.",
+      "followup": "Follow up with behavior technician present to plan fading of visual schedule."
+    }
+  }
+}

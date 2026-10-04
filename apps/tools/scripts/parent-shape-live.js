@@ -41,7 +41,14 @@
           "all three"
         ],
         "promptLevelWithCount": {
-          "count": "2 of 3",
+          "count": [
+            "2 of 3",
+            "2/3",
+            "2 trials",
+            "two trials",
+            "other 2",
+            "other two"
+          ],
           "level": "physical"
         },
         "forbidPhrases": [
@@ -86,6 +93,9 @@
           "Client",
           "Technician"
         ],
+        "individualsExclude": [
+          "Teacher"
+        ],
         "caregiverResponse": "Parent/Family is trying to learn new strategies, but there are some small barriers to generalization.",
         "followupItems": [
           1,
@@ -128,6 +138,10 @@
           "Transitions Between Activities"
         ],
         "goalCount": 2,
+        "forbidPhrases": [
+          "3 of 1",
+          "3 of 0"
+        ],
         "individualsInclude": [
           "Parent/Caregiver",
           "Client"
@@ -141,7 +155,10 @@
           3
         ],
         "followupMentions": [
-          "BT"
+          [
+            "BT",
+            "technician"
+          ]
         ]
       }
     }
@@ -150,6 +167,7 @@
   const QUESTION_LINE = /^\s*(clarify|specify|(confirm|verify|determine|check|ask|identify) (whether|if)|find out (whether|if))\b|\?\s*$/i;
   
   const lc = (s) => String(s || '').toLowerCase();
+  const anyOf = (v) => [].concat(v);
   
   function checkParentDraft(c, draft) {
     const e = c.expect || {};
@@ -167,11 +185,14 @@
       if (lc(all).includes(lc(p))) fails.push(`a phrase that must not appear: "${p}"`);
     }
     if (e.promptLevelWithCount) {
+      // count may list several ways to write the same count ("2 of 3", "2
+      // trials"); Kaleb's first live run wrote one the single form missed.
       const { count, level } = e.promptLevelWithCount;
+      const forms = anyOf(count);
       const sentences = summary.split(/(?<=[.!?])\s+/);
-      const withCount = sentences.filter((s) => lc(s).includes(lc(count)));
-      if (!withCount.length) fails.push(`the trial count "${count}" is missing`);
-      else if (!withCount.some((s) => lc(s).includes(lc(level)))) fails.push(`"${count}" is written without the prompt level ("${level}") beside it`);
+      const withCount = sentences.filter((s) => forms.some((f) => lc(s).includes(lc(f))));
+      if (!withCount.length) fails.push(`the trial count ("${forms.join('" or "')}") is missing`);
+      else if (!withCount.some((s) => lc(s).includes(lc(level)))) fails.push(`the trial count is written without the prompt level ("${level}") beside it`);
     }
   
     const present = draft.individualsPresent || [];
@@ -191,8 +212,10 @@
       if (items.length < lo || items.length > hi) fails.push(`Follow Up has ${items.length} item(s), expected ${lo} to ${hi}`);
     }
     for (const line of items) if (QUESTION_LINE.test(line)) fails.push(`Follow Up holds a question to the author: "${line}"`);
-    for (const word of e.followupMentions || []) {
-      if (!items.some((l) => lc(l).includes(lc(word)))) fails.push(`no Follow Up item mentions "${word}"`);
+    // An entry may list alternatives: ["BT", "technician"] is met by either.
+    for (const entry of e.followupMentions || []) {
+      const words = anyOf(entry);
+      if (!items.some((l) => words.some((w) => lc(l).includes(lc(w))))) fails.push(`no Follow Up item mentions "${words.join('" or "')}"`);
     }
     return fails;
   }
