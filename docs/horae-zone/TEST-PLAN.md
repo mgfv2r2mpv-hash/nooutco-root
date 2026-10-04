@@ -253,3 +253,57 @@ As in A3.
 - The authenticator code on `/signin`, unlock and its lockout (A5).
 - The PIN (A5b), admin actions (A5c) and recovery (A6).
 - Pairing a vault to a new device (`/pair/offer`, `/pair/take`).
+
+---
+
+## A5: the single authenticator code (`apps/horae-zone`, `packages/account-engine`)
+
+### Run
+
+As in A3.
+
+- **Expected result now:** engine 68 tests (67 pass, 1 skips without the private package), Horae Zone 122 tests, 122 pass, and profile-api 195/195.
+- **No mail is sent.** Every lock note goes to the injected mail sink, and the tests read the reopen token from it.
+- **Test values are fake or made per run:** `HZ_SEED_KEY` is a fixed fake value, `HZ_TICKET_KEY` is a P-256 key pair the harness makes for each run and never writes down, and `HZ_REOPEN_BASE` is `https://horae-zone.example.test/reopen`. The device side of CPace runs in the test with the engine's `pake.mjs`, and codes come from the engine's `totp.mjs` over the seed the enrolment answered.
+
+**RED evidence.**
+1. Run `git checkout c7b589a8 -- packages/account-engine apps/horae-zone`, then both suites.
+2. Expect the engine 57 tests with 1 failing: `pake.test.mjs` cannot load (`'../src/pake.mjs' does not provide an export named 'unlockChannelFor'`). Every other engine test passes (1 skips).
+3. Expect Horae Zone 97 tests with 16 failing:
+   - `otp.test.mjs` and `unlock.test.mjs` cannot load (`ERR_MODULE_NOT_FOUND` for `src/otp.js` and `src/unlock.js`), one failure each;
+   - all 12 tests in `lockout.test.mjs` (`enrol answered 501`, since `/otp/enrol` has no handler);
+   - the A5 leak test, the same way;
+   - the exchange purge test (`no such table: exchange`).
+   Every A2 to A4 test passes (81).
+4. Restore with `git checkout HEAD -- packages/account-engine apps/horae-zone`.
+
+### What each file proves
+
+| File | Proves | Negative controls |
+|---|---|---|
+| engine `test/pake.test.mjs` (added) | `unlockChannelFor(device)` is `horae-zone-unlock-v1|<device>`, apart from every JanusMirror channel. An exchange for one device does not finish for another. Anything but a device id throws `TypeError` (A1 open point 3) | `NEGATIVE CONTROL: an unlock exchange finishes for the device it names` |
+| `test/otp.test.mjs` | **"the seed is returned once and never again"** (plan test): the first enrolment answers `{secret, uri}`, a second answers `enrolled` with no seed, and no later answer carries it. Enrolment needs a live `/signin` ticket of the signing device's account (another account's ticket is refused and stays live), a ticket enrols once, an unsigned request is refused, and the body is exactly one ticket. The seed is stored only sealed under the seed key, bound to its account (`openSeed` fails for another account or key). Without the seed key, enrolment answers `unavailable` and stores nothing. A device registered after enrolment, or before it, reaches only `/nonce` and `/unlock` until it proves a code. One audit row per enrolment | `NEGATIVE CONTROL: two accounts get different seeds`; `NEGATIVE CONTROL: the enrolling device and devices of an account with no code are not held back` |
+| `test/unlock.test.mjs` | **"NEGATIVE CONTROL: a correct code, account and device returns a ticket"** (plan test): the ticket verifies against the run's public key, and a changed payload does not. A wrong code, an unknown, spent or expired exchange and another device's exchange all answer `bad-code`. A code accepted once is refused again in the same step on any device, and of two exchanges proving one code only the first finished is accepted. The previous step's code is accepted, and a code two steps old or the next step's is refused. Of six starts sent together, three are admitted. The start body is exactly `sid`, `Ya` and `clock` with a valid point, and the finish body exactly an exchange and a tag. An account with no code answers `not-enrolled` and counts nothing. Without the ticket key or a reopen base, unlock answers `unavailable` and admits nothing. An exchange stores only keyed digests of the tags it expects. The expected tags are compared with `sameHex` (checked statically: no `digest ===`). One audit row per start and finish | The plan test itself; "the previous step's code is accepted" |
+| `test/lockout.test.mjs` | **"three wrong codes in one window lock it and email; two in a row or four a day close the path until the link"** and **"the reopen link is single use and hands out no key"** (plan tests). An exchange left unfinished counts as a wrong code once its confirm time passes. A closed path is per account. A reopen link expires, and the next refused try mails a fresh one. The reopen body is exactly one token, and an unknown token answers like a spent one (`bad-link`). The stored state is the engine's and keeps only a hash of the link. A state that cannot be read fails closed and mails a link. A lock mail that fails to send is audited `mail-failed`, and the lock holds. No lock note carries a six-digit number or an em dash. One audit row per refused start and per reopen | `NEGATIVE CONTROL: two wrong codes and then a right one neither lock nor mail`; `NEGATIVE CONTROL: a link used just inside its life reopens the path` |
+| `test/leak.test.mjs` (added) | Enrolment, wrong and right codes, a closed path and a reopen leave no seed, code, tag, ticket or reopen token in any answer, table, bound value, audit row or log, apart from the one answer (or the one lock mail) that hands each out | The A2 planted-echo control |
+| `test/purge.test.mjs` (added) | The purge removes finished and expired code exchanges and keeps a live one | The live exchange kept |
+
+### Manual checks for the reviewer
+
+1. **Constant-time compare only.** `grep -rn "digest ===\|=== digest" apps/horae-zone/src` prints nothing.
+2. **No console calls**, as in A2: `grep -rn "console\." apps/horae-zone/src` prints nothing.
+3. **The seed has one way out.** `grep -rn "base32Encode\|otpauthUri" apps/horae-zone/src` prints only `src/otp.js` (the import and the one answer in `enrolOtp`).
+4. **No real secret.** `wrangler.toml` still has no `[vars]`, no `wrangler secret put` was run, and `test/helpers.mjs` holds only the fake seed key and makes the ticket key per run.
+5. **Local smoke test**, as in A3:
+
+   | Request | Expected |
+   |---|---|
+   | `curl -s -X POST -H 'content-type: application/json' -d '{}' localhost:8787/otp/enrol` | `{"error":"no-device"}` |
+   | `curl -s -X POST -H 'content-type: application/json' -d '{}' localhost:8787/unlock/start` | `{"error":"no-device"}` |
+   | `curl -s -X POST -H 'content-type: application/json' -d '{}' localhost:8787/unlock/reopen` | `{"error":"shape"}` |
+   | `curl -s -X POST -H 'content-type: application/json' -d '{"token":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"}' localhost:8787/unlock/reopen` | `{"error":"unavailable"}`, since no account key is set |
+
+### Not in A5 (do not add here)
+
+- The PIN, the 12-hour rule and `/reverify` (A5b), admin actions (A5c) and recovery (A6).
+- Anything that consumes the unlock ticket (A5b, A7).

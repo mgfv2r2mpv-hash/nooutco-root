@@ -91,7 +91,7 @@ It never holds a vault key, a session key, vault data or PHI.
    - Decision: a changed, added or missing file fails `test/vendor.test.mjs`.
    - Reason: this is the JanusMirror rule, carried over.
 6. **Not moved yet.**
-   - Decision: `mailer`, `replay`, `jwt` and `sealed-events` each move with the first slice that uses it (A3, A5, and Phase 9 respectively). The mailer moved in A3; `replay` and `jwt` are still in JanusMirror, since neither A3 nor A4 uses them.
+   - Decision: `mailer`, `replay`, `jwt` and `sealed-events` each move with the first slice that uses it (A3, A5, and Phase 9 respectively). The mailer moved in A3; `replay` and `jwt` are still in JanusMirror, since no slice through A5 uses them (see the A5 provenance table).
    - Reason: no code is carried without a caller and its tests.
 7. **Test-only dependencies.**
    - Decision: `playwright` 1.56.1 and `workerd`, both pinned exactly as `devDependencies`.
@@ -106,7 +106,7 @@ It never holds a vault key, a session key, vault data or PHI.
 |---|---|---|---|
 | 1 | ~~Redistributing the blocklist in a public repository~~ | - | **Decided** 2026-10-03, "private package" (see the rulings above) |
 | 2 | ~~The "no runs" definition~~ | - | **Decided** 2026-10-03, runs wrap (see the rulings above) |
-| 3 | `pake.mjs` still uses JanusMirror's channel (`janusmirror-e2e|…`) and DST (`JanusMirror-CPace-…`), so JanusMirror can adopt the engine unchanged (A7) | `src/pake.mjs` | Add a channel parameter or a Horae Zone channel label before A5. Keep the DST, or version it with a RED test |
+| 3 | ~~`pake.mjs` still uses JanusMirror's channel and DST~~ | `src/pake.mjs` | **Closed in A5**: `unlockChannelFor(device)` gives Horae Zone its own channel; the DST is unchanged, so JanusMirror can still adopt the engine as it is (A7) |
 | 4 | The `limits` renames diverge from JanusMirror until A7 | `src/limits.mjs` | A7 maps JanusMirror's callers to the new names |
 | 5 | `src/probe.mjs` is test support that ships in `src/` | `src/probe.mjs` | Keep it (it is tiny and pure), or move it under `test/` and have the browser and `workerd` loaders embed it from there |
 | 6 | `vendor/refresh-noble.sh` uses BSD `sed -i ''` and `shasum`, so it runs on macOS only (as in JanusMirror) | `vendor/refresh-noble.sh` | Leave it, and document that the refresh runs on a Mac |
@@ -568,7 +568,7 @@ Left as is (residual): a wrong-password try from a device removed mid-flight sti
 
 | # | Point | Where | Proposed resolution |
 |---|---|---|---|
-| 1 | Sign-in asks no authenticator code yet, because no account has one until A5 (plan §3.6: "Email + password + code") | `src/signin.js` | A5 adds the code to `/signin`, RED first |
+| 1 | ~~Sign-in asks no authenticator code yet~~ | `src/signin.js` | **Closed in A5** by the pending rule (A5 decision 6): a further device reaches nothing but `/nonce` and `/unlock` until it proves the code |
 | 2 | `/device/register` has no rate limit of its own | `src/devices.js` | Accept: the ticket is 256-bit and single use |
 | 4 | No cap on devices per account | `src/devices.js` | Decide with the account screen slice |
 | 5 | App Attest is not checked (plan §3.6: "later") | `src/devices.js` | A later slice |
@@ -584,3 +584,90 @@ Decided by the security review, so no longer open: point 3 (a ticket was not bou
 - Bringing a vault to a new device (`/pair/offer`, `/pair/take`).
 - Any change to Sass or JanusMirror, and any deploy.
 - A fresh proof, or a delay with an email, before a device is removed (Decision for Kaleb 5). The security review recommends one before launch; it waits on his choice.
+
+---
+
+## A5: the single authenticator code (`apps/horae-zone`, `packages/account-engine`)
+
+**Commits:** `c7b589a8` (RED: Horae Zone 97 tests with 16 failing, the engine's `pake.test.mjs` failing to load; every A2 to A4 test still passing), then `f167c486` (GREEN). After GREEN: Horae Zone 122/122, engine 68 (67 pass, 1 skip without the private package), profile-api 195/195. The RED count of 97 is lower than 122 because `otp.test.mjs` and `unlock.test.mjs` could not load (their modules did not exist yet), and a file that cannot load reports as one failure.
+
+**Plan tests:** "the seed is returned once and never again" (`test/otp.test.mjs`), "NEGATIVE CONTROL: a correct code, account and device returns a ticket" (`test/unlock.test.mjs`), "three wrong codes in one window lock it and email; two in a row or four a day close the path until the link" and "the reopen link is single use and hands out no key" (both `test/lockout.test.mjs`).
+
+**Earlier open points closed, each RED first:** A1 open point 3 (a Horae Zone channel for `pake.mjs`) and A4 open point 1 (a further device needs the code; see decision 6).
+
+### What is in it
+
+| File | Does |
+|---|---|
+| `src/otp.js` | `POST /otp/enrol {ticket}`, signed, answers `{secret, uri}` once. Exports `OTP_LABEL`, `seedBoxKey(env)` and `openSeed(env, accountId, box)` |
+| `src/unlock.js` | `POST /unlock/start {sid, Ya, clock}` answers `{exchange, replies}` (two replies). `POST /unlock/finish {exchange, tagA}` answers `{ticket}`. `POST /unlock/reopen {token}` answers `{ok:true}`. Exports `UNLOCK_LIMITS` and `TICKET_LABEL` |
+| `src/lockout.js` | The engine's `limits.mjs` rules over one D1 row per account, the lock notes, and after-work that mails them to the account's address |
+| `src/devices.js` | A device registered for an account that already has a code starts `pending` |
+| `src/routes.js`, `src/index.js` | The A5 handlers are wired in. `/nonce`, `/unlock/start` and `/unlock/finish` are marked `pendingOk`, and a pending device gets `no-device` on every other route. A `Refusal` can carry after-work (a lock mail), which runs after the refusal's own audit row |
+| `src/checks.js` | `Refusal(reason, status, after)` |
+| `src/account-keys.js` | A seventh derived key, the tag digest: HMAC of an expected CPace confirmation tag, bound to its exchange id |
+| `src/retention.js` | The purge also removes finished and expired code exchanges |
+| `schema.sql` | `otp` (account_id, box, last_step, created_at), `exchange` (id, account_id, device_id, candidates, expires_at, used), `limits` (account_id, state, version, reopen_hash) and `device.pending` (changed in place, since no database exists yet) |
+| engine `src/pake.mjs` | `unlockChannelFor(device)` returns `horae-zone-unlock-v1|<device>`, and throws `TypeError` for anything but a device id |
+
+**New Worker secrets** (none is set anywhere; the tests use fake or per-run values): `HZ_SEED_KEY` (base64url, at least 32 bytes), `HZ_TICKET_KEY` (a P-256 private key as a JWK) and `HZ_REOPEN_BASE` (the https page the reopen link opens). A missing or bad value answers `unavailable`, and nothing is written.
+
+**New refusal words:** `enrolled` (409), `not-enrolled` (409), `locked` (423) and `bad-link` (401). `bad-code` (401) and `bad-ticket` (401) are reused.
+
+**Provenance.**
+
+| Piece | Source | Changes from the source |
+|---|---|---|
+| The steps offered (current and previous, never the next) | JanusMirror `gatekeeper/src/totp.mjs` (`candidateCodes`, "Never the next window") | None in the rule. Horae Zone also withholds any step at or before the account's last accepted one |
+| The lockout rules | Engine `src/limits.mjs` (A1, from JanusMirror `pairing-limits.mjs`) | None. The state lives in D1 instead of a file, written by compare-and-swap |
+| The lock notes | JanusMirror `gatekeeper/src/mailer.mjs` (`messageFor`, `clockLine`) | New wording for an account rather than one Mac, sent through the engine mailer (A3). The clock line is kept for a skewed device clock |
+| The reopen link | Engine `fragmentLink` (A3), JanusMirror `phone/unlock.mjs` pattern | None: the token rides only after `#` |
+| `replay.mjs` and `jwt.mjs` | JanusMirror | **Not moved.** `replay.mjs` is an in-memory ledger for sealed relay messages, and a Worker keeps no memory across requests, so the A5 replay rule is the per-account `last_step` in D1 instead. `jwt.mjs` verifies Cloudflare Access RS256 tokens for the Mac relay, which Horae Zone does not do. Both stay in JanusMirror until a slice uses them (Phase 9) |
+
+### Decisions
+
+1. **The seed is handed out once, and only to a signed device with a fresh sign-in.** `/otp/enrol` is a signed route and takes exactly `{ticket}`, a live `/signin` ticket. The ticket is spent first, by the same `UPDATE ... RETURNING` that checks it was issued to the signing device's account, so another account's ticket is refused and stays live. The `otp` row is inserted `ON CONFLICT DO NOTHING`, so a second enrolment answers `enrolled` and carries no seed.
+2. **The seed is stored only sealed.** 20 random bytes, sealed with AES-GCM under a key HKDF derives from `HZ_SEED_KEY` (its own secret, apart from `HZ_ACCOUNT_KEY`), with the account id as associated data, so a box moved to another account does not open. The seed is opened only inside `/unlock/start` to build the replies, and its bytes are zeroed after use. No answer after the first, no row, bound value, audit row or log carries it (leak canary).
+3. **The code never crosses the wire.** The device proves it with CPace, the engine's `pake.mjs`, keyed by the code under `unlockChannelFor(device)`. The channel names the one device that signs start and finish, so an exchange cannot finish for another device, and its label keeps it apart from every JanusMirror channel. The DST is unchanged.
+4. **Drift: zero forward, one step back.** `/unlock/start` offers the current 30-second step and the previous one, never the next, which is JanusMirror's rule. A step the service withholds (at or before the last accepted one) still gets a reply, built from a random code, so the two answers look alike.
+5. **A code is accepted once.** Acceptance is one atomic `UPDATE otp SET last_step = ? WHERE last_step < ?`, so a code accepted once is refused again in the same step on any device, and of two exchanges proving one code only the first finished wins.
+6. **A further device must prove the code before it can do anything else** (A4 open point 1). Enrolment marks every other live device of the account `pending`, and a device registered later starts `pending`. A pending device reaches only `/nonce`, `/unlock/start` and `/unlock/finish`, and every other route answers `no-device`, as for an unknown device. An accepted code clears the flag. So the plan's "email + password + code" for a further device (§3.3) is `/signin` with the password, then the code through `/unlock`, which keeps the code inside CPace and bound to a registered device signature.
+7. **Exchanges keep no tag.** An exchange row holds only keyed digests of the `tagA` values the service expects, with their steps. It dies at `CONFIRM_MS` (20 s, the lockout's confirm time) and is spent by its first finish, from its own device only. Every expected digest is compared with the engine's `sameHex`, with no early exit, so the time taken does not say which step matched.
+8. **Every refusal at finish is `bad-code`.** A wrong code, an unknown, spent or expired exchange, and another device's exchange all answer the same. Nothing says whether the account, the device or the code was the wrong part.
+9. **The lockout is the engine's, per account.** 3 wrong codes in one 30-second window lock that window, and 2 locked windows in a row or 4 in a day close the code path until the single-use emailed link reopens it (`limits.mjs`, unchanged). The state is one `limits` row per account, written by compare-and-swap on a version column, so tries sent together each see the others (6 parallel starts admit exactly 3). An exchange left unfinished counts as a wrong code once its confirm time passes. A state that cannot be read fails closed: the path counts as closed, and a link is mailed.
+10. **The lock mails go through the engine mailer, after the answer.** A window lock mails a plain note with no link. A closed path mails the link `HZ_REOPEN_BASE#<token>`, and a refused try mails a fresh link when the old one is missing or has expired. A reopen mails a note. No note carries a code, the seed, a tag, a ticket or any six-digit number. A failed send is audited `mail-failed`, after the refusal's own row, and the lock holds.
+11. **The reopen link reopens the path and nothing else.** `/unlock/reopen` is open, takes exactly `{token}`, and answers exactly `{ok:true}`: no ticket, key or seed. The token is stored only as the engine's hash (in the state and in `reopen_hash`), it works once, and it expires after 24 hours (the engine's `UNLOCK_TTL_MS`). An unknown, spent or expired token answers `bad-link` alike. A failed reopen try renews no link, since a renewed token would reach no one.
+12. **The ticket.** A right code answers `{ticket}`: base64url JSON `{v, account, device, at, exp}`, then `.`, then the service's raw ECDSA P-256 signature over `${TICKET_LABEL}.${payload}`, made with `HZ_TICKET_KEY`. A changed payload does not verify.
+13. **Shape and point checks before the lockout.** A malformed body, or a `Ya` that is not a valid ristretto255 point, is `shape` before anything is admitted, so it costs no try. An account with no code answers `not-enrolled` and counts nothing.
+
+### Decisions for Kaleb
+
+Safe defaults the plan does not fix.
+
+| # | Point | Default now | Where |
+|---|---|---|---|
+| 1 | What the authenticator app shows for the entry | Issuer "Horae Zone", account "nooutco" | `OTP_LABEL` in `src/otp.js` |
+| 2 | How long an unlock ticket lives | 5 minutes | `UNLOCK_LIMITS.ticketTtlMs` in `src/unlock.js` |
+| 3 | The window-lock note: subject "Horae Zone: code entry paused", then "Three wrong authenticator codes were entered for this account within 30 seconds.", "Code entry for this account is paused for the rest of that 30-second window.", "No code was accepted." | As written | `windowNote` in `src/lockout.js` |
+| 4 | The closed-path note: subject "Horae Zone: code entry closed", then which rule closed it, "Code entry stays closed until this link is opened:", the link, "Works once. Expires 24 hours after it was sent.", "Opening it reopens code entry only. A right code is still needed on the device." | As written | `closedNote` |
+| 5 | The reopened note: subject "Horae Zone: code entry reopened", then "The reopen link was used. Code entry for this account is open again.", "A right authenticator code is still needed on the device.", "The link no longer works." | As written | `reopenedNote` |
+| 6 | The skewed-clock line added to a lock note: "Some of these codes came from a device whose clock was off; a device clock set automatically gives codes that match." | As written | `CLOCK_LINE` |
+| 7 | Lockout writes that collide: retry 8 times, then answer `slow-down` | 8 | `CAS_TRIES` in `src/lockout.js` |
+| 8 | How long `limits` rows are kept (one small row per account that ever tried a code) | No purge | `src/retention.js` |
+
+### Open points for the reviewer
+
+| # | Point | Where | Proposed resolution |
+|---|---|---|---|
+| 1 | The enrolling device is not marked pending, so plan §3.3 step 4 ("type one code to confirm") is a client step only. A QR that is never scanned leaves the account enrolled with a seed nobody holds, and a second enrolment answers `enrolled` | `src/otp.js` | A follow-up, RED first: keep enrolment unconfirmed (and repeatable with a fresh ticket) until the first accepted code. Until then, A6 recovery enrols a new authenticator |
+| 2 | `/signin` itself still asks no code (plan §3.6 says "Email + password + code"). The pending rule (decision 6) gives the same gate | `src/signin.js`, `src/routes.js` | Accept the pending rule; revisit only if the client flow needs the code on the sign-in screen |
+| 3 | Nothing consumes the unlock ticket yet, and its public key is not published. The ticket carries no key id | `src/unlock.js` | A5b (`/pin/verify`) and A7 (the gatekeeper pins the key) consume it. Add a key id before A7 so `HZ_TICKET_KEY` can rotate |
+| 4 | Changing `HZ_SEED_KEY` makes every seed box unopenable, and a start that cannot open its box fails after its try was admitted | `src/otp.js`, `src/unlock.js` | A rotation plan with the A3 one (A3 open point 5), before the first real account |
+| 5 | Any registered device of the account can spend the account's tries and close the path for every device. That is the JanusMirror rule, and the lock notes tell the owner | `src/lockout.js` | Accept; removing the device (A4) stops it |
+| 6 | The lock mail goes out through `ctx.waitUntil` (as A3 open point 3). If it is lost while the link is still live, the next refused try does not mail it again, so the path stays closed until the link expires and a fresh one is mailed (up to 24 hours) | `src/lockout.js` | Accept for now, or re-mail a live link at most once an hour on a refused try |
+| 7 | Not run against a real Resend or a real `wrangler dev`, as in A3 open point 4 | - | The reviewer runs the `wrangler dev` smoke test in the test plan |
+
+### Out of scope for A5
+
+- The PIN and the 12-hour rule (A5b), admin actions (A5c), recovery and vault switch (A6).
+- Any change to Sass or JanusMirror, real secrets, real mail and any deploy.
