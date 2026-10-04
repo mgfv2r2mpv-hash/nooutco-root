@@ -798,7 +798,7 @@ function GoalsTable({ columns, rows, onChange, onCopyCell, copiedId, idPrefix, c
               </button>
             )}
             <div style={{ flex: 1, minWidth: 0, display: "grid", gap: 8, padding: 10, borderRadius: 8, border: `1px solid ${flags.has(ri) ? GOAL_FLAG.edge : "#ddecd0"}`, background: "white" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+              <div className="gs-cells">
                 {columns.map((c) => {
                   const cellId = `${idPrefix}-r${ri}-${c.id}`;
                   return (

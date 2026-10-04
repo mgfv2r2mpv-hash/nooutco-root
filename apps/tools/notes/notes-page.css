@@ -1740,6 +1740,12 @@ body.is-pointing, body.is-pointing * { cursor: crosshair !important; }
 .gs-handle:focus-visible { outline: 2px solid #4d6b34; outline-offset: 2px; }
 .gs-dragging { opacity: .92; box-shadow: 0 6px 18px rgba(45, 58, 31, .22); border-radius: 8px; transition: none; }
 .gs-dragging .gs-handle { cursor: grabbing; background: #dcebc9; }
+/* A goal row's cells sit side by side at desktop width. On a phone three of
+   them with the grip need about 337px in a 268px section, so the page scrolled
+   sideways; below 640px (the output grid's own break) they stack. minmax(0)
+   lets a cell shrink below its label and Copy button instead of pushing out. */
+.gs-cells { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 640px) { .gs-cells { grid-template-columns: minmax(0, 1fr); } }
 @media (prefers-reduced-motion: reduce) {
   .gp-chip[data-pending="true"] { animation: none; border-style: dashed; }
   .gs-leaving { transition: none; }
