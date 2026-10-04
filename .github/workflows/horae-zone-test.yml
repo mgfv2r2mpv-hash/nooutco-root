@@ -4,6 +4,8 @@ name: Horae Zone Tests
 # signatures, single-use nonces, the content-free audit, the scheduled purge
 # and the ingress rules (no route, workers.dev off). Its tests run over real
 # SQLite through apps/profile-api's D1 helper, so a change there runs these too.
+# The service imports packages/account-engine's src (sameHex, the mailer), so
+# an engine change runs these too; those files need no install.
 #
 # No install step, like profile-api-test.yml: the service has no dependencies
 # and no lockfile, and `npm ci` fails without one. It does not use the PIN
@@ -16,12 +18,16 @@ on:
     paths:
       - 'apps/horae-zone/**'
       - 'apps/profile-api/test/helpers/d1-sqlite.js'
+      - 'packages/account-engine/src/**'
+      - 'packages/account-engine/vendor/**'
       - '.github/workflows/horae-zone-test.yml'
   pull_request:
     branches: [main, dev]
     paths:
       - 'apps/horae-zone/**'
       - 'apps/profile-api/test/helpers/d1-sqlite.js'
+      - 'packages/account-engine/src/**'
+      - 'packages/account-engine/vendor/**'
       - '.github/workflows/horae-zone-test.yml'
 
 defaults:
