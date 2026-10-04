@@ -152,6 +152,8 @@
     .digest-box { margin-top: 12px; padding: 12px 14px; background: #f4f7ee; border-radius: 10px; font-size: 13px; color: var(--muted); line-height: 1.5; }
     /* Pending review + add-term modal */
     .pending-card { background: #fffdf3; border-color: #ece0b0; }
+    .review-rows { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
+    .review-rows button { text-align: left; }
     .count-pill { display: inline-block; background: #eaf1de; color: #4a5e2e; border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 700; margin-left: 6px; }
     .modal-overlay { position: fixed; inset: 0; background: rgba(20, 28, 14, .45); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 50; }
     .modal-overlay.hidden { display: none; }
@@ -202,6 +204,7 @@
              the most this 700px nav should carry. -->
         <button class="tab-btn" data-tab="expert">Expert</button>
         <button class="tab-btn" data-tab="knowledge">Knowledge</button>
+        <button class="tab-btn" data-tab="review">To review<span class="count-pill" id="reviewBadge" style="display: none;">0</span></button>
       </nav>
 
       <!-- ── Passwords tab ── -->
@@ -502,6 +505,19 @@
         </div>
       </div>
 
+      <div id="tab-review" class="tab-panel">
+        <div class="card">
+          <h2>To review</h2>
+          <p class="muted" style="margin: 0 0 12px;">What is waiting for a decision. Each row opens the tab where it is decided.<br>A dash means that queue could not be read, not that it is empty.</p>
+          <div class="review-rows">
+            <button class="btn-secondary" type="button" data-review="pii">Scrubbed names<span class="count-pill" data-review-count="pii">-</span></button>
+            <button class="btn-secondary" type="button" data-review="nonpii">Certified terms<span class="count-pill" data-review-count="nonpii">-</span></button>
+            <button class="btn-secondary" type="button" data-review="suggestions">Scrub suggestions<span class="count-pill" data-review-count="suggestions">-</span></button>
+            <button class="btn-secondary" type="button" data-review="knowledge">Staged knowledge rules<span class="count-pill" data-review-count="knowledge">-</span></button>
+          </div>
+        </div>
+      </div>
+
       <div id="tab-knowledge" class="tab-panel">
         <div class="card" id="knUnbound" style="display: none;">
           <h2>Knowledge store not connected</h2>
@@ -655,7 +671,7 @@
       function show() {
         if (isAdmin()) {
           loginCard.classList.add("hidden"); adminUI.classList.remove("hidden"); logoutBtn.classList.remove("hidden");
-          load(); loadPii(); loadNonPii(); loadTermQueues(); loadAlgStatus();
+          load(); loadPii(); loadNonPii(); loadTermQueues(); loadAlgStatus(); loadReview();
         } else {
           loginCard.classList.remove("hidden"); adminUI.classList.add("hidden"); logoutBtn.classList.add("hidden");
           ensureLoginGate();
@@ -723,19 +739,54 @@
       logoutBtn.addEventListener("click", function () { localStorage.removeItem(TOKEN_KEY); show(); });
 
       /* ── Tab switching ── */
+      function openTab(name) {
+        var btn = document.querySelector('.tab-btn[data-tab="' + name + '"]');
+        if (!btn) return;
+        document.querySelectorAll(".tab-btn").forEach(function (b) { b.classList.remove("active"); });
+        document.querySelectorAll(".tab-panel").forEach(function (p) { p.classList.remove("active"); });
+        btn.classList.add("active");
+        document.getElementById("tab-" + name).classList.add("active");
+        // Style Profiles reads a separate Worker over a service binding, so
+        // it loads when opened rather than on every admin page load.
+        if (btn.dataset.tab === "profiles") loadRoster();
+        // Same reasoning: the knowledge store is a second Worker over a
+        // service binding, so it is read when the tab is opened.
+        if (btn.dataset.tab === "knowledge") loadKnowledge();
+        if (btn.dataset.tab === "review") loadReview();
+      }
       document.querySelectorAll(".tab-btn").forEach(function (btn) {
-        btn.addEventListener("click", function () {
-          document.querySelectorAll(".tab-btn").forEach(function (b) { b.classList.remove("active"); });
-          document.querySelectorAll(".tab-panel").forEach(function (p) { p.classList.remove("active"); });
-          btn.classList.add("active");
-          document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
-          // Style Profiles reads a separate Worker over a service binding, so
-          // it loads when opened rather than on every admin page load.
-          if (btn.dataset.tab === "profiles") loadRoster();
-          // Same reasoning: the knowledge store is a second Worker over a
-          // service binding, so it is read when the tab is opened.
-          if (btn.dataset.tab === "knowledge") loadKnowledge();
+        btn.addEventListener("click", function () { openTab(btn.dataset.tab); });
+      });
+
+      /* ── To review: what is waiting, and where to act on it ──
+         Counts only. Each queue is still decided in its own tab, so this reads
+         the endpoints those tabs read and changes nothing. A queue that cannot
+         be read shows a dash, never a zero, because zero says "nothing waiting". */
+      var REVIEW_QUEUES = {
+        pii: function () { return adminFetch("/api/admin/term-queue").then(function (d) { return (d.piiPending || []).length; }); },
+        nonpii: function () { return adminFetch("/api/admin/term-queue").then(function (d) { return (d.nonPiiPending || []).length; }); },
+        suggestions: function () { return adminFetch("/api/admin/scrub-suggestions").then(function (d) { return (d.suggestions || []).length; }); },
+        knowledge: function () { return kn("proposals", "GET", null, { state: "staged" }).then(function (d) { return (d.proposals || []).length; }); }
+      };
+      var reviewTarget = { pii: "pii", nonpii: "nonpii", suggestions: "alglab", knowledge: "knowledge" };
+
+      function loadReview() {
+        var total = 0;
+        var pending = Object.keys(REVIEW_QUEUES).map(function (key) {
+          var cell = document.querySelector('[data-review-count="' + key + '"]');
+          return REVIEW_QUEUES[key]().then(function (n) {
+            cell.textContent = n;
+            total += n;
+          }).catch(function () { cell.textContent = "-"; });
         });
+        Promise.all(pending).then(function () {
+          var badge = document.getElementById("reviewBadge");
+          badge.textContent = total;
+          badge.style.display = total ? "inline-block" : "none";
+        });
+      }
+      document.querySelectorAll("[data-review]").forEach(function (row) {
+        row.addEventListener("click", function () { openTab(reviewTarget[row.dataset.review]); });
       });
 
       /* ── Passwords tab ── */
