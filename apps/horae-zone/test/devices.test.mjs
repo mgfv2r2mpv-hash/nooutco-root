@@ -99,6 +99,34 @@ test('a sign-in for an address with no account hashes a password like a wrong pa
   assert.equal(derive.mock.callCount() - forWrong, forWrong);
 });
 
+// Security review M5: one password typed on two keyboards can arrive as two
+// code point sequences (é as one point, or e plus a combining accent), and
+// the hash must not tell them apart. Fake passwords, built from escapes.
+const COMPOSED = 'café crème brûlée CANARY';
+const DECOMPOSED = COMPOSED.normalize('NFD');
+
+test('M5: a password set in NFC form signs in from its NFD form, and the other way round', async () => {
+  assert.notEqual(COMPOSED, DECOMPOSED, 'the two forms differ before hashing');
+  const h = harness();
+  await signUp(h, ADDRESS, { password: COMPOSED });
+  await signUp(h, OTHER, { password: DECOMPOSED });
+  assert.equal((await h.call(signInRequest(ADDRESS, DECOMPOSED))).status, 200);
+  assert.equal((await h.call(signInRequest(OTHER, COMPOSED))).status, 200);
+});
+
+test('M5: a compatibility form (a ligature) signs in as its plain letters', async () => {
+  const h = harness();
+  await signUp(h, ADDRESS, { password: 'ofﬁce staple CANARY' });
+  assert.equal((await h.call(signInRequest(ADDRESS, 'office staple CANARY'))).status, 200);
+});
+
+test('M5 NEGATIVE CONTROL: a password that differs after normalising is still refused', async () => {
+  const h = harness();
+  await signUp(h, ADDRESS, { password: COMPOSED });
+  const res = await answer(await h.call(signInRequest(ADDRESS, COMPOSED.replace('é', 'e'))));
+  assert.deepEqual(res, { status: 401, json: { error: 'bad-login' } });
+});
+
 test('a sign-in body must be exactly an address, a password and a key digest', async () => {
   const h = harness();
   await signUp(h, ADDRESS);
