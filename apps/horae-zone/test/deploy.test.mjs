@@ -335,7 +335,7 @@ test('a secret list that is not an array of named entries stops the run before d
     const h = harness({ wrangler: mockWrangler({ dbPresent: true, existingSecrets: ['HZ_ACCOUNT_KEY'], secretListOut: out }) });
     const result = await deploy(h.deps);
     assert.equal(result.ok, false, shape);
-    assert.match(h.output(), /could not read the secret list; nothing was changed; rerun, or pass --new-account-key if you mean to replace it/, shape);
+    assert.match(h.output(), /could not read the secret list; the Worker and its secrets were not changed; rerun, or pass --new-account-key if you mean to replace it/, shape);
     assert.equal(h.wrangler.calls.some((c) => c.args[0] === 'deploy'), false, `${shape}: no deploy`);
     assert.equal(h.wrangler.calls.some((c) => c.args[0] === 'secret' && c.args[1] === 'put'), false, `${shape}: no secret put`);
     assertNoSecretAnywhere(h);
@@ -346,7 +346,7 @@ test('a failed secret list read stops before deploy; only "Worker not found" rea
   const h = harness({ wrangler: mockWrangler({ dbPresent: true, existingSecrets: ['HZ_ACCOUNT_KEY'], secretListFail: '✘ [ERROR] A request to the Cloudflare API failed. Authentication error [code: 10000]' }) });
   const result = await deploy(h.deps);
   assert.equal(result.ok, false);
-  assert.match(h.output(), /could not read the secret list; nothing was changed/);
+  assert.match(h.output(), /could not read the secret list; the Worker and its secrets were not changed/);
   assert.equal(h.wrangler.calls.some((c) => c.args[0] === 'deploy' || (c.args[0] === 'secret' && c.args[1] === 'put')), false);
 
   const first = harness({ wrangler: mockWrangler({ dbPresent: true }) });
@@ -376,7 +376,7 @@ test('--new-account-key over a stored key prints the consequence and replaces it
     const no = harness({ argv: ['--new-account-key'], replaceKey: answer, wrangler: stored() });
     const result = await deploy(no.deps);
     assert.equal(result.ok, false, `answer ${JSON.stringify(answer)}`);
-    assert.match(no.output(), /HZ_ACCOUNT_KEY not replaced; nothing was changed/, `answer ${JSON.stringify(answer)}`);
+    assert.match(no.output(), /HZ_ACCOUNT_KEY not replaced; the Worker and its secrets were not changed/, `answer ${JSON.stringify(answer)}`);
     assert.equal(no.wrangler.calls.some((c) => c.args[0] === 'deploy' || (c.args[0] === 'secret' && c.args[1] === 'put')), false, `answer ${JSON.stringify(answer)}: no deploy, no secret put`);
   }
 });
@@ -448,6 +448,7 @@ test('the run prints `wrangler --version` first, and a missing wrangler stops be
   const none = harness({ wrangler: mockWrangler({ versionFail: 'wrangler is not on PATH (npm i -g wrangler)' }) });
   assert.equal((await deploy(none.deps)).ok, false);
   assert.match(none.output(), /wrangler is not on PATH/);
+  assert.match(none.output(), /wrangler --version failed/, 'the failure names the command');
   assert.deepEqual(none.wrangler.calls.map((c) => c.args.slice(0, 2).join(' ')), ['--version']);
   assert.equal(none.files.size, 0);
 });
@@ -545,6 +546,7 @@ test('Ctrl-C and Ctrl-D each cancel a hidden prompt and leave raw mode off', asy
     assert.deepEqual(await outcome(asked), { error: 'cancelled' }, `key ${JSON.stringify(key)} cancels`);
     assert.deepEqual(raw, [true, false], `key ${JSON.stringify(key)} ends raw mode false`);
     assert.equal(input.isRaw, false);
+    assert.equal(reader.buffer, '', `key ${JSON.stringify(key)} drops the partly typed key`);
     reader.close();
   }
 });
