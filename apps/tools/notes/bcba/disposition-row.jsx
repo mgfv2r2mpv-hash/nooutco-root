@@ -187,14 +187,18 @@ function DispositionRow(props) {
 
 /* The group heading. His ruling opens "make it clear for technicians what is
    added", and one line above the group does that for every row at once, which
-   is cheaper to read than a label on each. */
+   is cheaper to read than a label on each.
+
+   His wording, 3 Oct 2026, with nothing picked until the technician picks it:
+   "Suggested by NoMe:\nChoose / edit below to continue". Kept to the letter,
+   colon and slash included. */
 function DispositionHeading(props) {
   var n = props.count;
   return (
     <div className="dz-head">
-      Offered by NoMe. Not in the note until chosen.
+      Suggested by NoMe:
       <br />
-      <span className="dz-head-sub">Tap one to use, approve, edit or remove it.</span>
+      <span className="dz-head-sub">Choose / edit below to continue</span>
     </div>
   );
 }

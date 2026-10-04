@@ -81,7 +81,7 @@ const NOT_REFINED = '(not refined)';
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const notRefined = (question) => new RegExp(esc(question) + '\\n(?:A: )?' + esc(NOT_REFINED));
 
-async function ask(page, triage, { later = null } = {}) {
+async function ask(page, triage, { later = null, aid = false } = {}) {
   const seen = { notes: [], triage: [] };
   await page.route('**/api/llm-call**', async (route) => {
     const b = JSON.parse(route.request().postData() || '{}');
@@ -98,9 +98,9 @@ async function ask(page, triage, { later = null } = {}) {
   // Refused, so every audit event stays in the browser's buffer to be read.
   await page.route('**/api/audit**', (route) => route.fulfill({ status: 503, contentType: 'application/json', body: '{}' }));
   await page.clock.install();
-  await page.goto('/notes/bt/');
+  await page.goto(aid ? '/notes/bt/?aid=1' : '/notes/bt/');
   await page.evaluate((tok) => localStorage.setItem('notes_auth_token', tok), tokenFor());
-  await page.goto('/notes/bt/');
+  await page.goto(aid ? '/notes/bt/?aid=1' : '/notes/bt/');
   await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT money 3 item array, needed full physical most of it');
   await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first then board, also moved to the floor and he settled');
   await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked and redirected');
@@ -467,6 +467,34 @@ test.describe('a round opens at its first open question', () => {
     await passScrub(page);
 
     await expect(page.getByText(/right after he reached the door/i)).toBeVisible({ timeout: 20000 });
+    await expect.poll(async () => Math.abs((await geometry(page, 0)).offset), { timeout: 5000 }).toBeLessThan(24);
+    const g = await geometry(page, 0);
+    expect(g.max, 'the panel must overflow for this to mean anything').toBeGreaterThan(40);
+    expect(g.scrollTop, 'the round opened at the bottom of the list').toBeLessThan(g.max - 20);
+  });
+
+  /* His ruling on call 2, 3 Oct 2026: the ?aid=1 preview starts with nothing
+     picked too, and "make sure it scrolls to top of that round in panel". The
+     questions here name no box on the form, so the aid rows are drawn in the
+     panel rather than on the page. */
+  test('under ?aid=1 the second round also sits top-aligned on its first question', async ({ page }) => {
+    const unplaced = {
+      ...SECOND,
+      questions: SECOND.questions.map((q, i) => ({ ...q, field: 'fNowhere' + i })),
+    };
+    await ask(page, ROUND(70), { later: unplaced, aid: true });
+    await expect(page.locator('[data-question-inline="fAntecedent"]')).toBeVisible({ timeout: 20000 });
+    // Round 1 sits on the page; a long typed answer ends it from the panel.
+    if (!(await page.locator('.revision-input').isVisible())) await page.locator('.revision-fab').click();
+    await page.locator('.revision-input').fill(
+      'He ran to the door twice. The first time he came back on his own and the second time ' +
+      'he needed a block and a point back to the table. He settled once the timer was on the board. ' +
+      'Floor seating helped too, and he asked for the tablet twice during the money program.');
+    await page.locator('.revision-send').click();
+    await passScrub(page);
+
+    await expect(page.locator('.revision-panel').getByText(/right after he reached the door/i)).toBeVisible({ timeout: 20000 });
+    await expect(page.locator('[data-panel-question="0"] [data-disposition="0:0"]')).toBeVisible();
     await expect.poll(async () => Math.abs((await geometry(page, 0)).offset), { timeout: 5000 }).toBeLessThan(24);
     const g = await geometry(page, 0);
     expect(g.max, 'the panel must overflow for this to mean anything').toBeGreaterThan(40);

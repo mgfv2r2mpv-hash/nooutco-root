@@ -12,7 +12,7 @@ import { isTriageCall } from './helpers/llm-call.js';
  *   field in the middle."
  *
  * "Revisions" are the candidate answers NoMe puts under its gap questions: the
- * rows the aid flag lists as "Offered by NoMe". "A round of feedback" is
+ * rows the aid flag heads "Suggested by NoMe:". "A round of feedback" is
  * the technician's reply to that round, which is a Send. Once one Send has gone
  * in a note's rounds, feedback has been provided, so later rounds on that note
  * do not lock (approved 2026-10-02, pinned below).

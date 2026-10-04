@@ -3235,7 +3235,7 @@ function App() {
      characters in the large bottom text field."
 
      Revisions are the candidate answers a model-asked question carries: the
-     rows the aid flag lists as "Offered by NoMe". A round of feedback is
+     rows the aid flag heads "Suggested by NoMe:". A round of feedback is
      the technician's Send on that round. A round with no candidates has nothing
      to read first and never locks.
 

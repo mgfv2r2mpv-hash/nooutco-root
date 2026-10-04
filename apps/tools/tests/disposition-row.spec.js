@@ -131,13 +131,16 @@ test.describe('what the tool added', () => {
   });
 
   /* Since the no-pre-pick ruling of 2 Oct 2026 nothing offered is in the note
-     until it is chosen, so the heading says that instead of "Added to the note
-     by NoMe", which stopped being true. */
-  test('a heading says in words that the tool offered this and it is not in until chosen', async ({ page }) => {
+     until it is chosen, so "Added to the note by NoMe" stopped being true. His
+     wording for the heading, 3 Oct 2026, two lines: "Suggested by NoMe:\nChoose
+     / edit below to continue". */
+  test('the heading is his two lines, word for word', async ({ page }) => {
     await ask(page, ONE);
     await expect(row(page, '0:0')).toBeVisible({ timeout: 20000 });
     const head = page.locator('.dz-head');
-    await expect(head).toContainText('Offered by NoMe. Not in the note until chosen.');
+    const lines = await head.evaluate((el) => el.innerText.split('\n').map((s) => s.trim()).filter(Boolean));
+    expect(lines).toEqual(['Suggested by NoMe:', 'Choose / edit below to continue']);
+    await expect(head).not.toContainText('Added to the note');
   });
 
   /* A row nobody has decided about says so, and once chosen the resting state
