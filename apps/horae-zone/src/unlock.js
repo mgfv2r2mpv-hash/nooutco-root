@@ -38,7 +38,8 @@
  * JSON {v, account, device, at, exp, jti, kid}: jti is 128 random bits, kid
  * the RFC 7638 thumbprint of the public key (A5 security review item 4). The
  * A5b verifier must record each jti as spent and accept a ticket only on a
- * request the ticket's device signed. The limits below are the agent's safe
+ * request the ticket's device signed; A5b's is in src/pin.js, and finds the
+ * key by kid in ticketRing. The limits below are the agent's safe
  * defaults, listed for the owner in the design review: the plan does not fix
  * them.
  */
@@ -100,15 +101,32 @@ function startBody(body) {
 // The signing key and its kid, the RFC 7638 thumbprint of the public half:
 // base64url SHA-256 over {crv, kty, x, y} in that order, no spaces. A
 // verifier holding several public keys (a rotation) picks one by kid.
+async function thumbprint({ crv, kty, x, y }) {
+  const digest = await crypto.subtle.digest("SHA-256", enc.encode(JSON.stringify({ crv, kty, x, y })));
+  return b64url(new Uint8Array(digest));
+}
+
 async function ticketKey(env) {
   try {
     const jwk = JSON.parse(env.HZ_TICKET_KEY);
     const key = await crypto.subtle.importKey("jwk", jwk, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
-    const { crv, kty, x, y } = jwk;
-    const digest = await crypto.subtle.digest("SHA-256", enc.encode(JSON.stringify({ crv, kty, x, y })));
-    return { key, kid: b64url(new Uint8Array(digest)) };
+    return { key, kid: await thumbprint(jwk) };
   } catch {
     return null;
+  }
+}
+
+// A5b. The public keys a ticket verifier trusts, by kid (A5 security review
+// item 4): the public half of HZ_TICKET_KEY. A rotation adds the old key's
+// public half here for a ticket's life; there is none yet. An empty ring when
+// the key is missing or bad, so every ticket is refused.
+export async function ticketRing(env) {
+  try {
+    const { crv, kty, x, y } = JSON.parse(env.HZ_TICKET_KEY);
+    const key = await crypto.subtle.importKey("jwk", { crv, kty, x, y }, { name: "ECDSA", namedCurve: "P-256" }, false, ["verify"]);
+    return new Map([[await thumbprint({ crv, kty, x, y }), key]]);
+  } catch {
+    return new Map();
   }
 }
 

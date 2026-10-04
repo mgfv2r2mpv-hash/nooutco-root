@@ -21,6 +21,9 @@
  *                   is stored (A4)
  *   tag digest    - HMAC of a CPace confirmation tag the service expects, bound
  *                   to its exchange: the only form of a tag that is stored (A5)
+ *   PIN pepper    - HMAC over the PBKDF2 output of an app PIN, the PIN's own
+ *                   pepper apart from the login one (A5b; plan §3.4 "Custody",
+ *                   the pepper a secret of the Worker's)
  * A missing or short secret gives null, and the account routes then answer
  * unavailable without writing anything.
  */
@@ -38,6 +41,11 @@ const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart
 async function derive(base, info, algorithm, usages) {
   const params = { name: "HKDF", hash: "SHA-256", salt: new Uint8Array(0), info: enc.encode(`horae-zone ${info} v1`) };
   return subtle().deriveKey(params, base, algorithm, false, usages);
+}
+
+// A random salt for a login hash or a PIN verifier, base64url.
+export function newSalt() {
+  return b64url(crypto.getRandomValues(new Uint8Array(SALT_BYTES)));
 }
 
 function readSecret(text) {
@@ -74,7 +82,7 @@ export async function accountKeys(env) {
   secret.fill(0);
   const hmac = { name: "HMAC", hash: "SHA-256", length: 256 };
   const aes = { name: "AES-GCM", length: 256 };
-  const [addressMac, boxKey, linkKey, codeMac, requesterMac, pepper, ticketMac, tagMac] = await Promise.all([
+  const [addressMac, boxKey, linkKey, codeMac, requesterMac, pepper, ticketMac, tagMac, pinPepper] = await Promise.all([
     derive(base, "address key", hmac, ["sign"]),
     derive(base, "address box", aes, ["encrypt", "decrypt"]),
     derive(base, "link box", aes, ["encrypt", "decrypt"]),
@@ -83,8 +91,15 @@ export async function accountKeys(env) {
     derive(base, "login pepper", hmac, ["sign"]),
     derive(base, "ticket digest", hmac, ["sign"]),
     derive(base, "tag digest", hmac, ["sign"]),
+    derive(base, "PIN pepper", hmac, ["sign"]),
   ]);
   const mac = async (key, text) => hex(await subtle().sign("HMAC", key, enc.encode(text)));
+  // PBKDF2 over `text` with `salt`, then HMAC under `pepperKey`.
+  const slowHash = async (pepperKey, text, salt) => {
+    const material = await subtle().importKey("raw", enc.encode(text), "PBKDF2", false, ["deriveBits"]);
+    const bits = await subtle().deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: fromB64url(salt), iterations: LOGIN_ITERATIONS }, material, 256);
+    return `pbkdf2-sha256$${LOGIN_ITERATIONS}$${hex(await subtle().sign("HMAC", pepperKey, bits))}`;
+  };
 
   return Object.freeze({
     addressKey: (address) => mac(addressMac, address),
@@ -104,11 +119,13 @@ export async function accountKeys(env) {
     // random salt per account. The password is NFKC-normalised first, so the
     // same password typed as composed or decomposed code points, or with a
     // compatibility form (a ligature, a full-width letter), hashes alike.
-    async hashLogin(password, salt = b64url(crypto.getRandomValues(new Uint8Array(SALT_BYTES)))) {
-      const material = await subtle().importKey("raw", enc.encode(password.normalize("NFKC")), "PBKDF2", false, ["deriveBits"]);
-      const bits = await subtle().deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: fromB64url(salt), iterations: LOGIN_ITERATIONS }, material, 256);
-      const peppered = hex(await subtle().sign("HMAC", pepper, bits));
-      return { hash: `pbkdf2-sha256$${LOGIN_ITERATIONS}$${peppered}`, salt };
+    async hashLogin(password, salt = newSalt()) {
+      return { hash: await slowHash(pepper, password.normalize("NFKC"), salt), salt };
     },
+
+    // A5b. The stored PIN verifier, the same form as the login hash under
+    // the PIN pepper, over the account's PIN salt (newSalt). A PIN is six
+    // ASCII digits, so there is nothing to normalise.
+    pinVerifier: (pin, salt) => slowHash(pinPepper, pin, salt),
   });
 }

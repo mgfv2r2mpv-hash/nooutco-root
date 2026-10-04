@@ -44,13 +44,17 @@ export async function mayChangeAccount(db, deviceId) {
 }
 
 // `after` is work the refusal leaves for after its answer and audit row (A5:
-// a lock mail), run the way a handler's after-work is.
+// a lock mail), run the way a handler's after-work is. `sentence` is a fixed
+// sentence the app shows as it is (A5b: "That PIN is too easy to guess."),
+// answered as `message` beside the reason word; never a value the request
+// carried, and never audited.
 export class Refusal extends Error {
-  constructor(reason, status, after = undefined) {
+  constructor(reason, status, after = undefined, sentence = undefined) {
     super(reason);
     this.reason = reason;
     this.status = status;
     this.after = after;
+    this.sentence = sentence;
   }
 }
 

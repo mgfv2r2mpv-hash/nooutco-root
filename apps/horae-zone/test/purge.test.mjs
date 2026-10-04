@@ -174,3 +174,17 @@ test('a purge removes a pending device\'s tries once they are a day old', async 
   await purgeExpired(db, T0);
   assert.deepEqual(db.sqlite.prepare('SELECT at FROM pending_try ORDER BY at').all().map((r) => r.at), [T0 - day + 1, T0]);
 });
+
+// A5b: a spent ticket's jti is kept only while the ticket itself could still
+// be accepted; past its exp the ticket is refused anyway. The device's code
+// time (device_check) is never purged with it.
+test('a purge removes spent tickets past their exp and keeps each device\'s code time', async () => {
+  const { db } = harness();
+  const addSpent = (jti, expiresAt) => db.sqlite.prepare('INSERT INTO spent_ticket (jti, account_id, device_id, at, expires_at) VALUES (?, ?, ?, ?, ?)')
+    .run(jti, 'acct-1', 'dev-1', T0 - 60_000, expiresAt);
+  addSpent('expired', T0);
+  addSpent('live', T0 + 1);
+  await purgeExpired(db, T0);
+  assert.deepEqual(db.sqlite.prepare('SELECT jti FROM spent_ticket').all().map((r) => r.jti), ['live']);
+  assert.deepEqual({ ...db.sqlite.prepare('SELECT device_id, proved_at FROM device_check').get() }, { device_id: 'dev-1', proved_at: T0 - 60_000 });
+});

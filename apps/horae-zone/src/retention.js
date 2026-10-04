@@ -45,7 +45,9 @@ function checkedYears(value) {
 // (A5: the lockout counted an unfinished one when its confirm time passed),
 // a pending device's tries once a day old (no cap reads them again),
 // rate-limit rows at or past the longest window (no count reads them again;
-// the daily cap and alert rows after a day), and audit rows older than the cutoff.
+// the daily cap and alert rows after a day), spent unlock tickets past their
+// exp (A5b: the ticket is refused by then anyway; the device's code time in
+// device_check stays), and audit rows older than the cutoff.
 export async function purgeExpired(db, now, { auditYears = RETENTION.auditYears } = {}) {
   const cutoff = auditCutoff(now, checkedYears(auditYears));
   const throttleWindow = Math.max(SIGNUP_LIMITS.windowMs, SIGNIN_LIMITS.windowMs);
@@ -55,6 +57,7 @@ export async function purgeExpired(db, now, { auditYears = RETENTION.auditYears 
     db.prepare("DELETE FROM ticket WHERE used = 1 OR expires_at <= ?").bind(now),
     db.prepare("DELETE FROM exchange WHERE used = 1 OR expires_at <= ?").bind(now),
     db.prepare("DELETE FROM pending_try WHERE at <= ?").bind(now - DAY_MS),
+    db.prepare("DELETE FROM spent_ticket WHERE expires_at <= ?").bind(now),
     db.prepare("DELETE FROM throttle WHERE at <= ? AND (bucket NOT IN (?, ?) OR at <= ?)")
       .bind(now - throttleWindow, DAILY_BUCKET, ALERT_BUCKET, now - SIGNUP_LIMITS.dayMs),
     db.prepare("DELETE FROM audit WHERE at < ?").bind(cutoff),
