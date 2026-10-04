@@ -36,10 +36,11 @@ const isLinkBase = (v) => {
 
 /**
  * Every Worker value the service reads (src/**: env.X), how the script gets
- * it and how it is stored. HZ_ACCOUNT_KEY is the one internal secret: the PIN
+ * it and how it is stored. HZ_ACCOUNT_KEY is one internal secret: the PIN
  * pepper, the ticket digest key, the address and link sealing keys and every
- * other key are derived from it by HKDF (src/account-keys.js), so the plan's
- * "pepper, seed key, ticket key" are one generated value. The seed sealing key
+ * other key are derived from it by HKDF (src/account-keys.js). HZ_TICKET_KEY
+ * is a second: A5 signs tickets with an ECDSA P-256 private key (a JWK), which
+ * an HKDF output cannot stand in for, so it is generated too. The seed sealing key
  * arrives with A5 (not built); test/deploy.test.mjs fails when src/ reads a
  * name this list does not carry.
  *   source    generated (crypto randomness) or asked (a prompt)
@@ -49,12 +50,24 @@ const isLinkBase = (v) => {
  */
 export const CATALOG = Object.freeze([
   { name: "HZ_ACCOUNT_KEY", source: "generated", store: "secret", sensitive: true, label: `account key (${ACCOUNT_KEY_BYTES} random bytes, base64url; pepper, ticket and sealing keys derive from it)` },
+  { name: "HZ_TICKET_KEY", source: "generated", store: "secret", sensitive: true, label: "ticket signing key (ECDSA P-256 private key, JWK; src/unlock.js signs each ticket with it)" },
   { name: "RESEND_KEY", source: "asked", store: "secret", sensitive: true, hidden: true, label: "Resend API key", check: (v) => /^\S{8,}$/.test(v), rule: "at least 8 characters, no spaces" },
   { name: "HZ_MAIL_FROM", source: "asked", store: "secret", sensitive: true, label: "From address for sign-up mail (on the domain verified in Resend), e.g. Horae Zone <mail@your-domain>", check: isFrom, rule: "an address, or Name <address>" },
   { name: "HZ_ALERT_TO", source: "asked", store: "secret", sensitive: true, label: "Alert address (mailed once a day when sign-ups reach half the daily cap)", check: isAddress, rule: "one address" },
   { name: "HZ_LINK_BASE", source: "asked", store: "secret", sensitive: false, label: "Sign-up link base (the https page that reads the code after #)", check: isLinkBase, rule: "https, no ? and no #" },
   { name: "HZ_CODES_PER_DAY", source: "asked", store: "var", sensitive: false, optional: true, label: "Mail plan daily send limit (blank keeps the default 3000)", check: (v) => /^[1-9]\d{0,6}$/.test(v), rule: "a whole number from 1" },
 ]);
+
+/**
+ * A new HZ_TICKET_KEY: an ECDSA P-256 key pair made by WebCrypto, the private
+ * half exported as the JWK string src/unlock.js imports (kty, crv, x, y, d
+ * only). The CryptoKey objects go out of scope here; the string is the value.
+ */
+export async function ticketKeyJwk(subtle = globalThis.crypto.subtle) {
+  const pair = await subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+  const { kty, crv, x, y, d } = await subtle.exportKey("jwk", pair.privateKey);
+  return JSON.stringify({ kty, crv, x, y, d });
+}
 
 export const SECRET_NAMES = CATALOG.filter((s) => s.store === "secret").map((s) => s.name);
 

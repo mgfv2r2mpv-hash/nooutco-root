@@ -9,6 +9,9 @@
  *   --new-account-key               replace an HZ_ACCOUNT_KEY already set (every
  *                                   stored account becomes unreadable); asks
  *                                   for the typed word replace first
+ *   --new-ticket-key                replace an HZ_TICKET_KEY already set (every
+ *                                   ticket already issued stops working); asks
+ *                                   for a y first
  *
  * Steps: print `wrangler --version`; confirm the Cloudflare account, and a
  * y before replacing a Worker already named horae-zone there; ask the values only the owner has
@@ -38,7 +41,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { ROUTES } from "../src/routes.js";
 import {
   CATALOG, SECRET_NAMES, DATABASE, HOSTNAME, DEPLOY_CONFIG, CRON, ACCOUNT_KEY_BYTES,
-  LineReader, deployConfig, scrub, parseJson, findDatabaseId, schemaTables, renderChecklist,
+  LineReader, deployConfig, scrub, parseJson, findDatabaseId, schemaTables, renderChecklist, ticketKeyJwk,
 } from "./deploy-parts.mjs";
 
 const ROUTE_TRIES = 6;
@@ -196,7 +199,11 @@ async function collectAnswers(ctx, deps) {
   values.HZ_ACCOUNT_KEY = Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength).toString("base64url");
   bytes.fill(0);
   ctx.known.push(values.HZ_ACCOUNT_KEY);
-  ctx.say(`  Generated HZ_ACCOUNT_KEY (${ACCOUNT_KEY_BYTES} random bytes). It is never shown or saved; a rerun makes a new one.`);
+  ctx.say(`  Generated HZ_ACCOUNT_KEY (${ACCOUNT_KEY_BYTES} random bytes). It is never shown or saved; a key already set is kept unless --new-account-key.`);
+  values.HZ_TICKET_KEY = await deps.generateTicketKey();
+  // The JWK string and its private part d, so wrangler echoing either is masked.
+  ctx.known.push(values.HZ_TICKET_KEY, JSON.parse(values.HZ_TICKET_KEY).d);
+  ctx.say("  Generated HZ_TICKET_KEY (ECDSA P-256 private key, JWK). It is never shown or saved; a key already set is kept unless --new-ticket-key.");
   return values;
 }
 
@@ -266,18 +273,39 @@ async function confirmReplaceKey(ctx, deps, existing) {
   if (answer !== "replace") throw new Stop("HZ_ACCOUNT_KEY not replaced; the Worker and its secrets were not changed. Rerun without --new-account-key to keep it.");
 }
 
-// A new HZ_ACCOUNT_KEY makes every stored account unreadable, so a rerun
-// keeps the one already set unless --new-account-key says otherwise.
-async function deployWorker(ctx, deps, values, newAccountKey) {
+// --new-ticket-key over a ticket key that is set, or may be: only y goes on.
+// Accounts are untouched; only tickets already issued stop working.
+async function confirmReplaceTicketKey(ctx, deps, existing) {
+  ctx.say(`  --new-ticket-key: HZ_TICKET_KEY ${existing ? "is already set" : "may already be set (the secret list could not be read)"}.`);
+  ctx.say("  If it is replaced, every ticket already issued stops working (each lives 5 minutes); accounts are not affected.");
+  const yes = (await deps.ask({ name: "confirm-replace-ticket-key", question: "  Replace HZ_TICKET_KEY? Type y to go on, n to stop: ", hidden: false })).trim().toLowerCase();
+  if (yes !== "y" && yes !== "yes") throw new Stop("HZ_TICKET_KEY not replaced; the Worker and its secrets were not changed. Rerun without --new-ticket-key to keep it.");
+}
+
+// What a kept key says in place of "Set": why it was kept, and the flag that replaces it.
+const KEPT = Object.freeze({
+  HZ_ACCOUNT_KEY: "  Kept HZ_ACCOUNT_KEY (already set; a new one would make every stored account unreadable, --new-account-key replaces it).",
+  HZ_TICKET_KEY: "  Kept HZ_TICKET_KEY (already set; a new one would stop every ticket already issued, --new-ticket-key replaces it).",
+});
+
+// A new HZ_ACCOUNT_KEY makes every stored account unreadable and a new
+// HZ_TICKET_KEY voids every ticket already issued, so a rerun keeps each one
+// already set unless its flag says otherwise. An unreadable list (null) only
+// gets this far under a confirmed --new-account-key, and then both are put.
+async function deployWorker(ctx, deps, values, { newAccountKey, newTicketKey }) {
   ctx.say("Step 5. Deploy the Worker, then put each secret");
   const existing = await secretsBeforeDeploy(ctx, newAccountKey);
   if (newAccountKey && (existing === null || existing.has("HZ_ACCOUNT_KEY"))) await confirmReplaceKey(ctx, deps, existing);
-  const keep = !newAccountKey && existing.has("HZ_ACCOUNT_KEY");
+  if (newTicketKey && (existing === null || existing.has("HZ_TICKET_KEY"))) await confirmReplaceTicketKey(ctx, deps, existing);
+  const keep = new Set([
+    ...(!newAccountKey && existing.has("HZ_ACCOUNT_KEY") ? ["HZ_ACCOUNT_KEY"] : []),
+    ...(!newTicketKey && existing?.has("HZ_TICKET_KEY") ? ["HZ_TICKET_KEY"] : []),
+  ]);
   const out = await ctx.wrangler(COMMANDS.deploy);
   ctx.item("Worker deployed", "PASS", `horae-zone, route ${HOSTNAME} (Custom domain)`);
   for (const name of SECRET_NAMES) {
-    if (name === "HZ_ACCOUNT_KEY" && keep) {
-      ctx.say("  Kept HZ_ACCOUNT_KEY (already set; a new one would make every stored account unreadable, --new-account-key replaces it).");
+    if (keep.has(name)) {
+      ctx.say(KEPT[name]);
       continue;
     }
     await ctx.wrangler(COMMANDS.secretPut(name), { input: values[name] });
@@ -353,6 +381,7 @@ function dryRun(deps) {
     "Step 2. Values only you have",
     ...CATALOG.filter((s) => s.source === "asked").map((s) => `  prompt${s.hidden ? " (hidden)" : ""}: ${s.label} -> ${s.name}${s.store === "var" ? ` ([vars] in ${DEPLOY_CONFIG} when answered)` : ""}`),
     `  generate: HZ_ACCOUNT_KEY = [masked] (${ACCOUNT_KEY_BYTES} random bytes, base64url)`,
+    "  generate: HZ_TICKET_KEY = [masked] (ECDSA P-256 private key, JWK)",
     `Step 3. D1 database "${DATABASE}"`,
     `  ${show(COMMANDS.d1List)}`,
     `  ${show(COMMANDS.d1Create)}   (only when missing, from an empty temp folder)`,
@@ -364,6 +393,7 @@ function dryRun(deps) {
     "Step 5. Deploy the Worker, then put each secret",
     `  ${show(COMMANDS.secretList)}   (an HZ_ACCOUNT_KEY already set is kept unless --new-account-key; an unreadable list stops here)`,
     "  with --new-account-key over a key that is set (or an unreadable list): prompt, type replace or the run stops",
+    "  an HZ_TICKET_KEY already set is kept unless --new-ticket-key; with it over a key that is set: prompt, y replaces it or the run stops",
     `  ${show(COMMANDS.deploy)}`,
     ...SECRET_NAMES.map((n) => `  ${put(n)}`),
     "Step 6. Owner as administrator",
@@ -380,11 +410,11 @@ function dryRun(deps) {
 export async function deploy(deps) {
   const argv = deps.argv ?? [];
   if (argv.includes("--help")) {
-    deps.write("Usage: node bin/deploy.mjs [--dry-run] [--new-account-key]   (from apps/horae-zone; see DEPLOY.md)");
+    deps.write("Usage: node bin/deploy.mjs [--dry-run] [--new-account-key] [--new-ticket-key]   (from apps/horae-zone; see DEPLOY.md)");
     return { ok: true, checklist: [] };
   }
   if (argv.includes("--dry-run")) return dryRun(deps);
-  const full = { readFile: (f) => readFileSync(f, "utf8"), ...deps };
+  const full = { readFile: (f) => readFileSync(f, "utf8"), generateTicketKey: ticketKeyJwk, ...deps };
   const ctx = makeContext(full);
   try {
     await wranglerVersion(ctx);
@@ -393,7 +423,7 @@ export async function deploy(deps) {
     const values = await collectAnswers(ctx, full);
     await prepareDatabase(ctx, full, values);
     const edgeConfirmed = await edgeRule(ctx, full);
-    const deployOut = await deployWorker(ctx, full, values, argv.includes("--new-account-key"));
+    const deployOut = await deployWorker(ctx, full, values, { newAccountKey: argv.includes("--new-account-key"), newTicketKey: argv.includes("--new-ticket-key") });
     adminStep(ctx);
     await runChecks(ctx, full, deployOut, edgeConfirmed);
   } catch (err) {

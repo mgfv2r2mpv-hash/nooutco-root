@@ -27,11 +27,16 @@ const ANSWERS = {
   HZ_LINK_BASE: 'https://example.test/signup',
   HZ_CODES_PER_DAY: '',
 };
-const SECRET_VALUES = [GENERATED, ANSWERS.RESEND_KEY, ANSWERS.HZ_MAIL_FROM, ANSWERS.HZ_ALERT_TO];
+// A fixed ticket key, made here with WebCrypto (not by the script), so a run
+// that uses it has a known value to look for.
+const FIXED_TICKET_PAIR = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
+const FIXED_TICKET_JWK = await crypto.subtle.exportKey('jwk', FIXED_TICKET_PAIR.privateKey);
+const FIXED_TICKET_KEY = JSON.stringify({ kty: FIXED_TICKET_JWK.kty, crv: FIXED_TICKET_JWK.crv, x: FIXED_TICKET_JWK.x, y: FIXED_TICKET_JWK.y, d: FIXED_TICKET_JWK.d });
+const SECRET_VALUES = [GENERATED, ANSWERS.RESEND_KEY, ANSWERS.HZ_MAIL_FROM, ANSWERS.HZ_ALERT_TO, FIXED_TICKET_KEY, FIXED_TICKET_JWK.d];
 // The tables schema.sql creates, read the way the script reads them, so a new
 // table never needs this file changed.
 const TABLES = schemaTables(SCHEMA);
-const SECRET_NAMES = ['HZ_ACCOUNT_KEY', 'RESEND_KEY', 'HZ_MAIL_FROM', 'HZ_ALERT_TO', 'HZ_LINK_BASE'];
+const SECRET_NAMES = ['HZ_ACCOUNT_KEY', 'HZ_TICKET_KEY', 'RESEND_KEY', 'HZ_MAIL_FROM', 'HZ_ALERT_TO', 'HZ_LINK_BASE'];
 
 // A wrangler stand-in. `state` decides what each command answers; every call
 // is recorded with its args, stdin, cwd and env.
@@ -68,7 +73,7 @@ function mockWrangler(state = {}) {
   return { run, calls };
 }
 
-function harness({ wrangler = mockWrangler(), argv = [], answers = ANSWERS, confirm = 'y', edge = 'y', replaceKey, replaceWorker = 'y', route ={ status: 405, body: '{"error":"method"}', ray: true } } = {}) {
+function harness({ wrangler = mockWrangler(), argv = [], answers = ANSWERS, confirm = 'y', edge = 'y', replaceKey, replaceTicketKey, replaceWorker = 'y', ticketKey = FIXED_TICKET_KEY, route = { status: 405, body: '{"error":"method"}', ray: true } } = {}) {
   const lines = [];
   const files = new Map();
   const fetched = [];
@@ -78,6 +83,7 @@ function harness({ wrangler = mockWrangler(), argv = [], answers = ANSWERS, conf
     if (name === 'confirm-account') return confirm;
     if (name === 'confirm-edge') return edge;
     if (name === 'confirm-replace-key' && replaceKey !== undefined) return replaceKey;
+    if (name === 'confirm-replace-ticket-key' && replaceTicketKey !== undefined) return replaceTicketKey;
     if (name === 'confirm-replace-worker') return replaceWorker;
     if (name in answers) return answers[name];
     throw new Error(`unexpected prompt ${name}`);
@@ -98,12 +104,17 @@ function harness({ wrangler = mockWrangler(), argv = [], answers = ANSWERS, conf
       return new Response(route.body, { status: route.status, headers: route.ray ? { 'cf-ray': 'abc-EWR' } : {} });
     },
   };
+  // ticketKey null leaves the script's own WebCrypto generator in place.
+  if (ticketKey !== null) deps.generateTicketKey = async () => ticketKey;
   return { deps, lines, files, fetched, asked, wrangler, output: () => lines.join('\n') };
 }
 
 function assertNoSecretAnywhere(h) {
   const out = h.output();
-  for (const v of SECRET_VALUES) {
+  // The ticket key a run put (its own generated one included) and its private part.
+  const ticket = h.wrangler.calls.find((c) => c.args[0] === 'secret' && c.args[2] === 'HZ_TICKET_KEY')?.input;
+  const extra = ticket ? [ticket, JSON.parse(ticket).d] : [];
+  for (const v of [...SECRET_VALUES, ...extra]) {
     assert.equal(out.includes(v), false, `output carries a secret value`);
     for (const c of h.wrangler.calls) {
       assert.equal(c.args.join(' ').includes(v), false, `argv of ${c.args.slice(0, 2).join(' ')} carries a secret value`);
@@ -137,6 +148,8 @@ test('dry run prints every step and command, masks secrets and touches nothing',
   assert.match(out, /GET https:\/\/horae-zone\.nooutco\.me\/account/);
   assert.match(out, /WAF|rate limiting rule/i);
   assert.match(out, /A5c/);
+  assert.match(out, /generate: HZ_TICKET_KEY = \[masked\] \(ECDSA P-256 private key, JWK\)/);
+  assert.match(out, /--new-ticket-key/);
 });
 
 test('a full run against mocked wrangler creates the database, sets every secret through stdin and passes the checklist', async () => {
@@ -155,6 +168,7 @@ test('a full run against mocked wrangler creates the database, sets every secret
     assert.ok(put.input.length > 0);
   }
   assert.equal(h.wrangler.calls.find((c) => c.args[2] === 'HZ_ACCOUNT_KEY').input, GENERATED);
+  assert.equal(h.wrangler.calls.find((c) => c.args[2] === 'HZ_TICKET_KEY').input, FIXED_TICKET_KEY);
   assert.equal(h.wrangler.calls.find((c) => c.args[2] === 'RESEND_KEY').input, ANSWERS.RESEND_KEY);
   assert.equal(h.asked.find((a) => a.name === 'RESEND_KEY').hidden, true);
   assert.equal(h.asked.find((a) => a.name === 'HZ_ALERT_TO').hidden, false);
@@ -493,6 +507,85 @@ test('the generated account key is 32 random bytes, base64url, and the service a
   const key = h.wrangler.calls.find((c) => c.args[2] === 'HZ_ACCOUNT_KEY').input;
   assert.match(key, /^[A-Za-z0-9_-]{43}$/);
   assert.ok(await accountKeys({ HZ_ACCOUNT_KEY: key }));
+});
+
+// The ticket call unlock.js makes (ticketKey): a test drifts loudly if it changes.
+const UNLOCK_IMPORT = 'crypto.subtle.importKey("jwk", jwk, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"])';
+
+test('the generated ticket key is an ECDSA P-256 private JWK the service imports and signs with', async () => {
+  assert.ok(readFileSync(path.join(ROOT, 'src', 'unlock.js'), 'utf8').includes(UNLOCK_IMPORT), 'unlock.js still imports the ticket key this way');
+  const h = harness({ ticketKey: null });
+  const result = await deploy(h.deps);
+  assert.equal(result.ok, true, h.output());
+  const value = h.wrangler.calls.find((c) => c.args[0] === 'secret' && c.args[2] === 'HZ_TICKET_KEY')?.input;
+  assert.equal(typeof value, 'string', 'HZ_TICKET_KEY is put through stdin');
+  assert.notEqual(value, FIXED_TICKET_KEY, 'the script made its own key');
+  const jwk = JSON.parse(value);
+  assert.equal(jwk.kty, 'EC');
+  assert.equal(jwk.crv, 'P-256');
+  for (const part of ['x', 'y', 'd']) assert.match(jwk[part], /^[A-Za-z0-9_-]{43}$/, part);
+  // As unlock.js does it: the same import, then a signature its public half verifies.
+  const key = await crypto.subtle.importKey('jwk', jwk, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
+  const data = new TextEncoder().encode('horae-zone-unlock-ticket-v1.payload');
+  const sig = await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, key, data);
+  const pub = await crypto.subtle.importKey('jwk', { kty: jwk.kty, crv: jwk.crv, x: jwk.x, y: jwk.y }, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']);
+  assert.ok(await crypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, pub, sig, data));
+  assert.match(h.output(), /Generated HZ_TICKET_KEY/);
+  assertNoSecretAnywhere(h);
+});
+
+test('a wrangler failure echoing the ticket key or its private part prints neither', async () => {
+  const w = mockWrangler();
+  const base = w.run;
+  const echo = `key ${FIXED_TICKET_KEY}\nd=${FIXED_TICKET_JWK.d}\n${JSON.stringify({ value: FIXED_TICKET_KEY })}`;
+  w.run = async (args, opts) => (args[0] === 'deploy' ? (w.calls.push({ args, ...opts }), { code: 1, stdout: '', stderr: echo }) : base(args, opts));
+  const h = harness({ wrangler: w });
+  const result = await deploy(h.deps);
+  assert.equal(result.ok, false);
+  assert.match(h.output(), /wrangler deploy failed/);
+  assert.equal(h.output().includes(FIXED_TICKET_JWK.d), false, 'the private part is masked');
+  assert.equal(h.output().includes(JSON.stringify(FIXED_TICKET_KEY).slice(1, -1)), false, 'the JSON-escaped key is masked');
+  assertNoSecretAnywhere(h);
+});
+
+test('a rerun keeps the ticket key already set, unless --new-ticket-key is given and confirmed with y', async () => {
+  const stored = () => mockWrangler({ dbPresent: true, existingSecrets: ['HZ_ACCOUNT_KEY', 'HZ_TICKET_KEY'] });
+  const putOf = (h, name) => h.wrangler.calls.find((c) => c.args[0] === 'secret' && c.args[1] === 'put' && c.args[2] === name);
+
+  const keep = harness({ wrangler: stored() });
+  const kept = await deploy(keep.deps);
+  assert.equal(kept.ok, true, keep.output());
+  assert.equal(putOf(keep, 'HZ_TICKET_KEY'), undefined, 'the stored ticket key is not replaced');
+  assert.match(keep.output(), /Kept HZ_TICKET_KEY/);
+  assert.equal(statusOf(kept, 'Secret HZ_TICKET_KEY'), 'PASS');
+  assert.equal(keep.asked.some((a) => a.name === 'confirm-replace-ticket-key'), false);
+
+  const yes = harness({ argv: ['--new-ticket-key'], replaceTicketKey: 'y', wrangler: stored() });
+  const replaced = await deploy(yes.deps);
+  assert.equal(replaced.ok, true, yes.output());
+  const prompt = yes.asked.find((a) => a.name === 'confirm-replace-ticket-key');
+  assert.ok(prompt, 'the replacement is confirmed through a prompt');
+  assert.equal(prompt.hidden, false);
+  assert.match(yes.output(), /every ticket already issued stops working/);
+  assert.equal(putOf(yes, 'HZ_TICKET_KEY')?.input, FIXED_TICKET_KEY);
+  assert.equal(putOf(yes, 'HZ_ACCOUNT_KEY'), undefined, '--new-ticket-key leaves the account key alone');
+  const order = yes.wrangler.calls.map((c) => c.args.slice(0, 2).join(' '));
+  assert.ok(order.indexOf('secret list') < order.indexOf('deploy --config'));
+  assertNoSecretAnywhere(yes);
+
+  for (const answer of ['', 'n', 'no', 'replace']) {
+    const no = harness({ argv: ['--new-ticket-key'], replaceTicketKey: answer, wrangler: stored() });
+    const result = await deploy(no.deps);
+    assert.equal(result.ok, false, `answer ${JSON.stringify(answer)}`);
+    assert.match(no.output(), /HZ_TICKET_KEY not replaced; the Worker and its secrets were not changed/, `answer ${JSON.stringify(answer)}`);
+    assert.equal(no.wrangler.calls.some((c) => c.args[0] === 'deploy' || (c.args[0] === 'secret' && c.args[1] === 'put')), false, `answer ${JSON.stringify(answer)}: no deploy, no secret put`);
+  }
+
+  const first = harness({ argv: ['--new-ticket-key'], wrangler: mockWrangler({ dbPresent: true }) });
+  const r = await deploy(first.deps);
+  assert.equal(r.ok, true, first.output());
+  assert.equal(first.asked.some((a) => a.name === 'confirm-replace-ticket-key'), false, 'a Worker never deployed has no ticket key to replace');
+  assert.equal(putOf(first, 'HZ_TICKET_KEY')?.input, FIXED_TICKET_KEY);
 });
 
 test('a bad answer is asked again, and three bad answers stop the run before any write', async () => {
