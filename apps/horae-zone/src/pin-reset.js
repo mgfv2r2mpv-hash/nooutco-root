@@ -33,9 +33,11 @@
  * safe defaults, listed for the owner in the design review.
  *
  * THE NEW PIN passes the PIN rules and is not the current PIN or one locked
- * from reuse (pin-reused, with PIN_LOCKED). The write that replaces the
- * verifier locks the old PIN for 365 days (schema.sql pin_replaced_locks) and
- * restarts set_at. The owner is mailed a note with no number and no link.
+ * from reuse (pin-reused, with PIN_LOCKED). The rules answer too-easy only
+ * after the try took its place and the factors were right, so wrong factors
+ * never read the private list (security review LOW-1). The write that
+ * replaces the verifier locks the old PIN for 365 days (schema.sql
+ * pin_replaced_locks) and restarts set_at. The owner is mailed a note with no number and no link.
  * A reset does not open the app: the next open is a /pin/verify, with the
  * code when 12 hours have passed, so a reset never extends the offline grant.
  */
@@ -46,7 +48,7 @@ import { Refusal, ACCOUNT_CHANGER, b64url, findDevice, mayChangeAccount } from "
 import { SIGNUP_LIMITS, hasOnly, keysOrUnavailable } from "./signup.js";
 import { admitThrottle } from "./throttle.js";
 import { mailAfter } from "./lockout.js";
-import { MAX_TICKET, readTicket, spendTicket, allowedOrRefuse, lockedForReuse } from "./pin.js";
+import { PIN, MAX_TICKET, readTicket, spendTicket, allowedOrRefuse, lockedForReuse } from "./pin.js";
 
 const HOUR_MS = 60 * 60 * 1000;
 
@@ -175,11 +177,12 @@ export async function resetPin({ db, device, body, now, env, pinRules, mailer })
   const given = resetBody(body);
   if (!pinRules) throw new Refusal("unavailable", 503);
   const keys = await keysOrUnavailable(env);
-  allowedOrRefuse(pinRules, given.pin);
+  if (!PIN.test(given.pin)) throw new Refusal("shape", 400);
   const row = await pinRowOrRefuse(db, device.account_id);
   await admitOrSlowDown(db, now, `pin-reset-try:${device.account_id}`, PIN_RESET_LIMITS.triesPerHour);
   const { right, claims, digest } = await factorsRight({ db, device, now, env, keys }, given);
   if (!right) throw new Refusal("bad-reset", 401);
+  allowedOrRefuse(pinRules, given.pin);
   const verifier = await keys.pinVerifier(given.pin, row.salt);
   if (await lockedForReuse(db, device.account_id, verifier, row, now)) throw new Refusal("pin-reused", 409, undefined, PIN_LOCKED);
   // Over the verifier just read, never onto a PIN locked meanwhile, only with

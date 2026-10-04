@@ -50,7 +50,10 @@
  * change the account (ACCOUNT_CHANGER, checked in the write: before the first
  * accepted code, the owner device). A pending device never reaches these
  * routes (src/routes.js). The PIN rules (the engine's createPinRules, fed the
- * private blocklist) are injected; without them a PIN cannot be set.
+ * private blocklist) are injected; without them a PIN cannot be set. They
+ * answer too-easy only after the ticket (a first PIN) or the current PIN (a
+ * change) was right, so a device with a junk ticket or a guessed PIN cannot
+ * read the private list (security review LOW-1); the public shape comes first.
  *
  * A CHANGE (§3.4 "Reuse lock") is an open that also names the new PIN: the
  * current PIN, and the code under the same 12-hour rule as an open, from a
@@ -192,6 +195,8 @@ async function opened(db, device, signKey) {
 }
 
 // The PIN rules' answer as a refusal: shape, or too-easy with its one sentence.
+// Asked only after the ticket, current PIN or reset factors were right, so the
+// private list never answers a device holding no proof (security review LOW-1).
 export function allowedOrRefuse(pinRules, pin) {
   const allowed = pinRules.pinAllowed(pin);
   if (allowed.ok) return;
@@ -205,8 +210,9 @@ export async function setPin({ db, device, body, now, env, pinRules, mailer }) {
   if (!pinRules) throw new Refusal("unavailable", 503);
   const keys = await keysOrUnavailable(env);
   const signKey = await signKeyOrUnavailable(env);
-  allowedOrRefuse(pinRules, pin);
+  if (!PIN.test(pin)) throw new Refusal("shape", 400);
   const claims = await ticketOrRefuse(env, ticket, device, now);
+  allowedOrRefuse(pinRules, pin);
   const salt = newSalt();
   const verifier = await keys.pinVerifier(pin, salt);
   // Only while the ticket is unspent, and only from a device that may change
@@ -272,16 +278,18 @@ async function changePin({ db, device, body, now, env, pinRules, mailer }) {
   const keys = await keysOrUnavailable(env);
   const signKey = await signKeyOrUnavailable(env);
   const reopenBase = mailOrUnavailable(env, mailer);
-  allowedOrRefuse(pinRules, pin);
+  if (!PIN.test(pin)) throw new Refusal("shape", 400);
   const row = await db.prepare("SELECT verifier, salt FROM pin WHERE account_id = ?").bind(device.account_id).first();
   if (!row) throw new Refusal("no-pin", 409);
   const claims = await codeOrRefuse(db, env, ticket, device, now);
   const after = await checkedPin({ db, device, now, keys, mailer, reopenBase }, current, row);
-  return { ...(await withAfter(after, () => replacePin({ db, device, now, keys, signKey, claims, row, pin }))), after };
+  return { ...(await withAfter(after, () => replacePin({ db, device, now, keys, signKey, claims, row, pin, pinRules }))), after };
 }
 
-// The change's write, once the current PIN was right.
-async function replacePin({ db, device, now, keys, signKey, claims, row, pin }) {
+// The change's write, once the current PIN was right: only then do the PIN
+// rules answer, so a wrong current PIN never reads the private list.
+async function replacePin({ db, device, now, keys, signKey, claims, row, pin, pinRules }) {
+  allowedOrRefuse(pinRules, pin);
   const verifier = await keys.pinVerifier(pin, row.salt);
   if (await lockedForReuse(db, device.account_id, verifier, row, now)) throw new Refusal("pin-reused", 409, undefined, PIN_LOCKED);
   // Only over the verifier just checked, never onto a PIN locked meanwhile,
