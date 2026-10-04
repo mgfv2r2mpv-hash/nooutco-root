@@ -1,5 +1,6 @@
 // A3, account + email (plan §3.3 "First device", steps 1 and 2). POST /account
-// takes an address and mails a single-use 6-digit code; POST
+// takes an address and mails a single-use link whose fragment carries a
+// 128-bit token (the "code"); POST
 // /account/email/verify takes the address, that code and the account
 // password, and only then makes the account. The mail transport is the
 // harness sink: no test sends mail.
@@ -39,12 +40,16 @@ function codeFrom(h, to = ADDRESS) {
   return new URL(links[0]).hash.slice(1);
 }
 
-// The code as a whole number, so it is not found inside a longer one (a
-// 13-digit timestamp in a row can hold any 6 digits).
-const alone = (code) => new RegExp(`(?<![0-9])${code}(?![0-9])`);
+// The token shape: 16 random bytes in base64url, no padding.
+const TOKEN = /^[A-Za-z0-9_-]{22}$/;
 
-// A 6-digit code that is not `code`.
-const wrongOf = (code) => String((Number(code) + 1) % 1_000_000).padStart(6, '0');
+// A well-formed token that is not `code`: the first character changed.
+const wrongOf = (code) => `${code[0] === 'A' ? 'B' : 'A'}${code.slice(1)}`;
+
+// A well-formed token no start ever mailed.
+const NEVER_SENT = 'A'.repeat(22);
+
+const b64urlBytes = (text) => Uint8Array.from(atob(text.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
 
 async function answer(res) {
   return { status: res.status, json: await res.json() };
@@ -57,7 +62,7 @@ test('sign-up needs the email code', async () => {
   assert.equal(h.mail[0].to, ADDRESS);
   assert.deepEqual(accounts(h.db), [], 'no account before the code');
   const code = codeFrom(h);
-  assert.match(code, /^\d{6}$/);
+  assert.match(code, TOKEN);
   assert.deepEqual(await answer(await verify(h, { code: wrongOf(code) })), { status: 401, json: { error: 'bad-code' } });
   assert.deepEqual(await answer(await h.call(post('/account/email/verify', { email: ADDRESS, password: PASSWORD }))), { status: 400, json: { error: 'shape' } });
   assert.deepEqual(accounts(h.db), [], 'no account from a wrong or missing code');
@@ -72,7 +77,7 @@ test('NEGATIVE CONTROL: the code from the mail, with a password, makes the accou
 
 test('a sign-up for an address that was never sent a code is refused like a wrong code', async () => {
   const h = harness();
-  assert.deepEqual(await answer(await verify(h, { code: '000000' })), { status: 401, json: { error: 'bad-code' } });
+  assert.deepEqual(await answer(await verify(h, { code: NEVER_SENT })), { status: 401, json: { error: 'bad-code' } });
   assert.deepEqual(accounts(h.db), []);
 });
 
@@ -87,7 +92,7 @@ test('the email code rides in the fragment', async (t) => {
   assert.equal(`${link.origin}${link.pathname}`, LINK_BASE);
   assert.equal(link.search, '', 'no query string');
   const code = link.hash.slice(1);
-  assert.match(code, /^\d{6}$/);
+  assert.match(code, TOKEN);
   // A code sent in a query string is refused before any handler, and is not
   // spent or counted.
   await keep(await verify(h, { code: wrongOf(code), query: `?code=${code}` }));
@@ -96,10 +101,42 @@ test('the email code rides in the fragment', async (t) => {
   await keep(await verify(h, { code: wrongOf(code) }));
   await keep(await verify(h, { code }));
   assert.equal(accounts(h.db).length, 1);
-  for (const text of seen) assert.equal(text.match(alone(code)) !== null, false, 'a response carries the code');
-  assert.equal(JSON.stringify(auditRows(h.db)).match(alone(code)) !== null, false, 'an audit row carries the code');
-  assert.equal(everyRow(h.db).match(alone(code)) !== null, false, 'a table carries the code');
-  assert.equal(lines.join('\n').match(alone(code)) !== null, false, 'console output carries the code');
+  for (const text of seen) assert.equal(text.includes(code), false, 'a response carries the code');
+  assert.equal(JSON.stringify(auditRows(h.db)).includes(code), false, 'an audit row carries the code');
+  assert.equal(everyRow(h.db).includes(code), false, 'a table carries the code');
+  assert.equal(lines.join('\n').includes(code), false, 'console output carries the code');
+});
+
+// Second security review, root cause: a 6-digit code was guessable, so it
+// needed tight per-address caps a stranger could fill. The secret is now a
+// 128-bit random token carried in the link, and the mail shows no code to
+// type.
+test('the email secret is a 128-bit random token, and the mail shows no code to type', async () => {
+  const h = harness();
+  await start(h);
+  await start(h, ADDRESS, '192.0.2.12');
+  const [first, second] = h.mail.map((m) => new URL(m.text.match(/https:\/\/\S+/)[0]).hash.slice(1));
+  for (const token of [first, second]) {
+    assert.match(token, TOKEN);
+    assert.equal(b64urlBytes(token).length, 16, 'the token is 16 bytes');
+  }
+  assert.notEqual(first, second, 'each start draws a new token');
+  for (const m of h.mail) {
+    assert.doesNotMatch(m.text, /\b\d{6}\b/, 'no 6-digit code in the mail');
+    assert.doesNotMatch(m.text, /code:/i, 'no typed code line in the mail');
+    const token = new URL(m.text.match(/https:\/\/\S+/)[0]).hash.slice(1);
+    assert.equal(m.text.split(token).length, 2, 'the token appears once, in the link');
+  }
+});
+
+test('a 6-digit typed code, or any other shape than the token, is refused as shape before a try is counted', async () => {
+  const h = harness();
+  await start(h);
+  for (const code of ['482913', 'A'.repeat(21), 'A'.repeat(23), `${'A'.repeat(21)}=`, `${'A'.repeat(21)}+`]) {
+    assert.deepEqual(await answer(await verify(h, { code })), { status: 400, json: { error: 'shape' } }, code);
+  }
+  assert.deepEqual(challenges(h.db).map((c) => [c.used, c.tries]), [[0, 0]]);
+  assert.equal(h.db.sqlite.prepare("SELECT COUNT(*) AS n FROM throttle WHERE bucket LIKE 'verify-%'").get().n, 0, 'no try was counted');
 });
 
 test('an email code works once', async () => {
@@ -183,8 +220,8 @@ test('the code is stored only as a keyed digest', async () => {
   const rows = challenges(h.db);
   assert.equal(rows.length, 1);
   assert.match(rows[0].digest, /^[0-9a-f]{64}$/);
-  assert.equal(everyRow(h.db).match(alone(code)) !== null, false);
-  assert.equal(JSON.stringify(h.db.bound.map((b) => b.values)).match(alone(code)) !== null, false, 'a bound statement carries the code');
+  assert.equal(everyRow(h.db).includes(code), false);
+  assert.equal(JSON.stringify(h.db.bound.map((b) => b.values)).includes(code), false, 'a bound statement carries the code');
   assert.equal(everyRow(h.db).includes(ADDRESS), false, 'a table carries the address in the clear');
 });
 
@@ -219,9 +256,9 @@ test('sign-up starts are rate limited per device', async () => {
 test('code tries are rate limited per device', async () => {
   const h = harness();
   for (let i = 0; i < SIGNUP_LIMITS.verifiesPerRequesterHour; i += 1) {
-    assert.equal((await verify(h, { email: `spray-${i}@example.test`, code: '000000' })).status, 401);
+    assert.equal((await verify(h, { email: `spray-${i}@example.test`, code: NEVER_SENT })).status, 401);
   }
-  assert.deepEqual(await answer(await verify(h, { code: '000000' })), { status: 429, json: { error: 'slow-down' } });
+  assert.deepEqual(await answer(await verify(h, { code: NEVER_SENT })), { status: 429, json: { error: 'slow-down' } });
 });
 
 test('no answer says whether an address already has an account', async () => {
@@ -233,7 +270,7 @@ test('no answer says whether an address already has an account', async () => {
   const fresh = await answer(await start(h, 'fresh@example.test', '192.0.2.31'));
   assert.deepEqual(existing, fresh);
   assert.deepEqual(h.mail.slice(mailed).map((m) => m.to), ['fresh@example.test'], 'no code goes to an address that has an account');
-  const wrongExisting = await answer(await verify(h, { code: '000000', ip: '192.0.2.32' }));
+  const wrongExisting = await answer(await verify(h, { code: NEVER_SENT, ip: '192.0.2.32' }));
   const wrongFresh = await answer(await verify(h, { email: 'fresh@example.test', code: wrongOf(codeFrom(h, 'fresh@example.test')), ip: '192.0.2.32' }));
   assert.deepEqual(wrongExisting, wrongFresh);
 });
@@ -266,7 +303,7 @@ test('L3: a start, verify or sign-in without a connecting address is refused as 
   const h = harness();
   const bare = [
     ['/account', { email: ADDRESS }],
-    ['/account/email/verify', { email: ADDRESS, code: '000000', password: PASSWORD }],
+    ['/account/email/verify', { email: ADDRESS, code: NEVER_SENT, password: PASSWORD }],
     ['/signin', { email: ADDRESS, password: PASSWORD, keyDigest: ANY_KEY_DIGEST }],
   ];
   for (const [pathname, body] of bare) {
@@ -310,7 +347,7 @@ test('M2: an address with a format or zero-width character, or a non-ASCII local
   ];
   for (const email of bad) {
     assert.deepEqual(await answer(await start(h, email)), { status: 400, json: { error: 'shape' } }, JSON.stringify(email));
-    assert.deepEqual(await answer(await verify(h, { email, code: '000000' })), { status: 400, json: { error: 'shape' } }, JSON.stringify(email));
+    assert.deepEqual(await answer(await verify(h, { email, code: NEVER_SENT })), { status: 400, json: { error: 'shape' } }, JSON.stringify(email));
     assert.deepEqual(await answer(await h.call(post('/signin', { email, password: PASSWORD, keyDigest: ANY_KEY_DIGEST }, { 'cf-connecting-ip': IP }))), { status: 400, json: { error: 'shape' } }, JSON.stringify(email));
   }
   assert.deepEqual(h.mail, []);
@@ -453,7 +490,7 @@ test('without the account key the account routes answer unavailable and write no
   for (const bad of [undefined, '', 'too-short', '!!!!']) {
     const h = harness({ env: { HZ_ACCOUNT_KEY: bad } });
     assert.deepEqual(await answer(await start(h)), { status: 503, json: { error: 'unavailable' } }, String(bad));
-    assert.deepEqual(await answer(await verify(h, { code: '000000' })), { status: 503, json: { error: 'unavailable' } });
+    assert.deepEqual(await answer(await verify(h, { code: NEVER_SENT })), { status: 503, json: { error: 'unavailable' } });
     assert.deepEqual(h.mail, []);
     assert.deepEqual(challenges(h.db), []);
   }
@@ -468,13 +505,13 @@ test('without a link base no code is issued', async () => {
   }
 });
 
-test('the sign-up mail has a plain subject, the code, the link, and no em dash', async () => {
+test('the sign-up mail has a plain subject, the link with the token, and no em dash', async () => {
   const h = harness();
   await start(h);
   const [m] = h.mail;
   const code = codeFrom(h);
   assert.equal(typeof m.subject, 'string');
-  assert.ok(m.subject.length > 0 && !m.subject.includes(code), 'the subject carries no code');
+  assert.ok(m.subject.length > 0 && !m.subject.includes(code), 'the subject carries no token');
   assert.ok(m.text.includes(`${LINK_BASE}#${code}`));
   assert.equal(`${m.subject}${m.text}`.includes(String.fromCharCode(0x2014)), false);
 });

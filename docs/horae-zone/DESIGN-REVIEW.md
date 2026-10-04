@@ -247,7 +247,7 @@ Safe defaults the plan does not fix. Each is one constant in `src/signup.js`.
 | 4 | Sign-up starts per connecting address per hour | 10 | `startsPerRequesterHour` |
 | 5 | Code tries per connecting address per hour, and at one address from one connecting address (H1) | 20 and 5 | `verifiesPerRequesterHour`, `triesPerAddressRequesterHour` |
 | 6 | Account password length | 12 to 256 characters | `passwordMin`, `passwordMax` |
-| 7 | The mail wording: subject "Horae Zone sign-up code", then "Sign-up code: <code>", "Works once. Expires 10 minutes after it was sent.", the link, and "No account is made without this code." | As written | `codeMessage` |
+| 7 | The mail wording (second review, item 1: no code to type): subject "Horae Zone sign-up link", then "Link for the device signing up:", the link, "Works once. Expires 10 minutes after it was sent." and "No account is made without this link." | As written | `codeMessage` |
 | 8 | Codes mailed per hour across every `+tag` of one mailbox (M2) | 3 | `codesPerMailboxHour` |
 | 9 | Codes sent per day across every address and requester (M2) | 500, or `HZ_CODES_PER_DAY` when set (a plain Worker variable, not a secret) | `codesPerDay` |
 
@@ -316,6 +316,22 @@ What changed (`src/signup.js`, `src/signin.js`): `requesterOf` refuses a missing
 Test (`test/signup.test.mjs`): "L3: a start, verify or sign-in without a connecting address is refused as shape and writes nothing" (no header, an empty one and a blank one, at all three routes). On a `3c3cac63` extract the three routes answered 200, `bad-code` and `bad-login` and wrote throttle rows. "L3 NEGATIVE CONTROL: the same start with a connecting address is admitted and counted under it" passes on both.
 
 Left as is (residual): the header is trusted as Cloudflare sets it. A request reaching the Worker by a path that lets the caller set the header would choose its own bucket; no such path exists (no route but the edge, no service binding).
+
+### Second security review: the root cause, a guessable email code
+
+A second review of `8ebe205a` found that what was left of H1, H2 and M2 had one root cause. A 6-digit email code is guessable, so it needed tight per-address caps, and any cap a stranger can fill is a lever to lock a chosen address out. The fix goes at the root: the email secret becomes unguessable, and the caps that only existed to slow guessing go. Each item was test first: its tests were run against the `8ebe205a` source (only the test files changed) and failed there.
+
+| Item | What | Slice |
+|---|---|---|
+| 1 | The email secret is a 128-bit random token in the link fragment; the mail shows no code to type | A3 |
+
+**Item 1: the email secret becomes unguessable.** The code already rode in the link fragment and was clicked, not typed, so a 6-digit code bought nothing but guessability.
+
+What changed (`src/signup.js`): `newCode` draws 16 random bytes and writes them in base64url (22 characters, no padding). The rest is unchanged: the token is stored only as its keyed digest (`codeDigest`), it is single use, it lives 10 minutes, and a verify compares digests with `sameHex`. `/account/email/verify` takes only that shape, so a typed 6-digit code, or any other length or alphabet, is `shape` before any throttle row or try is counted. The mail shows no code to type (the review preferred none, and the link is how the code is used): subject "Horae Zone sign-up link", the link, and the lifetime.
+
+Tests (`test/signup.test.mjs`): "the email secret is a 128-bit random token, and the mail shows no code to type" and "a 6-digit typed code, or any other shape than the token, is refused as shape before a try is counted" are new. The existing tests now build wrong tries as well-formed tokens. On `8ebe205a` 9 tests fail (the two new ones, and seven whose wrong tries or shape checks assume the token; for example a well-formed token never sent answers `shape` there, expected `bad-code`).
+
+Left as is: the request field stays `code`, so a client posts what it read from the fragment unchanged.
 
 ### Open points for the reviewer
 

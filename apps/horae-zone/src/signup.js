@@ -1,10 +1,13 @@
 /**
  * A3, account + email (plan §3.3 "First device", steps 1 and 2).
  *
- * POST /account {email} mails a single-use 6-digit code to an address that
- * has no account yet, and answers {ok:true} either way, so no answer says
- * whether an address already has an account. The code rides in the link's
- * fragment, which a browser never sends to a server.
+ * POST /account {email} mails a single-use link to an address that has no
+ * account yet, and answers {ok:true} either way, so no answer says whether an
+ * address already has an account. The link's fragment, which a browser never
+ * sends to a server, carries the code: a 128-bit random token in base64url
+ * (second security review: a 6-digit code was guessable, so it needed tight
+ * per-address caps that a stranger could fill to lock the owner out). The
+ * mail shows no code to type.
  *
  * POST /account/email/verify {email, code, password} makes the account only
  * when the code is one of the live ones for that address (up to
@@ -18,7 +21,7 @@
  */
 import { sameHex } from "../../../packages/account-engine/src/limits.mjs";
 import { fragmentLink } from "../../../packages/account-engine/src/mailer.mjs";
-import { Refusal } from "./checks.js";
+import { Refusal, b64url } from "./checks.js";
 import { accountKeys } from "./account-keys.js";
 import { admitThrottle } from "./throttle.js";
 
@@ -51,10 +54,11 @@ const MAX_ADDRESS = 254;
 // mailbox), and the local part is printable ASCII (no look-alike letters).
 const ADDRESS = /^[^\s@\p{Cc}\p{Cf}]+@[^\s@\p{Cc}\p{Cf}]+\.[^\s@\p{Cc}\p{Cf}]+$/u;
 const LOCAL = /^[\x21-\x7e]+@/;
-const CODE = /^\d{6}$/;
+// The code: CODE_BYTES random bytes in base64url, no padding.
+const CODE_BYTES = 16;
+const CODE = /^[A-Za-z0-9_-]{22}$/;
 // The one bucket with no key: every start counts toward the daily cap.
 export const DAILY_BUCKET = "codes-day";
-const CODE_SPACE = 1_000_000;
 // A live code for one address; binds address_key, codeTries, now.
 const LIVE = "address_key = ? AND used = 0 AND tries < ? AND expires_at > ?";
 
@@ -126,30 +130,23 @@ export function requesterOf(request) {
   return ip;
 }
 
-// A uniform 6-digit code: values past the last whole multiple of CODE_SPACE
-// are drawn again, so no code is likelier than another.
+// A 128-bit random token, too many values to guess at any rate a cap allows.
 function newCode() {
-  const limit = Math.floor(2 ** 32 / CODE_SPACE) * CODE_SPACE;
-  for (;;) {
-    const [n] = crypto.getRandomValues(new Uint32Array(1));
-    if (n < limit) return String(n % CODE_SPACE).padStart(6, "0");
-  }
+  return b64url(crypto.getRandomValues(new Uint8Array(CODE_BYTES)));
 }
 
 // Plain notes on state; the wording is the owner's to change.
-function codeMessage(to, code, link) {
+function codeMessage(to, link) {
   const minutes = SIGNUP_LIMITS.codeTtlMs / 60_000;
   return {
     to,
-    subject: "Horae Zone sign-up code",
+    subject: "Horae Zone sign-up link",
     text: [
-      `Sign-up code: ${code}`,
-      `Works once. Expires ${minutes} minutes after it was sent.`,
-      "",
       "Link for the device signing up:",
       link,
       "",
-      "No account is made without this code.",
+      `Works once. Expires ${minutes} minutes after it was sent.`,
+      "No account is made without this link.",
     ].join("\n"),
   };
 }
@@ -203,7 +200,7 @@ export async function startSignup({ db, body, now, env, request, mailer }) {
      WHERE (SELECT COUNT(*) FROM challenge WHERE ${LIVE}) < ? RETURNING used`,
   ).bind(addressKey, digest, now + SIGNUP_LIMITS.codeTtlMs, addressKey, addressKey, SIGNUP_LIMITS.codeTries, now, SIGNUP_LIMITS.liveCodes).first();
   if (!made || made.used !== 0) return { status: 200, json: { ok: true } };
-  return { status: 200, json: { ok: true }, after: mailAfter(mailer, codeMessage(address, code, link)) };
+  return { status: 200, json: { ok: true }, after: mailAfter(mailer, codeMessage(address, link)) };
 }
 
 export async function verifySignup({ db, body, now, env, request }) {
