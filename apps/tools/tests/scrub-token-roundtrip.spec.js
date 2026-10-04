@@ -28,7 +28,7 @@ import { isTriageCall } from './helpers/llm-call.js';
  */
 
 const INTAKE =
-  'Client Jacob labeled Blue, Red and Yellow cards correctly. ' +
+  'Client Jacob labeled Cerulean, Fuchsia and Aqua cards correctly. ' +
   'Data collected on Mand, Tact and Echoic trials. ' +
   'Preferred play with the Paw Patrol figures. Mom Sarah called about Thursday.';
 
@@ -108,7 +108,7 @@ test.describe('a word with no evidence of being a person comes back', () => {
   test('the colours and the ABA terms survive the round trip', async ({ page }) => {
     const { noteText } = await draft(page);
     // Every one of these was a numbered client token before this change.
-    for (const word of ['Blue', 'Red', 'Yellow', 'Mand', 'Tact', 'Echoic']) {
+    for (const word of ['Cerulean', 'Fuchsia', 'Aqua', 'Mand', 'Tact', 'Echoic']) {
       expect(noteText, `"${word}" did not come back`).toContain(word);
     }
   });
@@ -194,8 +194,8 @@ test.describe('the map itself', () => {
     expect(byName['Jacob'], 'a cued name should be a kept role token').toMatchObject({ restore: false });
     expect(byName['Jacob'].token).toBe('[CLIENT]');
     expect(byName['Sarah'].token).toBe('[CAREGIVER]');
-    expect(byName['Red'], 'a colour should round-trip').toMatchObject({ restore: true });
-    expect(byName['Red'].token).toMatch(/^\[\[T\d+\]\]$/);
+    expect(byName['Fuchsia'], 'a colour should round-trip').toMatchObject({ restore: true });
+    expect(byName['Fuchsia'].token).toMatch(/^\[\[T\d+\]\]$/);
   });
 
   test('the substitution notice lists only what stays in the note', async ({ page }) => {
@@ -205,10 +205,10 @@ test.describe('the map itself', () => {
       return window.NotesScrub.noticeText(r.map);
     }, INTAKE);
     expect(notice).toContain('Jacob');
-    // Telling a clinician that "Red" was substituted would report a change that
+    // Telling a clinician that "Fuchsia" was substituted would report a change that
     // does not survive to the draft.
     expect(notice).not.toContain('[[T');
-    expect(notice).not.toContain('Red →');
+    expect(notice).not.toContain('Fuchsia →');
   });
 });
 
@@ -336,7 +336,7 @@ test.describe('a revision does not lose the words the draft round-tripped', () =
     // The reported fault, in the form it was reported: "T9" and "T4" in a note.
     expect(noteText, 'an opaque token survived into the note').not.toMatch(/\[\[T\d+\]\]/);
     expect(noteText, 'a bare token number survived into the note').not.toMatch(/\bT\d+\b/);
-    for (const word of ['Blue', 'Red', 'Yellow']) {
+    for (const word of ['Cerulean', 'Fuchsia', 'Aqua']) {
       expect(noteText, `"${word}" did not come back after the revision`).toContain(word);
     }
   });
@@ -347,7 +347,7 @@ test.describe('a revision does not lose the words the draft round-tripped', () =
     // is the same defect one click earlier.
     const diff = await page.locator('.diff-view').first().innerText();
     expect(diff).not.toMatch(/\[\[T\d+\]\]/);
-    expect(diff).toContain('Blue');
+    expect(diff).toContain('Cerulean');
   });
 
   test('the client name is still withheld from the model on the revision turn', async ({ page }) => {
@@ -406,7 +406,7 @@ test.describe('numbering continues across scrubs of the same note', () => {
   test('a second scrub does not mint a second [[T1]] for a different word', async ({ page }) => {
     await loggedIn(page);
     const out = await page.evaluate(async () => {
-      const first = await window.NotesScrub.review({ freeText: 'Worked on Blue, Red and Yellow cards.' });
+      const first = await window.NotesScrub.review({ freeText: 'Worked on Cerulean, Fuchsia and Aqua cards.' });
       const second = await window.NotesScrub.review({
         freeText: 'Also ran Purple and Orange.',
         seen: first.map,
@@ -502,7 +502,7 @@ async function draftWithMangledTokens(page, collapse) {
 test.describe('a token the model reshaped still comes back', () => {
   test('[[T3]] returned as [T3] restores to the clinician word', async ({ page }) => {
     const noteText = await draftWithMangledTokens(page, (s) => s.replace(/\[\[T(\d+)\]\]/g, '[T$1]'));
-    for (const word of ['Blue', 'Red', 'Yellow']) {
+    for (const word of ['Cerulean', 'Fuchsia', 'Aqua']) {
       expect(noteText, `"${word}" did not come back from a single-bracket token`).toContain(word);
     }
     expect(noteText, 'a token survived into the note').not.toMatch(/\[{1,2}\s*[Tt]\s*\d+\s*\]{1,2}/);
@@ -510,7 +510,7 @@ test.describe('a token the model reshaped still comes back', () => {
 
   test('an unbalanced [[T3] restores too, because the number is the identity', async ({ page }) => {
     const noteText = await draftWithMangledTokens(page, (s) => s.replace(/\[\[T(\d+)\]\]/g, '[[T$1]'));
-    expect(noteText).toContain('Blue');
+    expect(noteText).toContain('Cerulean');
     expect(noteText).not.toMatch(/\[{1,2}\s*[Tt]\s*\d+\s*\]{1,2}/);
   });
 
@@ -581,7 +581,7 @@ test.describe('the ledger outlives the page', () => {
     /* It holds the clinician's own words, which is the same class of data as the
        draft. Riding the draft's storage is what buys that, so this is the test
        that the sibling key really did inherit it and was not quietly special. */
-    for (const word of ['Blue', 'Mand', 'Paw Patrol']) {
+    for (const word of ['Cerulean', 'Mand', 'Paw Patrol']) {
       expect(raw, `"${word}" is on disk in the clear`).not.toContain(word);
     }
   });
@@ -627,7 +627,7 @@ test.describe('the ledger outlives the page', () => {
     await expect(page.getByRole('textbox', { name: /Skill Acquisition/i })).toHaveValue('');
 
     await page.getByRole('textbox', { name: /Skill Acquisition/i })
-      .fill('Client sorted the Turquoise cards during Echoic trials.');
+      .fill('Client sorted the Teal cards during Echoic trials.');
     await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first-then board before demands');
     await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked and redirected');
     await page.getByRole('button', { name: 'Generate Prompt' }).click();
@@ -639,7 +639,7 @@ test.describe('the ledger outlives the page', () => {
       (window.NotesGate.draft.load('bt::map') || []).map((e) => e.name)
     );
     expect(names, 'the cleared note’s word came back through the ref').not.toContain('Magenta');
-    expect(names).toContain('Turquoise');
+    expect(names).toContain('Teal');
   });
 });
 
