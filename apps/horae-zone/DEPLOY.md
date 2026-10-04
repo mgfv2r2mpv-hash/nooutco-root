@@ -38,7 +38,7 @@ A bad answer is asked again, up to 3 times. All answers are asked before anythin
 5. Skips the owner's admin role (A5c is not built yet) and says so.
 6. Checks everything and prints the checklist.
 
-`HZ_ACCOUNT_KEY` is the one internal secret: 32 random bytes the script makes itself. The PIN pepper, the ticket key and the sealing keys are all derived from it (`src/account-keys.js`), so there is no separate pepper or ticket key to set, and the seed sealing key arrives with A5. A new account key would make every stored account unreadable, so a rerun keeps the one already set and says "Kept HZ_ACCOUNT_KEY". `node bin/deploy.mjs --new-account-key` replaces it (fine after a test deploy, never once real accounts exist).
+`HZ_ACCOUNT_KEY` is the one internal secret: 32 random bytes the script makes itself. The PIN pepper, the ticket key and the sealing keys are all derived from it (`src/account-keys.js`), so there is no separate pepper or ticket key to set, and the seed sealing key arrives with A5. A new account key would make every stored account unreadable, so a rerun keeps the one already set and says "Kept HZ_ACCOUNT_KEY". `node bin/deploy.mjs --new-account-key` replaces it (fine after a test deploy, never once real accounts exist). When a key is already set, or the secret list cannot be read, the script prints that every enrolment, ticket and account becomes unusable and goes on only if the owner types `replace`; any other answer stops the run before the deploy, with nothing changed.
 
 ## What to expect at the end
 
