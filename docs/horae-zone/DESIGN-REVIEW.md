@@ -253,7 +253,20 @@ Safe defaults the plan does not fix. Each is one constant in `src/signup.js`.
 
 ### Security review findings and what changed
 
-A security review of `3c3cac63` asked for these fixes before merge. Each one was test first: the tests below fail on `3c3cac63` and pass after the fix.
+A security review of `3c3cac63` asked for these fixes before merge. Each one was test first: the tests below fail on `3c3cac63` and pass after the fix. One commit per item:
+
+| Item | Slice | Commit | After the fix |
+|---|---|---|---|
+| H1, sign-up lockout | A3 | `b7fde672` | Horae Zone 84/84 |
+| H2, sign-in lockout | A4 | `7868788c` | Horae Zone 90/90 |
+| M1, account timing | A3 | `68622439` | Horae Zone 91/91 |
+| M2, per-address limits stepped around | A3 | `a0e2e2b4` | Horae Zone 98/98 |
+| M3, ticket not bound to keys | A4 | `e1c8ea2c` | Horae Zone 100/100 |
+| M5, password normal form | A3 | `8a8f064f` | Horae Zone 103/103 |
+| L2, removal mid-flight | A4 | `a6824fe5` | Horae Zone 108/108 |
+| L3, no connecting address | A3 | `012e8993` | Horae Zone 110/110 |
+
+After every commit the engine ran 64 tests (63 pass, 1 skip without the private package; Node, Chromium and `workerd`) and profile-api 195/195. A4 lists H2, M3 and L2 in full; the review also raised device removal, recorded as A4 Decision for Kaleb 5 and not built.
 
 **H1 (high): anyone could lock a chosen address out of sign-up.** `startSignup` deleted the live code for the address before storing a new one, and five wrong tries ended a code, so a stranger could end the owner's code with one start or five guesses.
 
@@ -365,12 +378,12 @@ Left as is (residual): the header is trusted as Cloudflare sets it. A request re
 | 2 | Wrong sign-in passwords per address per hour, from everyone; a success and a sign-in signed by a device of the account are not counted (H2) | 10 | `SIGNIN_LIMITS.perAddressHour` |
 | 3 | Sign-in tries per connecting address per hour | 20 | `SIGNIN_LIMITS.perRequesterHour` |
 | 4 | Live nonces per device | 5 | `LIVE_NONCES_PER_DEVICE` |
-| 5 | Who may remove a device: any signed device of the account, itself included, with no fresh Face ID, password or code. Plan §3.5 says "Remove it on the admin or account screen" and does not say what proof that screen asks for | No extra proof | `removeDevice` |
+| 5 | Who may remove a device: any signed device of the account, itself included, with no fresh Face ID, password or code. Plan §3.5 says "Remove it on the admin or account screen" and does not say what proof that screen asks for. The security review recommends, before launch, either a fresh proof at removal (password or authenticator code) or a delay with an email to the account address that the removal can be stopped in, so a stolen device cannot remove the owner's others at once. Not built; it needs Kaleb's choice of the two | No extra proof | `removeDevice` |
 | 6 | How long removed device rows are kept | No purge | `src/retention.js` |
 
 ### Security review findings and what changed
 
-The same review of `3c3cac63` (see A3) asked for these fixes before merge, each test first: the tests below fail on `3c3cac63` and pass after the fix.
+The same review of `3c3cac63` asked for these fixes before merge, each test first: the tests below fail on `3c3cac63` and pass after the fix. The commit for each is in the table under A3.
 
 **H2 (high): anyone could lock the owner out of `/signin`.** The per-address bucket counted every try, from any requester, a success included. Ten wrong passwords from ten connecting addresses held the owner's right password at `slow-down` for the hour, and the owner's own sign-ins filled the same bucket.
 
@@ -411,15 +424,17 @@ Left as is (residual): a wrong-password try from a device removed mid-flight sti
 |---|---|---|---|
 | 1 | Sign-in asks no authenticator code yet, because no account has one until A5 (plan §3.6: "Email + password + code") | `src/signin.js` | A5 adds the code to `/signin`, RED first |
 | 2 | `/device/register` has no rate limit of its own | `src/devices.js` | Accept: the ticket is 256-bit and single use |
-| 3 | ~~A ticket is not bound to the keys it will register, so whoever holds it during its 5 minutes picks the keys~~ | `src/devices.js` | **Closed by M3** (security review, RED first): `/signin` takes the key digest and the ticket registers only those keys |
 | 4 | No cap on devices per account | `src/devices.js` | Decide with the account screen slice |
 | 5 | App Attest is not checked (plan §3.6: "later") | `src/devices.js` | A later slice |
 | 6 | `device.agree_key` is nullable, because the A2 tests and the vector test add devices without one. `/device/register` always sets it | `schema.sql` | Make it `NOT NULL` once the test helpers pass one |
 | 7 | Removing a device does not revoke its Cloudflare and Anthropic tokens; the plan puts that in a runbook | - | The runbook in Sass `docs/ios.md` |
 | 8 | The A2 leak sweep now lets each unspent nonce expire between routes, because open routes never spend the nonce the sweep fetches for them, and the cap would refuse the sixth | `test/leak.test.mjs` | None; what the sweep checks is unchanged |
 
+Decided by the security review, so no longer open: point 3 (a ticket was not bound to the keys it registers) is closed by M3 above. The numbers of the other points are kept.
+
 ### Out of scope for A4
 
 - The authenticator code, unlock and its lockout (A5), the PIN (A5b), admin actions (A5c) and recovery (A6).
 - Bringing a vault to a new device (`/pair/offer`, `/pair/take`).
 - Any change to Sass or JanusMirror, and any deploy.
+- A fresh proof, or a delay with an email, before a device is removed (Decision for Kaleb 5). The security review recommends one before launch; it waits on his choice.
