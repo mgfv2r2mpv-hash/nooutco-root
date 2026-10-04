@@ -32,6 +32,9 @@ test.describe('non-name identifier detection', () => {
     ['an SSN', 'SSN 123-45-6789 on the form', 'SSN'],
     ['a record number', 'MRN: A8842213 in the chart', 'ID'],
     ['a member id', 'member ID XZ99120345 on the card', 'ID'],
+    ['an all-letter member id', 'member ID ABCDEFG on the card', 'ID'],
+    ['a record number after MR#', 'MR# 12345 on the label', 'ID'],
+    ['a policy number', 'policy XK22918 lapsed last month', 'ID'],
   ];
 
   for (const [label, text, type] of CAUGHT) {
@@ -82,6 +85,14 @@ test.describe('non-name identifier detection', () => {
     'Ran FCT for 20 minutes, then a 5 minute break',
     'Client tolerated 3 of 4 transitions with a 1-minute warning',
     'Token economy: earned 5 tokens toward the preferred item',
+    // The record-number cue as an ordinary word (2026-10-04): no boundary after
+    // the cue and a case-blind number took each of these as an ID.
+    'BCBA completed a chart review with the BT',
+    'Caregiver called the insurance company about coverage',
+    'Discussed the policy change for the token board',
+    'BT recorded trials for the record keeping goal',
+    'Client sorted the Chartreuse cards',
+    'Insurance authorisation is pending',
   ];
 
   for (const text of LEFT_ALONE) {

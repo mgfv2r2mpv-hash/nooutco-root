@@ -1859,7 +1859,18 @@
     // Phone, with or without country code / punctuation.
     { type: "PHONE", re: /(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}\b/g },
     // Labelled record/member/policy identifiers.
-    { type: "ID", re: /\b(?:MRN|MR#|member(?:\s+ID)?|policy|insurance|subscriber|chart|record)\s*(?:#|no\.?|number|id)?\s*:?\s*[A-Z0-9][A-Z0-9-]{4,}\b/gi },
+    /* THE CUE IS A WHOLE WORD AND THE NUMBER IS CAPITALS OR DIGITS, as of
+       2026-10-04 (Kaleb's Masking Quality review). The cue had no boundary and
+       the `i` flag reached the number, so "Chartreuse" read as chart + "reuse"
+       and "chart review", "insurance company", "policy change" and "record
+       keeping" all left as [ID_n]. The cue stays case-blind; the number is
+       checked case-sensitively in `keep`, so "MRN 4471-22", "policy XK22918"
+       and "member ID ABCDEFG" are still caught. */
+    {
+      type: "ID",
+      re: /\b(?:(?:MRN|member(?:\s+ID)?|policy|insurance|subscriber|chart|record)\b|MR#)\s*(?:#|no\.?|number|id)?\s*:?\s*([A-Z0-9][A-Z0-9-]{4,})\b/gi,
+      keep: function (m) { return /^[A-Z0-9][A-Z0-9-]{4,}$/.test(m[1]); },
+    },
     // A bare 5-digit ZIP only when it follows a state abbreviation.
     { type: "ZIP", re: /\b[A-Z]{2}\s+\d{5}(?:-\d{4})?\b/g },
   ];
@@ -1875,6 +1886,7 @@
       var m;
       while ((m = re.exec(text)) !== null) {
         if (!m[0] || !m[0].trim()) continue;
+        if (p.keep && !p.keep(m)) continue;
         hits.push({ text: m[0].trim(), type: p.type, at: m.index });
         if (m.index === re.lastIndex) re.lastIndex++; // zero-width guard
       }
