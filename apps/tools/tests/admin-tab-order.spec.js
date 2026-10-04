@@ -22,7 +22,7 @@ const tabs = [...nav.matchAll(/<button class="tab-btn[^"]*" data-tab="([a-z]+)">
   .map((m) => ({ id: m[1], label: m[2] }));
 
 test('the tabs read people, then what is hidden, then how it judges', () => {
-  expect(tabs.map((t) => t.id)).toEqual(['passwords', 'profiles', 'pii', 'nonpii', 'alglab', 'expert', 'knowledge', 'review']);
+  expect(tabs.map((t) => t.id)).toEqual(['review', 'passwords', 'profiles', 'pii', 'nonpii', 'alglab', 'expert', 'knowledge']);
 });
 
 test('only To review was added, and the labels are the ones he knows', () => {
@@ -31,10 +31,13 @@ test('only To review was added, and the labels are the ones he knows', () => {
   );
 });
 
-test('Passwords is first and the only tab that starts active, so the page opens where it did', () => {
-  expect(nav).toMatch(/<button class="tab-btn active" data-tab="passwords">/);
+// His ruling, 2026-10-04: "To review first." It is the landing tab, so the page
+// opens on what is waiting for him, and its counts load at login.
+test('To review is first and the only tab that starts active, so the page opens on it', () => {
+  expect(nav).toMatch(/<button class="tab-btn active" data-tab="review">/);
   expect((nav.match(/tab-btn active/g) || []).length).toBe(1);
-  expect(page).toMatch(/<div id="tab-passwords" class="tab-panel active">/);
+  expect(page).toContain('<div id="tab-review" class="tab-panel active">');
+  expect((page.match(/class="tab-panel active"/g) || []).length).toBe(1);
 });
 
 test('every tab has a panel of its own, and every panel has a tab', () => {
@@ -56,7 +59,7 @@ test('no em dash reached the nav', () => {
 // same endpoints the tabs already read and decides nothing itself.
 
 test('To review is a tab with a panel, a badge, and a row for each queue', () => {
-  expect(page).toContain('<div id="tab-review" class="tab-panel">');
+  expect(page).toContain('<div id="tab-review" class="tab-panel active">');
   expect(page).toContain('id="reviewBadge"');
   for (const queue of ['pii', 'nonpii', 'suggestions', 'knowledge']) {
     expect(page).toContain(`data-review="${queue}"`);

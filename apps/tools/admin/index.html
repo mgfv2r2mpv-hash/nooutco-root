@@ -190,10 +190,12 @@
     <!-- Admin UI -->
     <div id="adminUI" class="hidden">
       <nav class="tab-nav">
-        <!-- Grouped by what each tab is for, on his 2026-10-04 ruling that the
-             order read as random: people (Passwords, Profiles), what is hidden
-             (PII, Non-PII, Algorithm Lab), how it judges (Expert, Knowledge). -->
-        <button class="tab-btn active" data-tab="passwords">Passwords</button>
+        <!-- To review is the landing tab ("To review first"), then grouped by what
+             each tab is for, on his 2026-10-04 ruling that the order read as
+             random: people (Passwords, Profiles), what is hidden (PII, Non-PII,
+             Algorithm Lab), how it judges (Expert, Knowledge). -->
+        <button class="tab-btn active" data-tab="review">To review<span class="count-pill" id="reviewBadge" style="display: none;">0</span></button>
+        <button class="tab-btn" data-tab="passwords">Passwords</button>
         <button class="tab-btn" data-tab="profiles">Profiles</button>
         <button class="tab-btn" data-tab="pii">PII</button>
         <button class="tab-btn" data-tab="nonpii">Non-PII</button>
@@ -204,11 +206,10 @@
              the most this 700px nav should carry. -->
         <button class="tab-btn" data-tab="expert">Expert</button>
         <button class="tab-btn" data-tab="knowledge">Knowledge</button>
-        <button class="tab-btn" data-tab="review">To review<span class="count-pill" id="reviewBadge" style="display: none;">0</span></button>
       </nav>
 
       <!-- ── Passwords tab ── -->
-      <div id="tab-passwords" class="tab-panel active">
+      <div id="tab-passwords" class="tab-panel">
         <div class="card">
           <h2>Add an access password</h2>
           <div class="add-grid">
@@ -505,7 +506,7 @@
         </div>
       </div>
 
-      <div id="tab-review" class="tab-panel">
+      <div id="tab-review" class="tab-panel active">
         <div class="card">
           <h2>To review</h2>
           <p class="muted" style="margin: 0 0 12px;">What is waiting for a decision. Each row opens the tab where it is decided.<br>A dash means that queue could not be read, not that it is empty.</p>
