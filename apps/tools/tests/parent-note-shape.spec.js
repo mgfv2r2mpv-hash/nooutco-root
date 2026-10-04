@@ -47,6 +47,8 @@ test.describe('the parent prompt carries each ruling', () => {
     ['prompt level beside the count', /PROMPT LEVEL GOES WITH THE COUNT/],
     ['the author\'s a/b notation', /a trials correct at or above the intended prompt level and b trials that were not/],
     ['technician and client present by default', /Parent\/Caregiver, Client and Technician are present by default/],
+    ['someone who only reported is not present', /someone who reported something, sent a message or asked for a meeting \(a teacher reporting from school, say\) is not present unless the notes say they were there/],
+    ['the present rule never strips a name from the summary', /This governs the checkboxes only\. The summary still names them and what they reported\./],
   ];
   for (const [name, re] of RULES) {
     test(name, async ({ page }) => {
@@ -226,5 +228,77 @@ test.describe('the live paste script', () => {
     expect(sent[0].user).toContain('\nA: ');
     expect(sent[0].user).toContain('behavior occurred on 1 trial');
     expect(sent[2].user).not.toContain('THE TECHNICIAN ADDED');
+  });
+});
+
+/* TWO DEFAULTS HELD BY CODE, approved 2026-10-04 (Q7, "accepted"). They run
+ * when the engine hands normalizeOutput the draft's intake, and only ever add
+ * a checkbox or fill a blank pick: nothing a person or the notes named is
+ * removed. The intakes are invented, and "[BT]" is how the scrub leaves a BT. */
+test.describe('the defaults hold in code', () => {
+  const norm = (page, raw, ctx) => page.evaluate(({ raw, ctx }) =>
+    window.NOTE_TOOLS.find((t) => t.id === 'parent').normalizeOutput(raw, ctx), { raw, ctx });
+  const MIDDLE = 'Parent/Family is trying to learn new strategies, but there are some small barriers to generalization.';
+  const THIRD = 'Parent/Family is responding to training and generalization of skills is occurring. There are no barriers with their training.';
+
+  test('Technician is added when the notes do not say the BT was away', async ({ page }) => {
+    await parentTool(page);
+    const out = await norm(page, { individualsPresent: ['Client', 'Parent/Caregiver'], caregiverResponse: THIRD }, { intake: 'Parent training. The [BT] ran the session earlier.' });
+    expect(out.individualsPresent).toEqual(['Parent/Caregiver', 'Client', 'Technician']);
+  });
+
+  for (const intake of [
+    'Parent training, caregiver and client only.',
+    'Follow up when the [BT] is present on fading the visual schedule.',
+    'No [BT] this session.',
+    'Technician was absent.',
+  ]) {
+    test(`Technician is not added when the notes say: ${intake}`, async ({ page }) => {
+      await parentTool(page);
+      const out = await norm(page, { individualsPresent: ['Parent/Caregiver', 'Client'], caregiverResponse: THIRD }, { intake });
+      expect(out.individualsPresent).toEqual(['Parent/Caregiver', 'Client']);
+    });
+  }
+
+  test('a blank Caregiver Response becomes the middle option, with a hint saying so', async ({ page }) => {
+    await parentTool(page);
+    const out = await norm(page, { individualsPresent: ['Parent/Caregiver', 'Client'], caregiverResponse: '' }, { intake: 'Parent training.' });
+    expect(out.caregiverResponse).toBe(MIDDLE);
+    expect(out.hints.some((h) => h.section === 'caregiverResponse' && /middle option/.test(h.detail))).toBe(true);
+  });
+
+  test('a Caregiver Response the draft chose is never changed', async ({ page }) => {
+    await parentTool(page);
+    const out = await norm(page, { individualsPresent: [], caregiverResponse: THIRD }, { intake: 'Parent training.' });
+    expect(out.caregiverResponse).toBe(THIRD);
+    expect(out.hints.some((h) => h.section === 'caregiverResponse')).toBe(false);
+  });
+
+  test('nothing is removed: a person the draft listed stays listed', async ({ page }) => {
+    await parentTool(page);
+    const out = await norm(page, { individualsPresent: ['Parent/Caregiver', 'Client', 'Teacher'], caregiverResponse: MIDDLE }, { intake: 'Parent training, caregiver and client only.' });
+    expect(out.individualsPresent).toEqual(['Parent/Caregiver', 'Client', 'Teacher']);
+  });
+
+  test('without the intake (not a draft) both are left as they came', async ({ page }) => {
+    await parentTool(page);
+    const out = await norm(page, { individualsPresent: ['Parent/Caregiver'], caregiverResponse: '' });
+    expect(out.individualsPresent).toEqual(['Parent/Caregiver']);
+    expect(out.caregiverResponse).toBe('');
+  });
+
+  test('on his first live run they fix v1\'s Technician and v4\'s blank pick, and leave v2\'s teacher to the prompt', async ({ page }) => {
+    await parentTool(page);
+    const run = JSON.parse(readFileSync(path.join(ROOT, 'tests/fixtures/parent-live-run-2026-10-04.json'), 'utf8')).drafts;
+    const caseOf = (id) => fixture.cases.find((c) => c.id === id);
+    const held = async (id) => {
+      const c = caseOf(id);
+      const intake = `${c.intake}\n${(c.answers || []).map((a) => `Q: ${a.question}\nA: ${a.answer}`).join('\n\n')}`;
+      return check(c, await norm(page, run[id], { intake })).join('\n');
+    };
+    expect(await held('v1-the-original-shape')).not.toMatch(/missing "Technician"/);
+    expect(await held('v4-no-bt-today')).not.toMatch(/Caregiver Response picked/);
+    expect(await held('v4-no-bt-today')).not.toMatch(/lists "Technician"/);
+    expect(await held('v2-missed-prompt-and-a-teacher')).toMatch(/lists "Teacher"/);
   });
 });
