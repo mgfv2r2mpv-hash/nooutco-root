@@ -368,3 +368,41 @@ test('A5 review 5 NEGATIVE CONTROL: a locked window that leaves the path open do
   assert.equal(pathState(h).pathLocked, false, 'three locked windows apart leave the path open');
   assert.equal((await early.finish()).finish.status, 200);
 });
+
+// ---- A5 security review item 6: what one start checks ----
+// Each start offers the current step and the previous one, so one try checks
+// two codes: 3 tries a window are 6 guesses, and the 4 locked windows that
+// close the path in a day are 24. The lockout counts tries in a window, not
+// in a day, so a guesser who stops at 2 wrong codes a window locks nothing.
+
+test('A5 review 6: one start answers for two steps, so a full window is 6 guesses and four locked windows are 24', async () => {
+  const h = harness();
+  const dev = await enrolledDevice(h, ADDRESS);
+  const started = await startCode(h, dev, await wrongCodeAt(dev, h.clock.ms));
+  assert.equal(started.start.json.replies.length, 2, 'one reply for each step offered');
+  await started.finish();
+  await wrongTry(h, dev);
+  await wrongTry(h, dev);
+  assert.deepEqual((await rightTry(h, dev)).start, LOCKED, 'a fourth try in the window is refused');
+  h.clock.ms += 2 * WINDOW_MS;
+  await lockWindowsApart(h, dev, 2);
+  h.clock.ms += 10_000;
+  await lockWindow(h, dev);
+  assert.equal(pathState(h).pathLocked, true, '4 locked windows x 3 tries x 2 steps = 24 guesses, then closed');
+});
+
+test('A5 review 6: a guesser who stops at 2 wrong codes a window is never locked (the 24 a day bounds locked windows only)', async () => {
+  const h = harness();
+  const dev = await enrolledDevice(h, ADDRESS);
+  const WINDOWS = 20;
+  for (let i = 0; i < WINDOWS; i += 1) {
+    await wrongTry(h, dev);
+    await wrongTry(h, dev);
+    h.clock.ms += WINDOW_MS;
+  }
+  // 20 windows x 2 tries x 2 steps = 80 guesses, past 24, and nothing closed.
+  assert.equal(pathState(h).pathLocked, false);
+  assert.deepEqual(pathState(h).locked, []);
+  assert.deepEqual(lockMail(h, ADDRESS), [], 'no lock note reaches the owner');
+  assert.equal((await rightTry(h, dev)).finish.status, 200);
+});
