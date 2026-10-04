@@ -20,7 +20,9 @@
  * service expects (src/account-keys.js tagDigest), compared with sameHex. It
  * dies at CONFIRM_MS, the lockout's confirm time, and is spent by its first
  * finish, from its own device only. Every refusal at finish is bad-code: a
- * wrong code, an unknown, spent or expired exchange, another device's.
+ * wrong code, an unknown, spent or expired exchange, another device's. The
+ * one other answer is locked, when the path closed after the start (A5
+ * security review item 5).
  *
  * REMOVAL (security review L2). The exchange insert, the exchange spend, the
  * last_step update and the pending clear each re-check in the same statement
@@ -204,6 +206,20 @@ function matchedStep(candidates, digest) {
   return step;
 }
 
+// Settles the account's lockout and says whether the path is closed (A5
+// security review item 5). A start admitted while the path was open can
+// finish after other tries closed it: that finish is refused before its code
+// is compared, and its try is dropped from the lockout uncounted, since no
+// code was compared. A closed path whose link has died gets a new one, as at
+// start.
+async function closedAtFinish(db, accountId, now, exchange) {
+  return ruleLimits(db, accountId, now, (state) => {
+    const settled = settle(state, now);
+    const closed = settled.state.pathLocked;
+    return { state: closed ? confirm(settled.state, exchange) : settled.state, events: settled.events, closed };
+  });
+}
+
 export async function finishUnlock({ db, device, body, now, env, mailer }) {
   if (!hasOnly(body, ["exchange", "tagA"])) throw new Refusal("shape", 400);
   if (typeof body.exchange !== "string" || !EXCHANGE.test(body.exchange) || typeof body.tagA !== "string" || !TAG.test(body.tagA)) {
@@ -217,6 +233,9 @@ export async function finishUnlock({ db, device, body, now, env, mailer }) {
     await findDevice(db, device.id); // refuses no-device when the removal is what stopped it
     throw new Refusal("bad-code", 401);
   }
+  const gate = await closedAtFinish(db, row.account_id, now, body.exchange);
+  const gateNotes = lockNotes(gate.events, gate.token, reopenBase);
+  if (gate.closed) throw new Refusal("locked", 423, mailAfter({ db, keys, mailer, accountId: row.account_id, notes: gateNotes }));
   const step = matchedStep(JSON.parse(row.candidates), await keys.tagDigest(body.exchange, body.tagA));
   // A code is accepted once: only an update that moves last_step forward wins,
   // only while the device is not removed (security review L2), and only on
@@ -233,7 +252,8 @@ export async function finishUnlock({ db, device, body, now, env, mailer }) {
     const rejected = reject(settled.state, now, body.exchange);
     return { state: rejected.state, events: [...settled.events, ...rejected.events] };
   });
-  const after = mailAfter({ db, keys, mailer, accountId: row.account_id, notes: lockNotes(ruled.events, ruled.token, reopenBase) });
+  const notes = [...gateNotes, ...lockNotes(ruled.events, ruled.token, reopenBase)];
+  const after = mailAfter({ db, keys, mailer, accountId: row.account_id, notes });
   if (!accepted) throw new Refusal("bad-code", 401, after);
   const cleared = await db.prepare("UPDATE device SET pending = 0 WHERE id = ? AND removed_at IS NULL RETURNING id").bind(device.id).first();
   if (!cleared) throw new Refusal("no-device", 401, after);

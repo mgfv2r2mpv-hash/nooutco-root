@@ -275,16 +275,26 @@ export async function wrongCodeAt(device, ms) {
 // has no tagA, and a random one is sent so the try is settled at once.
 // `finish: false` stops after the start.
 export async function tryCode(h, device, code, { clock = h.clock.ms, finish = true } = {}) {
+  const started = await startCode(h, device, code, { clock });
+  if (started.start.status !== 200 || !finish) return { start: started.start };
+  return { start: started.start, ...(await started.finish()) };
+}
+
+// The start of one code try, and its finish to send later, so a test can
+// change the account between the two.
+export async function startCode(h, device, code, { clock = h.clock.ms } = {}) {
   const { initiatorStart, initiatorFinish, unlockChannelFor } = await engine();
   const { message, state } = initiatorStart({ code, channel: unlockChannelFor(device.id) });
   const body = { sid: b64url(message.sid), Ya: b64url(message.Ya), clock };
   const start = await answerOf(await h.call(await signed(h.call, device, '/unlock/start', body)));
-  if (start.status !== 200 || !finish) return { start };
-  const replies = start.json.replies.map((r) => ({ Yb: fromB64url(r.Yb), tagB: fromB64url(r.tagB) }));
-  const proved = initiatorFinish(state, replies);
-  const tagA = b64url(proved ? proved.tagA : crypto.getRandomValues(new Uint8Array(32)));
-  const done = await answerOf(await h.call(await signed(h.call, device, '/unlock/finish', { exchange: start.json.exchange, tagA })));
-  return { start, proved: Boolean(proved), tagA, finish: done };
+  const finish = async () => {
+    const replies = start.json.replies.map((r) => ({ Yb: fromB64url(r.Yb), tagB: fromB64url(r.tagB) }));
+    const proved = initiatorFinish(state, replies);
+    const tagA = b64url(proved ? proved.tagA : crypto.getRandomValues(new Uint8Array(32)));
+    const done = await answerOf(await h.call(await signed(h.call, device, '/unlock/finish', { exchange: start.json.exchange, tagA })));
+    return { proved: Boolean(proved), tagA, finish: done };
+  };
+  return { start, finish };
 }
 
 // The reopen token from the newest lock mail to `email` that carries a link.
