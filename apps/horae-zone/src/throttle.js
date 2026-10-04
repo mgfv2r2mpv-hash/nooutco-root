@@ -11,7 +11,7 @@
 // Returns true when the request is admitted (and counted), false when any
 // bucket is full. A bucket's own windowMs, when given, replaces windowMs. A
 // bucket's quietMs, when above 0, also refuses while the bucket has a row
-// newer than quietMs (a backoff, src/signin.js), in the same statement.
+// newer than quietMs (a pair backoff, src/signin.js), in the same statement.
 export async function admitThrottle(db, now, windowMs, buckets) {
   const pick = buckets.map(() => "SELECT ? AS bucket").join(" UNION ALL ");
   const quiet = (b) => (b.quietMs ?? 0) > 0;

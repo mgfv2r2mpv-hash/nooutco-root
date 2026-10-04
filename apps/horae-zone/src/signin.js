@@ -13,18 +13,20 @@
  * two count wrong passwords only, and a refused try is not counted. A
  * success takes back its places in the pair and address buckets, in the same
  * batch that stores the ticket, so the owner's own sign-ins never fill them.
- * Second review, item 4: the address is never locked. Its bucket is a high
- * ceiling (perAddressHour), and past backoffAfter failures in the window the
- * address backs off: a try is refused, with the same slow-down whatever the
- * password, until backoffMs (doubling with each further failure, never above
- * backoffMaxMs) has passed since its latest counted try. One requester at one
- * address is held by the pair bucket long before that, so strangers' wrong
- * passwords from a few requesters no longer hold back the owner's right one.
+ * Second review, item 4: the address is never locked; its bucket is a high
+ * ceiling (perAddressHour) for load. Third review, item 1: the backoff is the
+ * pair's, never the address's. Past backoffAfter failures in the window a
+ * pair backs off: a try from that requester at that address is refused, with
+ * the same slow-down whatever the password, until backoffMs (doubling with
+ * each further failure, never above backoffMaxMs) has passed since its latest
+ * counted try, and perPairHour caps it. Strangers' wrong passwords hold back
+ * only their own requesters, so polling the address cannot keep the owner's
+ * right password from a new requester out.
  * A request signed by a registered device of the account skips the address
- * bucket and its backoff, and still pays the requester bucket (security
- * review H2) and the pair bucket (second review, item 7), so a stolen device
+ * ceiling, and still pays the requester bucket (security review H2) and the
+ * pair bucket with its backoff (second review, item 7), so a stolen device
  * guesses at perPairHour an hour per requester, not at the requester cap:
- * an address in backoff holds back a new device, never a known one. Its
+ * an address at its ceiling holds back a new device, never a known one. Its
  * ticket is stored only while that device is not removed, checked in the
  * same statement (security review L2), so a removal landing mid-flight wins.
  *
@@ -48,7 +50,7 @@ export const SIGNIN_LIMITS = Object.freeze({
   perAddressHour: 100,
   perPairHour: 5,
   perRequesterHour: 20,
-  backoffAfter: 10,
+  backoffAfter: 2,
   backoffBaseMs: 60 * 1000,
   backoffMaxMs: 15 * 60 * 1000,
   windowMs: 60 * 60 * 1000,
@@ -59,21 +61,22 @@ const TICKET_BYTES = 32;
 // wrong password costs. Its output is thrown away.
 const NO_ACCOUNT_SALT = b64url(new Uint8Array(16));
 
-// How long an address must stay quiet after its latest counted try, given the
-// failures counted in the window: none up to backoffAfter, then backoffBaseMs
-// doubling with each further failure, never above backoffMaxMs.
+// How long a pair (an address and a requester) must stay quiet after its
+// latest counted try, given the failures counted in the window: none up to
+// backoffAfter, then backoffBaseMs doubling with each further failure, never
+// above backoffMaxMs.
 export function backoffMs(failures) {
   const past = failures - SIGNIN_LIMITS.backoffAfter;
   if (past <= 0) return 0;
   return Math.min(SIGNIN_LIMITS.backoffBaseMs * 2 ** (past - 1), SIGNIN_LIMITS.backoffMaxMs);
 }
 
-// Wrong passwords counted at an address in the window. They set its backoff;
+// Wrong passwords counted for a pair in the window. They set its backoff;
 // the quiet check itself runs in the admitting statement (admitThrottle), so
 // tries sent together cannot both pass it.
-async function failuresAt(db, addressBucket, now) {
+async function failuresAt(db, pairBucket, now) {
   const { n } = await db.prepare("SELECT COUNT(*) AS n FROM throttle WHERE bucket = ? AND at > ?")
-    .bind(addressBucket, now - SIGNIN_LIMITS.windowMs).first();
+    .bind(pairBucket, now - SIGNIN_LIMITS.windowMs).first();
   return n;
 }
 
@@ -99,11 +102,11 @@ export async function signIn({ db, device, body, now, env, request }) {
   const addressBucket = `signin-address:${addressKey}`;
   const pairBucket = `signin-pair:${addressKey}:${requester}`;
   const perRequester = { bucket: `signin-requester:${requester}`, limit: SIGNIN_LIMITS.perRequesterHour };
-  const perPair = { bucket: pairBucket, limit: SIGNIN_LIMITS.perPairHour };
+  const perPair = { bucket: pairBucket, limit: SIGNIN_LIMITS.perPairHour, quietMs: backoffMs(await failuresAt(db, pairBucket, now)) };
   const buckets = known ? [perRequester, perPair] : [
     perRequester,
     perPair,
-    { bucket: addressBucket, limit: SIGNIN_LIMITS.perAddressHour, quietMs: backoffMs(await failuresAt(db, addressBucket, now)) },
+    { bucket: addressBucket, limit: SIGNIN_LIMITS.perAddressHour },
   ];
   if (!(await admitThrottle(db, now, SIGNIN_LIMITS.windowMs, buckets))) throw new Refusal("slow-down", 429);
   const login = await keys.hashLogin(password, account ? account.login_salt : NO_ACCOUNT_SALT);
