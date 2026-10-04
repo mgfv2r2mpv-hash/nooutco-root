@@ -6,9 +6,11 @@
  *   node bin/deploy.mjs             deploy, with prompts
  *   node bin/deploy.mjs --dry-run   print every step and command; nothing is
  *                                   run, asked, written or fetched
- *   --new-account-key               replace an HZ_ACCOUNT_KEY already set (every
- *                                   stored account becomes unreadable); asks
- *                                   for the typed word replace first
+ *   --new-account-key               replace an HZ_ACCOUNT_KEY and HZ_SEED_KEY
+ *                                   already set (every stored account and
+ *                                   enrolled authenticator code becomes
+ *                                   unusable); asks for the typed word replace
+ *                                   first
  *   --new-ticket-key                replace an HZ_TICKET_KEY already set (every
  *                                   ticket already issued stops working); asks
  *                                   for a y first
@@ -40,7 +42,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { ROUTES } from "../src/routes.js";
 import {
-  CATALOG, SECRET_NAMES, DATABASE, HOSTNAME, DEPLOY_CONFIG, CRON, ACCOUNT_KEY_BYTES,
+  CATALOG, SECRET_NAMES, DATABASE, HOSTNAME, DEPLOY_CONFIG, CRON, ACCOUNT_KEY_BYTES, SEED_KEY_BYTES,
   LineReader, deployConfig, scrub, parseJson, findDatabaseId, schemaTables, renderChecklist, ticketKeyJwk,
 } from "./deploy-parts.mjs";
 
@@ -176,6 +178,14 @@ async function confirmWorker(ctx, deps) {
   if (yes !== "y" && yes !== "yes") throw new Stop(`Worker ${WORKER} not replaced; nothing was changed.`);
 }
 
+// `n` fresh random bytes as base64url; the bytes are zeroed once encoded.
+function randomKey(deps, n) {
+  const bytes = deps.randomBytes(n);
+  const key = Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength).toString("base64url");
+  bytes.fill(0);
+  return key;
+}
+
 async function collectAnswers(ctx, deps) {
   ctx.say("Step 2. Values only you have (typed answers are kept in memory only)");
   const values = {};
@@ -195,11 +205,12 @@ async function collectAnswers(ctx, deps) {
     if (value !== "") values[entry.name] = value;
     if (entry.sensitive && value) ctx.known.push(value);
   }
-  const bytes = deps.randomBytes(ACCOUNT_KEY_BYTES);
-  values.HZ_ACCOUNT_KEY = Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength).toString("base64url");
-  bytes.fill(0);
+  values.HZ_ACCOUNT_KEY = randomKey(deps, ACCOUNT_KEY_BYTES);
   ctx.known.push(values.HZ_ACCOUNT_KEY);
   ctx.say(`  Generated HZ_ACCOUNT_KEY (${ACCOUNT_KEY_BYTES} random bytes). It is never shown or saved; a key already set is kept unless --new-account-key.`);
+  values.HZ_SEED_KEY = randomKey(deps, SEED_KEY_BYTES);
+  ctx.known.push(values.HZ_SEED_KEY);
+  ctx.say(`  Generated HZ_SEED_KEY (${SEED_KEY_BYTES} random bytes). It is never shown or saved; a key already set is kept unless --new-account-key.`);
   values.HZ_TICKET_KEY = await deps.generateTicketKey();
   // The JWK string and its private part d, so wrangler echoing either is masked.
   ctx.known.push(values.HZ_TICKET_KEY, JSON.parse(values.HZ_TICKET_KEY).d);
@@ -264,10 +275,12 @@ async function secretsBeforeDeploy(ctx, newAccountKey) {
   }
 }
 
-// --new-account-key over a key that is set, or may be (an unreadable list):
-// only the typed word replace goes on, and anything else stops before deploy.
+// --new-account-key over an account or seed key that is set, or may be (an
+// unreadable list): only the typed word replace goes on, and anything else
+// stops before deploy.
 async function confirmReplaceKey(ctx, deps, existing) {
-  ctx.say(`  --new-account-key: HZ_ACCOUNT_KEY ${existing ? "is already set" : "may already be set (the secret list could not be read)"}.`);
+  const set = existing ? ACCOUNT_FLAG_KEYS.filter((n) => existing.has(n)).join(" and ") : "";
+  ctx.say(`  --new-account-key replaces HZ_ACCOUNT_KEY and HZ_SEED_KEY (${existing ? `already set: ${set}` : "either may already be set: the secret list could not be read"}).`);
   ctx.say("  If it is replaced, every enrolment, ticket and account becomes unusable, and none can be recovered.");
   const answer = (await deps.ask({ name: "confirm-replace-key", question: "  Type replace to replace it (anything else stops): ", hidden: false })).trim();
   if (answer !== "replace") throw new Stop("HZ_ACCOUNT_KEY not replaced; the Worker and its secrets were not changed. Rerun without --new-account-key to keep it.");
@@ -282,23 +295,29 @@ async function confirmReplaceTicketKey(ctx, deps, existing) {
   if (yes !== "y" && yes !== "yes") throw new Stop("HZ_TICKET_KEY not replaced; the Worker and its secrets were not changed. Rerun without --new-ticket-key to keep it.");
 }
 
+// The keys --new-account-key replaces: a new seed key alone would lock every
+// confirmed enrolment out of its code, so it goes only with the account key.
+const ACCOUNT_FLAG_KEYS = Object.freeze(["HZ_ACCOUNT_KEY", "HZ_SEED_KEY"]);
+
 // What a kept key says in place of "Set": why it was kept, and the flag that replaces it.
 const KEPT = Object.freeze({
   HZ_ACCOUNT_KEY: "  Kept HZ_ACCOUNT_KEY (already set; a new one would make every stored account unreadable, --new-account-key replaces it).",
+  HZ_SEED_KEY: "  Kept HZ_SEED_KEY (already set; a new one would make every enrolled authenticator code unusable, --new-account-key replaces it).",
   HZ_TICKET_KEY: "  Kept HZ_TICKET_KEY (already set; a new one would stop every ticket already issued, --new-ticket-key replaces it).",
 });
 
-// A new HZ_ACCOUNT_KEY makes every stored account unreadable and a new
-// HZ_TICKET_KEY voids every ticket already issued, so a rerun keeps each one
-// already set unless its flag says otherwise. An unreadable list (null) only
-// gets this far under a confirmed --new-account-key, and then both are put.
+// A new HZ_ACCOUNT_KEY makes every stored account unreadable, a new
+// HZ_SEED_KEY every sealed authenticator seed, and a new HZ_TICKET_KEY voids
+// every ticket already issued, so a rerun keeps each one already set unless
+// its flag says otherwise. An unreadable list (null) only gets this far under
+// a confirmed --new-account-key, and then all three are put.
 async function deployWorker(ctx, deps, values, { newAccountKey, newTicketKey }) {
   ctx.say("Step 5. Deploy the Worker, then put each secret");
   const existing = await secretsBeforeDeploy(ctx, newAccountKey);
-  if (newAccountKey && (existing === null || existing.has("HZ_ACCOUNT_KEY"))) await confirmReplaceKey(ctx, deps, existing);
+  if (newAccountKey && (existing === null || ACCOUNT_FLAG_KEYS.some((n) => existing.has(n)))) await confirmReplaceKey(ctx, deps, existing);
   if (newTicketKey && (existing === null || existing.has("HZ_TICKET_KEY"))) await confirmReplaceTicketKey(ctx, deps, existing);
   const keep = new Set([
-    ...(!newAccountKey && existing.has("HZ_ACCOUNT_KEY") ? ["HZ_ACCOUNT_KEY"] : []),
+    ...(newAccountKey ? [] : ACCOUNT_FLAG_KEYS.filter((n) => existing.has(n))),
     ...(!newTicketKey && existing?.has("HZ_TICKET_KEY") ? ["HZ_TICKET_KEY"] : []),
   ]);
   const out = await ctx.wrangler(COMMANDS.deploy);
@@ -381,6 +400,7 @@ function dryRun(deps) {
     "Step 2. Values only you have",
     ...CATALOG.filter((s) => s.source === "asked").map((s) => `  prompt${s.hidden ? " (hidden)" : ""}: ${s.label} -> ${s.name}${s.store === "var" ? ` ([vars] in ${DEPLOY_CONFIG} when answered)` : ""}`),
     `  generate: HZ_ACCOUNT_KEY = [masked] (${ACCOUNT_KEY_BYTES} random bytes, base64url)`,
+    `  generate: HZ_SEED_KEY = [masked] (${SEED_KEY_BYTES} random bytes, base64url)`,
     "  generate: HZ_TICKET_KEY = [masked] (ECDSA P-256 private key, JWK)",
     `Step 3. D1 database "${DATABASE}"`,
     `  ${show(COMMANDS.d1List)}`,
@@ -391,8 +411,8 @@ function dryRun(deps) {
     ...EDGE_STEPS.map((l) => `  ${l}`),
     "  prompt: is the rate rule in place?",
     "Step 5. Deploy the Worker, then put each secret",
-    `  ${show(COMMANDS.secretList)}   (an HZ_ACCOUNT_KEY already set is kept unless --new-account-key; an unreadable list stops here)`,
-    "  with --new-account-key over a key that is set (or an unreadable list): prompt, type replace or the run stops",
+    `  ${show(COMMANDS.secretList)}   (an HZ_ACCOUNT_KEY or HZ_SEED_KEY already set is kept unless --new-account-key; an unreadable list stops here)`,
+    "  with --new-account-key over an account or seed key that is set (or an unreadable list): prompt, type replace or the run stops",
     "  an HZ_TICKET_KEY already set is kept unless --new-ticket-key; with it over a key that is set: prompt, y replaces it or the run stops",
     `  ${show(COMMANDS.deploy)}`,
     ...SECRET_NAMES.map((n) => `  ${put(n)}`),
