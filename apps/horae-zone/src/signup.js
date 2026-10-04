@@ -7,7 +7,10 @@
  * sends to a server, carries the code: a 128-bit random token in base64url
  * (second security review: a 6-digit code was guessable, so it needed tight
  * per-address caps that a stranger could fill to lock the owner out). The
- * mail shows no code to type.
+ * mail shows no code to type. A start at the per-address cap answers the
+ * same 200 and, instead of minting, mails the newest live link again
+ * (second review, item 3), so a stranger's starts never stop the owner
+ * getting a working link.
  *
  * POST /account/email/verify {email, code, password} makes the account only
  * when the code is one of the live ones for that address (up to
@@ -31,13 +34,17 @@ import { admitThrottle } from "./throttle.js";
 // needed to stop guessing, so there is no address-level try cap and no
 // per-code try ceiling (either was a cap a stranger could fill to lock the
 // owner out). Tries stay capped per requester and per (address, requester)
-// pair, which bounds load, not guessing.
+// pair, which bounds load, not guessing. Item 3: past codesPerAddressHour
+// (or codesPerMailboxHour for a tagged address) a start re-sends the newest
+// live link, at most resendsPerAddressHour times an hour, so mail to one
+// address is bounded at codesPerAddressHour + resendsPerAddressHour an hour.
 export const SIGNUP_LIMITS = Object.freeze({
   codeTtlMs: 10 * 60 * 1000,
-  liveCodes: 3,
+  liveCodes: 5,
   triesPerAddressRequesterHour: 5,
   codesPerAddressHour: 3,
   codesPerMailboxHour: 3,
+  resendsPerAddressHour: 3,
   codesPerDay: 500,
   dayMs: 24 * 60 * 60 * 1000,
   startsPerRequesterHour: 10,
@@ -134,9 +141,10 @@ function newCode() {
   return b64url(crypto.getRandomValues(new Uint8Array(CODE_BYTES)));
 }
 
-// Plain notes on state; the wording is the owner's to change.
-function codeMessage(to, link) {
-  const minutes = SIGNUP_LIMITS.codeTtlMs / 60_000;
+// Plain notes on state; the wording is the owner's to change. `msLeft` is
+// the link's remaining life (a re-sent link has less than a new one).
+function codeMessage(to, link, msLeft) {
+  const minutes = Math.ceil(msLeft / 60_000);
   return {
     to,
     subject: "Horae Zone sign-up link",
@@ -144,7 +152,7 @@ function codeMessage(to, link) {
       "Link for the device signing up:",
       link,
       "",
-      `Works once. Expires ${minutes} minutes after it was sent.`,
+      `Works once. Expires within ${minutes} minutes.`,
       "No account is made without this link.",
     ].join("\n"),
   };
@@ -162,6 +170,54 @@ function mailAfter(mailer, message) {
   };
 }
 
+function linkOf(env, code) {
+  try {
+    return fragmentLink(env.HZ_LINK_BASE, code);
+  } catch {
+    throw new Refusal("unavailable", 503);
+  }
+}
+
+// A new code joins the live ones and never replaces them; past liveCodes no
+// code is made (the start limit keeps that from happening inside one
+// window). M1 (security review): the account check rides inside the same
+// INSERT, so an address with an account runs the same statement and the
+// same write; its row is born spent (used = 1), never verifies and is never
+// mailed. Returns the code to mail, or null.
+async function mintCode(db, keys, addressKey, now) {
+  const code = newCode();
+  const digest = await keys.codeDigest(addressKey, code);
+  const box = await keys.sealLink(code, addressKey);
+  const made = await db.prepare(
+    `INSERT INTO challenge (address_key, digest, link_box, expires_at, tries, used)
+     SELECT ?, ?, ?, ?, 0, EXISTS (SELECT 1 FROM account WHERE address_key = ?)
+     WHERE (SELECT COUNT(*) FROM challenge WHERE ${LIVE}) < ? RETURNING used`,
+  ).bind(addressKey, digest, box, now + SIGNUP_LIMITS.codeTtlMs, addressKey, addressKey, now, SIGNUP_LIMITS.liveCodes).first();
+  return made && made.used === 0 ? { code, msLeft: SIGNUP_LIMITS.codeTtlMs } : null;
+}
+
+// Item 3: at the start cap, the newest live code for the address, to mail
+// again, or null. Every start at the cap takes a place in the re-send
+// bucket before the lookup, mailed or not, so an address with an account
+// (which has no live code) runs the same statements as one without (M1).
+async function resendCode(db, keys, addressKey, mailboxKey, now) {
+  const admitted = await admitThrottle(db, now, SIGNUP_LIMITS.windowMs, [
+    { bucket: `resend-address:${addressKey}`, limit: SIGNUP_LIMITS.resendsPerAddressHour },
+    ...(mailboxKey ? [{ bucket: `resend-mailbox:${mailboxKey}`, limit: SIGNUP_LIMITS.resendsPerAddressHour }] : []),
+  ]);
+  if (!admitted) return null;
+  const row = await db.prepare(`SELECT link_box, expires_at FROM challenge WHERE ${LIVE} AND link_box IS NOT NULL ORDER BY id DESC LIMIT 1`)
+    .bind(addressKey, now).first();
+  if (!row) return null;
+  try {
+    return { code: await keys.openLink(row.link_box, addressKey), msLeft: row.expires_at - now };
+  } catch {
+    // Sealed under another secret: its digest is under that secret too, so
+    // the code could not verify, and there is no live link to send.
+    return null;
+  }
+}
+
 export async function startSignup({ db, body, now, env, request, mailer }) {
   if (!hasOnly(body, ["email"])) throw new Refusal("shape", 400);
   const address = addressOf(body.email);
@@ -169,37 +225,26 @@ export async function startSignup({ db, body, now, env, request, mailer }) {
   const keys = await keysOrUnavailable(env);
   if (!mailer) throw new Refusal("unavailable", 503);
   const codesPerDay = codesPerDayOf(env);
-  let link;
-  const code = newCode();
-  try {
-    link = fragmentLink(env.HZ_LINK_BASE, code);
-  } catch {
-    throw new Refusal("unavailable", 503);
-  }
+  linkOf(env, newCode()); // a link base that cannot carry a link stops the start before any write
   const addressKey = await keys.addressKey(address);
   const requester = await keys.requesterKey(ip);
   const mailbox = taggedMailbox(address);
-  const admitted = await admitThrottle(db, now, SIGNUP_LIMITS.windowMs, [
+  const mailboxKey = mailbox ? await keys.addressKey(mailbox) : null;
+  // The requester's own cap and the daily cap refuse a start outright.
+  const counted = await admitThrottle(db, now, SIGNUP_LIMITS.windowMs, [
     { bucket: `start-requester:${requester}`, limit: SIGNUP_LIMITS.startsPerRequesterHour },
-    { bucket: `start-address:${addressKey}`, limit: SIGNUP_LIMITS.codesPerAddressHour },
-    ...(mailbox ? [{ bucket: `start-mailbox:${await keys.addressKey(mailbox)}`, limit: SIGNUP_LIMITS.codesPerMailboxHour }] : []),
     { bucket: DAILY_BUCKET, limit: codesPerDay, windowMs: SIGNUP_LIMITS.dayMs },
   ]);
-  if (!admitted) throw new Refusal("slow-down", 429);
-  const digest = await keys.codeDigest(addressKey, code);
-  // A newer code joins the live ones and never replaces them; past
-  // liveCodes no code is made or mailed (the start limit keeps that from
-  // happening inside one window). M1 (security review): the account check
-  // rides inside the same INSERT, so an address with an account runs the
-  // same statement and the same write; its row is born spent (used = 1),
-  // never verifies, and no mail goes out for it.
-  const made = await db.prepare(
-    `INSERT INTO challenge (address_key, digest, expires_at, tries, used)
-     SELECT ?, ?, ?, 0, EXISTS (SELECT 1 FROM account WHERE address_key = ?)
-     WHERE (SELECT COUNT(*) FROM challenge WHERE ${LIVE}) < ? RETURNING used`,
-  ).bind(addressKey, digest, now + SIGNUP_LIMITS.codeTtlMs, addressKey, addressKey, now, SIGNUP_LIMITS.liveCodes).first();
-  if (!made || made.used !== 0) return { status: 200, json: { ok: true } };
-  return { status: 200, json: { ok: true }, after: mailAfter(mailer, codeMessage(address, link)) };
+  if (!counted) throw new Refusal("slow-down", 429);
+  // The per-address (and per-mailbox) cap never refuses: past it a start
+  // re-sends the newest live link instead of minting.
+  const mints = await admitThrottle(db, now, SIGNUP_LIMITS.windowMs, [
+    { bucket: `start-address:${addressKey}`, limit: SIGNUP_LIMITS.codesPerAddressHour },
+    ...(mailboxKey ? [{ bucket: `start-mailbox:${mailboxKey}`, limit: SIGNUP_LIMITS.codesPerMailboxHour }] : []),
+  ]);
+  const sent = mints ? await mintCode(db, keys, addressKey, now) : await resendCode(db, keys, addressKey, mailboxKey, now);
+  if (!sent) return { status: 200, json: { ok: true } };
+  return { status: 200, json: { ok: true }, after: mailAfter(mailer, codeMessage(address, linkOf(env, sent.code), sent.msLeft)) };
 }
 
 export async function verifySignup({ db, body, now, env, request }) {
@@ -223,7 +268,7 @@ export async function verifySignup({ db, body, now, env, request }) {
     .bind(addressKey, now).all();
   const match = matchingId(live, digest);
   if (match === null) throw new Refusal("bad-code", 401);
-  const spent = await db.prepare("UPDATE challenge SET used = 1 WHERE id = ? AND used = 0 RETURNING id").bind(match).first();
+  const spent = await db.prepare("UPDATE challenge SET used = 1, link_box = NULL WHERE id = ? AND used = 0 RETURNING id").bind(match).first();
   if (!spent) throw new Refusal("bad-code", 401);
   const login = await keys.hashLogin(password);
   const box = await keys.sealAddress(address, addressKey);

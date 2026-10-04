@@ -69,16 +69,21 @@ CREATE TABLE IF NOT EXISTS account (
   created_at   INTEGER NOT NULL
 );
 
--- Sign-up challenges: only the keyed digest of each emailed code, never the
--- code. Up to three per address are live at once and a newer one never
--- replaces an older one (H1, security review); tries are counted per row.
--- Spent, used-up and expired rows are refused and purged hourly. A start for
--- an address that has an account writes a row born spent (M1, security
--- review), so both paths do the same write.
+-- Sign-up challenges: the keyed digest of each emailed code, which a try is
+-- checked against, and the code sealed in link_box (AES-GCM under a key
+-- derived from HZ_ACCOUNT_KEY, bound to the address key), so a start at the
+-- per-address cap can mail the newest live link again (second security
+-- review, item 3). Never the code in the clear; the box is dropped when the
+-- code is spent. Up to five per address are live at once and a newer one
+-- never replaces an older one (H1, security review); tries are counted per
+-- row as a record only. Spent and expired rows are refused and purged
+-- hourly. A start for an address that has an account writes a row born
+-- spent (M1, security review), so both paths do the same write.
 CREATE TABLE IF NOT EXISTS challenge (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
   address_key  TEXT    NOT NULL,
   digest       TEXT    NOT NULL,
+  link_box     TEXT,
   expires_at   INTEGER NOT NULL,
   tries        INTEGER NOT NULL DEFAULT 0,
   used         INTEGER NOT NULL DEFAULT 0
