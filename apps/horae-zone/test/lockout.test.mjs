@@ -12,7 +12,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { WINDOW_MS, CONFIRM_MS, UNLOCK_TTL_MS, DAY_MS, parseState } from '../../../packages/account-engine/src/limits.mjs';
 import {
-  harness, post, auditRows, everyRow, enrolledDevice, confirmedDevice, registeredDevice, codeAt, wrongCodeAt, tryCode, reopenTokenFrom, REOPEN_BASE,
+  harness, post, auditRows, everyRow, enrolledDevice, confirmedDevice, registeredDevice, codeAt, wrongCodeAt, tryCode, startCode, reopenTokenFrom, REOPEN_BASE,
 } from './helpers.mjs';
 
 // Fixed, fake values: reserved-domain addresses.
@@ -316,4 +316,55 @@ test('A5 review 2 NEGATIVE CONTROL: a non-pending device\'s wrongs still close t
   await wrongTry(h, next);
   await wrongTry(h, next);
   assert.equal((await rightTry(h, next)).finish.status, 200);
+});
+
+// ---- A5 security review, item 5 (LOW): a closed path refuses the finish ----
+// A start admitted while the path was open can reach /unlock/finish after
+// other tries closed it. The finish answers locked: the exchange is spent,
+// its try is dropped from the lockout uncounted, and no ticket is signed.
+
+// Locks `count` windows two apart (none in a row), then sets the clock 5
+// seconds before the end of a window two after the last.
+async function lockWindowsApart(h, dev, count) {
+  for (let i = 0; i < count; i += 1) {
+    await lockWindow(h, dev);
+    h.clock.ms += 2 * WINDOW_MS;
+  }
+  h.clock.ms = (Math.floor(h.clock.ms / WINDOW_MS) + 1) * WINDOW_MS - 5_000;
+}
+
+test('A5 review 5: /unlock/finish refuses while the path is closed, a right code started before it closed included', async () => {
+  const h = harness();
+  const dev = await enrolledDevice(h, ADDRESS);
+  await lockWindowsApart(h, dev, 3);
+  const early = await startCode(h, dev, await codeAt(dev, h.clock.ms));
+  assert.equal(early.start.status, 200, 'the start is admitted while the path is open');
+  h.clock.ms += 10_000;
+  await lockWindow(h, dev);
+  assert.equal(pathState(h).pathLocked, true, 'the fourth locked window that day closed the path');
+  const mailed = lockMail(h, ADDRESS).length;
+  const before = auditRows(h.db).length;
+  const late = await early.finish();
+  assert.equal(late.proved, true, 'the device proved a right code');
+  assert.deepEqual(late.finish, LOCKED);
+  assert.deepEqual(auditRows(h.db).slice(before), [{ route: '/nonce', reason: 'ok' }, { route: '/unlock/finish', reason: 'locked' }]);
+  assert.deepEqual(pathState(h).pending, [], 'the refused try is dropped from the lockout, not left to count');
+  assert.equal(lockMail(h, ADDRESS).length, mailed, 'a live link is not mailed again');
+  assert.deepEqual((await early.finish()).finish, { status: 401, json: { error: 'bad-code' } }, 'the refusal spent the exchange');
+  // The link reopens the path, and the next window takes a right code.
+  await h.call(post('/unlock/reopen', { token: reopenTokenFrom(h, ADDRESS) }));
+  h.clock.ms += WINDOW_MS;
+  assert.equal((await rightTry(h, dev)).finish.status, 200);
+});
+
+test('A5 review 5 NEGATIVE CONTROL: a locked window that leaves the path open does not refuse a finish begun before it', async () => {
+  const h = harness();
+  const dev = await enrolledDevice(h, ADDRESS);
+  await lockWindowsApart(h, dev, 2);
+  const early = await startCode(h, dev, await codeAt(dev, h.clock.ms));
+  assert.equal(early.start.status, 200);
+  h.clock.ms += 10_000;
+  await lockWindow(h, dev);
+  assert.equal(pathState(h).pathLocked, false, 'three locked windows apart leave the path open');
+  assert.equal((await early.finish()).finish.status, 200);
 });
