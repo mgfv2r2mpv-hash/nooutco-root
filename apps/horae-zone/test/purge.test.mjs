@@ -156,7 +156,7 @@ test('a purge removes spent and expired sign-in tickets', async () => {
 // clears spent and expired exchanges and keeps a live one.
 test('a purge removes finished and expired code exchanges', async () => {
   const { db } = harness();
-  const addExchange = (id, expiresAt, used) => db.sqlite.prepare('INSERT INTO exchange (id, account_id, device_id, candidates, expires_at, used) VALUES (?, ?, ?, ?, ?, ?)')
+  const addExchange = (id, expiresAt, used) => db.sqlite.prepare('INSERT INTO exchange (id, account_id, device_id, candidates, expires_at, used, enrolment) VALUES (?, ?, ?, ?, ?, ?, 1)')
     .run(id, 'acct-1', 'dev-1', '[]', expiresAt, used);
   addExchange('expired', T0, 0);
   addExchange('finished', T0 + 1, 1);

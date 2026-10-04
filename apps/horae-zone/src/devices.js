@@ -12,8 +12,9 @@
  * same statement that checks both. Other keys answer bad-ticket and leave the
  * ticket unspent, so a ticket seen in flight neither adds a stranger's device
  * nor uses up the owner's.
- * A5: a device of an account that has a code starts pending, and reaches
- * only /nonce and /unlock until a code it proves is accepted (src/unlock.js).
+ * A5: a device of an account whose code is confirmed (its first code was
+ * accepted, A5 security review item 3) starts pending, and reaches only
+ * /nonce and /unlock until a code it proves is accepted (src/unlock.js).
  *
  * POST /device/remove {device}, signed by a device of the same account,
  * stamps the device removed and spends its live nonces, so it is refused at
@@ -71,7 +72,7 @@ export async function registerDevice({ db, body, now, env }) {
   if (!spent) throw new Refusal("bad-ticket", 401);
   const id = b64url(crypto.getRandomValues(new Uint8Array(DEVICE_ID_BYTES)));
   await db.prepare(
-    "INSERT INTO device (id, account_id, sign_key, agree_key, created_at, pending) VALUES (?, ?, ?, ?, ?, EXISTS (SELECT 1 FROM otp WHERE account_id = ?))",
+    "INSERT INTO device (id, account_id, sign_key, agree_key, created_at, pending) VALUES (?, ?, ?, ?, ?, EXISTS (SELECT 1 FROM otp WHERE account_id = ? AND confirmed_by IS NOT NULL))",
   ).bind(id, spent.account_id, body.signKey, body.agreeKey, now, spent.account_id).run();
   return { status: 200, json: { device: id } };
 }

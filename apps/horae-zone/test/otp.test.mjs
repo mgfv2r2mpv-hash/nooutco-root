@@ -5,19 +5,23 @@
 // The seed is stored only sealed under the Worker secret HZ_SEED_KEY, bound
 // to its account, and no later answer, row, bound value or log carries it.
 //
-// Once an account has a code, a device must prove it: a device registered
-// after enrolment, and every device but the enrolling one, reaches only
-// /nonce and /unlock until a code it proves is accepted (A4 open point 1:
-// sign-in for a further device is address + password + code).
+// Once an account has a confirmed code, a device must prove it: a device
+// registered after the first accepted code, and every device but the one
+// that proved it, reaches only /nonce and /unlock until a code it proves is
+// accepted (A4 open point 1: sign-in for a further device is address +
+// password + code). Until that first accepted code the enrolment is
+// unconfirmed and the sole live device may enrol again for a new seed (A5
+// security review item 3).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { OTP_LABEL, openSeed } from '../src/otp.js';
 import { otpauthUri, base32Decode } from '../../../packages/account-engine/src/totp.mjs';
 import { SIGNIN_LIMITS } from '../src/signin.js';
-import { b64url } from '../src/checks.js';
+import { b64url, fromB64url } from '../src/checks.js';
+import { initiatorStart, initiatorFinish, unlockChannelFor } from '../../../packages/account-engine/src/pake.mjs';
 import {
   harness, post, signed, auditRows, everyRow, signUp, signIn, registeredDevice, registerRequest, deviceKeys,
-  enrolRequest, enrolTicket, enrolledDevice, codeAt, tryCode, removedMidFlight, landsMidFlight, SPEND_NONCE, SEED_KEY,
+  enrolRequest, enrolTicket, enrolledDevice, confirmedDevice, codeAt, tryCode, removedMidFlight, landsMidFlight, SPEND_NONCE, SEED_KEY,
 } from './helpers.mjs';
 
 // Fixed, fake values: reserved-domain addresses.
@@ -42,14 +46,17 @@ test('the seed is returned once and never again', async () => {
   const { secret, uri } = first.json;
   assert.match(secret, /^[A-Z2-7]{32}$/, 'a 20-byte seed in base32');
   assert.equal(uri, otpauthUri({ key: base32Decode(secret), ...OTP_LABEL }));
-  // A second enrolment, with a fresh ticket, is refused and carries no seed.
-  const again = await answer(await h.call(await enrolRequest(h.call, dev, await enrolTicket(h, ADDRESS, dev))));
-  assert.deepEqual(again, { status: 409, json: { error: 'enrolled' } });
   // Nothing after the one answer carries it: not a code try, a table, a
-  // bound value or an audit row.
+  // bound value or an audit row. The first accepted code confirms the
+  // enrolment (A5 security review item 3), and a second enrolment after it,
+  // with a fresh ticket, is refused and carries no seed.
   const later = [];
   const tried = await tryCode(h, { ...dev, seed: base32Decode(secret) }, await codeAt({ seed: base32Decode(secret) }, h.clock.ms));
+  assert.equal(tried.finish.status, 200);
   later.push(JSON.stringify(tried));
+  const again = await answer(await h.call(await enrolRequest(h.call, dev, await enrolTicket(h, ADDRESS, dev))));
+  assert.deepEqual(again, { status: 409, json: { error: 'enrolled' } });
+  later.push(JSON.stringify(again));
   later.push(JSON.stringify(await answer(await h.call(await signed(h.call, dev, '/reverify', {})))));
   const seedHex = [...base32Decode(secret)].map((b) => b.toString(16).padStart(2, '0')).join('');
   for (const value of [secret, seedHex, b64url(base32Decode(secret))]) {
@@ -190,9 +197,9 @@ test('without the seed key, enrolment answers unavailable and stores nothing', a
 
 // ---- devices must prove the code once the account has one ----
 
-test('a device registered after enrolment reaches only /nonce and /unlock until it proves a code', async () => {
+test('a device registered after the first accepted code reaches only /nonce and /unlock until it proves a code', async () => {
   const h = harness();
-  const first = await enrolledDevice(h, ADDRESS);
+  const first = await confirmedDevice(h, ADDRESS);
   const next = await registeredDevice(h, ADDRESS, { fresh: false });
   assert.equal(pendingOf(h.db, next.id), 1);
   for (const [p, body] of [['/reverify', {}], ['/otp/enrol', { ticket: await signIn(h, ADDRESS) }], ['/device/remove', { device: first.id }]]) {
@@ -260,6 +267,97 @@ test('A5 review 1 NEGATIVE CONTROL: a removed device does not count, so the sole
   assert.equal((await h.call(await signed(h.call, gone, '/device/remove', { device: gone.id }))).status, 200);
   assert.equal((await h.call(await enrolRequest(h.call, dev, await enrolTicket(h, ADDRESS, dev)))).status, 200);
   assert.equal(otpRows(h.db).length, 1);
+});
+
+// A5 security review, item 3 (MEDIUM): a seed nobody claimed must not lock
+// the account in. Until the first accepted code the enrolment is unconfirmed
+// and repeatable (a fresh ticket, the sole live device), and a repeat
+// replaces the seed; only a confirmed enrolment makes other devices pending.
+const BAD_CODE = { status: 401, json: { error: 'bad-code' } };
+const seedOf = (json) => base32Decode(json.secret);
+
+test('A5 review 3: a repeated enrol before the first accepted code returns a new seed and invalidates the old one', async () => {
+  const h = harness();
+  const dev = await registeredDevice(h, ADDRESS);
+  const first = await answer(await h.call(await enrolRequest(h.call, dev, await enrolTicket(h, ADDRESS, dev))));
+  assert.equal(first.status, 200);
+  const again = await answer(await h.call(await enrolRequest(h.call, dev, await enrolTicket(h, ADDRESS, dev))));
+  assert.equal(again.status, 200, JSON.stringify(again.json));
+  assert.deepEqual(Object.keys(again.json).sort(), ['secret', 'uri']);
+  assert.notEqual(again.json.secret, first.json.secret, 'a new seed');
+  assert.equal(otpRows(h.db).length, 1, 'the new seed replaced the old one');
+  assert.deepEqual(await openSeed({ HZ_SEED_KEY: SEED_KEY }, dev.account, otpRows(h.db)[0].box), seedOf(again.json));
+  const old = { ...dev, seed: seedOf(first.json) };
+  const stale = await tryCode(h, old, await codeAt(old, h.clock.ms));
+  assert.equal(stale.proved, false, 'the old seed\'s code is not offered');
+  assert.deepEqual(stale.finish, BAD_CODE);
+  const fresh = { ...dev, seed: seedOf(again.json) };
+  assert.equal((await tryCode(h, fresh, await codeAt(fresh, h.clock.ms))).finish.status, 200, 'the new seed\'s code is accepted');
+});
+
+test('A5 review 3: after the first accepted code, a repeat enrol answers enrolled with no seed', async () => {
+  const h = harness();
+  const dev = await enrolledDevice(h, ADDRESS);
+  const [before] = otpRows(h.db);
+  assert.equal((await tryCode(h, dev, await codeAt(dev, h.clock.ms))).finish.status, 200);
+  const again = await answer(await h.call(await enrolRequest(h.call, dev, await enrolTicket(h, ADDRESS, dev))));
+  assert.deepEqual(again, { status: 409, json: { error: 'enrolled' } });
+  assert.equal(otpRows(h.db)[0].box, before.box, 'the seed is unchanged');
+});
+
+test('A5 review 3: an exchange started on the old seed is refused once a repeat enrol replaced it', async () => {
+  const h = harness();
+  const dev = await enrolledDevice(h, ADDRESS);
+  const { message, state } = initiatorStart({ code: await codeAt(dev, h.clock.ms), channel: unlockChannelFor(dev.id) });
+  const start = await answer(await h.call(await signed(h.call, dev, '/unlock/start', { sid: b64url(message.sid), Ya: b64url(message.Ya), clock: h.clock.ms })));
+  assert.equal(start.status, 200);
+  const proved = initiatorFinish(state, start.json.replies.map((r) => ({ Yb: fromB64url(r.Yb), tagB: fromB64url(r.tagB) })));
+  assert.ok(proved, 'the old seed\'s code was offered when the exchange started');
+  assert.equal((await h.call(await enrolRequest(h.call, dev, await enrolTicket(h, ADDRESS, dev)))).status, 200, 'the repeat enrol');
+  const done = await answer(await h.call(await signed(h.call, dev, '/unlock/finish', { exchange: start.json.exchange, tagA: b64url(proved.tagA) })));
+  assert.deepEqual(done, BAD_CODE);
+  assert.equal(otpRows(h.db)[0].last_step, 0, 'no code was accepted');
+});
+
+test('A5 review 3: a repeat enrol keeps the sole-live-device rule, and the old seed stays', async () => {
+  const h = harness();
+  const dev = await enrolledDevice(h, ADDRESS);
+  const second = await registeredDevice(h, ADDRESS, { fresh: false });
+  const [before] = otpRows(h.db);
+  assert.deepEqual(await answer(await h.call(await enrolRequest(h.call, dev, await enrolTicket(h, ADDRESS, dev)))), ENROL_BLOCKED);
+  assert.deepEqual(await answer(await h.call(await enrolRequest(h.call, second, await enrolTicket(h, ADDRESS, second)))), ENROL_BLOCKED);
+  assert.equal(otpRows(h.db)[0].box, before.box, 'the seed is unchanged');
+  assert.equal((await tryCode(h, dev, await codeAt(dev, h.clock.ms))).finish.status, 200, 'the old seed still works');
+});
+
+test('A5 review 3: only a confirmed enrolment makes other devices pending', async () => {
+  const h = harness();
+  const owner = await enrolledDevice(h, ADDRESS);
+  const early = await registeredDevice(h, ADDRESS, { fresh: false });
+  assert.equal(pendingOf(h.db, early.id), 0, 'an unconfirmed enrolment holds no device back');
+  assert.equal((await answer(await h.call(await signed(h.call, early, '/reverify', {})))).json.error, 'not-built', 'it passes the device checks');
+  assert.equal((await tryCode(h, owner, await codeAt(owner, h.clock.ms))).finish.status, 200, 'the first accepted code');
+  assert.equal(pendingOf(h.db, owner.id), 0, 'the device that proved it');
+  assert.equal(pendingOf(h.db, early.id), 1, 'the confirmation holds the other device back');
+  assert.deepEqual(await answer(await h.call(await signed(h.call, early, '/device/remove', { device: owner.id }))), { status: 401, json: { error: 'no-device' } });
+  const late = await registeredDevice(h, ADDRESS, { fresh: false });
+  assert.equal(pendingOf(h.db, late.id), 1, 'a device registered after it starts pending');
+});
+
+test('A5 review 3: a device registered while the confirming code is in flight is held back', async () => {
+  const h = harness();
+  const owner = await enrolledDevice(h, ADDRESS);
+  const late = await deviceKeys();
+  const { message, state } = initiatorStart({ code: await codeAt(owner, h.clock.ms), channel: unlockChannelFor(owner.id) });
+  const start = await answer(await h.call(await signed(h.call, owner, '/unlock/start', { sid: b64url(message.sid), Ya: b64url(message.Ya), clock: h.clock.ms })));
+  const proved = initiatorFinish(state, start.json.replies.map((r) => ({ Yb: fromB64url(r.Yb), tagB: fromB64url(r.tagB) })));
+  const request = await signed(h.call, owner, '/unlock/finish', { exchange: start.json.exchange, tagA: b64url(proved.tagA) });
+  landsMidFlight(h, 'UPDATE exchange SET used = 1', (db) => {
+    db.sqlite.prepare('INSERT INTO device (id, account_id, sign_key, agree_key, created_at) VALUES (?, ?, ?, ?, ?)')
+      .run('late-device', owner.account, late.signKey, late.agreeKey, h.clock.ms);
+  });
+  assert.equal((await h.call(request)).status, 200);
+  assert.equal(pendingOf(h.db, 'late-device'), 1);
 });
 
 test('NEGATIVE CONTROL: the enrolling device and devices of an account with no code are not held back', async () => {

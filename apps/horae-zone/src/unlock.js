@@ -150,7 +150,7 @@ async function admitPendingTry(db, device, now) {
 export async function startUnlock({ db, device, body, now, env, mailer }) {
   const { sid, Ya, clock } = startBody(body);
   const { keys, reopenBase } = await configOrUnavailable(env, mailer);
-  const otp = await db.prepare("SELECT box, last_step FROM otp WHERE account_id = ?").bind(device.account_id).first();
+  const otp = await db.prepare("SELECT box, last_step, enrolment FROM otp WHERE account_id = ?").bind(device.account_id).first();
   if (!otp) throw new Refusal("not-enrolled", 409);
   const exchange = b64url(crypto.getRandomValues(new Uint8Array(EXCHANGE_BYTES)));
   const after = device.pending
@@ -170,8 +170,8 @@ export async function startUnlock({ db, device, body, now, env, mailer }) {
   }
   seed.fill(0);
   const stored = await db.prepare(
-    `INSERT INTO exchange (id, account_id, device_id, candidates, expires_at, used) SELECT ?, ?, ?, ?, ?, 0 WHERE ${LIVE_DEVICE} RETURNING id`,
-  ).bind(exchange, device.account_id, device.id, JSON.stringify(candidates), now + CONFIRM_MS, device.id).first();
+    `INSERT INTO exchange (id, account_id, device_id, candidates, expires_at, used, enrolment) SELECT ?, ?, ?, ?, ?, 0, ? WHERE ${LIVE_DEVICE} RETURNING id`,
+  ).bind(exchange, device.account_id, device.id, JSON.stringify(candidates), now + CONFIRM_MS, otp.enrolment, device.id).first();
   if (!stored) throw new Refusal("no-device", 401, after);
   return { status: 200, json: { exchange, replies }, after };
 }
@@ -198,7 +198,7 @@ export async function finishUnlock({ db, device, body, now, env, mailer }) {
   }
   const { keys, signKey, reopenBase } = await configOrUnavailable(env, mailer);
   const row = await db.prepare(
-    `UPDATE exchange SET used = 1 WHERE id = ? AND device_id = ? AND used = 0 AND expires_at > ? AND ${LIVE_DEVICE} RETURNING account_id, candidates`,
+    `UPDATE exchange SET used = 1 WHERE id = ? AND device_id = ? AND used = 0 AND expires_at > ? AND ${LIVE_DEVICE} RETURNING account_id, candidates, enrolment`,
   ).bind(body.exchange, device.id, now, device.id).first();
   if (!row) {
     await findDevice(db, device.id); // refuses no-device when the removal is what stopped it
@@ -206,10 +206,13 @@ export async function finishUnlock({ db, device, body, now, env, mailer }) {
   }
   const step = matchedStep(JSON.parse(row.candidates), await keys.tagDigest(body.exchange, body.tagA));
   // A code is accepted once: only an update that moves last_step forward wins,
-  // and only while the device is not removed (security review L2).
+  // only while the device is not removed (security review L2), and only on
+  // the enrolment the exchange was built on (A5 security review item 3). The
+  // first accepted code confirms the enrolment, and the otp_confirmed trigger
+  // (schema.sql) holds back every other live device in the same write.
   const accepted = step !== null && Boolean(await db.prepare(
-    `UPDATE otp SET last_step = ? WHERE account_id = ? AND last_step < ? AND ${LIVE_DEVICE} RETURNING account_id`,
-  ).bind(step, row.account_id, step, device.id).first());
+    `UPDATE otp SET last_step = ?, confirmed_by = COALESCE(confirmed_by, ?) WHERE account_id = ? AND last_step < ? AND enrolment = ? AND ${LIVE_DEVICE} RETURNING account_id`,
+  ).bind(step, device.id, row.account_id, step, row.enrolment, device.id).first());
   if (!accepted) await findDevice(db, device.id);
   const ruled = await ruleLimits(db, row.account_id, now, (state) => {
     const settled = settle(state, now);
