@@ -10,11 +10,15 @@
  *             every signed check, and the handler gets that device; a bad
  *             signature is refused, never treated as unsigned
  * A route with no handler answers not-built, only after its checks pass.
+ * pendingOk marks the routes a pending device (an account has a code the
+ * device has not proved yet, A5) may reach; every other route refuses it.
  */
 import { issueNonce } from "./checks.js";
 import { startSignup, verifySignup } from "./signup.js";
 import { signIn } from "./signin.js";
 import { registerDevice, removeDevice } from "./devices.js";
+import { enrolOtp } from "./otp.js";
+import { startUnlock, finishUnlock, reopenUnlock } from "./unlock.js";
 
 export const ROUTES = Object.freeze({
   "/account": { checks: "open", handler: startSignup },
@@ -26,11 +30,12 @@ export const ROUTES = Object.freeze({
   // requires the single-use ticket /signin handed out instead.
   "/device/register": { checks: "open", handler: registerDevice },
   "/device/remove": { checks: "signed", handler: removeDevice },
-  "/nonce": { checks: "device", handler: issueNonce },
-  "/otp/enrol": { checks: "signed" },
-  "/unlock/start": { checks: "signed" },
-  "/unlock/finish": { checks: "signed" },
-  "/unlock/reopen": { checks: "open" },
+  "/nonce": { checks: "device", handler: issueNonce, pendingOk: true },
+  "/otp/enrol": { checks: "signed", handler: enrolOtp },
+  "/unlock/start": { checks: "signed", handler: startUnlock, pendingOk: true },
+  "/unlock/finish": { checks: "signed", handler: finishUnlock, pendingOk: true },
+  // The emailed link, opened before any device can sign for it.
+  "/unlock/reopen": { checks: "open", handler: reopenUnlock },
   "/pin/verify": { checks: "signed" },
   "/pin/set": { checks: "signed" },
   "/pin/reset": { checks: "signed" },

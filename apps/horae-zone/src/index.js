@@ -2,11 +2,17 @@
  * Horae Zone, the nooutco account service (plan: sass-assistant
  * docs/ios-plan.md §3). The route table and the checks every route passes
  * (A2), sign-up by email code (A3), sign-in, device registration and removal
- * and the live-nonce cap (A4); later handlers arrive with their slices.
+ * and the live-nonce cap (A4), the one authenticator code: enrolment, the
+ * CPace code check, its lockout and the reopen link (A5); later handlers
+ * arrive with their slices.
+ *
+ * A device of an account with a code that has not proved the code yet
+ * (pending, A5) reaches only the routes marked pendingOk, and every other
+ * route answers no-device, as for an unknown device.
  *
  * What it holds and never holds is in schema.sql. Every request ends in one
- * audit row of route and closed reason word, and work a handler leaves for
- * after the answer (a mail) adds a second row only when it fails. There is no
+ * audit row of route and closed reason word, and work a handler or a refusal
+ * leaves for after the answer (a mail) adds a second row only when it fails. There is no
  * console output: a log line is one more place a value could land.
  *
  * A request with a query string is refused as shape before anything else:
@@ -59,6 +65,14 @@ async function runAfter(db, at, route, after) {
   }
 }
 
+// Hands after-work to the runtime to finish once the answer is out.
+async function later(db, at, route, ctx, after) {
+  if (typeof after !== "function") return;
+  const work = runAfter(db, at, route, after);
+  if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(work);
+  else await work;
+}
+
 async function run(request, env, ctx, { routes, now, mailer }) {
   const db = env.DB;
   const url = new URL(request.url);
@@ -72,21 +86,19 @@ async function run(request, env, ctx, { routes, now, mailer }) {
     const checks = route.checks !== "signable" ? route.checks : request.headers.has("x-hz-device") ? "signed" : "open";
     if (checks !== "open") {
       device = await findDevice(db, request.headers.get("x-hz-device"));
+      if (device.pending && !route.pendingOk) throw new Refusal("no-device", 401);
       if (checks === "signed" || checks === "admin") await checkSignature(db, device, request, url.pathname, bytes, now);
       if (checks === "admin" && !(await isAdmin(db, device.account_id))) throw new Refusal("not-admin", 403);
     }
     if (!route.handler) throw new Refusal("not-built", 501);
     const out = await route.handler({ db, device, body, now, env, request, mailer: mailer ?? mailerFrom(env) });
     await audit(db, now, name, "ok");
-    if (typeof out.after === "function") {
-      const work = runAfter(db, now, name, out.after);
-      if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(work);
-      else await work;
-    }
+    await later(db, now, name, ctx, out.after);
     return answer(out.status, out.json);
   } catch (err) {
     const refusal = err instanceof Refusal ? err : new Refusal("failed", 500);
     await audit(db, now, name, refusal.reason);
+    await later(db, now, name, ctx, refusal.after);
     return answer(refusal.status, { error: refusal.reason });
   }
 }
