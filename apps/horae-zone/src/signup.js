@@ -117,7 +117,14 @@ export async function keysOrUnavailable(env) {
   return keys;
 }
 
-export const requesterOf = (request) => request.headers.get("cf-connecting-ip") || "none";
+// The connecting address Cloudflare sets on every request through its edge.
+// A request without one is refused as shape (security review L3) rather than
+// counted under one requester that every such request would share.
+export function requesterOf(request) {
+  const ip = (request.headers.get("cf-connecting-ip") ?? "").trim();
+  if (ip === "") throw new Refusal("shape", 400);
+  return ip;
+}
 
 // A uniform 6-digit code: values past the last whole multiple of CODE_SPACE
 // are drawn again, so no code is likelier than another.
@@ -162,6 +169,7 @@ function mailAfter(mailer, message) {
 export async function startSignup({ db, body, now, env, request, mailer }) {
   if (!hasOnly(body, ["email"])) throw new Refusal("shape", 400);
   const address = addressOf(body.email);
+  const ip = requesterOf(request);
   const keys = await keysOrUnavailable(env);
   if (!mailer) throw new Refusal("unavailable", 503);
   const codesPerDay = codesPerDayOf(env);
@@ -173,7 +181,7 @@ export async function startSignup({ db, body, now, env, request, mailer }) {
     throw new Refusal("unavailable", 503);
   }
   const addressKey = await keys.addressKey(address);
-  const requester = await keys.requesterKey(requesterOf(request));
+  const requester = await keys.requesterKey(ip);
   const mailbox = taggedMailbox(address);
   const admitted = await admitThrottle(db, now, SIGNUP_LIMITS.windowMs, [
     { bucket: `start-requester:${requester}`, limit: SIGNUP_LIMITS.startsPerRequesterHour },
@@ -203,8 +211,9 @@ export async function verifySignup({ db, body, now, env, request }) {
   const address = addressOf(body.email);
   if (typeof body.code !== "string" || !CODE.test(body.code)) throw new Refusal("shape", 400);
   const password = passwordOf(body.password);
+  const ip = requesterOf(request);
   const keys = await keysOrUnavailable(env);
-  const requester = await keys.requesterKey(requesterOf(request));
+  const requester = await keys.requesterKey(ip);
   const addressKey = await keys.addressKey(address);
   const admitted = await admitThrottle(db, now, SIGNUP_LIMITS.windowMs, [
     { bucket: `verify-requester:${requester}`, limit: SIGNUP_LIMITS.verifiesPerRequesterHour },
