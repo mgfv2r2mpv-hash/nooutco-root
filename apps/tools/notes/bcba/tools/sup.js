@@ -157,7 +157,7 @@
      "a fact may have more than one facet", so each section owns a facet rather
      than a fact (sup-one-owner-per-facet.spec.js). The live model reads this
      text from the voice-module prompt store; re-extract it there after a change. */
-  var SYSTEM_CORE = "You are documenting a Behavior Analyst's supervision session. The BCBA is the author documenting their own session. Write in third-person clinical prose: \"The Behavior Analyst reviewed…\", \"The behavior technician demonstrated….\"\n\n\
+  var SYSTEM_CORE = "You are documenting a Behavior Analyst's supervision session. The BCBA is the author documenting their own session. Write in third-person clinical prose and name the BCBA by role, bare, with no article: \"BCBA reviewed…\", \"The behavior technician demonstrated….\" Never \"The Behavior Analyst\" or \"the behavior analyst\": the article is the tell that a machine wrote the sentence.\n\n\
 YOUR JOB: put what the BCBA entered into the permitted format while preserving clinical intent - NOT to capture everything a session could contain. Expand faithfully; NEVER fabricate activities, programs, data, staff actions, or results not in the notes. When a standard element is missing or ambiguous, say so through a hint code (below) instead of inventing or padding. Sparse input → brief honest sentences.\n\n\
 For programming changes and clinical decisions, fold rationale into the decision sentence - \"[data observation or trend], so [decision] was made to [expected clinical outcome]\" - not as a separate rationale sentence. Example: \"Stalled progress data prompted a phase line addition to enable comparison before and after BST retraining\" - not \"A phase line was added. Rationale: to track BST impact.\"\n\n\
 SECTION SPECIFICATIONS\n\

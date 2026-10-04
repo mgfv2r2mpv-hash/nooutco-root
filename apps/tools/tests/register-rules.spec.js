@@ -770,21 +770,26 @@ test.describe('the analysis rules reach the technician tool and no other', () =>
      delivery" and "the caregiver was praised for". This PR's whole diagnosis is
      that the model copies the core's examples, so an example carrying the
      article teaches the article whatever the rule above it says. */
-  test("parent's own worked examples obey its bare-actor rule", async ({ page }) => {
-    await page.goto('/notes/bcba/index.html');
-    await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length));
-    const system = await page.evaluate(() => window.NOTE_TOOLS.find((t) => t.id === 'parent').buildSystem());
-    expect(articledExamples(system),
-      'a worked example names the actor with an article, and the model copies its examples').toEqual([]);
-  });
+  /* sup and assess joined on 2026-10-04: Kaleb answered #214's open question
+     "switch", so their worked examples name the BCBA bare like parent's. */
+  for (const id of ['parent', 'sup', 'assess']) {
+    test(`${id}'s own worked examples obey the bare-actor rule`, async ({ page }) => {
+      await page.goto('/notes/bcba/index.html');
+      await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length));
+      const system = await page.evaluate((tid) => window.NOTE_TOOLS.find((t) => t.id === tid).buildSystem(), id);
+      expect(system).not.toMatch(/"The Behavior Analyst (?:reviewed|administered|modeled)/);
+      expect(articledExamples(system),
+        'a worked example names the actor with an article, and the model copies its examples').toEqual([]);
+    });
+  }
 
   /* The fixture for the guard above, for the same reason the ban classifier has
      one. My first cut flagged the bare-actor RULE, because the rule has to quote
      "The Behavior Analyst" in order to forbid it, and a guard that fires on the
      fix is a guard nobody can satisfy.
 
-     sup and assess each still carry one articled example. That is deliberate and
-     it is Kaleb's open question, so the test above names parent only. */
+     sup and assess carried one articled example each until Kaleb's #214
+     answer on 2026-10-04; the test above now covers all three. */
   test('the example guard reads a prohibition as a prohibition', () => {
     const forbids = 'Never "The Behavior Analyst" or "the behavior analyst": the article is the tell.';
     expect(articledExamples(forbids), 'the rule forbidding the phrase was read as using it').toEqual([]);
