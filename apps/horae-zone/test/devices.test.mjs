@@ -12,7 +12,7 @@ import { SIGNIN_LIMITS } from '../src/signin.js';
 import { LIVE_NONCES_PER_DEVICE, NONCE_TTL_MS } from '../src/checks.js';
 import {
   harness, post, signed, nonceFor, addDevice, auditRows, everyRow,
-  signUp, signIn, signInRequest, deviceKeys, registerRequest, registeredDevice, PASSWORD, ROOT,
+  signUp, signIn, signInRequest, deviceKeys, registerRequest, registeredDevice, PASSWORD, ROOT, T0,
 } from './helpers.mjs';
 
 // Fixed, fake values: reserved-domain addresses and TEST-NET requesters.
@@ -126,6 +126,81 @@ test('sign-in tries are rate limited per requester, across addresses', async () 
   }
   assert.deepEqual(await answer(await h.call(signInRequest(ADDRESS, PASSWORD, '198.51.100.7'))), { status: 429, json: { error: 'slow-down' } });
   assert.equal((await h.call(signInRequest(ADDRESS, PASSWORD, '198.51.100.8'))).status, 200, 'NEGATIVE CONTROL: another requester');
+});
+
+// ---- H2 (security review): strangers cannot lock the owner out of /signin ----
+
+// Fills ADDRESS's per-address bucket with wrong passwords, each from its own
+// requester, the way a stranger spread over many addresses would.
+async function strangersFill(h, address) {
+  for (let i = 0; i < SIGNIN_LIMITS.perAddressHour; i += 1) {
+    await h.call(signInRequest(address, `wrong password ${i}!`, `198.51.100.${i + 1}`));
+  }
+}
+
+const signedSignIn = (h, device, address, ip, options = {}) =>
+  signed(h.call, device, '/signin', { email: address, password: PASSWORD }, { ...options, headers: { 'cf-connecting-ip': ip } });
+
+test('H2: after ten wrong passwords from ten requesters, the owner signs in from a registered device', async () => {
+  const h = harness();
+  const device = await registeredDevice(h, ADDRESS);
+  await strangersFill(h, ADDRESS);
+  assert.deepEqual(await answer(await h.call(signInRequest(ADDRESS, PASSWORD, '203.0.113.9'))), { status: 429, json: { error: 'slow-down' } },
+    'NEGATIVE CONTROL: an unsigned try is still held by the full address bucket');
+  const res = await answer(await h.call(await signedSignIn(h, device, ADDRESS, '203.0.113.9')));
+  assert.equal(res.status, 200);
+  assert.match(res.json.ticket, /^[A-Za-z0-9_-]{43}$/);
+});
+
+test('H2: a successful sign-in is not counted against the address', async () => {
+  const h = harness();
+  await signUp(h, ADDRESS);
+  for (let i = 0; i < SIGNIN_LIMITS.perAddressHour; i += 1) {
+    assert.equal((await h.call(signInRequest(ADDRESS, PASSWORD, `198.51.100.${i + 1}`))).status, 200, `success ${i + 1}`);
+  }
+  assert.deepEqual(await answer(await h.call(signInRequest(ADDRESS, 'a wrong password', '203.0.113.9'))), { status: 401, json: { error: 'bad-login' } });
+  assert.equal((await h.call(signInRequest(ADDRESS, PASSWORD, '203.0.113.10'))).status, 200);
+});
+
+test('H2: wrong passwords alone still fill the address bucket, and a success does not empty it', async () => {
+  const h = harness();
+  await signUp(h, ADDRESS);
+  for (let i = 0; i < SIGNIN_LIMITS.perAddressHour - 1; i += 1) {
+    assert.equal((await h.call(signInRequest(ADDRESS, `wrong password ${i}!`, `198.51.100.${i + 1}`))).status, 401);
+  }
+  assert.equal((await h.call(signInRequest(ADDRESS, PASSWORD, '203.0.113.9'))).status, 200, 'room for one more try');
+  assert.equal((await h.call(signInRequest(ADDRESS, 'one wrong password more', '203.0.113.10'))).status, 401, 'the success took no place');
+  assert.deepEqual(await answer(await h.call(signInRequest(ADDRESS, PASSWORD, '203.0.113.11'))), { status: 429, json: { error: 'slow-down' } });
+});
+
+test('H2 NEGATIVE CONTROL: a device of another account does not lift the address bucket', async () => {
+  const h = harness();
+  await signUp(h, ADDRESS);
+  const stranger = await registeredDevice(h, OTHER);
+  await strangersFill(h, ADDRESS);
+  assert.deepEqual(await answer(await h.call(await signedSignIn(h, stranger, ADDRESS, '203.0.113.9'))), { status: 429, json: { error: 'slow-down' } });
+});
+
+test('H2 NEGATIVE CONTROL: a signed sign-in still pays the per-requester bucket', async () => {
+  const h = harness();
+  const device = await registeredDevice(h, ADDRESS);
+  for (let i = 0; i < SIGNIN_LIMITS.perRequesterHour; i += 1) {
+    await h.call(signInRequest(`guess-${i}@example.test`, PASSWORD, '198.51.100.7'));
+  }
+  assert.deepEqual(await answer(await h.call(await signedSignIn(h, device, ADDRESS, '198.51.100.7'))), { status: 429, json: { error: 'slow-down' } });
+  assert.equal((await h.call(await signedSignIn(h, device, ADDRESS, '198.51.100.8'))).status, 200, 'NEGATIVE CONTROL: another requester');
+});
+
+test('H2: a sign-in that names a device must carry its good signature, never falling back to unsigned', async () => {
+  const h = harness();
+  const device = await registeredDevice(h, ADDRESS);
+  const tampered = await signedSignIn(h, device, ADDRESS, '203.0.113.9', { tamper: { path: '/device/remove' } });
+  assert.deepEqual(await answer(await h.call(tampered)), { status: 401, json: { error: 'bad-signature' } });
+  const unknown = post('/signin', { email: ADDRESS, password: PASSWORD }, { 'cf-connecting-ip': '203.0.113.9', 'x-hz-device': 'no-such-device' });
+  assert.deepEqual(await answer(await h.call(unknown)), { status: 401, json: { error: 'no-device' } });
+  h.db.sqlite.prepare('UPDATE device SET removed_at = ? WHERE id = ?').run(T0, device.id);
+  assert.deepEqual(await answer(await h.call(await signedSignIn(h, { ...device }, ADDRESS, '203.0.113.9', { nonce: 'x'.repeat(43) }))),
+    { status: 401, json: { error: 'no-device' } }, 'a removed device is refused');
 });
 
 test('a ticket is stored only as a keyed digest, bound to its account', async () => {

@@ -308,7 +308,7 @@ Left as is (residual): 15 wrong guesses at one address within an hour, from 3 or
 
 1. **Registration needs the ticket from `/signin`.** The route stays `open`, because a device has no key to sign with yet, and the handler takes exactly `{ticket, signKey, agreeKey}`. The ticket is 32 random bytes, handed out once, stored only as a keyed digest bound to its account, alive 5 minutes, and spent by the same `UPDATE ... RETURNING` that checks it, so it registers one device.
 2. **The keys are checked before the ticket is spent.** Each must be a raw P-256 public point that WebCrypto imports (ECDSA for `signKey`, ECDH for `agreeKey`). An off-curve or malformed key is `shape`, and the ticket stays live.
-3. **Sign-in does not say whether an account exists.** A wrong password and an unknown address both answer `bad-login`, and the unknown address still runs one full password hash with a fixed throwaway salt, so both take the same time. Tries are limited per address (from any requester) and per requester (across addresses).
+3. **Sign-in does not say whether an account exists.** A wrong password and an unknown address both answer `bad-login`, and the unknown address still runs one full password hash with a fixed throwaway salt, so both take the same time. Every try is limited per requester (across addresses). Wrong passwords are limited per address (from any requester), and a success is not counted there. A sign-in signed by a registered device of the account skips the address limit (changed by H2 below).
 4. **Sign-in takes any stored password length.** `/signin` checks only 1 to 256 characters, so a later change to the sign-up length rule never locks out an older account.
 5. **A removed device is refused at once.** `/device/remove` stamps `removed_at` and spends that device's live nonces in one batch. The A2 device check already refuses a removed device on every route, so its next request fails.
 6. **Remove reaches only the caller's account, and answers the same way every time.** Both statements match only a device of the signing device's account. An unknown id or another account's device also gets `{ok:true}`, so the answer never confirms that a device exists. A device can remove itself.
@@ -321,11 +321,26 @@ Left as is (residual): 15 wrong guesses at one address within an hour, from 3 or
 | # | Point | Default now | Where |
 |---|---|---|---|
 | 1 | How long a sign-in ticket lives | 5 minutes | `SIGNIN_LIMITS.ticketTtlMs` |
-| 2 | Sign-in tries per address per hour | 10 | `SIGNIN_LIMITS.perAddressHour` |
+| 2 | Wrong sign-in passwords per address per hour, from everyone; a success and a sign-in signed by a device of the account are not counted (H2) | 10 | `SIGNIN_LIMITS.perAddressHour` |
 | 3 | Sign-in tries per connecting address per hour | 20 | `SIGNIN_LIMITS.perRequesterHour` |
 | 4 | Live nonces per device | 5 | `LIVE_NONCES_PER_DEVICE` |
 | 5 | Who may remove a device: any signed device of the account, itself included, with no fresh Face ID, password or code. Plan §3.5 says "Remove it on the admin or account screen" and does not say what proof that screen asks for | No extra proof | `removeDevice` |
 | 6 | How long removed device rows are kept | No purge | `src/retention.js` |
+
+### Security review findings and what changed
+
+The same review of `3c3cac63` (see A3) asked for these fixes before merge, each test first: the tests below fail on `3c3cac63` and pass after the fix.
+
+**H2 (high): anyone could lock the owner out of `/signin`.** The per-address bucket counted every try, from any requester, a success included. Ten wrong passwords from ten connecting addresses held the owner's right password at `slow-down` for the hour, and the owner's own sign-ins filled the same bucket.
+
+What changed:
+- A new route kind, `signable` (`src/routes.js`, `src/index.js`), used only by `/signin`. A request without `x-hz-device` is `open` as before. A request that names a device passes every signed check (the device is registered and not removed, the nonce is fresh and its own, the signature covers `/signin` and the body), and a bad one is refused (`no-device`, `stale-nonce`, `bad-signature`), never treated as unsigned.
+- `signIn` (`src/signin.js`) looks the account up first. When the request was signed by a device of that account, only the per-requester bucket is taken; otherwise both buckets are, in one statement as before.
+- A success takes back its place in the address bucket, in the same batch that stores the ticket (`releaseThrottle` in `src/throttle.js`). Taking the place first and giving it back on success keeps the cap atomic: tries sent together still cannot pass it.
+
+Tests (`test/devices.test.mjs`): "H2: after ten wrong passwords from ten requesters, the owner signs in from a registered device", "H2: a successful sign-in is not counted against the address", "H2: wrong passwords alone still fill the address bucket, and a success does not empty it", and "H2: a sign-in that names a device must carry its good signature, never falling back to unsigned" fail on `3c3cac63`. "H2 NEGATIVE CONTROL: a device of another account does not lift the address bucket" and "H2 NEGATIVE CONTROL: a signed sign-in still pays the per-requester bucket" pass on both, and guard the bypass from widening. `test/checks.test.mjs` now lists `signable` among the route kinds and pins `/signin` as its only route.
+
+Left as is (residual): a first device has no key to sign with, so strangers who fill the address bucket still hold back the owner's first sign-in on a new device for up to an hour. A device of the account that has been stolen (its key with it) can try passwords at the per-requester rate without the address cap; removing it (A4 decision 5) stops that at once.
 
 ### Open points for the reviewer
 

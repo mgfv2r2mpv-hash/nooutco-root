@@ -6,6 +6,9 @@
  *   device  - also a registered, not removed device id
  *   signed  - also a device signature over a fresh single-use nonce
  *   admin   - signed, and the device's account holds the admin role
+ *   signable - open, but a request that names a device (x-hz-device) passes
+ *             every signed check, and the handler gets that device; a bad
+ *             signature is refused, never treated as unsigned
  * A route with no handler answers not-built, only after its checks pass.
  */
 import { issueNonce } from "./checks.js";
@@ -16,7 +19,9 @@ import { registerDevice, removeDevice } from "./devices.js";
 export const ROUTES = Object.freeze({
   "/account": { checks: "open", handler: startSignup },
   "/account/email/verify": { checks: "open", handler: verifySignup },
-  "/signin": { checks: "open", handler: signIn },
+  // Signed by a registered device of the account, a sign-in skips the
+  // per-address bucket (security review H2).
+  "/signin": { checks: "signable", handler: signIn },
   // A device has no key registered yet, so it cannot sign: the handler
   // requires the single-use ticket /signin handed out instead.
   "/device/register": { checks: "open", handler: registerDevice },
