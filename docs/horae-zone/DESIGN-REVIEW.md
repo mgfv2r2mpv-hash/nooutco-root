@@ -323,17 +323,19 @@ Left as is (residual): the header is trusted as Cloudflare sets it. A request re
 
 ### Second security review: the root cause, a guessable email code
 
-A second review of `8ebe205a` found that what was left of H1, H2 and M2 had one root cause. A 6-digit email code is guessable, so it needed tight per-address caps, and any cap a stranger can fill is a lever to lock a chosen address out. The fix goes at the root: the email secret becomes unguessable, and the caps that only existed to slow guessing go. Each item was test first: its tests were run against the `8ebe205a` source (only the test files changed) and failed there.
+A second review of `8ebe205a` found that what was left of H1, H2 and M2 had one root cause. A 6-digit email code is guessable, so it needed tight per-address caps, and any cap a stranger can fill is a lever to lock a chosen address out. The fix goes at the root: the email secret becomes unguessable, and the caps that only existed to slow guessing go. Each item was test first: its tests were written before the fix and run against the source of the commit before it (only the test files changed), and they failed there. One commit per item, landed in the order 1, 2, 3, 4, 7, 6, 5:
 
-| Item | What | Slice |
-|---|---|---|
-| 1 | The email secret is a 128-bit random token in the link fragment; the mail shows no code to type | A3 |
-| 2 | No address-level verify cap and no per-code try ceiling, so strangers' wrong tries never make the owner's link answer 429 or end it | A3 |
-| 3 | A start at the per-address cap answers the same 200 and re-sends the newest live link instead of minting, under a re-send cap; up to 5 live codes per address | A3 |
-| 4 | `/signin` has no hard per-address lock: a per (address, requester) failure cap, a per-address ceiling of 100 failures an hour, and a backoff on the address that never passes 15 minutes | A4 |
-| 5 | The daily cap is the mail plan's limit (`HZ_CODES_PER_DAY`, default 3000), and one alert a day goes to `HZ_ALERT_TO` at half of it | A3 |
-| 6 | The address is keyed by its domain's DNS name: one trailing dot stripped, mapped to ASCII, and a domain that is not a plain DNS name is `shape` | A3 |
-| 7 | A sign-in signed by a registered device of the account still pays the per (address, requester) failure cap from item 4 | A4 |
+| Item | What | Slice | Commit | RED on | After the fix |
+|---|---|---|---|---|---|
+| 1 | The email secret is a 128-bit random token in the link fragment; the mail shows no code to type | A3 | `d672e603` | `8ebe205a` | Horae Zone 112/112 |
+| 2 | No address-level verify cap and no per-code try ceiling, so strangers' wrong tries never make the owner's link answer 429 or end it | A3 | `9f55de74` | `d672e603` | Horae Zone 113/113 |
+| 3 | A start at the per-address cap answers the same 200 and re-sends the newest live link instead of minting, under a re-send cap; up to 5 live codes per address | A3 | `92d91ed2` | `9f55de74` | Horae Zone 117/117 |
+| 4 | `/signin` has no hard per-address lock: a per (address, requester) failure cap, a per-address ceiling of 100 failures an hour, and a backoff on the address that never passes 15 minutes | A4 | `7df89d4e` | `92d91ed2` | Horae Zone 121/121 |
+| 5 | The daily cap is the mail plan's limit (`HZ_CODES_PER_DAY`, default 3000), and one alert a day goes to `HZ_ALERT_TO` at half of it | A3 | `69c7cc33` | `4c2c53ca` | Horae Zone 134/134 |
+| 6 | The address is keyed by its domain's DNS name: one trailing dot stripped, mapped to ASCII, and a domain that is not a plain DNS name is `shape` | A3 | `4c2c53ca` | `6b49d7e8` | Horae Zone 127/127 |
+| 7 | A sign-in signed by a registered device of the account still pays the per (address, requester) failure cap from item 4 | A4 | `6b49d7e8` | `7df89d4e` | Horae Zone 124/124 |
+
+After every commit the engine ran 64 tests (63 pass, 1 skip without the private package; Node, Chromium and `workerd`) and profile-api 195/195. The new decisions for Kaleb are A3 rows 9 to 13 (the hard daily cap, the re-send cap, the alert share, the alert address `HZ_ALERT_TO`, and Turnstile or a WAF rule on `/account` at the first deploy) and A4 rows 2, 7 and 8 (the address ceiling, the pair cap and the backoff).
 
 **Item 1: the email secret becomes unguessable.** The code already rode in the link fragment and was clicked, not typed, so a 6-digit code bought nothing but guessability.
 
