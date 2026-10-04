@@ -10,8 +10,9 @@
  *                   of a code that is stored
  *   requester key - HMAC of the connecting address, the per-device rate-limit
  *                   bucket before a device has a registered key
- *   login pepper  - HMAC over the PBKDF2 output of the account password, so a
- *                   copied table cannot be guessed against without the secret
+ *   login pepper  - HMAC over the PBKDF2 output of the account password (NFKC
+ *                   normalised first), so a copied table cannot be guessed
+ *                   against without the secret
  *   ticket digest - HMAC of a sign-in ticket: the only form of a ticket that
  *                   is stored (A4)
  * A missing or short secret gives null, and the account routes then answer
@@ -82,9 +83,11 @@ export async function accountKeys(env) {
     },
 
     // The stored login hash: "pbkdf2-sha256$<iterations>$<hex>", with its own
-    // random salt per account.
+    // random salt per account. The password is NFKC-normalised first, so the
+    // same password typed as composed or decomposed code points, or with a
+    // compatibility form (a ligature, a full-width letter), hashes alike.
     async hashLogin(password, salt = b64url(crypto.getRandomValues(new Uint8Array(SALT_BYTES)))) {
-      const material = await subtle().importKey("raw", enc.encode(password), "PBKDF2", false, ["deriveBits"]);
+      const material = await subtle().importKey("raw", enc.encode(password.normalize("NFKC")), "PBKDF2", false, ["deriveBits"]);
       const bits = await subtle().deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: fromB64url(salt), iterations: LOGIN_ITERATIONS }, material, 256);
       const peppered = hex(await subtle().sign("HMAC", pepper, bits));
       return { hash: `pbkdf2-sha256$${LOGIN_ITERATIONS}$${peppered}`, salt };

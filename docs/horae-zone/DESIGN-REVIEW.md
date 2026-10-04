@@ -231,7 +231,7 @@ It never holds a vault key, a session key, vault data or PHI.
 6. **Rate limits are atomic, and a refused request is not counted.** Starts are limited per address and per requester, per mailbox for a tagged address, and per day across everyone (M2). Tries are limited per requester, per address, and per address for one requester (H1). Before a device has a key, the requester is the connecting address (`cf-connecting-ip`), stored only as a keyed hash.
 7. **Shape before the rate limit.** A malformed body is refused before the throttle, so it neither counts nor spends a try.
 8. **The address is stored sealed.** AES-GCM under a derived key, with the address key as associated data, so a box cannot be moved to another row. Lookups use the keyed address hash.
-9. **The password is stored as a peppered slow hash.** 100,000 PBKDF2 iterations is the most the Workers runtime allows. The HMAC pepper means a copied table cannot be guessed against without the Worker secret.
+9. **The password is stored as a peppered slow hash.** 100,000 PBKDF2 iterations is the most the Workers runtime allows. The HMAC pepper means a copied table cannot be guessed against without the Worker secret. The password is NFKC-normalised before the hash (M5 below).
 10. **The mail transport is injected.** Tests pass a sink and never send mail. Production builds the engine mailer from `HZ_MAIL_FROM` and `RESEND_KEY`. Either one missing, a missing or short `HZ_ACCOUNT_KEY`, or a bad `HZ_LINK_BASE` answers `unavailable`, and nothing is written.
 11. **The mail runs after the answer.** A failed send is audited `mail-failed` and changes nothing else.
 
@@ -287,6 +287,14 @@ Left as is (residual):
 - A non-ASCII domain is still taken as written. Mail systems map some spellings of a domain (full-width letters, for one) to the same ASCII domain, so those spellings still make new address keys for one mailbox. They still pay the requester and daily limits. Converting the domain to its ASCII form at the boundary would close it (open point 6).
 - Providers that ignore dots in the local part (`first.last` and `firstlast`) give two address keys for one mailbox. Only `+tag` is stripped, because dot rules differ by provider.
 - Anyone can fill the daily cap from many connecting addresses (each at 10 starts an hour) and stop sign-up for everyone until the day passes. The cap trades that for a bound on mail sent, and the WAF rate rule at the first deploy is the second layer.
+
+**M5 (medium): one password could hash two ways.** `hashLogin` hashed the password's code points as sent. The same password typed on two keyboards can arrive composed (`é` as one point) or decomposed (`e` plus a combining accent), or with a compatibility form (a ligature, a full-width letter), so an owner who set it on one device was refused on another.
+
+What changed (`src/account-keys.js`): `hashLogin` normalises the password with NFKC before PBKDF2. Sign-up, sign-in and the throwaway hash for an address with no account all go through `hashLogin`, so all three hash the same form. No database exists yet, so no stored hash needs moving.
+
+Tests (`test/devices.test.mjs`, since a sign-in is needed to check the stored hash): "M5: a password set in NFC form signs in from its NFD form, and the other way round" and "M5: a compatibility form (a ligature) signs in as its plain letters" fail on `3c3cac63` (401, expected 200). "M5 NEGATIVE CONTROL: a password that differs after normalising is still refused" passes on both.
+
+Left as is (residual): the length rules (12 to 256 at sign-up, 1 to 256 at sign-in) read the password as sent, not its normalised form. A decomposed password counts its combining marks, and a few compatibility characters expand under NFKC (one Arabic ligature becomes 18 characters), so the hashed form can be shorter than 12 or longer than 256. Neither changes what the hash accepts, and PBKDF2 takes any length.
 
 ### Open points for the reviewer
 
