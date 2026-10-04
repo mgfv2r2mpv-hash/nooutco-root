@@ -19,6 +19,8 @@ node bin/deploy.mjs --dry-run
 
 ## What it asks
 
+The script first prints the wrangler version it found (`wrangler --version`) and stops there if wrangler is missing. Every wrangler call runs with `WRANGLER_LOG_SANITIZE=true`, so a shell that turned wrangler's log redaction off cannot turn it off for this run.
+
 1. The Cloudflare account it found (type `y`, or the account's number when you have more than one). It stops here and creates nothing if you say no. When that account already has a Worker named `horae-zone` (`wrangler deployments list --name horae-zone --json`), the script prints "Worker horae-zone already exists; this will replace its code" and goes on only on `y`; anything else, or a check that cannot tell, stops the run with nothing changed.
 2. The Resend API key, on a hidden prompt (nothing shows as you type, arrow keys do nothing, and Ctrl-C or Ctrl-D cancels).
 3. The from-address for sign-up mail, on the domain you verified in Resend (`Horae Zone <mail@your-domain>` works).

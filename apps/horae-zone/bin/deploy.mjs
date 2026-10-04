@@ -10,8 +10,8 @@
  *                                   stored account becomes unreadable); asks
  *                                   for the typed word replace first
  *
- * Steps: confirm the Cloudflare account, and a y before replacing a Worker
- * already named horae-zone there; ask the values only the owner has
+ * Steps: print `wrangler --version`; confirm the Cloudflare account, and a
+ * y before replacing a Worker already named horae-zone there; ask the values only the owner has
  * (the Resend key on a hidden prompt); create or find the D1 database, write
  * the gitignored wrangler.deploy.toml and apply schema.sql (idempotent); show
  * the edge rule clicks; deploy; put each secret through stdin; check
@@ -20,7 +20,8 @@
  * A secret value is never on a command line, in a child's environment, in a
  * file or in the output: every printed line passes through scrub(), which
  * also masks each value's JSON-escaped and URL-encoded forms, and a check
- * whose output carries a value fails (test/deploy.test.mjs).
+ * whose output carries a value fails (test/deploy.test.mjs). Every wrangler
+ * child also runs with WRANGLER_LOG_SANITIZE=true, whatever the shell says.
  *
  * Why a generated config file rather than --var or flags: the database id
  * has to sit in the [[d1_databases]] block, which no wrangler flag sets, and
@@ -45,8 +46,12 @@ const ROUTE_WAIT_MS = 10_000;
 const ANSWER_TRIES = 3;
 const TAIL_LINES = 15;
 const WORKER = "horae-zone";
+// Set last on every wrangler child, so a shell with WRANGLER_LOG_SANITIZE=false
+// cannot turn off wrangler's own log redaction for this run.
+const CHILD_ENV = Object.freeze({ WRANGLER_LOG_SANITIZE: "true" });
 
 export const COMMANDS = Object.freeze({
+  version: ["--version"],
   whoami: ["whoami", "--json"],
   deployments: ["deployments", "list", "--name", WORKER, "--json"],
   d1List: ["d1", "list", "--json"],
@@ -99,7 +104,7 @@ function makeContext(deps) {
     item: (item, status, detail) => checklist.push({ item, status, detail }),
   };
   ctx.wrangler = async (args, { input, cwd } = {}) => {
-    const res = await deps.run(args, { input, cwd: cwd ?? deps.root, env: { ...ctx.env } });
+    const res = await deps.run(args, { input, cwd: cwd ?? deps.root, env: { ...ctx.env, ...CHILD_ENV } });
     if (res.code !== 0) {
       const tail = `${res.stderr ?? ""}\n${res.stdout ?? ""}`.trim().split("\n").slice(-TAIL_LINES).join("\n");
       throw new Stop(`${show(labelOf(args))} failed (exit ${res.code}):\n${scrub(tail, known).text}`);
@@ -113,6 +118,13 @@ function makeContext(deps) {
     return clean;
   };
   return ctx;
+}
+
+// Printed first, so a report of the run says which wrangler made it; a
+// wrangler that is missing or broken stops here, before any account call.
+async function wranglerVersion(ctx) {
+  const version = (await ctx.wrangler(COMMANDS.version)).trim().split("\n")[0];
+  ctx.say(`wrangler ${version || "(no version printed)"}`);
 }
 
 async function confirmAccount(ctx, deps) {
@@ -333,6 +345,8 @@ function dryRun(deps) {
   const put = (name) => `${show(COMMANDS.secretPut(name))}   < stdin: [masked]`;
   [
     "DRY RUN: nothing is run, asked, written or fetched. Secret values are shown as [masked].",
+    "Every wrangler call runs with WRANGLER_LOG_SANITIZE=true.",
+    `  ${show(COMMANDS.version)}   printed first; a missing wrangler stops here`,
     "Step 1. Cloudflare account",
     `  ${show(COMMANDS.whoami)}   then: confirm the account name (prompt)`,
     `  ${show(COMMANDS.deployments)}   when Worker ${WORKER} already exists: prompt, y replaces its code, anything else stops`,
@@ -373,6 +387,7 @@ export async function deploy(deps) {
   const full = { readFile: (f) => readFileSync(f, "utf8"), ...deps };
   const ctx = makeContext(full);
   try {
+    await wranglerVersion(ctx);
     await confirmAccount(ctx, full);
     await confirmWorker(ctx, full);
     const values = await collectAnswers(ctx, full);
@@ -392,10 +407,10 @@ export async function deploy(deps) {
 
 // The real wrangler: stdin carries a secret (or closes at once, so wrangler
 // runs non-interactive), and the child gets this environment plus the
-// confirmed account id.
+// confirmed account id, with WRANGLER_LOG_SANITIZE=true over both.
 export function runWrangler(args, { input, cwd, env } = {}) {
   return new Promise((resolve) => {
-    const child = spawn("wrangler", args, { cwd, env: { ...process.env, ...env }, stdio: ["pipe", "pipe", "pipe"] });
+    const child = spawn("wrangler", args, { cwd, env: { ...process.env, ...env, ...CHILD_ENV }, stdio: ["pipe", "pipe", "pipe"] });
     let stdout = "";
     let stderr = "";
     child.stdout.on("data", (d) => { stdout += d; });

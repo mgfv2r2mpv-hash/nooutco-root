@@ -4,13 +4,14 @@
 // output, a command line, a child's environment or a written file.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { PassThrough } from 'node:stream';
 import { EventEmitter } from 'node:events';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { ROOT } from './helpers.mjs';
-import { deploy } from '../bin/deploy.mjs';
+import { deploy, runWrangler } from '../bin/deploy.mjs';
 import { CATALOG, LineReader, deployConfig, scrub, HOSTNAME } from '../bin/deploy-parts.mjs';
 import { accountKeys } from '../src/account-keys.js';
 
@@ -42,6 +43,8 @@ function mockWrangler(state = {}) {
   async function run(args, opts = {}) {
     calls.push({ args, input: opts.input, cwd: opts.cwd, env: opts.env });
     const cmd = args.slice(0, 2).join(' ');
+    // Not a TTY, so wrangler 4 prints the bare version number.
+    if (cmd === '--version') return state.versionFail ? { code: 127, stdout: '', stderr: state.versionFail } : ok('4.104.0\n');
     if (cmd === 'whoami --json') return ok(JSON.stringify({ loggedIn: true, email: 'owner@example.test', accounts: state.accounts ?? [FAKE_ACCOUNT] }));
     if (cmd === 'd1 list') return ok(JSON.stringify(db.present ? [{ uuid: FAKE_DB_ID, name: 'horae-zone' }, { uuid: 'x', name: 'other' }] : [{ uuid: 'x', name: 'other' }]));
     if (cmd === 'd1 create') { db.present = true; return ok(`database_id = "${FAKE_DB_ID}"`); }
@@ -122,7 +125,8 @@ test('dry run prints every step and command, masks secrets and touches nothing',
   const out = lines.join('\n');
   assert.equal(result.dryRun, true);
   assert.match(out, /DRY RUN/);
-  for (const cmd of ['wrangler whoami --json', 'wrangler deployments list --name horae-zone --json', 'wrangler d1 list --json', 'wrangler d1 create horae-zone',
+  assert.match(out, /WRANGLER_LOG_SANITIZE=true/);
+  for (const cmd of ['wrangler --version', 'wrangler whoami --json', 'wrangler deployments list --name horae-zone --json', 'wrangler d1 list --json', 'wrangler d1 create horae-zone',
     'wrangler d1 execute horae-zone --remote --yes --file schema.sql --config wrangler.deploy.toml',
     'wrangler deploy --config wrangler.deploy.toml', 'wrangler secret list --format json --config wrangler.deploy.toml']) {
     assert.ok(out.includes(cmd), `dry run lists: ${cmd}`);
@@ -138,7 +142,7 @@ test('a full run against mocked wrangler creates the database, sets every secret
   const result = await deploy(h.deps);
   assert.equal(result.ok, true, h.output());
   const order = h.wrangler.calls.map((c) => c.args.slice(0, 2).join(' '));
-  assert.deepEqual(order.slice(0, 6), ['whoami --json', 'deployments list', 'd1 list', 'd1 create', 'd1 list', 'd1 execute']);
+  assert.deepEqual(order.slice(0, 7), ['--version', 'whoami --json', 'deployments list', 'd1 list', 'd1 create', 'd1 list', 'd1 execute']);
   assert.ok(order.indexOf('deploy --config') < order.indexOf('secret put'), 'the Worker exists before a secret is put');
   // d1 create runs in an empty folder, so it cannot edit the committed wrangler.toml.
   assert.equal(h.wrangler.calls.find((c) => c.args[1] === 'create').cwd, '/tmp/hz-deploy-test-empty');
@@ -152,7 +156,7 @@ test('a full run against mocked wrangler creates the database, sets every secret
   assert.equal(h.wrangler.calls.find((c) => c.args[2] === 'RESEND_KEY').input, ANSWERS.RESEND_KEY);
   assert.equal(h.asked.find((a) => a.name === 'RESEND_KEY').hidden, true);
   assert.equal(h.asked.find((a) => a.name === 'HZ_ALERT_TO').hidden, false);
-  assert.ok(h.wrangler.calls.slice(1).every((c) => c.env?.CLOUDFLARE_ACCOUNT_ID === FAKE_ACCOUNT.id), 'every call after whoami is pinned to the confirmed account');
+  assert.ok(h.wrangler.calls.slice(2).every((c) => c.env?.CLOUDFLARE_ACCOUNT_ID === FAKE_ACCOUNT.id), 'every call after whoami is pinned to the confirmed account');
   for (const i of result.checklist) assert.ok(i.status === 'PASS' || (i.status === 'SKIPPED' && /administrator/.test(i.item)), `${i.item}: ${i.status} ${i.detail}`);
   assert.match(h.output(), /^RESULT: PASS/m);
   assert.equal(h.fetched[0].url, `https://${HOSTNAME}/account`);
@@ -202,7 +206,7 @@ test('declining the account stops before anything is created or deployed', async
   const h = harness({ confirm: 'n' });
   const result = await deploy(h.deps);
   assert.equal(result.ok, false);
-  assert.deepEqual(h.wrangler.calls.map((c) => c.args.slice(0, 2).join(' ')), ['whoami --json']);
+  assert.deepEqual(h.wrangler.calls.map((c) => c.args.slice(0, 2).join(' ')), ['--version', 'whoami --json']);
   assert.equal(h.files.size, 0);
 });
 
@@ -211,7 +215,7 @@ test('with several accounts, the one picked is the one every call is pinned to',
   const h = harness({ wrangler: mockWrangler({ accounts: [FAKE_ACCOUNT, second] }), confirm: '2' });
   const result = await deploy(h.deps);
   assert.equal(result.ok, true, h.output());
-  assert.ok(h.wrangler.calls.slice(1).every((c) => c.env?.CLOUDFLARE_ACCOUNT_ID === second.id));
+  assert.ok(h.wrangler.calls.slice(2).every((c) => c.env?.CLOUDFLARE_ACCOUNT_ID === second.id));
   assert.match(h.output(), /Second Test Account/);
 });
 
@@ -408,7 +412,7 @@ test('a Worker already named horae-zone is named, and replaced only on y, before
     const result = await deploy(no.deps);
     assert.equal(result.ok, false, `answer ${JSON.stringify(answer)}`);
     assert.match(no.output(), /Worker horae-zone not replaced; nothing was changed/, `answer ${JSON.stringify(answer)}`);
-    assert.deepEqual(no.wrangler.calls.map((c) => c.args.slice(0, 2).join(' ')), ['whoami --json', 'deployments list'], `answer ${JSON.stringify(answer)}: nothing after the check`);
+    assert.deepEqual(no.wrangler.calls.map((c) => c.args.slice(0, 2).join(' ')), ['--version', 'whoami --json', 'deployments list'],`answer ${JSON.stringify(answer)}: nothing after the check`);
     assert.equal(no.files.size, 0);
   }
 
@@ -430,7 +434,38 @@ test('a Worker check that cannot tell whether horae-zone exists stops before any
     const result = await deploy(h.deps);
     assert.equal(result.ok, false, what);
     assert.match(h.output(), /could not tell whether Worker horae-zone exists; nothing was changed/, what);
-    assert.deepEqual(h.wrangler.calls.map((c) => c.args.slice(0, 2).join(' ')), ['whoami --json', 'deployments list'], what);
+    assert.deepEqual(h.wrangler.calls.map((c) => c.args.slice(0, 2).join(' ')), ['--version', 'whoami --json', 'deployments list'],what);
+  }
+});
+
+test('the run prints `wrangler --version` first, and a missing wrangler stops before the account is read', async () => {
+  const h = harness();
+  assert.equal((await deploy(h.deps)).ok, true, h.output());
+  assert.deepEqual(h.wrangler.calls[0].args, ['--version']);
+  assert.ok(h.lines.indexOf('wrangler 4.104.0') >= 0, 'the version is printed');
+  assert.ok(h.lines.indexOf('wrangler 4.104.0') < h.lines.findIndex((l) => l.startsWith('Step 1.')), 'before step 1');
+
+  const none = harness({ wrangler: mockWrangler({ versionFail: 'wrangler is not on PATH (npm i -g wrangler)' }) });
+  assert.equal((await deploy(none.deps)).ok, false);
+  assert.match(none.output(), /wrangler is not on PATH/);
+  assert.deepEqual(none.wrangler.calls.map((c) => c.args.slice(0, 2).join(' ')), ['--version']);
+  assert.equal(none.files.size, 0);
+});
+
+test('every wrangler call runs with WRANGLER_LOG_SANITIZE=true, over a shell that turned it off', async () => {
+  const h = harness();
+  assert.equal((await deploy(h.deps)).ok, true, h.output());
+  for (const c of h.wrangler.calls) assert.equal(c.env?.WRANGLER_LOG_SANITIZE, 'true', `${c.args.slice(0, 2).join(' ')}`);
+
+  // The real runner, against a stand-in `wrangler` that prints the variable it got.
+  const bin = mkdtempSync(path.join(tmpdir(), 'hz-fake-wrangler-'));
+  try {
+    writeFileSync(path.join(bin, 'wrangler'), '#!/bin/sh\nprintf %s "$WRANGLER_LOG_SANITIZE"\n', { mode: 0o755 });
+    const res = await runWrangler(['--version'], { env: { PATH: `${bin}${path.delimiter}${process.env.PATH}`, WRANGLER_LOG_SANITIZE: 'false' } });
+    assert.equal(res.code, 0, res.stderr);
+    assert.equal(res.stdout, 'true');
+  } finally {
+    rmSync(bin, { recursive: true, force: true });
   }
 });
 
