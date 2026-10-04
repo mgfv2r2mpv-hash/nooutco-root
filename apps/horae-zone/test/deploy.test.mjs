@@ -31,6 +31,7 @@ const ANSWERS = {
   HZ_ALERT_TO: 'alerts@example.test',
   HZ_LINK_BASE: 'https://example.test/signup',
   HZ_REOPEN_BASE: 'https://example.test/reopen',
+  HZ_RESET_BASE: 'https://example.test/pin-reset',
   HZ_CODES_PER_DAY: '',
 };
 // A fixed ticket key, made here with WebCrypto (not by the script), so a run
@@ -42,7 +43,7 @@ const SECRET_VALUES = [GENERATED, GENERATED_SEED, ANSWERS.RESEND_KEY, ANSWERS.HZ
 // The tables schema.sql creates, read the way the script reads them, so a new
 // table never needs this file changed.
 const TABLES = schemaTables(SCHEMA);
-const SECRET_NAMES = ['HZ_ACCOUNT_KEY', 'HZ_SEED_KEY', 'HZ_TICKET_KEY', 'RESEND_KEY', 'HZ_MAIL_FROM', 'HZ_ALERT_TO', 'HZ_LINK_BASE', 'HZ_REOPEN_BASE'];
+const SECRET_NAMES = ['HZ_ACCOUNT_KEY', 'HZ_SEED_KEY', 'HZ_TICKET_KEY', 'RESEND_KEY', 'HZ_MAIL_FROM', 'HZ_ALERT_TO', 'HZ_LINK_BASE', 'HZ_REOPEN_BASE', 'HZ_RESET_BASE'];
 
 // A wrangler stand-in. `state` decides what each command answers; every call
 // is recorded with its args, stdin, cwd and env.

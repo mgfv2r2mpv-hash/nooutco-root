@@ -23,6 +23,8 @@ export const LINK_BASE = 'https://horae-zone.example.test/verify';
 // A5. Obviously fake: 32 bytes of 9. The deployed seed key is a Worker secret.
 export const SEED_KEY = b64url(new Uint8Array(32).fill(9));
 export const REOPEN_BASE = 'https://horae-zone.example.test/reopen';
+// A5b. The page a forgotten-PIN reset mail links to; the code rides after #.
+export const RESET_BASE = 'https://horae-zone.example.test/pin-reset';
 // The unlock-ticket signing key is made fresh for each run and never written
 // down; tests verify a ticket with its public half.
 const ticketPair = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
@@ -46,7 +48,8 @@ export function harness({ mailer = null, env = {}, pinRules = PIN_RULES } = {}) 
   const handler = createHandler({ now: () => clock.ms, mailer: send, pinRules });
   const bindings = {
     DB: db, HZ_ACCOUNT_KEY: ACCOUNT_KEY, HZ_LINK_BASE: LINK_BASE,
-    HZ_SEED_KEY: SEED_KEY, HZ_TICKET_KEY: TICKET_KEY, HZ_REOPEN_BASE: REOPEN_BASE, ...env,
+    HZ_SEED_KEY: SEED_KEY, HZ_TICKET_KEY: TICKET_KEY, HZ_REOPEN_BASE: REOPEN_BASE,
+    HZ_RESET_BASE: RESET_BASE, ...env,
   };
   const call = async (req) => {
     const waits = [];

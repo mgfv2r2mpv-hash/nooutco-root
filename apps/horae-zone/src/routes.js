@@ -26,6 +26,7 @@ import { enrolOtp } from "./otp.js";
 import { startUnlock, finishUnlock, reopenUnlock } from "./unlock.js";
 import { setPin, verifyPin } from "./pin.js";
 import { reportBlock } from "./account-lock.js";
+import { resetPin } from "./pin-reset.js";
 
 export const ROUTES = Object.freeze({
   "/account": { checks: "open", handler: startSignup },
@@ -46,7 +47,7 @@ export const ROUTES = Object.freeze({
   "/pin/verify": { checks: "signed", handler: verifyPin },
   "/pin/set": { checks: "signed", handler: setPin },
   "/pin/blocked": { checks: "signed", handler: reportBlock, lockedOk: true },
-  "/pin/reset": { checks: "signed" },
+  "/pin/reset": { checks: "signed", handler: resetPin },
   "/pin/review": { checks: "signed" },
   "/reverify": { checks: "signed" },
   "/pair/offer": { checks: "signed" },

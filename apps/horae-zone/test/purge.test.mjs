@@ -200,3 +200,15 @@ test('a purge removes PIN reuse locks past their lock-until and keeps live ones'
   await purgeExpired(db, T0);
   assert.deepEqual(db.sqlite.prepare('SELECT verifier FROM pin_lock').all().map((r) => r.verifier), ['live']);
 });
+
+// A5b: a forgotten-PIN reset code is kept until its life ends, and no longer;
+// a dead code is refused anyway, so its row has nothing left to do.
+test('a purge removes PIN reset codes past their life and keeps live ones', async () => {
+  const { db } = harness();
+  const addCode = (account, expiresAt) => db.sqlite.prepare('INSERT INTO pin_reset (account_id, digest, expires_at) VALUES (?, ?, ?)')
+    .run(account, `digest-${account}`, expiresAt);
+  addCode('expired', T0);
+  addCode('live', T0 + 1);
+  await purgeExpired(db, T0);
+  assert.deepEqual(db.sqlite.prepare('SELECT account_id FROM pin_reset').all().map((r) => r.account_id), ['live']);
+});
