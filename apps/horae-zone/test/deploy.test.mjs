@@ -256,6 +256,41 @@ test('scrub masks every known value and reports that it did', () => {
   assert.deepEqual(scrub('nothing here', ['re_FAKE', '']), { text: 'nothing here', leaked: false });
 });
 
+// A value with quotes and angle brackets changes shape in JSON and in a URL.
+const QUOTED_FROM = '"Horae Zone" <mail@example.test>';
+const encodedForms = (v) => [
+  JSON.stringify(v).slice(1, -1),
+  encodeURIComponent(v),
+  encodeURIComponent(v).replace(/%[0-9A-F]{2}/g, (m) => m.toLowerCase()),
+  encodeURI(v),
+  new URLSearchParams({ v }).toString().slice(2),
+];
+
+test('scrub also masks the JSON-escaped and URL-encoded forms of each value', () => {
+  const forms = encodedForms(QUOTED_FROM);
+  assert.equal(new Set([QUOTED_FROM, ...forms]).size, forms.length + 1, 'every form differs from the raw value');
+  for (const form of forms) {
+    const { text, leaked } = scrub(`before ${form} after`, [QUOTED_FROM]);
+    assert.equal(text, 'before [masked] after', `form ${form} is masked`);
+    assert.equal(leaked, true);
+  }
+  const { text } = scrub(`{"from":${JSON.stringify(QUOTED_FROM)}} ?from=${encodeURIComponent(QUOTED_FROM)}`, [QUOTED_FROM]);
+  assert.equal(text, '{"from":"[masked]"} ?from=[masked]');
+});
+
+test('a wrangler failure echoing a value JSON-escaped or URL-encoded prints neither form', async () => {
+  const w = mockWrangler();
+  const base = w.run;
+  const echo = `{"from":${JSON.stringify(QUOTED_FROM)}}\nGET /send?from=${encodeURIComponent(QUOTED_FROM)}`;
+  w.run = async (args, opts) => (args[0] === 'deploy' ? (w.calls.push({ args, ...opts }), { code: 1, stdout: '', stderr: echo }) : base(args, opts));
+  const h = harness({ wrangler: w, answers: { ...ANSWERS, HZ_MAIL_FROM: QUOTED_FROM } });
+  const result = await deploy(h.deps);
+  assert.equal(result.ok, false);
+  assert.match(h.output(), /wrangler deploy failed/);
+  for (const form of [QUOTED_FROM, ...encodedForms(QUOTED_FROM)]) assert.equal(h.output().includes(form), false, `output carries ${form}`);
+  assert.match(h.output(), /\{"from":"\[masked\]"\}/);
+});
+
 test('a wrangler failure is reported with its output scrubbed, and the run stops', async () => {
   const w = mockWrangler();
   const base = w.run;

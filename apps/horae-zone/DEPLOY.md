@@ -60,7 +60,7 @@ RESULT: PASS
 
 Any FAIL line names what is wrong. A fresh Custom domain can take a minute to answer, and the route check tries 6 times, 10 seconds apart, before it fails.
 
-The script never prints a secret value, never puts one on a command line or in a file, and fails a check whose output carries one (`test/deploy.test.mjs`, "NEGATIVE CONTROL: a planted token in a check's output is caught").
+The script never prints a secret value, never puts one on a command line or in a file, and fails a check whose output carries one (`test/deploy.test.mjs`, "NEGATIVE CONTROL: a planted token in a check's output is caught"). The mask also covers each value's JSON-escaped and URL-encoded forms, so an address like `"Horae Zone" <mail@...>` echoed back as `\"Horae Zone\"` or `%22Horae%20Zone%22` is masked too.
 
 ## By hand, in the dashboard
 
