@@ -66,6 +66,42 @@ test('a forgotten PIN resets with any two of code, password and email code, neve
   }
 });
 
+// ---- a null or empty factor is no factor (security review HIGH-1) ----
+
+const SHAPE = { status: 400, json: { error: 'shape' } };
+
+test('a null or empty factor is refused as shape, never counted, and the refusals spend nothing', async () => {
+  const h = harness();
+  const dev = await pinnedDevice(h, ADDRESS, FIRST);
+  const emailCode = await mailedCode(h, dev);
+  const ticket = await ticketFor(h, dev);
+
+  // The review's request: three nulls from a signed device replaced the PIN.
+  const refused = [
+    ['three nulls', { ticket: null, password: null, emailCode: null }],
+    ['the ticket and two nulls', { ticket, password: null, emailCode: null }],
+    ['the password and two nulls', { ticket: null, password: PASSWORD, emailCode: null }],
+    ['the email code and two nulls', { ticket: null, password: null, emailCode }],
+    ['the ticket and a null', { ticket, password: null }],
+    ['two right factors and a null', { ticket, password: PASSWORD, emailCode: null }],
+    ['two right factors and a null ticket', { ticket: null, password: PASSWORD, emailCode }],
+    ['an empty ticket beside the password', { ticket: '', password: PASSWORD }],
+    ['an empty password beside the ticket', { ticket, password: '' }],
+    ['an empty email code beside the password', { emailCode: '', password: PASSWORD }],
+  ];
+  // More refusals than the hour's tries, so a refusal that took a place would show.
+  for (let round = 0; round <= PIN_RESET_LIMITS.triesPerHour; round += 1) {
+    for (const [what, factorsGiven] of refused) {
+      assert.deepEqual(await pinCall(h, dev, '/pin/reset', { pin: SECOND, ...factorsGiven }), SHAPE, what);
+    }
+  }
+  assert.deepEqual(await pinCall(h, dev, '/pin/verify', { pin: SECOND }), { status: 401, json: { error: 'bad-pin' } }, 'nothing was reset');
+  assert.equal((await pinCall(h, dev, '/pin/verify', { pin: FIRST })).status, 200, 'the PIN is as it was');
+
+  assert.deepEqual(await pinCall(h, dev, '/pin/reset', { pin: SECOND, ticket, emailCode }), RESET,
+    'NEGATIVE CONTROL: the same two right factors with no third key reset, so no refusal spent a factor or a try');
+});
+
 // ---- each factor is checked, and spent only by a reset ----
 
 test('a wrong factor beside a right one is refused as bad-reset, never says which, and spends nothing', async () => {

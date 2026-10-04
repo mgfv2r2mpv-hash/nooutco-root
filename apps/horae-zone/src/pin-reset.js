@@ -17,10 +17,13 @@
  * password, hashed as sign-in hashes it. The emailed code is 128 random bits
  * mailed in the fragment of a link to HZ_RESET_BASE, which a browser never
  * sends to a server; the app reads it there. Only its keyed digest is kept
- * (pin_reset), one live per account: a newer mail replaces it. Fewer than two
- * answers two-needed before anything is read. Any wrong factor answers
- * bad-reset, the same word whichever it was, and spends nothing; a reset
- * spends the ticket's jti and deletes the emailed code.
+ * (pin_reset), one live per account: a newer mail replaces it. A factor key
+ * holding null, an empty value or any other type answers shape (security
+ * review HIGH-1: a null once counted as given yet was never checked, so three
+ * nulls reset). Fewer than two answers two-needed before anything is read, and
+ * the compare again needs two factors checked and right. Any wrong factor
+ * answers bad-reset, the same word whichever it was, and spends nothing; a
+ * reset spends the ticket's jti and deletes the emailed code.
  *
  * LIMITS. Every reset try with two factors takes a place in the account's
  * try bucket before any factor is compared (PIN_RESET_LIMITS.triesPerHour,
@@ -85,16 +88,20 @@ export const RESET_NOTE = Object.freeze({
 // code's (whose scope is a hex address key).
 const codeDigest = (keys, accountId, code) => keys.codeDigest(`pin-reset:${accountId}`, code);
 
+// A factor is given only as a non-empty string of its shape; null, an empty
+// value or any other type is a malformed body, never a factor left out.
+const FACTOR_SHAPE = Object.freeze({
+  ticket: (v) => v.length > 0 && v.length <= MAX_TICKET,
+  password: (v) => v.length > 0 && v.length <= SIGNUP_LIMITS.passwordMax,
+  emailCode: (v) => CODE.test(v),
+});
+
 function resetBody(body) {
   const given = FACTORS.filter((k) => Object.hasOwn(body, k));
   if (!hasOnly(body, ["pin", ...given]) || typeof body.pin !== "string") throw new Refusal("shape", 400);
-  const { ticket = null, password = null, emailCode = null } = body;
-  if (ticket !== null && (typeof ticket !== "string" || ticket.length > MAX_TICKET)) throw new Refusal("shape", 400);
-  if (password !== null && (typeof password !== "string" || password.length === 0 || password.length > SIGNUP_LIMITS.passwordMax)) {
-    throw new Refusal("shape", 400);
-  }
-  if (emailCode !== null && (typeof emailCode !== "string" || !CODE.test(emailCode))) throw new Refusal("shape", 400);
+  if (!given.every((k) => typeof body[k] === "string" && FACTOR_SHAPE[k](body[k]))) throw new Refusal("shape", 400);
   if (given.length < 2) throw new Refusal("two-needed", 400);
+  const { ticket = null, password = null, emailCode = null } = body;
   return { pin: body.pin, ticket, password, emailCode };
 }
 
@@ -141,23 +148,25 @@ async function mailCode({ db, device, now, env, mailer }) {
   return { status: 200, json: { ok: true }, after: mailAfter({ db, keys, mailer, accountId: device.account_id, notes }) };
 }
 
-// Whether each given factor is right; a factor not given is not checked.
-// Every given one is compared, so the time taken says nothing of which failed.
+// Whether at least two factors were given and every one is right; a factor
+// not given is not checked and never counts. Every given one is compared, so
+// the time taken says nothing of which failed.
 async function factorsRight({ db, device, now, env, keys }, { ticket, password, emailCode }) {
+  const checks = [];
   const claims = ticket === null ? null : await readTicket(env, ticket, device, now);
-  let right = ticket === null || claims !== null;
+  if (ticket !== null) checks.push(claims !== null);
   if (password !== null) {
     const account = await db.prepare("SELECT login_hash, login_salt FROM account WHERE id = ?").bind(device.account_id).first();
     const login = account ? await keys.hashLogin(password, account.login_salt) : null;
-    right = Boolean(login && sameHex(login.hash, account.login_hash)) && right;
+    checks.push(Boolean(login && sameHex(login.hash, account.login_hash)));
   }
   let digest = null;
   if (emailCode !== null) {
     digest = await codeDigest(keys, device.account_id, emailCode);
     const live = await db.prepare("SELECT digest FROM pin_reset WHERE account_id = ? AND expires_at > ?").bind(device.account_id, now).first();
-    right = Boolean(live && sameHex(digest, live.digest)) && right;
+    checks.push(Boolean(live && sameHex(digest, live.digest)));
   }
-  return { right, claims, digest };
+  return { right: checks.length >= 2 && checks.every(Boolean), claims, digest };
 }
 
 export async function resetPin({ db, device, body, now, env, pinRules, mailer }) {
