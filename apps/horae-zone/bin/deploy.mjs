@@ -10,7 +10,8 @@
  *                                   stored account becomes unreadable); asks
  *                                   for the typed word replace first
  *
- * Steps: confirm the Cloudflare account; ask the values only the owner has
+ * Steps: confirm the Cloudflare account, and a y before replacing a Worker
+ * already named horae-zone there; ask the values only the owner has
  * (the Resend key on a hidden prompt); create or find the D1 database, write
  * the gitignored wrangler.deploy.toml and apply schema.sql (idempotent); show
  * the edge rule clicks; deploy; put each secret through stdin; check
@@ -42,9 +43,11 @@ const ROUTE_TRIES = 6;
 const ROUTE_WAIT_MS = 10_000;
 const ANSWER_TRIES = 3;
 const TAIL_LINES = 15;
+const WORKER = "horae-zone";
 
 export const COMMANDS = Object.freeze({
   whoami: ["whoami", "--json"],
+  deployments: ["deployments", "list", "--name", WORKER, "--json"],
   d1List: ["d1", "list", "--json"],
   d1Create: ["d1", "create", DATABASE],
   applySchema: ["d1", "execute", DATABASE, "--remote", "--yes", "--file", "schema.sql", "--config", DEPLOY_CONFIG],
@@ -134,6 +137,27 @@ async function confirmAccount(ctx, deps) {
   if (!chosen) throw new Stop("Account not confirmed. Nothing was created.");
   ctx.env.CLOUDFLARE_ACCOUNT_ID = chosen.id;
   ctx.item("Cloudflare account", "PASS", `${chosen.name} (confirmed by you)`);
+}
+
+const UNKNOWN_WORKER = `could not tell whether Worker ${WORKER} exists; nothing was changed; rerun once "wrangler ${COMMANDS.deployments.join(" ")}" answers`;
+// The API's code for a Worker the account does not have (wrangler 4 prints it
+// as "[code: 10007]" under "A request to the Cloudflare API ... failed").
+const NO_SUCH_WORKER = /\[code: 10007\]/;
+
+// In the confirmed account, before anything is created: a Worker already
+// named horae-zone has its code replaced only on a typed y.
+async function confirmWorker(ctx, deps) {
+  let list;
+  try {
+    list = parseJson(ctx.checked("the Worker check", await ctx.wrangler(COMMANDS.deployments)));
+  } catch (err) {
+    if (NO_SUCH_WORKER.test(err.message)) return;
+    throw new Stop(`${UNKNOWN_WORKER}\n${err.message}`);
+  }
+  if (!Array.isArray(list)) throw new Stop(`${UNKNOWN_WORKER}\nthe deployment list is not a list`);
+  ctx.say(`  Worker ${WORKER} already exists; this will replace its code.`);
+  const yes = (await deps.ask({ name: "confirm-replace-worker", question: "  Replace it? Type y to go on, n to stop: ", hidden: false })).trim().toLowerCase();
+  if (yes !== "y" && yes !== "yes") throw new Stop(`Worker ${WORKER} not replaced; nothing was changed.`);
 }
 
 async function collectAnswers(ctx, deps) {
@@ -310,6 +334,7 @@ function dryRun(deps) {
     "DRY RUN: nothing is run, asked, written or fetched. Secret values are shown as [masked].",
     "Step 1. Cloudflare account",
     `  ${show(COMMANDS.whoami)}   then: confirm the account name (prompt)`,
+    `  ${show(COMMANDS.deployments)}   when Worker ${WORKER} already exists: prompt, y replaces its code, anything else stops`,
     "Step 2. Values only you have",
     ...CATALOG.filter((s) => s.source === "asked").map((s) => `  prompt${s.hidden ? " (hidden)" : ""}: ${s.label} -> ${s.name}${s.store === "var" ? ` ([vars] in ${DEPLOY_CONFIG} when answered)` : ""}`),
     `  generate: HZ_ACCOUNT_KEY = [masked] (${ACCOUNT_KEY_BYTES} random bytes, base64url)`,
@@ -348,6 +373,7 @@ export async function deploy(deps) {
   const ctx = makeContext(full);
   try {
     await confirmAccount(ctx, full);
+    await confirmWorker(ctx, full);
     const values = await collectAnswers(ctx, full);
     await prepareDatabase(ctx, full, values);
     const edgeConfirmed = await edgeRule(ctx, full);
