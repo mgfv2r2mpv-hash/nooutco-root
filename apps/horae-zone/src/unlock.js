@@ -31,7 +31,10 @@
  *
  * TICKET. The service's ECDSA P-256 signature (Worker secret HZ_TICKET_KEY,
  * a private JWK) over `${TICKET_LABEL}.${payload}`, the payload base64url
- * JSON {v, account, device, at, exp}. The limits below are the agent's safe
+ * JSON {v, account, device, at, exp, jti, kid}: jti is 128 random bits, kid
+ * the RFC 7638 thumbprint of the public key (A5 security review item 4). The
+ * A5b verifier must record each jti as spent and accept a ticket only on a
+ * request the ticket's device signed. The limits below are the agent's safe
  * defaults, listed for the owner in the design review: the plan does not fix
  * them.
  */
@@ -60,6 +63,7 @@ const EXCHANGE = /^[A-Za-z0-9_-]{22}$/;
 const TAG = /^[A-Za-z0-9_-]{43}$/;
 const TOKEN = /^[A-Za-z0-9_-]{43}$/;
 const EXCHANGE_BYTES = 16;
+const JTI_BYTES = 16;
 const CODE_SPACE = 1_000_000;
 const enc = new TextEncoder();
 
@@ -83,10 +87,16 @@ function startBody(body) {
   return { sid, Ya, clock: body.clock };
 }
 
+// The signing key and its kid, the RFC 7638 thumbprint of the public half:
+// base64url SHA-256 over {crv, kty, x, y} in that order, no spaces. A
+// verifier holding several public keys (a rotation) picks one by kid.
 async function ticketKey(env) {
   try {
     const jwk = JSON.parse(env.HZ_TICKET_KEY);
-    return await crypto.subtle.importKey("jwk", jwk, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
+    const key = await crypto.subtle.importKey("jwk", jwk, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
+    const { crv, kty, x, y } = jwk;
+    const digest = await crypto.subtle.digest("SHA-256", enc.encode(JSON.stringify({ crv, kty, x, y })));
+    return { key, kid: b64url(new Uint8Array(digest)) };
   } catch {
     return null;
   }
@@ -177,9 +187,12 @@ export async function startUnlock({ db, device, body, now, env, mailer }) {
 }
 
 
+// jti is 128 random bits, new on every ticket, so the verifier can record a
+// ticket as spent (A5 security review item 4).
 async function signTicket(signKey, claims) {
-  const payload = b64url(enc.encode(JSON.stringify(claims)));
-  const sig = await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, signKey, enc.encode(`${TICKET_LABEL}.${payload}`));
+  const jti = b64url(crypto.getRandomValues(new Uint8Array(JTI_BYTES)));
+  const payload = b64url(enc.encode(JSON.stringify({ ...claims, jti, kid: signKey.kid })));
+  const sig = await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, signKey.key, enc.encode(`${TICKET_LABEL}.${payload}`));
   return `${payload}.${b64url(new Uint8Array(sig))}`;
 }
 
