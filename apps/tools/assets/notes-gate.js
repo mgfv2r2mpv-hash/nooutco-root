@@ -1055,6 +1055,7 @@
   var LOWER_OK = {};
   ("manding manded mands tacting tacted tacts echoic echoics intraverbal intraverbals " +
    "reinforcer reinforcers toileting stimming stims eloped eloping elopes tantruming gestural " +
+   "reauthorization reauthorizations reauthorisation reauthorisations " +
    "vbmapp ablls afls bcba bcbas bcaba rbts " +
    "app apps ipad ipads iphone youtube email emails emailed texted texting online " +
    "website websites wifi playdough legos")
