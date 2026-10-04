@@ -96,7 +96,7 @@ test('NEGATIVE CONTROL: a purge keeps a fresh nonce working and every audit row 
   addAudit(h.db, auditCutoff(T0, 6) + 1);
   const n = await nonceFor(h.call, dev);
   await purgeExpired(h.db, T0);
-  const res = await h.call(await signed(h.call, dev, '/reverify', {}, { nonce: n }));
+  const res = await h.call(await signed(h.call, dev, '/pair/offer', {}, { nonce: n }));
   assert.equal((await res.json()).error, 'not-built');
   assert.ok(auditTimes(h.db).includes(auditCutoff(T0, 6) + 1));
 });

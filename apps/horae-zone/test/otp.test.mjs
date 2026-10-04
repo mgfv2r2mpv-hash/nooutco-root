@@ -57,7 +57,7 @@ test('the seed is returned once and never again', async () => {
   const again = await answer(await h.call(await enrolRequest(h.call, dev, await enrolTicket(h, ADDRESS, dev))));
   assert.deepEqual(again, { status: 409, json: { error: 'enrolled' } });
   later.push(JSON.stringify(again));
-  later.push(JSON.stringify(await answer(await h.call(await signed(h.call, dev, '/reverify', {})))));
+  later.push(JSON.stringify(await answer(await h.call(await signed(h.call, dev, '/pair/offer', {})))));
   const seedHex = [...base32Decode(secret)].map((b) => b.toString(16).padStart(2, '0')).join('');
   for (const value of [secret, seedHex, b64url(base32Decode(secret))]) {
     for (const text of later) assert.equal(text.includes(value), false, 'a later answer carries the seed');
@@ -202,14 +202,14 @@ test('a device registered after the first accepted code reaches only /nonce and 
   const first = await confirmedDevice(h, ADDRESS);
   const next = await registeredDevice(h, ADDRESS, { fresh: false });
   assert.equal(pendingOf(h.db, next.id), 1);
-  for (const [p, body] of [['/reverify', {}], ['/otp/enrol', { ticket: await signIn(h, ADDRESS) }], ['/device/remove', { device: first.id }]]) {
+  for (const [p, body] of [['/pair/offer', {}], ['/otp/enrol', { ticket: await signIn(h, ADDRESS) }], ['/device/remove', { device: first.id }]]) {
     assert.deepEqual(await answer(await h.call(await signed(h.call, next, p, body))), { status: 401, json: { error: 'no-device' } }, p);
   }
   assert.equal(pendingOf(h.db, first.id), 0, 'the remove did not happen');
   const tried = await tryCode(h, { ...next, seed: first.seed }, await codeAt(first, h.clock.ms));
   assert.equal(tried.finish.status, 200, 'the code is proved');
   assert.equal(pendingOf(h.db, next.id), 0);
-  assert.equal((await answer(await h.call(await signed(h.call, next, '/reverify', {})))).json.error, 'not-built', 'it now passes the device checks');
+  assert.equal((await answer(await h.call(await signed(h.call, next, '/pair/offer', {})))).json.error, 'not-built', 'it now passes the device checks');
 });
 
 // A5 security review, item 1 (HIGH): a password thief who registers a device
@@ -332,7 +332,7 @@ test('A5 re-review: a device registered before the first accepted code is pendin
   const owner = await enrolledDevice(h, ADDRESS);
   const early = await registeredDevice(h, ADDRESS, { fresh: false });
   assert.equal(pendingOf(h.db, early.id), 1, 'pending before any code is confirmed');
-  assert.deepEqual(await answer(await h.call(await signed(h.call, early, '/reverify', {}))), NO_DEVICE);
+  assert.deepEqual(await answer(await h.call(await signed(h.call, early, '/pair/offer', {}))), NO_DEVICE);
   assert.equal((await tryCode(h, owner, await codeAt(owner, h.clock.ms))).finish.status, 200, 'the first accepted code');
   assert.equal(pendingOf(h.db, owner.id), 0, 'the device that proved it');
   assert.equal(pendingOf(h.db, early.id), 1, 'the other device is still held back');
@@ -361,7 +361,7 @@ test('NEGATIVE CONTROL: the enrolling device and devices of an account with no c
   const h = harness();
   const first = await enrolledDevice(h, ADDRESS);
   assert.equal(pendingOf(h.db, first.id), 0);
-  assert.equal((await answer(await h.call(await signed(h.call, first, '/reverify', {})))).json.error, 'not-built');
+  assert.equal((await answer(await h.call(await signed(h.call, first, '/pair/offer', {})))).json.error, 'not-built');
   const other = await registeredDevice(h, OTHER);
   assert.equal(pendingOf(h.db, other.id), 0);
 });

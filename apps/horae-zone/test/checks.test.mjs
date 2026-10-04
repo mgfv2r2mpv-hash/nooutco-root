@@ -40,7 +40,7 @@ test('no route answers without its checks', async () => {
 test('NEGATIVE CONTROL: a correctly signed request with a fresh nonce passes the checks', async () => {
   const h = harness();
   const dev = await addDevice(h.db);
-  const res = await h.call(await signed(h.call, dev, '/reverify', { x: 1 }));
+  const res = await h.call(await signed(h.call, dev, '/pair/offer', { x: 1 }));
   assert.equal(res.status, 501);
   assert.equal(await reason(res), 'not-built');
 });
@@ -48,14 +48,14 @@ test('NEGATIVE CONTROL: a correctly signed request with a fresh nonce passes the
 test('a DER signature and a raw signature verify alike', async () => {
   const h = harness();
   const dev = await addDevice(h.db);
-  assert.equal(await reason(await h.call(await signed(h.call, dev, '/reverify', {}, { der: true }))), 'not-built');
-  assert.equal(await reason(await h.call(await signed(h.call, dev, '/reverify', {}))), 'not-built');
+  assert.equal(await reason(await h.call(await signed(h.call, dev, '/pair/offer', {}, { der: true }))), 'not-built');
+  assert.equal(await reason(await h.call(await signed(h.call, dev, '/pair/offer', {}))), 'not-built');
 });
 
 test('a signature for another path is refused', async () => {
   const h = harness();
   const dev = await addDevice(h.db);
-  const req = await signed(h.call, dev, '/reverify', {}, { tamper: { path: '/pin/verify' } });
+  const req = await signed(h.call, dev, '/pair/offer', {}, { tamper: { path: '/pin/verify' } });
   assert.equal(await reason(await h.call(req)), 'bad-signature');
 });
 
@@ -64,10 +64,10 @@ test('a nonce expires, and belongs to the device it was issued to', async () => 
   const dev = await addDevice(h.db);
   const other = await addDevice(h.db, { id: 'dev-2' });
   const n = await nonceFor(h.call, dev);
-  assert.equal(await reason(await h.call(await signed(h.call, other, '/reverify', {}, { nonce: n }))), 'stale-nonce');
+  assert.equal(await reason(await h.call(await signed(h.call, other, '/pair/offer', {}, { nonce: n }))), 'stale-nonce');
   const late = await nonceFor(h.call, dev);
   h.clock.ms += NONCE_TTL_MS + 1;
-  assert.equal(await reason(await h.call(await signed(h.call, dev, '/reverify', {}, { nonce: late }))), 'stale-nonce');
+  assert.equal(await reason(await h.call(await signed(h.call, dev, '/pair/offer', {}, { nonce: late }))), 'stale-nonce');
 });
 
 test('a removed device is refused', async () => {
@@ -111,7 +111,7 @@ test('anything but a POST of a JSON object under the size cap is refused', async
 test('a request with a query string is refused as shape before any check or handler', async () => {
   const h = harness();
   const dev = await addDevice(h.db);
-  for (const p of ['/signin?x=1', '/account?email=a%40example.test', '/nonce?n=1', '/reverify?code=482913']) {
+  for (const p of ['/signin?x=1', '/account?email=a%40example.test', '/nonce?n=1', '/pair/offer?code=482913']) {
     const res = await h.call(post(p, {}, { 'x-hz-device': dev.id }));
     assert.equal(res.status, 400, p);
     assert.equal(await reason(res), 'shape', p);
@@ -131,12 +131,12 @@ test('an unknown path is refused as no-route and audited as unknown', async () =
 test('every request writes one audit row of route and reason', async () => {
   const h = harness();
   const dev = await addDevice(h.db);
-  await h.call(post('/reverify'));
-  await h.call(await signed(h.call, dev, '/reverify', {}));
+  await h.call(post('/pair/offer'));
+  await h.call(await signed(h.call, dev, '/pair/offer', {}));
   assert.deepEqual(auditRows(h.db), [
-    { route: '/reverify', reason: 'no-device' },
+    { route: '/pair/offer', reason: 'no-device' },
     { route: '/nonce', reason: 'ok' },
-    { route: '/reverify', reason: 'not-built' },
+    { route: '/pair/offer', reason: 'not-built' },
   ]);
 });
 

@@ -323,3 +323,13 @@ WHEN OLD.set_at <> NEW.set_at
 BEGIN
   DELETE FROM pin_review WHERE account_id = NEW.account_id;
 END;
+
+-- The membership check (plan §3.3 "Offline and revocation"): when each
+-- device's last answered /reverify was, so the next one comes no sooner than
+-- 5 minutes after it (src/reverify.js), and the admin screen can show
+-- reverification (A5c). One row per device; nothing the request carried.
+CREATE TABLE IF NOT EXISTS reverify (
+  device_id    TEXT    PRIMARY KEY,
+  account_id   TEXT    NOT NULL,
+  at           INTEGER NOT NULL
+);
