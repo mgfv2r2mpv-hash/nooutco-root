@@ -262,19 +262,19 @@ As in A3.
 
 As in A3.
 
-- **Expected result now:** engine 68 tests (67 pass, 1 skips without the private package), Horae Zone 122 tests, 122 pass, and profile-api 195/195.
+- **Expected result now:** engine 68 tests (67 pass, 1 skips without the private package), Horae Zone 151 tests, 151 pass, and profile-api 195/195.
 - **No mail is sent.** Every lock note goes to the injected mail sink, and the tests read the reopen token from it.
 - **Test values are fake or made per run:** `HZ_SEED_KEY` is a fixed fake value, `HZ_TICKET_KEY` is a P-256 key pair the harness makes for each run and never writes down, and `HZ_REOPEN_BASE` is `https://horae-zone.example.test/reopen`. The device side of CPace runs in the test with the engine's `pake.mjs`, and codes come from the engine's `totp.mjs` over the seed the enrolment answered.
 
 **RED evidence.**
-1. Run `git checkout c7b589a8 -- packages/account-engine apps/horae-zone`, then both suites.
+1. Run `git checkout a11c7cdc -- packages/account-engine apps/horae-zone`, then both suites.
 2. Expect the engine 57 tests with 1 failing: `pake.test.mjs` cannot load (`'../src/pake.mjs' does not provide an export named 'unlockChannelFor'`). Every other engine test passes (1 skips).
-3. Expect Horae Zone 97 tests with 16 failing:
+3. Expect Horae Zone 126 tests with 16 failing:
    - `otp.test.mjs` and `unlock.test.mjs` cannot load (`ERR_MODULE_NOT_FOUND` for `src/otp.js` and `src/unlock.js`), one failure each;
    - all 12 tests in `lockout.test.mjs` (`enrol answered 501`, since `/otp/enrol` has no handler);
    - the A5 leak test, the same way;
    - the exchange purge test (`no such table: exchange`).
-   Every A2 to A4 test passes (81).
+   Every A2 to A4 test passes (110, the security review's included).
 4. Restore with `git checkout HEAD -- packages/account-engine apps/horae-zone`.
 
 ### What each file proves

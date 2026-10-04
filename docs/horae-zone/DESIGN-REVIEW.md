@@ -589,7 +589,7 @@ Decided by the security review, so no longer open: point 3 (a ticket was not bou
 
 ## A5: the single authenticator code (`apps/horae-zone`, `packages/account-engine`)
 
-**Commits:** `c7b589a8` (RED: Horae Zone 97 tests with 16 failing, the engine's `pake.test.mjs` failing to load; every A2 to A4 test still passing), then `f167c486` (GREEN). After GREEN: Horae Zone 122/122, engine 68 (67 pass, 1 skip without the private package), profile-api 195/195. The RED count of 97 is lower than 122 because `otp.test.mjs` and `unlock.test.mjs` could not load (their modules did not exist yet), and a file that cannot load reports as one failure.
+**Commits:** `a11c7cdc` (RED: Horae Zone 126 tests with 16 failing, the engine's `pake.test.mjs` failing to load; every A2 to A4 test, the security review's included, still passing), then `e1676fdd` (GREEN). After GREEN: Horae Zone 151/151, engine 68 (67 pass, 1 skip without the private package), profile-api 195/195. The RED count of 126 is lower than 151 because `otp.test.mjs` and `unlock.test.mjs` could not load (their modules did not exist yet), and a file that cannot load reports as one failure.
 
 **Plan tests:** "the seed is returned once and never again" (`test/otp.test.mjs`), "NEGATIVE CONTROL: a correct code, account and device returns a ticket" (`test/unlock.test.mjs`), "three wrong codes in one window lock it and email; two in a row or four a day close the path until the link" and "the reopen link is single use and hands out no key" (both `test/lockout.test.mjs`).
 
@@ -666,6 +666,8 @@ Safe defaults the plan does not fix.
 | 5 | Any registered device of the account can spend the account's tries and close the path for every device. That is the JanusMirror rule, and the lock notes tell the owner | `src/lockout.js` | Accept; removing the device (A4) stops it |
 | 6 | The lock mail goes out through `ctx.waitUntil` (as A3 open point 3). If it is lost while the link is still live, the next refused try does not mail it again, so the path stays closed until the link expires and a fresh one is mailed (up to 24 hours) | `src/lockout.js` | Accept for now, or re-mail a live link at most once an hour on a refused try |
 | 7 | Not run against a real Resend or a real `wrangler dev`, as in A3 open point 4 | - | The reviewer runs the `wrangler dev` smoke test in the test plan |
+| 8 | A5 was written before the A3 and A4 security review fixes landed and was rebased onto them. The A5 writes a device's request makes (`/otp/enrol` spending its ticket and storing the box, `/unlock/start` storing an exchange, `/unlock/finish` spending it and moving `last_step`) do not yet carry `LIVE_DEVICE`, so a device removed after its signed request passed the checks can still enrol or be handed an unlock ticket (L2) | `src/otp.js`, `src/unlock.js` | Fix in this PR, RED first: each of those statements adds `LIVE_DEVICE` |
+| 9 | `/otp/enrol` spends any live `/signin` ticket of the signing device's account, whatever keys the ticket was bound to, where `/device/register` now takes only the keys the ticket names (M3) | `src/otp.js` | Fix in this PR, RED first: enrolment spends the ticket only when its key digest is the signing device's keys |
 
 ### Out of scope for A5
 
