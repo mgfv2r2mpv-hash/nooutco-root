@@ -47,16 +47,16 @@ test('a purge removes spent and expired nonces and audit rows older than the cut
   assert.deepEqual(auditTimes(db), [cutoff, cutoff + 1, T0]);
 });
 
-// A3: email codes die when spent, used up or expired, and a rate-limit row
-// only matters inside its window, so the hourly purge clears both.
-test('a purge removes spent, used-up and expired email codes and rate-limit rows past their window', async () => {
+// A3: email codes die when spent or expired, and a rate-limit row only
+// matters inside its window, so the hourly purge clears both. Second review,
+// item 2: wrong tries never end a code, so a live code with many tries stays.
+test('a purge removes spent and expired email codes and rate-limit rows past their window', async () => {
   const { db } = harness();
   const addCode = (key, expiresAt, tries, used) => db.sqlite.prepare('INSERT INTO challenge (address_key, digest, expires_at, tries, used) VALUES (?, ?, ?, ?, ?)')
     .run(key, 'd'.repeat(64), expiresAt, tries, used);
   addCode('expired', T0, 0, 0);
   addCode('spent', T0 + 1, 0, 1);
-  addCode('used-up', T0 + 1, SIGNUP_LIMITS.codeTries, 0);
-  addCode('live', T0 + 1, SIGNUP_LIMITS.codeTries - 1, 0);
+  addCode('live', T0 + 1, 15, 0);
   for (const at of [T0 - SIGNUP_LIMITS.windowMs - 1, T0 - SIGNUP_LIMITS.windowMs, T0 - SIGNUP_LIMITS.windowMs + 1, T0]) {
     db.sqlite.prepare('INSERT INTO throttle (bucket, at) VALUES (?, ?)').run('b', at);
   }
