@@ -184,10 +184,14 @@ CREATE INDEX IF NOT EXISTS limits_reopen_hash ON limits (reopen_hash);
 
 -- A5 security review item 2: one row per code try by a pending device, when
 -- it was admitted. A pending device gets a few a day and none of them reach
--- the account's limits row. Rows older than a day are purged hourly.
+-- the account's limits row. A5 re-review item 3: account_id lets the pending
+-- devices of one account share one daily cap, and a removed device's rows
+-- stay counted. Rows older than a day are purged hourly.
 CREATE TABLE IF NOT EXISTS pending_try (
   device_id    TEXT    NOT NULL,
+  account_id   TEXT    NOT NULL,
   at           INTEGER NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS pending_try_device_at ON pending_try (device_id, at);
+CREATE INDEX IF NOT EXISTS pending_try_account_at ON pending_try (account_id, at);

@@ -22,6 +22,7 @@ import {
 } from "../../../packages/account-engine/src/limits.mjs";
 import { fragmentLink } from "../../../packages/account-engine/src/mailer.mjs";
 import { Refusal, b64url } from "./checks.js";
+import { admitThrottle } from "./throttle.js";
 
 // Another request writing between a read and a write costs one more read.
 // Each write is one request's, so this covers far more requests at once than
@@ -135,6 +136,30 @@ export function reopenedNote() {
       "The link no longer works.",
     ].join("\n"),
   };
+}
+
+// A5 re-review item 3: the note to the owner when a pending device's try was
+// wrong or was refused at a cap. A pending device has shown the password, so
+// the note says so; it carries no code, link or count beyond the rule.
+const PENDING_NOTES_PER_HOUR = 1;
+const HOUR_MS = 60 * 60 * 1000;
+
+export function pendingNote(perAccountDay) {
+  return {
+    subject: "Horae Zone: code refused on a new device",
+    text: [
+      "A device signed in with this account's password tried an authenticator code, and the code was not accepted.",
+      `Devices that have not yet proved the code get ${perAccountDay} tries a day for this account, all of them together.`,
+      "The device can change nothing on the account until it proves a code.",
+    ].join("\n"),
+  };
+}
+
+// The pending note when one is due: at most one an hour per account, counted
+// in the throttle table, so a burst of wrong tries sends one note.
+export async function pendingNotes(db, accountId, now, perAccountDay) {
+  const due = await admitThrottle(db, now, HOUR_MS, [{ bucket: `pending-alert:${accountId}`, limit: PENDING_NOTES_PER_HOUR }]);
+  return due ? [pendingNote(perAccountDay)] : [];
 }
 
 // The notes a ruling sends: one per window lock, and one carrying the link

@@ -9,9 +9,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   harness, post, signed, deviceKeys, keyDigestOf, registerRequest, signIn, signInRequest,
-  registeredDevice, enrolledDevice, confirmedDevice, enrolTicket, enrolRequest, tryCode, codeAt, auditRows, PASSWORD,
+  registeredDevice, enrolledDevice, confirmedDevice, enrolTicket, enrolRequest, tryCode, startCode, codeAt, wrongCodeAt, auditRows, PASSWORD,
   landsMidFlight, nonceFor,
 } from './helpers.mjs';
+import { DAY_MS } from '../../../packages/account-engine/src/limits.mjs';
 
 const OWNER = 'owner@example.test';
 const IP = '192.0.2.10';
@@ -231,4 +232,104 @@ test('re-review 2 NEGATIVE CONTROL: after the first accepted code, a device that
   assert.equal((await tryCode(h, { ...other, seed: owner.seed }, await codeAt(owner, h.clock.ms))).finish.status, 200);
   assert.deepEqual(await answer(await h.call(await signed(h.call, other, '/device/remove', { device: owner.id }))), { status: 200, json: { ok: true } });
   assert.equal(isLive(h, owner.id), false);
+});
+
+// A5 re-review, item 3: the pending devices of one account share one cap, 6
+// tries a day counted by account id, whatever the number of devices. Every
+// wrong pending try mails the owner, at most one such note an hour, carrying
+// no code. Probe F3 is the re-review's: 8 pending devices, 3 tries each.
+const PENDING_LOCKED = { status: 423, json: { error: 'locked' } };
+const pendingNotes = (h) => h.mail.filter((m) => m.to === OWNER && /new device/i.test(m.subject));
+const withSeed = (dev, owner) => ({ ...dev, seed: owner.seed });
+
+function assertClosedNote(message, owner) {
+  assert.equal(`${message.subject}${message.text}`.includes(String.fromCharCode(0x2014)), false, 'no em dash');
+  assert.equal(message.text.includes(owner.secret), false, 'no seed');
+  assert.doesNotMatch(message.text, /(?<![0-9])[0-9]{6}(?![0-9])/, 'no six-digit code');
+  assert.doesNotMatch(message.text, /https?:\/\//, 'no link');
+  assert.doesNotMatch(message.text, new RegExp(PASSWORD), 'no password');
+}
+
+test('probe F3: 8 pending devices with 3 tries each get at most 6 tries a day between them, and the owner is mailed', async () => {
+  const h = harness();
+  const owner = await confirmedDevice(h, OWNER);
+  const thieves = [];
+  for (let i = 0; i < 8; i += 1) thieves.push(withSeed(await thiefDevice(h, OWNER), owner));
+  let admitted = 0;
+  for (const thief of thieves) {
+    for (let i = 0; i < 3; i += 1) {
+      const tried = await tryCode(h, thief, await wrongCodeAt(owner, h.clock.ms));
+      if (tried.start.status === 200) {
+        admitted += 1;
+        assert.deepEqual(tried.finish, { status: 401, json: { error: 'bad-code' } });
+      } else {
+        assert.deepEqual(tried.start, PENDING_LOCKED);
+      }
+    }
+  }
+  assert.equal(admitted, 6, 'six tries a day for the account, not three per device');
+  assert.equal(pendingTries(h), 6);
+  const notes = pendingNotes(h);
+  assert.equal(notes.length, 1, 'the owner is mailed, once in the hour');
+  assertClosedNote(notes[0], owner);
+  assert.equal((await tryCode(h, owner, await codeAt(owner, h.clock.ms))).finish.status, 200, 'the owner\'s path stays open');
+});
+
+test('re-review 3: the account\'s 6 pending tries a day hold when tries from several devices arrive together', async () => {
+  const h = harness();
+  const owner = await confirmedDevice(h, OWNER);
+  const requests = [];
+  for (let i = 0; i < 3; i += 1) {
+    const thief = withSeed(await thiefDevice(h, OWNER), owner);
+    for (let j = 0; j < 3; j += 1) requests.push(startCode(h, thief, await wrongCodeAt(owner, h.clock.ms)));
+  }
+  const answers = (await Promise.all(requests)).map((s) => s.start);
+  assert.equal(answers.filter((a) => a.status === 200).length, 6);
+  for (const a of answers.filter((x) => x.status !== 200)) assert.deepEqual(a, PENDING_LOCKED);
+  assert.equal(pendingTries(h), 6);
+});
+
+test('re-review 3: the account\'s pending tries are counted for a day from each try, and removing a device gives none back', async () => {
+  const h = harness();
+  const owner = await confirmedDevice(h, OWNER);
+  const first = withSeed(await thiefDevice(h, OWNER), owner);
+  const second = withSeed(await thiefDevice(h, OWNER), owner);
+  const at = h.clock.ms;
+  for (const dev of [first, second]) for (let i = 0; i < 3; i += 1) assert.equal((await tryCode(h, dev, await wrongCodeAt(owner, h.clock.ms))).start.status, 200);
+  assert.deepEqual(await answer(await h.call(await signed(h.call, owner, '/device/remove', { device: first.id }))), { status: 200, json: { ok: true } });
+  const third = withSeed(await thiefDevice(h, OWNER), owner);
+  assert.deepEqual((await tryCode(h, third, await codeAt(owner, h.clock.ms))).start, PENDING_LOCKED, 'a right code is refused past the account\'s cap');
+  h.clock.ms = at + DAY_MS + 30_000;
+  assert.equal((await tryCode(h, third, await codeAt(owner, h.clock.ms))).finish.status, 200, 'a day later a pending device proves the code');
+});
+
+test('re-review 3: each wrong pending try mails the owner, at most one note an hour, and a right one mails nothing', async () => {
+  const h = harness();
+  const owner = await confirmedDevice(h, OWNER);
+  const mine = withSeed(await registeredDevice(h, OWNER, { fresh: false, ip: IP }), owner);
+  const before = h.mail.length;
+  assert.equal((await tryCode(h, mine, await codeAt(owner, h.clock.ms))).finish.status, 200);
+  assert.equal(h.mail.length, before, 'a right pending try mails nothing');
+  const thief = withSeed(await thiefDevice(h, OWNER), owner);
+  assert.equal((await tryCode(h, thief, await wrongCodeAt(owner, h.clock.ms))).finish.status, 401);
+  assert.equal(pendingNotes(h).length, 1, 'the first wrong pending try mails the owner');
+  assertClosedNote(pendingNotes(h)[0], owner);
+  h.clock.ms += 30 * 60 * 1000;
+  assert.equal((await tryCode(h, thief, await wrongCodeAt(owner, h.clock.ms))).finish.status, 401);
+  assert.equal(pendingNotes(h).length, 1, 'no second note within the hour');
+  h.clock.ms += 30 * 60 * 1000 + 1;
+  assert.equal((await tryCode(h, thief, await wrongCodeAt(owner, h.clock.ms))).finish.status, 401);
+  assert.equal(pendingNotes(h).length, 2, 'a wrong try an hour later mails again');
+});
+
+test('re-review 3: pending tries started and never finished mail the owner once the account\'s cap refuses one', async () => {
+  const h = harness();
+  const owner = await confirmedDevice(h, OWNER);
+  const thieves = [withSeed(await thiefDevice(h, OWNER), owner), withSeed(await thiefDevice(h, OWNER), owner)];
+  for (const thief of thieves) for (let i = 0; i < 3; i += 1) assert.equal((await tryCode(h, thief, await wrongCodeAt(owner, h.clock.ms), { finish: false })).start.status, 200);
+  assert.equal(pendingNotes(h).length, 0, 'an unfinished start has no answer yet');
+  const late = withSeed(await thiefDevice(h, OWNER), owner);
+  assert.deepEqual((await tryCode(h, late, await wrongCodeAt(owner, h.clock.ms))).start, PENDING_LOCKED);
+  assert.equal(pendingNotes(h).length, 1, 'the refusal at the cap mails the owner');
+  assertClosedNote(pendingNotes(h)[0], owner);
 });

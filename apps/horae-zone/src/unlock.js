@@ -50,7 +50,7 @@ import { ristretto255 } from "../../../packages/account-engine/vendor/noble/curv
 import { Refusal, LIVE_DEVICE, ACCOUNT_CHANGER, b64url, fromB64url, findDevice } from "./checks.js";
 import { hasOnly, keysOrUnavailable } from "./signup.js";
 import { openSeed, seedBoxKey } from "./otp.js";
-import { ruleLimits, pathClosed, lockNotes, mailAfter, reopenedNote, spendReopen } from "./lockout.js";
+import { ruleLimits, pathClosed, lockNotes, mailAfter, reopenedNote, spendReopen, pendingNotes } from "./lockout.js";
 
 export const UNLOCK_LIMITS = Object.freeze({
   ticketTtlMs: 5 * 60 * 1000,
@@ -59,6 +59,10 @@ export const UNLOCK_LIMITS = Object.freeze({
 // (security review item 2). An owner's new device needs one; three allow for
 // a mistyped code or a code that changed mid-entry.
 export const PENDING_TRIES_PER_DAY = 3;
+// Tries all the pending devices of one account get between them in any 24
+// hours, counted by account id (A5 re-review item 3), so registering more
+// devices with a stolen password buys no more guesses.
+export const PENDING_TRIES_PER_ACCOUNT_DAY = 6;
 export const TICKET_LABEL = "horae-zone-unlock-ticket-v1";
 
 const SID = /^[A-Za-z0-9_-]{22}$/;
@@ -144,19 +148,30 @@ async function admitAccountTry({ db, device, now, exchange, clock, keys, mailer,
 }
 
 // A try by a pending device (security review item 2). It has shown only the
-// password, so its tries count against its own cap, in pending_try, and
+// password, so its tries count in pending_try, against its own cap and the
+// cap all the account's pending devices share (A5 re-review item 3), and
 // never in the account's lockout: a password thief cannot lock the owner's
 // devices out. A closed path refuses it too, and spends none of its tries.
-// The count and the insert are one statement, so tries arriving together
-// cannot pass the cap. Nothing is mailed: no account rule moved.
-async function admitPendingTry(db, device, now) {
+// The counts and the insert are one statement, so tries arriving together,
+// from one device or several, cannot pass either cap. A try refused at a cap
+// mails the owner the pending note, at most one an hour, so tries started
+// and never finished still reach the owner once the cap is spent.
+async function admitPendingTry({ db, device, now, keys, mailer }) {
   if (await pathClosed(db, device.account_id)) throw new Refusal("locked", 423);
+  const since = now - DAY_MS;
   const counted = await db.prepare(
-    `INSERT INTO pending_try (device_id, at) SELECT ?, ? WHERE ${LIVE_DEVICE} AND (SELECT COUNT(*) FROM pending_try WHERE device_id = ? AND at > ?) < ? RETURNING device_id`,
-  ).bind(device.id, now, device.id, device.id, now - DAY_MS, PENDING_TRIES_PER_DAY).first();
+    `INSERT INTO pending_try (device_id, account_id, at) SELECT ?, ?, ? WHERE ${LIVE_DEVICE}
+     AND (SELECT COUNT(*) FROM pending_try WHERE device_id = ? AND at > ?) < ?
+     AND (SELECT COUNT(*) FROM pending_try WHERE account_id = ? AND at > ?) < ? RETURNING device_id`,
+  ).bind(
+    device.id, device.account_id, now, device.id,
+    device.id, since, PENDING_TRIES_PER_DAY,
+    device.account_id, since, PENDING_TRIES_PER_ACCOUNT_DAY,
+  ).first();
   if (!counted) {
     await findDevice(db, device.id); // refuses no-device when the removal is what stopped it
-    throw new Refusal("locked", 423);
+    const notes = await pendingNotes(db, device.account_id, now, PENDING_TRIES_PER_ACCOUNT_DAY);
+    throw new Refusal("locked", 423, mailAfter({ db, keys, mailer, accountId: device.account_id, notes }));
   }
   return undefined;
 }
@@ -171,7 +186,7 @@ export async function startUnlock({ db, device, body, now, env, mailer }) {
   if (!otp || (device.pending && otp.confirmed_by === null)) throw new Refusal("not-enrolled", 409);
   const exchange = b64url(crypto.getRandomValues(new Uint8Array(EXCHANGE_BYTES)));
   const after = device.pending
-    ? await admitPendingTry(db, device, now)
+    ? await admitPendingTry({ db, device, now, keys, mailer })
     : await admitAccountTry({ db, device, now, exchange, clock, keys, mailer, reopenBase });
 
   const seed = await openSeed(env, device.account_id, otp.box);
@@ -260,7 +275,9 @@ export async function finishUnlock({ db, device, body, now, env, mailer }) {
     const rejected = reject(settled.state, now, body.exchange);
     return { state: rejected.state, events: [...settled.events, ...rejected.events] };
   });
-  const notes = [...gateNotes, ...lockNotes(ruled.events, ruled.token, reopenBase)];
+  // A wrong try by a pending device mails the owner (A5 re-review item 3).
+  const pendingWrong = !accepted && device.pending ? await pendingNotes(db, row.account_id, now, PENDING_TRIES_PER_ACCOUNT_DAY) : [];
+  const notes = [...gateNotes, ...lockNotes(ruled.events, ruled.token, reopenBase), ...pendingWrong];
   const after = mailAfter({ db, keys, mailer, accountId: row.account_id, notes });
   if (!accepted) throw new Refusal("bad-code", 401, after);
   const cleared = await db.prepare("UPDATE device SET pending = 0 WHERE id = ? AND removed_at IS NULL RETURNING id").bind(device.id).first();
