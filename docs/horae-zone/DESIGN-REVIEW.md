@@ -208,9 +208,9 @@ It never holds a vault key, a session key, vault data or PHI.
 |---|---|
 | `src/signup.js` | `POST /account {email}` and `POST /account/email/verify {email, code, password}`, plus `SIGNUP_LIMITS` |
 | `src/account-keys.js` | `accountKeys(env)`. HKDF from the one Worker secret `HZ_ACCOUNT_KEY` gives a separate key for each use: the address key, the address box, the code digest, the requester key and the login pepper (A4 adds the ticket digest). `hashLogin` is PBKDF2-SHA256 at 100,000 iterations over a random 16-byte salt per account, then HMAC under the pepper |
-| `src/throttle.js` | `admitThrottle(db, now, windowMs, buckets)`: one `INSERT ... SELECT` that checks every bucket and records a row in each only when all are under their limit |
+| `src/throttle.js` | `admitThrottle(db, now, windowMs, buckets)`: one `INSERT ... SELECT` that checks every bucket and records a row in each only when all are under their limit. A bucket may carry its own window (the daily cap, M2) |
 | `src/index.js` | A URL with any query string is refused `shape` before any check. Handlers get `env`, the request and a mailer. A handler may return `after`, work that runs through `ctx.waitUntil` after the answer and its `ok` audit row, and that audits a failure word of its own (`mail-failed`) |
-| `src/retention.js` | The hourly purge also removes spent, used-up and expired email codes, and rate-limit rows past their window |
+| `src/retention.js` | The hourly purge also removes spent, used-up and expired email codes, and rate-limit rows past their window (a day for the daily cap) |
 | `schema.sql` | `account` (id, address_key unique, address_box, login_hash, login_salt, created_at), `challenge` (address_key, digest, expires_at, tries, used) and `throttle` (bucket, at) |
 | engine `src/mailer.mjs`, `src/limits.mjs` | See the provenance table under A1 |
 | `.github/workflows/horae-zone-test.yml` | Also runs when `packages/account-engine/src/**` or `vendor/**` changes, since the service now imports the engine |
@@ -228,7 +228,7 @@ It never holds a vault key, a session key, vault data or PHI.
    - Compared with the engine's `sameHex`, never `===`.
 4. **A try is counted before the compare.** The verify takes its places in the try limits and a try on every live code (`UPDATE ... RETURNING`) and only then compares, so guesses sent together cannot pass the try limits. It compares with every live code's digest, with no early exit. The first right try spends that code with a second `UPDATE ... WHERE used = 0`.
 5. **No answer says whether an address has an account.** `/account` answers `{ok:true}` for a new address and an existing one, takes the same rate-limit places for both, sends the same statements for both (M1 below), and mails only a new address. A verify for an address that was never sent a code is `bad-code`, like a wrong code.
-6. **Rate limits are atomic, and a refused request is not counted.** Starts are limited per address and per requester. Tries are limited per requester, per address, and per address for one requester (H1). Before a device has a key, the requester is the connecting address (`cf-connecting-ip`), stored only as a keyed hash.
+6. **Rate limits are atomic, and a refused request is not counted.** Starts are limited per address and per requester, per mailbox for a tagged address, and per day across everyone (M2). Tries are limited per requester, per address, and per address for one requester (H1). Before a device has a key, the requester is the connecting address (`cf-connecting-ip`), stored only as a keyed hash.
 7. **Shape before the rate limit.** A malformed body is refused before the throttle, so it neither counts nor spends a try.
 8. **The address is stored sealed.** AES-GCM under a derived key, with the address key as associated data, so a box cannot be moved to another row. Lookups use the keyed address hash.
 9. **The password is stored as a peppered slow hash.** 100,000 PBKDF2 iterations is the most the Workers runtime allows. The HMAC pepper means a copied table cannot be guessed against without the Worker secret.
@@ -248,6 +248,8 @@ Safe defaults the plan does not fix. Each is one constant in `src/signup.js`.
 | 5 | Code tries per connecting address per hour, and at one address from one connecting address (H1) | 20 and 5 | `verifiesPerRequesterHour`, `triesPerAddressRequesterHour` |
 | 6 | Account password length | 12 to 256 characters | `passwordMin`, `passwordMax` |
 | 7 | The mail wording: subject "Horae Zone sign-up code", then "Sign-up code: <code>", "Works once. Expires 10 minutes after it was sent.", the link, and "No account is made without this code." | As written | `codeMessage` |
+| 8 | Codes mailed per hour across every `+tag` of one mailbox (M2) | 3 | `codesPerMailboxHour` |
+| 9 | Codes sent per day across every address and requester (M2) | 500, or `HZ_CODES_PER_DAY` when set (a plain Worker variable, not a secret) | `codesPerDay` |
 
 ### Security review findings and what changed
 
@@ -272,6 +274,20 @@ Test (`test/signup.test.mjs`): "a start sends the same statements whether or not
 
 Left as is (residual): the mail for a new address runs after the answer (`ctx.waitUntil`), so it adds no time to the answer, but the two paths still differ in work after the answer is sent.
 
+**M2 (medium): the per-address limits could be stepped around.** `addressOf` took any non-space, non-control character, so a zero-width or soft-hyphen character, a look-alike letter in the local part, or a new `+tag` each made a new address key for the same mailbox, with fresh limits. Nothing capped the codes sent in a day across every address.
+
+What changed:
+- `addressOf` (`src/signup.js`) refuses, as `shape`, an address holding a format character (`\p{Cf}`: zero-width space, joiner and non-joiner, word joiner, byte-order mark, soft hyphen) anywhere, and a local part that is not printable ASCII. Sign-in uses the same check, so it refuses the same addresses before any write.
+- A start for a tagged address (`name+tag@domain`) also takes a place in a per-mailbox bucket keyed on the address with the tag stripped (`codesPerMailboxHour`, 3). That key is for the limit only: the account key stays the full address, tag included. An untagged address is its own mailbox and keeps its own per-address bucket, so a flood of tags cannot stop the owner's sign-up at the plain address. Mail to one mailbox is bounded at 3 an hour for the plain address plus 3 an hour across all its tags.
+- Every start takes a place in one global bucket, `codes-day`, over a 24-hour window. The cap is `HZ_CODES_PER_DAY` when set and `SIGNUP_LIMITS.codesPerDay` (500) when not. A value that is set but is not a whole number of 1 or more answers `unavailable` and writes nothing, so a typo stops starts instead of opening the cap. Both paths of M1 take this place, so the statements still match. `admitThrottle` takes a window per bucket for this, and the hourly purge keeps `codes-day` rows for a day.
+
+Tests: in `test/signup.test.mjs`, "M2: an address with a format or zero-width character, or a non-ASCII local part, is refused as shape" (at `/account`, `/account/email/verify` and `/signin`, with nothing written or counted), "M2: starts for every +tag of one mailbox share one limit, and the plain address is not held by it", "M2: codes sent are capped per day across every address and requester" and "M2: without configuration the daily cap is the default, and a bad value refuses starts"; in `test/purge.test.mjs`, "M2: a purge keeps daily-cap rows for a day and clears them after". Two NEGATIVE CONTROLs pass before and after: an ASCII local part with a dot, a plus or a non-ASCII domain still starts, and the account key stays the full address.
+
+Left as is (residual):
+- A non-ASCII domain is still taken as written. Mail systems map some spellings of a domain (full-width letters, for one) to the same ASCII domain, so those spellings still make new address keys for one mailbox. They still pay the requester and daily limits. Converting the domain to its ASCII form at the boundary would close it (open point 6).
+- Providers that ignore dots in the local part (`first.last` and `firstlast`) give two address keys for one mailbox. Only `+tag` is stripped, because dot rules differ by provider.
+- Anyone can fill the daily cap from many connecting addresses (each at 10 starts an hour) and stop sign-up for everyone until the day passes. The cap trades that for a bound on mail sent, and the WAF rate rule at the first deploy is the second layer.
+
 ### Open points for the reviewer
 
 | # | Point | Where | Proposed resolution |
@@ -281,6 +297,7 @@ Left as is (residual): the mail for a new address runs after the answer (`ctx.wa
 | 3 | The mail goes out through `ctx.waitUntil`. If the Worker is stopped before the send, the code is stored but never mailed, and nothing is audited | `src/index.js` | Accept; the user asks for another code |
 | 4 | Not run against a real Resend or a real `wrangler dev`, because wrangler is not installed in the authoring environment, so the bundle with its `../../../packages/account-engine` imports is unchecked by wrangler. The engine's runtimes test loads `mailer.mjs` in `workerd` and Chromium | - | The reviewer runs the `wrangler dev` smoke test in the test plan |
 | 5 | Changing `HZ_ACCOUNT_KEY` makes every stored address key, address box, code digest and login hash unusable | `src/account-keys.js` | A rotation plan (keep the old secret to re-derive) before the first real account |
+| 6 | A non-ASCII domain is taken as written, so spellings a mail system maps to one domain make separate address keys (M2 residual) | `addressOf` in `src/signup.js` | Convert the domain to its ASCII form (`new URL`'s host does this in Workers) before the address key, RED first |
 
 ### Out of scope for A3
 
