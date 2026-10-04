@@ -153,6 +153,49 @@ test('probe F2: a password thief cannot swap the owner\'s unconfirmed seed', asy
   assert.equal(tried.finish.status, 200);
 });
 
+// A5 re-review, item 5: before the first accepted code a non-pending device's
+// wrong codes count toward the account's limits. That design stays, because
+// since item 1 only the owner device can be non-pending then. Probe F4 is the
+// re-review's: a password thief's device registered before the first accepted
+// code spent the owner's lockout and closed the owner's path.
+const LOCK_SUBJECT = /code entry (paused|closed)/;
+const lockNotes = (h) => h.mail.filter((m) => m.to === OWNER && LOCK_SUBJECT.test(m.subject));
+
+test('probe F4: before the first accepted code a password thief spends none of the account\'s limits, and the owner device\'s wrongs still count', async () => {
+  const h = harness();
+  const owner = await enrolledDevice(h, OWNER);
+  const thief = { ...(await thiefDevice(h, OWNER)), seed: owner.seed };
+  const starts = [];
+  for (let w = 0; w < 4; w += 1) {
+    for (let i = 0; i < 3; i += 1) starts.push((await tryCode(h, thief, await wrongCodeAt(owner, h.clock.ms))).start);
+    h.clock.ms += 30_000;
+  }
+  assert.equal(starts.filter((s) => s.status === 200).length, 0, 'the thief\'s device is admitted no try');
+  for (const s of starts) assert.deepEqual(s, { status: 409, json: { error: 'not-enrolled' } });
+  assert.deepEqual(lockNotes(h), [], 'the thief locked no window and closed nothing');
+  assert.equal(h.db.sqlite.prepare('SELECT confirmed_by FROM otp').get().confirmed_by, null);
+  // The owner device, the one non-pending device before confirmation: its
+  // wrong codes lock a window, and two locked windows in a row close the path.
+  for (let i = 0; i < 3; i += 1) assert.equal((await tryCode(h, owner, await wrongCodeAt(owner, h.clock.ms))).finish.status, 401);
+  assert.equal(lockNotes(h).length, 1, 'three wrong codes lock the window');
+  h.clock.ms += 30_000;
+  for (let i = 0; i < 3; i += 1) assert.equal((await tryCode(h, owner, await wrongCodeAt(owner, h.clock.ms))).finish.status, 401);
+  assert.equal(lockNotes(h).length, 2, 'the second locked window in a row closes the path');
+  h.clock.ms += 30_000;
+  assert.deepEqual((await tryCode(h, owner, await codeAt(owner, h.clock.ms))).start, { status: 423, json: { error: 'locked' } });
+  assert.equal(h.db.sqlite.prepare('SELECT confirmed_by FROM otp').get().confirmed_by, null);
+});
+
+test('probe F4 NEGATIVE CONTROL: before the first accepted code the owner device\'s right code still confirms after the thief\'s tries', async () => {
+  const h = harness();
+  const owner = await enrolledDevice(h, OWNER);
+  const thief = { ...(await thiefDevice(h, OWNER)), seed: owner.seed };
+  for (let i = 0; i < 3; i += 1) await tryCode(h, thief, await wrongCodeAt(owner, h.clock.ms));
+  h.clock.ms += 30_000;
+  assert.equal((await tryCode(h, owner, await codeAt(owner, h.clock.ms))).finish.status, 200);
+  assert.equal(h.db.sqlite.prepare('SELECT confirmed_by FROM otp').get().confirmed_by, owner.id);
+});
+
 // A5 re-review, item 2: a pending device changes nothing, and until the first
 // accepted code confirms the enrolment only the owner device may enrol,
 // re-enrol or remove a device. The checks are in the writes themselves, so a
