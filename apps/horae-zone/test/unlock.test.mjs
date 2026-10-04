@@ -51,11 +51,29 @@ async function finish(h, device, exchange, tagA) {
   return answer(await h.call(await signed(h.call, device, '/unlock/finish', { exchange, tagA })));
 }
 
-async function readTicket(ticket) {
+async function readTicket(ticket, publicKey = TICKET_PUBLIC_KEY) {
   const [payload, sig, ...rest] = ticket.split('.');
   if (rest.length > 0) return null;
-  const ok = await crypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, TICKET_PUBLIC_KEY, fromB64url(sig), new TextEncoder().encode(`${TICKET_LABEL}.${payload}`));
+  const ok = await crypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, publicKey, fromB64url(sig), new TextEncoder().encode(`${TICKET_LABEL}.${payload}`));
   return ok ? JSON.parse(new TextDecoder().decode(fromB64url(payload))) : null;
+}
+
+// The RFC 7638 JWK thumbprint of a P-256 public key: base64url SHA-256 of
+// the required members in lexical order, no spaces. Worked out here from the
+// public key alone, not from the service's code.
+async function thumbprint(publicKey) {
+  const { crv, kty, x, y } = await crypto.subtle.exportKey('jwk', publicKey);
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify({ crv, kty, x, y })));
+  return b64url(new Uint8Array(digest));
+}
+
+// What a verifier does (the A5b side): read the kid without trusting the
+// payload, pick that key from its ring, and only then check the signature.
+async function readTicketByKid(ticket, ring) {
+  const [payload] = ticket.split('.');
+  const { kid } = JSON.parse(new TextDecoder().decode(fromB64url(payload)));
+  const publicKey = ring.get(kid);
+  return publicKey ? readTicket(ticket, publicKey) : null;
 }
 
 // A device of the same account that has not proved a code yet. Once the
@@ -78,8 +96,10 @@ test('NEGATIVE CONTROL: a correct code, account and device returns a ticket', as
   assert.equal(tried.proved, true, 'the device checked the service\'s reply');
   assert.equal(tried.finish.status, 200);
   assert.deepEqual(Object.keys(tried.finish.json), ['ticket']);
-  assert.deepEqual(await readTicket(tried.finish.json.ticket), {
+  const claims = await readTicket(tried.finish.json.ticket);
+  assert.deepEqual(claims, {
     v: 1, account: dev.account, device: dev.id, at: h.clock.ms, exp: h.clock.ms + UNLOCK_LIMITS.ticketTtlMs,
+    jti: claims.jti, kid: await thumbprint(TICKET_PUBLIC_KEY),
   });
 });
 
@@ -91,6 +111,44 @@ test('a ticket does not verify once its payload is changed', async () => {
   const claims = JSON.parse(new TextDecoder().decode(fromB64url(payload)));
   const forged = b64url(new TextEncoder().encode(JSON.stringify({ ...claims, device: 'another-device' })));
   assert.equal(await readTicket(`${forged}.${sig}`), null);
+});
+
+// ---- A5 security review item 4: jti and kid ----
+// The A5b verifier records each jti as spent (one ticket, one use) and finds
+// the verification key by kid, so a rotated key does not strand a ticket
+// already issued.
+
+test('A5 review 4: the ticket claims carry a random 128-bit jti, new on every ticket, and the kid of the key that signed it', async () => {
+  const h = harness();
+  const dev = await enrolledDevice(h, ADDRESS);
+  const first = await readTicket((await tryCode(h, dev, await codeAt(dev, h.clock.ms))).finish.json.ticket);
+  h.clock.ms += STEP_MS;
+  const second = await readTicket((await tryCode(h, dev, await codeAt(dev, h.clock.ms))).finish.json.ticket);
+  for (const claims of [first, second]) {
+    assert.ok(claims, 'the ticket verifies');
+    assert.match(claims.jti ?? '', /^[A-Za-z0-9_-]{22}$/);
+    assert.equal(fromB64url(claims.jti).length, 16, '128 bits');
+    assert.equal(claims.kid, await thumbprint(TICKET_PUBLIC_KEY));
+  }
+  assert.notEqual(first.jti, second.jti);
+});
+
+test('A5 review 4: the kid selects the verification key, and a ticket does not verify under the other key', async () => {
+  const otherPair = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
+  const otherKey = JSON.stringify(await crypto.subtle.exportKey('jwk', otherPair.privateKey));
+  const ring = new Map([
+    [await thumbprint(TICKET_PUBLIC_KEY), TICKET_PUBLIC_KEY],
+    [await thumbprint(otherPair.publicKey), otherPair.publicKey],
+  ]);
+  for (const [env, signer, notSigner] of [[{}, TICKET_PUBLIC_KEY, otherPair.publicKey], [{ HZ_TICKET_KEY: otherKey }, otherPair.publicKey, TICKET_PUBLIC_KEY]]) {
+    const h = harness({ env });
+    const dev = await enrolledDevice(h, ADDRESS);
+    const { ticket } = (await tryCode(h, dev, await codeAt(dev, h.clock.ms))).finish.json;
+    const claims = await readTicketByKid(ticket, ring);
+    assert.ok(claims, 'the key the kid names verifies the ticket');
+    assert.equal(claims.kid, await thumbprint(signer));
+    assert.equal(await readTicket(ticket, notSigner), null, 'the other key does not');
+  }
 });
 
 // ---- the refusal says nothing about which part was wrong ----
