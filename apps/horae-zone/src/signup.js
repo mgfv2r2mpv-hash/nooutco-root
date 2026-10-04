@@ -46,7 +46,7 @@ import { admitThrottle } from "./throttle.js";
 export const SIGNUP_LIMITS = Object.freeze({
   codeTtlMs: 10 * 60 * 1000,
   triesPerAddressRequesterHour: 5,
-  codesPerMailboxHour: 3,
+  codesPerMailboxHour: 10,
   resendsPerAddressHour: 3,
   codesPerDay: 3000,
   alertAtPercent: 50,

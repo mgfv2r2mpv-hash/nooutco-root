@@ -47,7 +47,7 @@ import { admitThrottle, releaseThrottle } from "./throttle.js";
 
 export const SIGNIN_LIMITS = Object.freeze({
   ticketTtlMs: 5 * 60 * 1000,
-  perAddressHour: 100,
+  perAddressHour: 1000,
   perPairHour: 5,
   perRequesterHour: 20,
   backoffAfter: 2,

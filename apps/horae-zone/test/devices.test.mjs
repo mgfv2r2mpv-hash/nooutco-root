@@ -235,8 +235,8 @@ test('item 4 NEGATIVE CONTROL: the owner\'s own successes from one requester tak
   assert.deepEqual(await answer(await h.call(signInRequest(ADDRESS, 'a wrong password', '192.0.2.10'))), { status: 401, json: { error: 'bad-login' } });
 });
 
-test('item 4: the per-address ceiling is 100 failures an hour, and only failures fill it', async () => {
-  assert.equal(SIGNIN_LIMITS.perAddressHour, 100);
+test('item 4 (R1): the per-address ceiling is 1000 failures an hour, and only failures fill it', async () => {
+  assert.equal(SIGNIN_LIMITS.perAddressHour, 1000, 'R1: load only; the requester and pair caps bound guessing');
   const h = harness();
   await signUp(h, ADDRESS);
   const bucket = `signin-address:${await (await accountKeys(h.env)).addressKey(ADDRESS)}`;
