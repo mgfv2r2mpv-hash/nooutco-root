@@ -14,6 +14,10 @@
  * The reopen token is stored only as the engine's hash, in the state and in
  * reopen_hash (the column /unlock/reopen looks it up by).
  *
+ * A5b runs the online wrong-PIN lockout (src/pin-lockout.js) on these same
+ * helpers over its own table, pin_limits, so one path's wrongs never close
+ * the other. LIMIT_TABLES names the two; no other table name reaches SQL.
+ *
  * MAIL. Each lock event becomes one plain note to the account's address,
  * sent after the answer through the engine mailer. A note never carries a
  * code, the seed, a tag, a ticket or a count beyond the rule it names; only
@@ -32,8 +36,16 @@ import { admitThrottle } from "./throttle.js";
 const CAS_TRIES = 8;
 const TOKEN_BYTES = 32;
 
-async function readLimits(db, accountId) {
-  const row = await db.prepare("SELECT state, version FROM limits WHERE account_id = ?").bind(accountId).first();
+export const LIMIT_TABLES = Object.freeze({ code: "limits", pin: "pin_limits" });
+
+function tableOf(path) {
+  const table = LIMIT_TABLES[path];
+  if (!table) throw new Error(`lockout: unknown path ${path}`);
+  return table;
+}
+
+async function readLimits(db, accountId, path) {
+  const row = await db.prepare(`SELECT state, version FROM ${tableOf(path)} WHERE account_id = ?`).bind(accountId).first();
   if (!row) return { state: emptyState(), version: null };
   try {
     return { state: parseState(row.state), version: row.version };
@@ -42,13 +54,14 @@ async function readLimits(db, accountId) {
   }
 }
 
-async function writeLimits(db, accountId, version, state) {
+async function writeLimits(db, accountId, version, state, path) {
+  const table = tableOf(path);
   const text = JSON.stringify(state);
   const hash = state.unlock ? state.unlock.hash : null;
   const done = version === null
-    ? db.prepare("INSERT INTO limits (account_id, state, version, reopen_hash) VALUES (?, ?, 0, ?) ON CONFLICT (account_id) DO NOTHING RETURNING account_id")
+    ? db.prepare(`INSERT INTO ${table} (account_id, state, version, reopen_hash) VALUES (?, ?, 0, ?) ON CONFLICT (account_id) DO NOTHING RETURNING account_id`)
       .bind(accountId, text, hash)
-    : db.prepare("UPDATE limits SET state = ?, version = version + 1, reopen_hash = ? WHERE account_id = ? AND version = ? RETURNING account_id")
+    : db.prepare(`UPDATE ${table} SET state = ?, version = version + 1, reopen_hash = ? WHERE account_id = ? AND version = ? RETURNING account_id`)
       .bind(text, hash, accountId, version);
   return Boolean(await done.first());
 }
@@ -64,13 +77,14 @@ function withLink(state, now) {
 // Runs `rule` (pure: state in, {state, events, ...} out) over the account's
 // state and writes the result, reading again when another request wrote
 // first. Returns the rule's result with a link token when the path needs one
-// (a reopen try renews no link: its token could reach no one).
-export async function ruleLimits(db, accountId, now, rule, { renewLink = true } = {}) {
+// (a reopen try renews no link: its token could reach no one). `path` picks
+// the code path's state or the PIN's.
+export async function ruleLimits(db, accountId, now, rule, { renewLink = true, path = "code" } = {}) {
   for (let i = 0; i < CAS_TRIES; i += 1) {
-    const { state, version } = await readLimits(db, accountId);
+    const { state, version } = await readLimits(db, accountId, path);
     const ruled = rule(state);
     const linked = renewLink ? withLink(ruled.state, now) : { state: ruled.state, token: null };
-    if (await writeLimits(db, accountId, version, linked.state)) return { ...ruled, state: linked.state, token: linked.token };
+    if (await writeLimits(db, accountId, version, linked.state, path)) return { ...ruled, state: linked.state, token: linked.token };
   }
   throw new Refusal("slow-down", 429);
 }
@@ -117,16 +131,20 @@ export function dayHasRoom(state, now) {
 // that cannot be read counts as closed). A pending device's try asks this
 // and changes nothing (security review item 2).
 export async function pathClosed(db, accountId) {
-  return (await readLimits(db, accountId)).state.pathLocked;
+  return (await readLimits(db, accountId, "code")).state.pathLocked;
 }
 
-// The reopen link's token, looked up by its hash, spent once.
+// The reopen link's token, looked up by its hash in each path's table, spent
+// once. Answers the account and the path it reopened, or null.
 export async function spendReopen(db, now, token) {
   const hash = await sha256Hex(token);
-  const row = await db.prepare("SELECT account_id FROM limits WHERE reopen_hash = ?").bind(hash).first();
-  if (!row) return null;
-  const ruled = await ruleLimits(db, row.account_id, now, (state) => spendUnlock(state, now, token), { renewLink: false });
-  return ruled.ok ? row.account_id : null;
+  for (const path of Object.keys(LIMIT_TABLES)) {
+    const row = await db.prepare(`SELECT account_id FROM ${tableOf(path)} WHERE reopen_hash = ?`).bind(hash).first();
+    if (!row) continue;
+    const ruled = await ruleLimits(db, row.account_id, now, (state) => spendUnlock(state, now, token), { renewLink: false, path });
+    return ruled.ok ? { accountId: row.account_id, path } : null;
+  }
+  return null;
 }
 
 async function sha256Hex(text) {
@@ -136,8 +154,8 @@ async function sha256Hex(text) {
 
 // ---- the notes. Plain notes on state; the wording is the owner's to change. ----
 
-const LINK_HOURS = UNLOCK_TTL_MS / 3_600_000;
-const WINDOW_SECONDS = WINDOW_MS / 1000;
+export const LINK_HOURS = UNLOCK_TTL_MS / 3_600_000;
+export const WINDOW_SECONDS = WINDOW_MS / 1000;
 const CLOCK_LINE = "Some of these codes came from a device whose clock was off; a device clock set automatically gives codes that match.";
 
 function windowNote(event) {

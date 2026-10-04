@@ -33,6 +33,15 @@
  * the device and opens only before `until`. The grant is opaque to the user:
  * no screen shows it or anything read from it.
  *
+ * WRONG PINS ONLINE (§3.4 "Online wrong PINs") run JanusMirror's lockout,
+ * in its own state (src/pin-lockout.js): every comparison of a PIN, an
+ * open's or a change's current one, is admitted into the account's PIN
+ * lockout first and settled right or wrong after, so a closed window or a
+ * closed PIN entry answers locked before any PIN is compared. A code-needed
+ * or bad-ticket answer comes before the lockout, since no PIN was compared.
+ * The lockout's mail needs the mailer and HZ_REOPEN_BASE, so without them a
+ * PIN is never compared (unavailable).
+ *
  * CUSTODY. The PIN is never stored, bound, logged or echoed: the service keeps
  * only its verifier (src/account-keys.js pinVerifier, PBKDF2 then HMAC under
  * a pepper HKDF derives from HZ_ACCOUNT_KEY) over a random per-account salt.
@@ -58,7 +67,8 @@ import { PIN_LOCKED } from "../../../packages/account-engine/src/pin.mjs";
 import { Refusal, ACCOUNT_CHANGER, LIVE_DEVICE, b64url, fromB64url, findDevice, mayChangeAccount } from "./checks.js";
 import { newSalt } from "./account-keys.js";
 import { hasOnly, keysOrUnavailable } from "./signup.js";
-import { TICKET_LABEL, ticketKey, ticketRing } from "./unlock.js";
+import { TICKET_LABEL, ticketKey, ticketRing, reopenBaseOk } from "./unlock.js";
+import { admitPinTry, settlePinTry } from "./pin-lockout.js";
 
 const HOUR_MS = 60 * 60 * 1000;
 
@@ -153,6 +163,24 @@ async function signKeyOrUnavailable(env) {
   return signKey;
 }
 
+// What the lockout's mail needs; without it no PIN is compared.
+function mailOrUnavailable(env, mailer) {
+  if (!mailer || !reopenBaseOk(env.HZ_REOPEN_BASE)) throw new Refusal("unavailable", 503);
+  return env.HZ_REOPEN_BASE;
+}
+
+// Compares `pin` with the account's verifier inside the PIN lockout: refuses
+// locked before comparing when PIN entry is closed, and bad-pin when wrong.
+// Answers the after-work mailing what the lockout owes.
+async function checkedPin({ db, device, now, keys, mailer, reopenBase }, pin, row) {
+  const lockout = { db, accountId: device.account_id, now, keys, mailer, reopenBase };
+  const tried = await admitPinTry(lockout);
+  const right = sameHex(await keys.pinVerifier(pin, row.salt), row.verifier);
+  const after = await settlePinTry({ ...lockout, tried, right });
+  if (!right) throw new Refusal("bad-pin", 401, after);
+  return after;
+}
+
 // The accepted open's answer: ok and a grant ending 12 hours after this
 // device's last accepted code (read after any spend moved it).
 async function opened(db, device, signKey) {
@@ -171,8 +199,8 @@ function allowedOrRefuse(pinRules, pin) {
   throw new Refusal("shape", 400);
 }
 
-export async function setPin({ db, device, body, now, env, pinRules }) {
-  if (body !== null && typeof body === "object" && Object.hasOwn(body, "current")) return changePin({ db, device, body, now, env, pinRules });
+export async function setPin({ db, device, body, now, env, pinRules, mailer }) {
+  if (body !== null && typeof body === "object" && Object.hasOwn(body, "current")) return changePin({ db, device, body, now, env, pinRules, mailer });
   const { pin, ticket } = pinBody(body, { ticketRequired: true });
   if (!pinRules) throw new Refusal("unavailable", 503);
   const keys = await keysOrUnavailable(env);
@@ -197,17 +225,29 @@ export async function setPin({ db, device, body, now, env, pinRules }) {
   return opened(db, device, signKey);
 }
 
-export async function verifyPin({ db, device, body, now, env }) {
+export async function verifyPin({ db, device, body, now, env, mailer }) {
   const { pin, ticket } = pinBody(body, { ticketRequired: false });
   if (!PIN.test(pin)) throw new Refusal("shape", 400);
   const keys = await keysOrUnavailable(env);
   const signKey = await signKeyOrUnavailable(env);
+  const reopenBase = mailOrUnavailable(env, mailer);
   const row = await db.prepare("SELECT verifier, salt FROM pin WHERE account_id = ?").bind(device.account_id).first();
   if (!row) throw new Refusal("no-pin", 409);
   const claims = await codeOrRefuse(db, env, ticket, device, now);
-  if (!sameHex(await keys.pinVerifier(pin, row.salt), row.verifier)) throw new Refusal("bad-pin", 401);
-  if (claims) await spendTicket(db, device, claims);
-  return opened(db, device, signKey);
+  const after = await checkedPin({ db, device, now, keys, mailer, reopenBase }, pin, row);
+  if (claims) await withAfter(after, () => spendTicket(db, device, claims));
+  return { ...(await opened(db, device, signKey)), after };
+}
+
+// Runs `work`, and hands a refusal it throws the lockout's after-work, so the
+// mail a settled try owes still goes out.
+async function withAfter(after, work) {
+  try {
+    return await work();
+  } catch (err) {
+    if (err instanceof Refusal && !err.after) throw new Refusal(err.reason, err.status, after, err.sentence);
+    throw err;
+  }
 }
 
 // A change's body: the new PIN, the current one, and the ticket where given.
@@ -226,16 +266,22 @@ async function lockedForReuse(db, accountId, verifier, row, now) {
   return (locks.results ?? []).some((lock) => sameHex(verifier, lock.verifier));
 }
 
-async function changePin({ db, device, body, now, env, pinRules }) {
+async function changePin({ db, device, body, now, env, pinRules, mailer }) {
   const { pin, current, ticket } = changeBody(body);
   if (!pinRules) throw new Refusal("unavailable", 503);
   const keys = await keysOrUnavailable(env);
   const signKey = await signKeyOrUnavailable(env);
+  const reopenBase = mailOrUnavailable(env, mailer);
   allowedOrRefuse(pinRules, pin);
   const row = await db.prepare("SELECT verifier, salt FROM pin WHERE account_id = ?").bind(device.account_id).first();
   if (!row) throw new Refusal("no-pin", 409);
   const claims = await codeOrRefuse(db, env, ticket, device, now);
-  if (!sameHex(await keys.pinVerifier(current, row.salt), row.verifier)) throw new Refusal("bad-pin", 401);
+  const after = await checkedPin({ db, device, now, keys, mailer, reopenBase }, current, row);
+  return { ...(await withAfter(after, () => replacePin({ db, device, now, keys, signKey, claims, row, pin }))), after };
+}
+
+// The change's write, once the current PIN was right.
+async function replacePin({ db, device, now, keys, signKey, claims, row, pin }) {
   const verifier = await keys.pinVerifier(pin, row.salt);
   if (await lockedForReuse(db, device.account_id, verifier, row, now)) throw new Refusal("pin-reused", 409, undefined, PIN_LOCKED);
   // Only over the verifier just checked, never onto a PIN locked meanwhile,

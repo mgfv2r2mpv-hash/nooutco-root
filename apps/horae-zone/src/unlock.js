@@ -54,6 +54,7 @@ import { openSeed, seedBoxKey } from "./otp.js";
 import {
   ruleLimits, pathClosed, lockNotes, mailAfter, reopenedNote, spendReopen, pendingNotes, settleCapped, capDay, dayHasRoom,
 } from "./lockout.js";
+import { pinReopenedNote } from "./pin-lockout.js";
 
 export const UNLOCK_LIMITS = Object.freeze({
   ticketTtlMs: 5 * 60 * 1000,
@@ -309,13 +310,15 @@ export async function finishUnlock({ db, device, body, now, env, mailer }) {
   return { status: 200, json: { ticket }, after };
 }
 
-// The link reopens the code path and nothing else: no ticket, key or seed.
-// An unknown, spent or expired token answers bad-link alike.
+// The link reopens the path that mailed it (code entry, or A5b's PIN entry)
+// and nothing else: no ticket, key or seed. An unknown, spent or expired
+// token answers bad-link alike.
 export async function reopenUnlock({ db, body, now, env, mailer }) {
   if (!hasOnly(body, ["token"]) || typeof body.token !== "string" || !TOKEN.test(body.token)) throw new Refusal("shape", 400);
   const keys = await keysOrUnavailable(env);
   if (!mailer) throw new Refusal("unavailable", 503);
-  const accountId = await spendReopen(db, now, body.token);
-  if (!accountId) throw new Refusal("bad-link", 401);
-  return { status: 200, json: { ok: true }, after: mailAfter({ db, keys, mailer, accountId, notes: [reopenedNote()] }) };
+  const reopened = await spendReopen(db, now, body.token);
+  if (!reopened) throw new Refusal("bad-link", 401);
+  const note = reopened.path === "pin" ? pinReopenedNote() : reopenedNote();
+  return { status: 200, json: { ok: true }, after: mailAfter({ db, keys, mailer, accountId: reopened.accountId, notes: [note] }) };
 }

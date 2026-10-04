@@ -280,3 +280,18 @@ BEGIN
   INSERT INTO pin_lock (account_id, verifier, locked_until) VALUES (OLD.account_id, OLD.verifier, NEW.set_at + 31536000000)
   ON CONFLICT (account_id, verifier) DO UPDATE SET locked_until = MAX(pin_lock.locked_until, excluded.locked_until);
 END;
+
+-- The online wrong-PIN lockout per account (plan §3.4 "Online wrong PINs:
+-- JanusMirror's lockout"): the engine's limits.mjs state as JSON, the code
+-- path's shape in its own row, so wrong PINs never close code entry and
+-- wrong codes never close PIN entry (src/pin-lockout.js). No PIN or verifier
+-- is kept, and of a reopen link only its hash, which /unlock/reopen finds
+-- here by reopen_hash.
+CREATE TABLE IF NOT EXISTS pin_limits (
+  account_id   TEXT    PRIMARY KEY,
+  state        TEXT    NOT NULL,
+  version      INTEGER NOT NULL DEFAULT 0,
+  reopen_hash  TEXT
+);
+
+CREATE INDEX IF NOT EXISTS pin_limits_reopen_hash ON pin_limits (reopen_hash);

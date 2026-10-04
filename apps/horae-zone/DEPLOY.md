@@ -63,7 +63,7 @@ CHECKLIST
   PASS    Database present                   created
   PASS    Worker deployed                    horae-zone, route horae-zone.nooutco.me (Custom domain)
   SKIPPED Owner as administrator             A5c not built (see step 6)
-  PASS    Schema applied                     17 tables present
+  PASS    Schema applied                     18 tables present
   PASS    Secret HZ_ACCOUNT_KEY              set (name only)
   ...
   PASS    Cron trigger                       0 * * * * (hourly purge)
