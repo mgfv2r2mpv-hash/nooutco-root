@@ -8,6 +8,8 @@ import { fileURLToPath } from 'node:url';
 import { d1Sqlite } from '../../profile-api/test/helpers/d1-sqlite.js';
 import { createHandler } from '../src/index.js';
 import { signedBytes, b64url, fromB64url } from '../src/checks.js';
+import { createPinRules } from '../../../packages/account-engine/src/pin.mjs';
+import { PINS as PIN_FIXTURE } from '../../../packages/account-engine/test/fixtures/pin-blocklist.mjs';
 
 export const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const SCHEMA = readFileSync(path.join(ROOT, 'schema.sql'), 'utf8');
@@ -27,15 +29,21 @@ const ticketPair = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 
 export const TICKET_PUBLIC_KEY = ticketPair.publicKey;
 export const TICKET_KEY = JSON.stringify(await crypto.subtle.exportKey('jwk', ticketPair.privateKey));
 
+// A5b. The PIN rules over the engine's five-PIN public fixture: the real
+// blocklist is the private package, never in this repository.
+export const PIN_RULES = createPinRules(PIN_FIXTURE);
+
 // `mailer` replaces the sink (a test of a failing send). `env` adds to or
-// overrides the bindings. Deferred work (ctx.waitUntil) is awaited before
-// `call` returns, so a test sees the mail a request sent.
-export function harness({ mailer = null, env = {} } = {}) {
+// overrides the bindings. `pinRules` replaces the PIN rules (null: none
+// injected, as in a Worker built without the private list). Deferred work
+// (ctx.waitUntil) is awaited before `call` returns, so a test sees the mail
+// a request sent.
+export function harness({ mailer = null, env = {}, pinRules = PIN_RULES } = {}) {
   const db = d1Sqlite(SCHEMA);
   const clock = { ms: T0 };
   const mail = [];
   const send = mailer ?? (async (message) => { mail.push(message); return true; });
-  const handler = createHandler({ now: () => clock.ms, mailer: send });
+  const handler = createHandler({ now: () => clock.ms, mailer: send, pinRules });
   const bindings = {
     DB: db, HZ_ACCOUNT_KEY: ACCOUNT_KEY, HZ_LINK_BASE: LINK_BASE,
     HZ_SEED_KEY: SEED_KEY, HZ_TICKET_KEY: TICKET_KEY, HZ_REOPEN_BASE: REOPEN_BASE, ...env,
@@ -324,4 +332,29 @@ export function reopenTokenFrom(h, email) {
   const message = h.mail.filter((m) => m.to === email && m.text.includes(REOPEN_BASE)).at(-1);
   if (!message) return null;
   return new URL(message.text.match(/https:\/\/\S+/)[0]).hash.slice(1);
+}
+
+// ---- A5b flow helpers ----
+
+// A fresh unlock ticket for `device`: a right code at the current step, then
+// the clock one step on, so the next code is fresh.
+export async function ticketFor(h, device) {
+  const tried = await tryCode(h, device, await codeAt(device, h.clock.ms));
+  if (tried.finish?.status !== 200) throw new Error(`the code answered ${tried.finish?.status ?? tried.start.status}`);
+  h.clock.ms += STEP_MS;
+  return tried.finish.json.ticket;
+}
+
+// One signed PIN request, answered as {status, json}.
+export async function pinCall(h, device, pathname, body) {
+  return answerOf(await h.call(await signed(h.call, device, pathname, body)));
+}
+
+// A confirmed device whose account has `pin` set, through /pin/set with a
+// fresh ticket, as the app does at step 5 of the first device's enrolment.
+export async function pinnedDevice(h, email, pin) {
+  const dev = await confirmedDevice(h, email);
+  const set = await pinCall(h, dev, '/pin/set', { pin, ticket: await ticketFor(h, dev) });
+  if (set.status !== 200) throw new Error(`the first PIN answered ${set.status} ${JSON.stringify(set.json)}`);
+  return dev;
 }

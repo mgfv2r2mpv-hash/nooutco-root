@@ -20,6 +20,7 @@ import { signIn } from "./signin.js";
 import { registerDevice, removeDevice } from "./devices.js";
 import { enrolOtp } from "./otp.js";
 import { startUnlock, finishUnlock, reopenUnlock } from "./unlock.js";
+import { setPin, verifyPin } from "./pin.js";
 
 export const ROUTES = Object.freeze({
   "/account": { checks: "open", handler: startSignup },
@@ -37,8 +38,8 @@ export const ROUTES = Object.freeze({
   "/unlock/finish": { checks: "signed", handler: finishUnlock, pendingOk: true },
   // The emailed link, opened before any device can sign for it.
   "/unlock/reopen": { checks: "open", handler: reopenUnlock },
-  "/pin/verify": { checks: "signed" },
-  "/pin/set": { checks: "signed" },
+  "/pin/verify": { checks: "signed", handler: verifyPin },
+  "/pin/set": { checks: "signed", handler: setPin },
   "/pin/reset": { checks: "signed" },
   "/pin/review": { checks: "signed" },
   "/reverify": { checks: "signed" },

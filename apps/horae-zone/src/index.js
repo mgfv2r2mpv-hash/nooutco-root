@@ -74,7 +74,7 @@ async function later(db, at, route, ctx, after) {
   else await work;
 }
 
-async function run(request, env, ctx, { routes, now, mailer }) {
+async function run(request, env, ctx, { routes, now, mailer, pinRules }) {
   const db = env.DB;
   const url = new URL(request.url);
   const route = Object.hasOwn(routes, url.pathname) ? routes[url.pathname] : null;
@@ -92,7 +92,7 @@ async function run(request, env, ctx, { routes, now, mailer }) {
       if (checks === "admin" && !(await isAdmin(db, device.account_id))) throw new Refusal("not-admin", 403);
     }
     if (!route.handler) throw new Refusal("not-built", 501);
-    const out = await route.handler({ db, device, body, now, env, request, mailer: mailer ?? mailerFrom(env) });
+    const out = await route.handler({ db, device, body, now, env, request, mailer: mailer ?? mailerFrom(env), pinRules });
     await audit(db, now, name, "ok");
     await later(db, now, name, ctx, out.after);
     return answer(out.status, out.json);
@@ -100,16 +100,18 @@ async function run(request, env, ctx, { routes, now, mailer }) {
     const refusal = err instanceof Refusal ? err : new Refusal("failed", 500);
     await audit(db, now, name, refusal.reason);
     await later(db, now, name, ctx, refusal.after);
-    return answer(refusal.status, { error: refusal.reason });
+    return answer(refusal.status, refusal.sentence ? { error: refusal.reason, message: refusal.sentence } : { error: refusal.reason });
   }
 }
 
 // `mailer` replaces the Resend transport (tests inject a sink, so no test
-// sends mail).
-export function createHandler({ now = () => Date.now(), routes = ROUTES, mailer = null } = {}) {
+// sends mail). `pinRules` is the engine's createPinRules over the private
+// blocklist (A5b); without it no PIN can be set (src/pin.js), and none is
+// built in here, since the list never enters this public repository.
+export function createHandler({ now = () => Date.now(), routes = ROUTES, mailer = null, pinRules = null } = {}) {
   return async (request, env, ctx) => {
     if (!env || !env.DB) return answer(503, { error: "unavailable" });
-    return run(request, env, ctx, { routes, now: now(), mailer });
+    return run(request, env, ctx, { routes, now: now(), mailer, pinRules });
   };
 }
 

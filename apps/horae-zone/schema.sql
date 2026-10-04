@@ -197,3 +197,52 @@ CREATE TABLE IF NOT EXISTS pending_try (
 
 CREATE INDEX IF NOT EXISTS pending_try_device_at ON pending_try (device_id, at);
 CREATE INDEX IF NOT EXISTS pending_try_account_at ON pending_try (account_id, at);
+
+-- A5b, the PIN (plan §3.4). Every table below is new in A5b and created only
+-- IF NOT EXISTS, so the slice adds to a database A5 made and changes none of
+-- its tables.
+
+-- One PIN per account, the same on every device, stored only as a slow,
+-- peppered verifier: "pbkdf2-sha256$<iterations>$<hex>", PBKDF2 over the PIN
+-- with this account's random salt, then HMAC under the PIN pepper, a key HKDF
+-- derives from HZ_ACCOUNT_KEY (src/account-keys.js). Never the PIN.
+CREATE TABLE IF NOT EXISTS pin (
+  account_id   TEXT    PRIMARY KEY,
+  verifier     TEXT    NOT NULL,
+  salt         TEXT    NOT NULL,
+  set_at       INTEGER NOT NULL
+);
+
+-- One row per device that has opened with a code: proved_at is the time of
+-- the last code that device had accepted and then used, with the PIN, to
+-- open (the `at` of the unlock ticket an open spent). It decides when the
+-- next open needs the code again (12 hours, src/pin.js). The spent_ticket
+-- trigger below is its only writer, so it moves only in the write that spends
+-- a ticket.
+CREATE TABLE IF NOT EXISTS device_check (
+  device_id    TEXT    PRIMARY KEY,
+  account_id   TEXT    NOT NULL,
+  proved_at    INTEGER NOT NULL
+);
+
+-- The unlock tickets an open has spent (A5 security review item 4): the jti,
+-- whose device and account, the ticket's `at` and its `exp`. A jti is spent
+-- once, in the same write that accepts the ticket; rows past expires_at are
+-- purged hourly, since the ticket is refused by then anyway.
+CREATE TABLE IF NOT EXISTS spent_ticket (
+  jti          TEXT    PRIMARY KEY,
+  account_id   TEXT    NOT NULL,
+  device_id    TEXT    NOT NULL,
+  at           INTEGER NOT NULL,
+  expires_at   INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS spent_ticket_expires_at ON spent_ticket (expires_at);
+
+-- The spend and the device's code time move together: a ticket spent is the
+-- code it proves, for that device, never an earlier one.
+CREATE TRIGGER IF NOT EXISTS spent_ticket_proves AFTER INSERT ON spent_ticket
+BEGIN
+  INSERT INTO device_check (device_id, account_id, proved_at) VALUES (NEW.device_id, NEW.account_id, NEW.at)
+  ON CONFLICT (device_id) DO UPDATE SET proved_at = MAX(device_check.proved_at, excluded.proved_at);
+END;
