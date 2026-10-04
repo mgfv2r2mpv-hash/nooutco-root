@@ -8,6 +8,7 @@ import path from 'node:path';
 import worker from '../src/index.js';
 import { RETENTION, auditCutoff, purgeExpired } from '../src/retention.js';
 import { NONCE_TTL_MS } from '../src/checks.js';
+import { SIGNUP_LIMITS } from '../src/signup.js';
 import { harness, addDevice, nonceFor, signed, ROOT, T0 } from './helpers.mjs';
 
 const TOML = readFileSync(path.join(ROOT, 'wrangler.toml'), 'utf8');
@@ -44,6 +45,24 @@ test('a purge removes spent and expired nonces and audit rows older than the cut
   await purgeExpired(db, T0);
   assert.deepEqual(nonces(db), [{ value: 'fresh', used: 0 }]);
   assert.deepEqual(auditTimes(db), [cutoff, cutoff + 1, T0]);
+});
+
+// A3: email codes die when spent, used up or expired, and a rate-limit row
+// only matters inside its window, so the hourly purge clears both.
+test('a purge removes spent, used-up and expired email codes and rate-limit rows past their window', async () => {
+  const { db } = harness();
+  const addCode = (key, expiresAt, tries, used) => db.sqlite.prepare('INSERT INTO challenge (address_key, digest, expires_at, tries, used) VALUES (?, ?, ?, ?, ?)')
+    .run(key, 'd'.repeat(64), expiresAt, tries, used);
+  addCode('expired', T0, 0, 0);
+  addCode('spent', T0 + 1, 0, 1);
+  addCode('used-up', T0 + 1, SIGNUP_LIMITS.codeTries, 0);
+  addCode('live', T0 + 1, SIGNUP_LIMITS.codeTries - 1, 0);
+  for (const at of [T0 - SIGNUP_LIMITS.windowMs - 1, T0 - SIGNUP_LIMITS.windowMs, T0 - SIGNUP_LIMITS.windowMs + 1, T0]) {
+    db.sqlite.prepare('INSERT INTO throttle (bucket, at) VALUES (?, ?)').run('b', at);
+  }
+  await purgeExpired(db, T0);
+  assert.deepEqual(db.sqlite.prepare('SELECT address_key FROM challenge').all().map((r) => r.address_key), ['live']);
+  assert.deepEqual(db.sqlite.prepare('SELECT at FROM throttle ORDER BY at').all().map((r) => r.at), [T0 - SIGNUP_LIMITS.windowMs + 1, T0]);
 });
 
 test('NEGATIVE CONTROL: a purge keeps a fresh nonce working and every audit row inside 6 years', async () => {

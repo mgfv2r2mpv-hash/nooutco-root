@@ -1,6 +1,7 @@
 // Shared by the Horae Zone tests: a real-SQLite D1 over schema.sql (the
 // profile-api helper, reused), a device with a P-256 key made by WebCrypto,
-// and a signer that builds requests the way a device will.
+// a signer that builds requests the way a device will, and a mail sink in
+// place of the transport, so no test sends mail.
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -13,12 +14,27 @@ export const SCHEMA = readFileSync(path.join(ROOT, 'schema.sql'), 'utf8');
 export const T0 = Date.UTC(2026, 8, 30, 12);
 export const ORIGIN = 'https://horae-zone.example.test';
 
-export function harness() {
+// Obviously fake: 32 bytes of 7. The deployed key is a Worker secret.
+export const ACCOUNT_KEY = b64url(new Uint8Array(32).fill(7));
+export const LINK_BASE = 'https://horae-zone.example.test/verify';
+
+// `mailer` replaces the sink (a test of a failing send). `env` adds to or
+// overrides the bindings. Deferred work (ctx.waitUntil) is awaited before
+// `call` returns, so a test sees the mail a request sent.
+export function harness({ mailer = null, env = {} } = {}) {
   const db = d1Sqlite(SCHEMA);
   const clock = { ms: T0 };
-  const handler = createHandler({ now: () => clock.ms });
-  const call = (req) => handler(req, { DB: db });
-  return { db, clock, call };
+  const mail = [];
+  const send = mailer ?? (async (message) => { mail.push(message); return true; });
+  const handler = createHandler({ now: () => clock.ms, mailer: send });
+  const bindings = { DB: db, HZ_ACCOUNT_KEY: ACCOUNT_KEY, HZ_LINK_BASE: LINK_BASE, ...env };
+  const call = async (req) => {
+    const waits = [];
+    const res = await handler(req, bindings, { waitUntil: (p) => waits.push(p) });
+    await Promise.all(waits);
+    return res;
+  };
+  return { db, clock, call, mail, env: bindings };
 }
 
 export async function addDevice(db, { id = 'dev-1', account = 'acct-1', removed = null } = {}) {
@@ -70,6 +86,12 @@ export function rawToDer(raw) {
   const r = int(raw.slice(0, 32));
   const s = int(raw.slice(32));
   return Uint8Array.of(0x30, r.length + s.length, ...r, ...s);
+}
+
+// Every value in every table, as one text, for a leak check.
+export function everyRow(db) {
+  const tables = db.sqlite.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all().map((r) => r.name);
+  return JSON.stringify(tables.map((t) => db.sqlite.prepare(`SELECT * FROM ${t}`).all()));
 }
 
 export function auditRows(db) {
