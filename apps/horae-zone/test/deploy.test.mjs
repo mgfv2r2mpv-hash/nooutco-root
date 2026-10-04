@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { PassThrough } from 'node:stream';
+import { EventEmitter } from 'node:events';
 import path from 'node:path';
 import { ROOT } from './helpers.mjs';
 import { deploy } from '../bin/deploy.mjs';
@@ -390,4 +391,82 @@ test('the hidden prompt never echoes what is typed, and piped lines are read in 
   assert.equal(second, 'second line');
   assert.match(echoed, /Resend API key: /);
   assert.equal(echoed.includes('re_FAKE_hidden_value'), false);
+});
+
+// A stand-in terminal: isTTY true, setRawMode records each call, and a fake
+// process records the exit and SIGTERM listeners and any re-raised signal.
+function fakeTerminal() {
+  const input = new PassThrough();
+  const output = new PassThrough();
+  output.resume();
+  const raw = [];
+  input.isTTY = true;
+  input.setRawMode = (on) => { raw.push(on); input.isRaw = on; };
+  const proc = new EventEmitter();
+  proc.pid = 4242;
+  proc.killed = [];
+  proc.kill = (pid, signal) => { proc.killed.push([pid, signal]); };
+  return { input, output, raw, proc };
+}
+
+// Settles with the prompt's outcome, or 'still waiting' when a key that should
+// have ended it left it open (the old reader appended Ctrl-D to the value).
+const outcome = (promise) => Promise.race([
+  promise.then((value) => ({ value }), (err) => ({ error: err.message })),
+  new Promise((r) => setTimeout(() => r('still waiting'), 200)),
+]);
+
+test('Ctrl-C and Ctrl-D each cancel a hidden prompt and leave raw mode off', async () => {
+  for (const key of ['\u0003', '\u0004']) {
+    const { input, output, raw, proc } = fakeTerminal();
+    const reader = new LineReader(input, output, proc);
+    const asked = reader.ask({ question: 'Resend API key: ', hidden: true });
+    input.write(`re_FAKE_partial${key}`);
+    assert.deepEqual(await outcome(asked), { error: 'cancelled' }, `key ${JSON.stringify(key)} cancels`);
+    assert.deepEqual(raw, [true, false], `key ${JSON.stringify(key)} ends raw mode false`);
+    assert.equal(input.isRaw, false);
+    reader.close();
+  }
+});
+
+test('an arrow key or other ESC sequence does not change the hidden value', async () => {
+  const { input, output, proc } = fakeTerminal();
+  const reader = new LineReader(input, output, proc);
+  const asked = reader.ask({ question: 'Resend API key: ', hidden: true });
+  // Up, Left (CSI), Home (SS3), Delete (CSI ~), split across chunks, and a lone ESC + x.
+  input.write('re_\u001b[A\u001b[DFAKE\u001bOH_');
+  input.write('\u001b[');
+  input.write('3~arrow\u001bx\r');
+  assert.deepEqual(await outcome(asked), { value: 're_FAKE_arrow' });
+  reader.close();
+});
+
+test('the terminal leaves raw mode when the process exits or gets SIGTERM mid-prompt', async () => {
+  const exiting = fakeTerminal();
+  const reader = new LineReader(exiting.input, exiting.output, exiting.proc);
+  const asked = reader.ask({ question: 'Resend API key: ', hidden: true });
+  assert.equal(exiting.proc.listenerCount('exit'), 1, 'an exit listener is set while raw');
+  exiting.proc.emit('exit', 1);
+  assert.deepEqual(exiting.raw, [true, false]);
+  assert.equal((await outcome(asked)).error, 'cancelled');
+  reader.close();
+
+  const terminated = fakeTerminal();
+  const second = new LineReader(terminated.input, terminated.output, terminated.proc);
+  const pending = second.ask({ question: 'Resend API key: ', hidden: true });
+  terminated.proc.emit('SIGTERM');
+  assert.deepEqual(terminated.raw, [true, false]);
+  assert.deepEqual(terminated.proc.killed, [[4242, 'SIGTERM']], 'SIGTERM is raised again so the process still ends');
+  assert.equal((await outcome(pending)).error, 'cancelled');
+  second.close();
+
+  // A prompt that ends normally takes its listeners with it.
+  const normal = fakeTerminal();
+  const third = new LineReader(normal.input, normal.output, normal.proc);
+  const done = third.ask({ question: 'Resend API key: ', hidden: true });
+  normal.input.write('re_FAKE_value\r');
+  assert.deepEqual(await outcome(done), { value: 're_FAKE_value' });
+  assert.equal(normal.proc.listenerCount('exit'), 0);
+  assert.equal(normal.proc.listenerCount('SIGTERM'), 0);
+  third.close();
 });

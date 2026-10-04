@@ -113,14 +113,23 @@ export function schemaTables(sql) {
  * Reads one line per question from a stream. A hidden question on a terminal
  * turns echo off (raw mode) and prints nothing as keys are typed; piped input
  * is read line by line, with what follows a newline kept for the next one.
+ * In raw mode Ctrl-C and Ctrl-D cancel, and the terminal leaves raw mode on
+ * process exit or SIGTERM too. ESC sequences (arrow keys) are dropped.
  */
 export class LineReader {
-  constructor(input, output) {
+  constructor(input, output, proc = process) {
     this.input = input;
     this.output = output;
+    this.proc = proc;
     this.buffer = "";
     this.waiting = null;
     this.ended = false;
+    this.escape = null; // null, "start", "csi" or "ss3" inside an ESC sequence
+    this.onExit = () => this.cancel();
+    this.onTerm = () => {
+      this.cancel();
+      proc.kill(proc.pid, "SIGTERM");
+    };
     this.onData = (chunk) => this.take(String(chunk));
     this.onEnd = () => {
       this.ended = true;
@@ -133,8 +142,9 @@ export class LineReader {
 
   take(text) {
     for (const ch of text) {
-      if (this.waiting?.raw && ch === "\u0003") {
-        this.fail(new Error("cancelled"));
+      if (this.inEscape(ch)) continue;
+      if (this.waiting?.raw && (ch === "\u0003" || ch === "\u0004")) {
+        this.cancel();
         return;
       }
       if (this.waiting?.raw && (ch === "\u007f" || ch === "\b")) {
@@ -146,6 +156,33 @@ export class LineReader {
       this.lastWasCR = ch === "\r";
     }
     this.settle();
+  }
+
+  // True when ch belongs to an ESC sequence: ESC [ params final (CSI), ESC O x
+  // (SS3) or ESC x (Alt). A line end inside one is still a line end.
+  inEscape(ch) {
+    const code = ch.charCodeAt(0);
+    if (ch === "\u001b") {
+      this.escape = "start";
+      return true;
+    }
+    const state = this.escape;
+    if (!state || ch === "\r" || ch === "\n") {
+      this.escape = null;
+      return false;
+    }
+    if (state === "start" && (ch === "[" || ch === "O")) {
+      this.escape = ch === "[" ? "csi" : "ss3";
+      return true;
+    }
+    // CSI parameter and intermediate bytes (0x20-0x3f) keep it open; anything else ends it.
+    if (state === "csi" && code >= 0x20 && code <= 0x3f) return true;
+    this.escape = null;
+    return true;
+  }
+
+  cancel() {
+    if (this.waiting) this.fail(new Error("cancelled"));
   }
 
   settle() {
@@ -166,7 +203,11 @@ export class LineReader {
   finish() {
     const w = this.waiting;
     this.waiting = null;
-    if (w.raw) this.input.setRawMode(false);
+    if (w.raw) {
+      this.input.setRawMode(false);
+      this.proc.off("exit", this.onExit);
+      this.proc.off("SIGTERM", this.onTerm);
+    }
     if (w.hidden) this.output.write("\n");
     this.input.pause();
     return w;
@@ -176,7 +217,11 @@ export class LineReader {
     this.output.write(question);
     return new Promise((resolve, reject) => {
       const raw = hidden && this.input.isTTY === true && typeof this.input.setRawMode === "function";
-      if (raw) this.input.setRawMode(true);
+      if (raw) {
+        this.input.setRawMode(true);
+        this.proc.once("exit", this.onExit);
+        this.proc.once("SIGTERM", this.onTerm);
+      }
       this.waiting = { resolve, reject, hidden, raw };
       this.input.resume();
       this.settle();
