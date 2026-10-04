@@ -72,7 +72,10 @@ export async function runParentShapeLive(CASES, checkParentDraft) {
 
   const results = [];
   const drafts = {};
-  for (const c of CASES) {
+  // Each case is a full draft call, so a line per case shows the run moving.
+  console.log(`Drafting ${CASES.length} notes, one after another. The table prints when the last lands.`);
+  for (const [i, c] of CASES.entries()) {
+    const started = Date.now();
     try {
       const { draft, voice } = await draftCase(c);
       drafts[c.id] = draft;
@@ -81,6 +84,8 @@ export async function runParentShapeLive(CASES, checkParentDraft) {
     } catch (err) {
       results.push({ case: c.id, pass: false, voice: Boolean(styleBlock), fails: `draft failed: ${err && err.message}` });
     }
+    const last = results[results.length - 1];
+    console.log(`${i + 1} of ${CASES.length}: ${c.id}, ${last.pass ? 'pass' : 'fail'}, ${Math.round((Date.now() - started) / 1000)}s`);
   }
 
   console.table(results);
