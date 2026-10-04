@@ -29,8 +29,9 @@ The script first prints the wrangler version it found (`wrangler --version`) and
 4. The alert address (`HZ_ALERT_TO`), mailed once a day when sign-ups reach half the daily cap.
 5. The sign-up link base (`HZ_LINK_BASE`): the https page that reads the code after `#`.
 6. The reopen link base (`HZ_REOPEN_BASE`): the https page that reads the reopen token after `#`, mailed when a code path closes. The script checks it with the Worker's own check (`reopenBaseOk` in `src/unlock.js`): https, no `?` and no `#`.
-7. The mail plan's daily send limit (`HZ_CODES_PER_DAY`, blank keeps 3000).
-8. Whether the rate rule is in place. The script prints the exact clicks for it before the route goes live, so you can add it in the dashboard while it waits.
+7. The PIN reset link base (`HZ_RESET_BASE`): the page on the device that reads the emailed reset code after `#`, mailed when a device asks to reset a forgotten app PIN. Checked the same way: https, no `?` and no `#`.
+8. The mail plan's daily send limit (`HZ_CODES_PER_DAY`, blank keeps 3000).
+9. Whether the rate rule is in place. The script prints the exact clicks for it before the route goes live, so you can add it in the dashboard while it waits.
 
 A bad answer is asked again, up to 3 times. All answers are asked before anything is created.
 
@@ -39,7 +40,7 @@ A bad answer is asked again, up to 3 times. All answers are asked before anythin
 1. Finds the D1 database `horae-zone`, or creates it (from an empty temp folder, so wrangler cannot edit `wrangler.toml`).
 2. Writes `wrangler.deploy.toml` next to `wrangler.toml`: the real database id, the route `horae-zone.nooutco.me` as a Custom domain (always proxied, so `cf-connecting-ip` comes from the Cloudflare edge), `workers_dev = false`, and the daily limit when you gave one. It holds no secret and is gitignored. The committed `wrangler.toml` keeps its zero id and no route (`test/config.test.mjs`).
 3. Applies `schema.sql` to the remote database. Every statement is `IF NOT EXISTS`, so a rerun changes nothing.
-4. Reads the Worker's secret list (names only), then deploys the Worker and puts each secret with `wrangler secret put`, the value on stdin: `HZ_ACCOUNT_KEY`, `HZ_SEED_KEY`, `HZ_TICKET_KEY`, `RESEND_KEY`, `HZ_MAIL_FROM`, `HZ_ALERT_TO`, `HZ_LINK_BASE`, `HZ_REOPEN_BASE`. A key already set is kept (below). A list the script cannot read stops the run before the deploy, with the Worker and its secrets untouched ("could not read the secret list; the Worker and its secrets were not changed"); only wrangler's answer that the Worker is not found, on a first deploy, reads as no secrets yet.
+4. Reads the Worker's secret list (names only), then deploys the Worker and puts each secret with `wrangler secret put`, the value on stdin: `HZ_ACCOUNT_KEY`, `HZ_SEED_KEY`, `HZ_TICKET_KEY`, `RESEND_KEY`, `HZ_MAIL_FROM`, `HZ_ALERT_TO`, `HZ_LINK_BASE`, `HZ_REOPEN_BASE`, `HZ_RESET_BASE`. A key already set is kept (below). A list the script cannot read stops the run before the deploy, with the Worker and its secrets untouched ("could not read the secret list; the Worker and its secrets were not changed"); only wrangler's answer that the Worker is not found, on a first deploy, reads as no secrets yet.
 5. Skips the owner's admin role (A5c is not built yet) and says so.
 6. Checks everything and prints the checklist.
 
@@ -63,7 +64,7 @@ CHECKLIST
   PASS    Database present                   created
   PASS    Worker deployed                    horae-zone, route horae-zone.nooutco.me (Custom domain)
   SKIPPED Owner as administrator             A5c not built (see step 6)
-  PASS    Schema applied                     18 tables present
+  PASS    Schema applied                     19 tables present
   PASS    Secret HZ_ACCOUNT_KEY              set (name only)
   ...
   PASS    Cron trigger                       0 * * * * (hourly purge)

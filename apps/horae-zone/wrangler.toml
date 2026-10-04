@@ -8,8 +8,8 @@
 # SECRETS are never in this file. The deploy script (bin/deploy.mjs, plan §4,
 # DEPLOY.md) sets them with `wrangler secret put`, each value on stdin:
 # HZ_ACCOUNT_KEY (generated; the PIN pepper, ticket key and sealing keys
-# derive from it), RESEND_KEY (hidden prompt), HZ_MAIL_FROM, HZ_ALERT_TO and
-# HZ_LINK_BASE. HZ_CODES_PER_DAY, the mail plan's daily limit, goes in the
+# derive from it), RESEND_KEY (hidden prompt), HZ_MAIL_FROM, HZ_ALERT_TO,
+# HZ_LINK_BASE, HZ_REOPEN_BASE and HZ_RESET_BASE. HZ_CODES_PER_DAY, the mail plan's daily limit, goes in the
 # deploy-only config when the plan's limit is not the default 3000.
 
 name = "horae-zone"

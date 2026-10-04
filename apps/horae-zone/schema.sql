@@ -295,3 +295,13 @@ CREATE TABLE IF NOT EXISTS pin_limits (
 );
 
 CREATE INDEX IF NOT EXISTS pin_limits_reopen_hash ON pin_limits (reopen_hash);
+
+-- The forgotten-PIN reset's emailed single-use code (plan §3.4 "Forgotten
+-- PIN"), one live per account: a newer mail replaces it, a reset that uses
+-- it deletes it, and rows past expires_at are purged hourly. Only its keyed
+-- digest is kept; the code itself rides in the mailed link's fragment.
+CREATE TABLE IF NOT EXISTS pin_reset (
+  account_id   TEXT    PRIMARY KEY,
+  digest       TEXT    NOT NULL,
+  expires_at   INTEGER NOT NULL
+);

@@ -61,6 +61,7 @@ export const CATALOG = Object.freeze([
   { name: "HZ_ALERT_TO", source: "asked", store: "secret", sensitive: true, label: "Alert address (mailed once a day when sign-ups reach half the daily cap)", check: isAddress, rule: "one address" },
   { name: "HZ_LINK_BASE", source: "asked", store: "secret", sensitive: false, label: "Sign-up link base (the https page that reads the code after #)", check: isLinkBase, rule: "https, no ? and no #" },
   { name: "HZ_REOPEN_BASE", source: "asked", store: "secret", sensitive: false, label: "Reopen link base (the https page that reads the reopen token after #, mailed when a code path closes)", check: reopenBaseOk, rule: "https, no ? and no #" },
+  { name: "HZ_RESET_BASE", source: "asked", store: "secret", sensitive: false, label: "PIN reset link base (the page on the device that reads the emailed reset code after #)", check: reopenBaseOk, rule: "https, no ? and no #" },
   { name: "HZ_CODES_PER_DAY", source: "asked", store: "var", sensitive: false, optional: true, label: "Mail plan daily send limit (blank keeps the default 3000)", check: (v) => /^[1-9]\d{0,6}$/.test(v), rule: "a whole number from 1" },
 ]);
 

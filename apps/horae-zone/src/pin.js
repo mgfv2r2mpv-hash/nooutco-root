@@ -81,9 +81,9 @@ export const PIN_LIMITS = Object.freeze({
 
 export const GRANT_LABEL = "horae-zone-offline-grant-v1";
 
-const PIN = /^[0-9]{6}$/;
+export const PIN = /^[0-9]{6}$/;
 const JTI = /^[A-Za-z0-9_-]{22}$/;
-const MAX_TICKET = 1024;
+export const MAX_TICKET = 1024;
 const SIG_BYTES = 64;
 const enc = new TextEncoder();
 
@@ -109,7 +109,7 @@ function claimsOf(payload) {
 
 // The ticket's claims when it is the service's, unexpired, and names this
 // device and its account; otherwise null. Spends nothing.
-async function readTicket(env, ticket, device, now) {
+export async function readTicket(env, ticket, device, now) {
   const [payload, sigText, ...rest] = ticket.split(".");
   if (rest.length > 0 || !payload || !sigText) return null;
   const claims = claimsOf(payload);
@@ -136,7 +136,7 @@ async function ticketOrRefuse(env, ticket, device, now) {
 
 // Spends the ticket's jti for its live device; its trigger (schema.sql) moves
 // the device's proved_at to the ticket's `at` in the same write.
-async function spendTicket(db, device, claims) {
+export async function spendTicket(db, device, claims) {
   const spent = await db.prepare(
     `INSERT INTO spent_ticket (jti, account_id, device_id, at, expires_at) SELECT ?, ?, ?, ?, ? WHERE ${LIVE_DEVICE}
      ON CONFLICT (jti) DO NOTHING RETURNING jti`,
@@ -192,7 +192,7 @@ async function opened(db, device, signKey) {
 }
 
 // The PIN rules' answer as a refusal: shape, or too-easy with its one sentence.
-function allowedOrRefuse(pinRules, pin) {
+export function allowedOrRefuse(pinRules, pin) {
   const allowed = pinRules.pinAllowed(pin);
   if (allowed.ok) return;
   if (allowed.reason === "too-easy") throw new Refusal("too-easy", 400, undefined, allowed.message);
@@ -260,7 +260,7 @@ function changeBody(body) {
 }
 
 // Whether `verifier` is the account's current PIN or one still locked from reuse.
-async function lockedForReuse(db, accountId, verifier, row, now) {
+export async function lockedForReuse(db, accountId, verifier, row, now) {
   if (sameHex(verifier, row.verifier)) return true;
   const locks = await db.prepare("SELECT verifier FROM pin_lock WHERE account_id = ? AND locked_until > ?").bind(accountId, now).all();
   return (locks.results ?? []).some((lock) => sameHex(verifier, lock.verifier));
