@@ -6,6 +6,10 @@
  *   node bin/deploy.mjs             deploy, with prompts
  *   node bin/deploy.mjs --dry-run   print every step and command; nothing is
  *                                   run, asked, written or fetched
+ *   node bin/deploy.mjs --check-only
+ *                                   Step 7 alone, after a deploy: the checks
+ *                                   and the checklist; asks nothing, needs no
+ *                                   secret, changes nothing
  *   --new-account-key               replace an HZ_ACCOUNT_KEY and HZ_SEED_KEY
  *                                   already set (every stored account and
  *                                   enrolled authenticator code becomes
@@ -115,6 +119,8 @@ const SKIP_RULE = [
   "  Place at: First. Deploy.",
 ];
 
+const CHECK_AGAIN = "node bin/deploy.mjs --check-only";
+
 class Stop extends Error {}
 
 function makeContext(deps) {
@@ -151,8 +157,8 @@ async function wranglerVersion(ctx) {
   ctx.say(`wrangler ${version || "(no version printed)"}`);
 }
 
-async function confirmAccount(ctx, deps) {
-  ctx.say("Step 1. Cloudflare account");
+// The accounts wrangler is logged in to; none stops the run.
+async function loggedInAccounts(ctx) {
   let who;
   try {
     who = parseJson(await ctx.wrangler(COMMANDS.whoami));
@@ -161,6 +167,17 @@ async function confirmAccount(ctx, deps) {
   }
   const accounts = Array.isArray(who?.accounts) ? who.accounts.filter((a) => a && a.id && a.name) : [];
   if (who?.loggedIn === false || accounts.length === 0) throw new Stop('Not logged in to Cloudflare: run "wrangler login", then this command again.');
+  return accounts;
+}
+
+function useAccount(ctx, account, how) {
+  ctx.env.CLOUDFLARE_ACCOUNT_ID = account.id;
+  ctx.item("Cloudflare account", "PASS", `${account.name} (${how})`);
+}
+
+async function confirmAccount(ctx, deps) {
+  ctx.say("Step 1. Cloudflare account");
+  const accounts = await loggedInAccounts(ctx);
   let chosen = null;
   if (accounts.length === 1) {
     ctx.say(`  Logged in to: ${accounts[0].name}`);
@@ -172,8 +189,17 @@ async function confirmAccount(ctx, deps) {
     if (/^\d+$/.test(pick) && Number(pick) >= 1 && Number(pick) <= accounts.length) chosen = accounts[Number(pick) - 1];
   }
   if (!chosen) throw new Stop("Account not confirmed. Nothing was created.");
-  ctx.env.CLOUDFLARE_ACCOUNT_ID = chosen.id;
-  ctx.item("Cloudflare account", "PASS", `${chosen.name} (confirmed by you)`);
+  useAccount(ctx, chosen, "confirmed by you");
+}
+
+// --check-only asks nothing: the only account wrangler sees, or the one
+// CLOUDFLARE_ACCOUNT_ID names.
+async function pickAccountQuietly(ctx, deps) {
+  const accounts = await loggedInAccounts(ctx);
+  if (accounts.length === 1) return useAccount(ctx, accounts[0], "the only account logged in");
+  const named = accounts.find((a) => a.id === deps.accountId);
+  if (!named) throw new Stop(`Logged in to more than one Cloudflare account: set CLOUDFLARE_ACCOUNT_ID to the one Horae Zone runs in, then run --check-only again. Nothing was changed.`);
+  useAccount(ctx, named, "named by CLOUDFLARE_ACCOUNT_ID");
 }
 
 const UNKNOWN_WORKER = `could not tell whether Worker ${WORKER} exists; nothing was changed; rerun once "wrangler ${COMMANDS.deployments.join(" ")}" answers`;
@@ -389,19 +415,27 @@ async function probeRoute(ctx, deps) {
 }
 
 // A challenged route prints the skip rule and offers a re-check of the route
-// alone, as often as it stays challenged; no other step runs again.
-async function checkRoute(ctx, deps) {
+// alone, as often as it stays challenged; no other step runs again. Under
+// --check-only nothing is asked: it says how to check again instead.
+async function checkRoute(ctx, deps, checkOnly) {
   for (;;) {
     const result = await probeRoute(ctx, deps);
     if (result.pass) return ctx.item("Route answers", "PASS", result.detail);
     if (!result.challenged) return ctx.item("Route answers", "FAIL", result.detail);
     for (const line of SKIP_RULE) ctx.say(`  ${line}`);
+    if (checkOnly) {
+      ctx.say(`  Once it is in place, check again with: ${CHECK_AGAIN}`);
+      return ctx.item("Route answers", "FAIL", result.detail);
+    }
     const again = (await deps.ask({ name: "confirm-recheck-route", question: "  Re-check the route now? (y) Type y once the skip rule is in place, anything else leaves it FAIL: ", hidden: false })).trim().toLowerCase();
     if (again !== "y") return ctx.item("Route answers", "FAIL", result.detail);
   }
 }
 
-async function runChecks(ctx, deps, deployOut, edgeConfirmed) {
+// After a deploy, deployOut and edgeConfirmed come from Steps 5 and 4. Under
+// --check-only there is no deploy output and no prompt, so the cron and the
+// rate rule are left to the dashboard and marked SKIPPED.
+async function runChecks(ctx, deps, { deployOut, edgeConfirmed, checkOnly = false }) {
   ctx.say("Step 7. Checks");
   for (const line of AFTER_DEPLOY_STEPS) ctx.say(`  ${line}`);
   const expected = schemaTables(deps.readFile(path.join(deps.root, "schema.sql")));
@@ -419,9 +453,14 @@ async function runChecks(ctx, deps, deployOut, edgeConfirmed) {
   } catch (err) {
     ctx.item("Secrets", "FAIL", err.message.split("\n")[0]);
   }
-  const cronSeen = new RegExp(`schedule:\\s*${CRON.replace(/\*/g, "\\*")}`).test(ctx.checked("the deploy", deployOut));
-  ctx.item("Cron trigger", cronSeen ? "PASS" : "FAIL", cronSeen ? `${CRON} (hourly purge)` : `no "schedule: ${CRON}" in the deploy output; check Triggers in the dashboard`);
-  await checkRoute(ctx, deps);
+  if (checkOnly) {
+    ctx.item("Cron trigger", "SKIPPED", `--check-only has no deploy output; check ${CRON} under Triggers in the dashboard`);
+  } else {
+    const cronSeen = new RegExp(`schedule:\\s*${CRON.replace(/\*/g, "\\*")}`).test(ctx.checked("the deploy", deployOut));
+    ctx.item("Cron trigger", cronSeen ? "PASS" : "FAIL", cronSeen ? `${CRON} (hourly purge)` : `no "schedule: ${CRON}" in the deploy output; check Triggers in the dashboard`);
+  }
+  await checkRoute(ctx, deps, checkOnly);
+  if (checkOnly) return ctx.item("Edge rule on /account and /signin", "SKIPPED", "--check-only asks nothing; the rate rule is in the dashboard (step 4, item 1)");
   ctx.item("Edge rule on /account and /signin", edgeConfirmed ? "PASS" : "FAIL", edgeConfirmed ? "confirmed by you" : "required at the first deploy: add it (step 4, item 1)");
 }
 
@@ -472,13 +511,14 @@ function dryRun(deps) {
 export async function deploy(deps) {
   const argv = deps.argv ?? [];
   if (argv.includes("--help")) {
-    deps.write("Usage: node bin/deploy.mjs [--dry-run] [--new-account-key] [--new-ticket-key]   (from apps/horae-zone; see DEPLOY.md)");
+    deps.write("Usage: node bin/deploy.mjs [--dry-run] [--check-only] [--new-account-key] [--new-ticket-key]   (from apps/horae-zone; see DEPLOY.md)");
     return { ok: true, checklist: [] };
   }
   const full = { readFile: (f) => readFileSync(f, "utf8"), generateTicketKey: ticketKeyJwk, ...deps };
   if (argv.includes("--dry-run")) return dryRun(full);
   const ctx = makeContext(full);
-  try {
+  if (argv.includes("--check-only")) return finish(ctx, () => checkOnly(ctx, full));
+  return finish(ctx, async () => {
     await wranglerVersion(ctx);
     await confirmAccount(ctx, full);
     await confirmWorker(ctx, full);
@@ -487,7 +527,27 @@ export async function deploy(deps) {
     const edgeConfirmed = await edgeRule(ctx, full);
     const deployOut = await deployWorker(ctx, full, values, { newAccountKey: argv.includes("--new-account-key"), newTicketKey: argv.includes("--new-ticket-key") });
     adminStep(ctx);
-    await runChecks(ctx, full, deployOut, edgeConfirmed);
+    await runChecks(ctx, full, { deployOut, edgeConfirmed });
+  });
+}
+
+// --check-only: Step 7 alone, after a deploy. It asks nothing and needs no
+// secret; every wrangler call it makes reads (whoami, the table query, the
+// secret names), and it writes no file.
+async function checkOnly(ctx, deps) {
+  await wranglerVersion(ctx);
+  try {
+    deps.readFile(path.join(deps.root, DEPLOY_CONFIG));
+  } catch {
+    throw new Stop(`${DEPLOY_CONFIG} is not here: the deploy writes it (step 3), so run node bin/deploy.mjs first. Nothing was changed.`);
+  }
+  await pickAccountQuietly(ctx, deps);
+  await runChecks(ctx, deps, { checkOnly: true });
+}
+
+async function finish(ctx, steps) {
+  try {
+    await steps();
   } catch (err) {
     const message = err instanceof Stop ? err.message : `unexpected error: ${err?.message ?? err}`;
     ctx.say(`STOPPED. ${message}`);
@@ -524,6 +584,7 @@ async function main() {
     root: path.join(path.dirname(fileURLToPath(import.meta.url)), ".."),
     run: runWrangler,
     ask: (q) => reader.ask(q),
+    accountId: process.env.CLOUDFLARE_ACCOUNT_ID,
     write: (text) => process.stdout.write(`${text}\n`),
     randomBytes: nodeRandomBytes,
     writeFile: (file, text) => writeFileSync(file, text, { mode: 0o600 }),

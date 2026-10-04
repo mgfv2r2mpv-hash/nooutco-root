@@ -413,6 +413,85 @@ test('a re-check still challenged asks again; a plain 403 offers no skip rule an
   assert.equal(plain.asked.some((a) => a.name === 'confirm-recheck-route'), false);
 });
 
+// --check-only after a deploy: wrangler.deploy.toml is on disk (a stand-in
+// here) and the Worker has every secret. `readFile` serves the stand-in and
+// reads every other file for real; `missingConfig` makes the config absent.
+function checkOnly({ wrangler, missingConfig = false, ...rest } = {}) {
+  const h = harness({ argv: ['--check-only'], wrangler: wrangler ?? mockWrangler({ dbPresent: true, existingSecrets: SECRET_NAMES }), ...rest });
+  h.deps.readFile = (file) => {
+    if (path.basename(file) !== 'wrangler.deploy.toml') return readFileSync(file, 'utf8');
+    if (missingConfig) throw Object.assign(new Error(`ENOENT: no such file or directory, open '${file}'`), { code: 'ENOENT' });
+    return `name = "horae-zone"\n[[d1_databases]]\ndatabase_id = "${FAKE_DB_ID}"\n`;
+  };
+  return h;
+}
+// The only wrangler calls --check-only may make: none writes anything.
+const READ_ONLY = ['--version', 'whoami --json', `d1 execute horae-zone --remote --json --command SELECT name FROM sqlite_master WHERE type='table' --config wrangler.deploy.toml`, 'secret list --format json --config wrangler.deploy.toml'];
+
+test('--check-only runs only the Step 7 checks: it asks nothing and calls no write command', async () => {
+  const h = checkOnly();
+  const result = await deploy(h.deps);
+  const out = h.output();
+  assert.deepEqual(h.asked, [], 'no prompt at all');
+  assert.equal(h.files.size, 0, 'no file written');
+  for (const c of h.wrangler.calls) assert.ok(READ_ONLY.includes(c.args.join(' ')), `--check-only called a non-read command: wrangler ${c.args.join(' ')}`);
+  for (const c of h.wrangler.calls) assert.equal(c.input ?? '', '', 'no stdin to any wrangler call');
+  const did = (prefix) => h.wrangler.calls.some((c) => c.args.join(' ').startsWith(prefix));
+  for (const write of ['secret put', 'deploy', 'd1 create', 'deployments']) assert.equal(did(write), false, `no ${write}`);
+  assert.ok(did('d1 execute horae-zone --remote --json --command') && did('secret list'), 'the schema and secret reads ran');
+  for (const n of [1, 2, 3, 4, 5, 6]) assert.equal(out.includes(`Step ${n}.`), false, `no Step ${n}`);
+  assert.match(out, /Step 7\. Checks/);
+  assert.match(out, /Check after the deploy/);
+  for (const c of h.wrangler.calls.filter((c) => c.args[0] !== '--version' && c.args[0] !== 'whoami')) assert.equal(c.env.CLOUDFLARE_ACCOUNT_ID, FAKE_ACCOUNT.id);
+  assert.equal(statusOf(result, 'Cloudflare account'), 'PASS');
+  assert.equal(statusOf(result, 'Schema applied'), 'PASS');
+  for (const name of SECRET_NAMES) assert.equal(statusOf(result, `Secret ${name}`), 'PASS');
+  assert.equal(statusOf(result, 'Route answers'), 'PASS');
+  assert.equal(statusOf(result, 'Cron trigger'), 'SKIPPED');
+  assert.equal(statusOf(result, 'Edge rule'), 'SKIPPED');
+  assert.equal(result.ok, true, out);
+  assertNoSecretAnywhere(h);
+});
+
+test('--check-only on a challenged route prints the skip rule and asks nothing', async () => {
+  // No recheck answer: the harness throws on the prompt, so a FAIL here means none was asked.
+  const h = checkOnly({ route: CHALLENGED });
+  const result = await deploy(h.deps);
+  assert.deepEqual(h.asked, []);
+  const [item] = routeItems(result);
+  assert.equal(item.status, 'FAIL');
+  assert.match(item.detail, /Cloudflare's bot protection is answering before the Worker/);
+  assertSkipRule(h.output());
+  assert.match(h.output(), /node bin\/deploy\.mjs --check-only/, 'says how to check again');
+  assert.equal(h.fetched.length, 1);
+});
+
+test('--check-only picks the account without asking, and stops plainly when it cannot', async () => {
+  const other = { id: 'acc1111111111111111111111111fake', name: 'Second Test Account' };
+  const two = () => mockWrangler({ dbPresent: true, existingSecrets: SECRET_NAMES, accounts: [FAKE_ACCOUNT, other] });
+
+  const many = checkOnly({ wrangler: two() });
+  const r1 = await deploy(many.deps);
+  assert.deepEqual(many.asked, []);
+  assert.equal(r1.ok, false);
+  assert.match(many.output(), /more than one Cloudflare account: set CLOUDFLARE_ACCOUNT_ID/);
+  assert.deepEqual(many.wrangler.calls.map((c) => c.args.join(' ')), ['--version', 'whoami --json']);
+
+  const named = checkOnly({ wrangler: two() });
+  named.deps.accountId = other.id;
+  const r2 = await deploy(named.deps);
+  assert.deepEqual(named.asked, []);
+  assert.equal(r2.ok, true, named.output());
+  assert.match(r2.checklist.find((i) => i.item === 'Cloudflare account').detail, /Second Test Account/);
+  assert.ok(named.wrangler.calls.filter((c) => c.args[0] === 'secret').every((c) => c.env.CLOUDFLARE_ACCOUNT_ID === other.id));
+
+  const missing = checkOnly({ missingConfig: true });
+  const r3 = await deploy(missing.deps);
+  assert.equal(r3.ok, false);
+  assert.match(missing.output(), /wrangler\.deploy\.toml is not here/);
+  assert.deepEqual(missing.wrangler.calls.map((c) => c.args.join(' ')), ['--version'], 'stops before any account call');
+});
+
 test('NEGATIVE CONTROL: a planted token in a check\'s output is caught', async () => {
   const planted = JSON.stringify([...SECRET_NAMES.map((name) => ({ name, type: 'secret_text' })), { name: 'LEAK', value: GENERATED }]);
   const h = harness({ wrangler: mockWrangler({ secretListOut: planted }) });
