@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { createHmac } from 'node:crypto';
+import worker from '../_worker.js';
 
 // Worker-level tests for the style-card routes and the correction write-through.
 //
@@ -79,7 +80,7 @@ test.describe('fail-open when the profile store is unavailable', () => {
     expect(body.block).toBe('');
   });
 
-  test('an admin session has no technician profile and is told so plainly', async ({ request }) => {
+  test('an admin session with no profile store gets an empty card, not an error', async ({ request }) => {
     const payload = { role: 'admin', exp: Math.floor(Date.now() / 1000) + 3600 };
     const payloadStr = b64url(new TextEncoder().encode(JSON.stringify(payload)));
     const sig = b64url(createHmac('sha256', SECRET).update(payloadStr).digest());
@@ -179,5 +180,69 @@ test.describe('corrections reaching the audit endpoint', () => {
       data: { corrections: [{ feature: 'hedging', direction: 1 }] },
     });
     expect(res.status()).toBe(401);
+  });
+});
+
+/* THE ADMIN LOGIN READS WHAT IT LEARNS. Ruled 2026-10-04: the admin login is
+ * Kaleb's alone, so its style card is his. Before, an admin session's edits
+ * were learned under "admin" and its card read returned "no card", so what
+ * the tool learned from him never shaped his notes. These call the Worker's
+ * own fetch with a stand-in profile store, which records the profile each
+ * request names: the read, the mute and the learning must all name the same
+ * one. */
+test.describe('an admin session reads the profile it learns under', () => {
+  const sign = (payload) => {
+    const payloadStr = b64url(new TextEncoder().encode(JSON.stringify(payload)));
+    return `${payloadStr}.${b64url(createHmac('sha256', SECRET).update(payloadStr).digest())}`;
+  };
+  const ADMIN = () => sign({ role: 'admin', exp: Math.floor(Date.now() / 1000) + 3600 });
+
+  function stubEnv() {
+    const calls = [];
+    const PROFILE = {
+      fetch: async (u, init) => {
+        calls.push({ url: String(u), body: init && init.body ? JSON.parse(init.body) : null });
+        return new Response(JSON.stringify({ rules: [{ feature: 'hedging' }], block: 'STYLE', shapeBlock: '', stored: 1 }), {
+          status: 200, headers: { 'content-type': 'application/json' },
+        });
+      },
+    };
+    return { calls, env: { ADMIN_SECRET: SECRET, PROFILE } };
+  }
+  const call = async (path, token, init = {}) => {
+    const { calls, env } = stubEnv();
+    const res = await worker.fetch(new Request(`https://tools.test${path}`, {
+      ...init, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    }), env, { waitUntil() {} });
+    return { res, calls };
+  };
+
+  test('the card read asks for "admin"', async () => {
+    const { res, calls } = await call('/api/style-card.js', ADMIN());
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ available: true, block: 'STYLE' });
+    expect(calls).toHaveLength(1);
+    expect(new URL(calls[0].url).searchParams.get('kid')).toBe('admin');
+  });
+
+  test('the mute names "admin" instead of refusing', async () => {
+    const { res, calls } = await call('/api/style-card/mute.js', ADMIN(), {
+      method: 'POST', body: JSON.stringify({ feature: 'hedging', muted: true }),
+    });
+    expect(res.status).toBe(200);
+    expect(calls[0].body.kid).toBe('admin');
+  });
+
+  test('the learning names "admin" too, so read and write agree', async () => {
+    const { res, calls } = await call('/api/audit.js', ADMIN(), {
+      method: 'POST', body: JSON.stringify({ corrections: [{ feature: 'hedging', direction: 1 }] }),
+    });
+    expect(res.status).toBe(200);
+    expect(calls.find((c) => c.url.includes('/events')).body.kid).toBe('admin');
+  });
+
+  test('a technician still reads only their own card', async () => {
+    const { calls } = await call('/api/style-card.js?kid=admin', tokenFor({ kid: 'pw:tech-1' }));
+    expect(new URL(calls[0].url).searchParams.get('kid')).toBe('pw:tech-1');
   });
 });
