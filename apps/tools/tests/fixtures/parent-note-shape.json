@@ -12,7 +12,7 @@
         "goalNames": ["One-Step Instructions", "Climbing", "Prompt to Sit", "Prompt to Go to Bathroom", "Use Timer", "Prompt FCR"],
         "goalCount": 4,
         "forbidCountClaims": ["all three"],
-        "promptLevelWithCount": { "count": "2 of 3", "level": "physical" },
+        "promptLevelWithCount": { "count": ["2 of 3", "2/3", "2 trials", "two trials", "other 2", "other two"], "level": "physical" },
         "forbidPhrases": ["Parent Goals prompted", "met with Parent Goals", "performance feedback delivered", "physical prompt was required on the other."],
         "individualsInclude": ["Parent/Caregiver", "Client", "Technician"],
         "caregiverResponse": "Parent/Family is trying to learn new strategies, but there are some small barriers to generalization.",
@@ -30,6 +30,7 @@
         "forbidCountClaims": ["all two", "both parent goals"],
         "forbidPhrases": ["performance feedback delivered"],
         "individualsInclude": ["Parent/Caregiver", "Client", "Technician"],
+        "individualsExclude": ["Teacher"],
         "caregiverResponse": "Parent/Family is trying to learn new strategies, but there are some small barriers to generalization.",
         "followupItems": [1, 3],
         "followupMentions": ["teacher"]
@@ -54,11 +55,12 @@
       "expect": {
         "goalNames": ["Point to Next Picture", "Transitions Between Activities"],
         "goalCount": 2,
+        "forbidPhrases": ["3 of 1", "3 of 0"],
         "individualsInclude": ["Parent/Caregiver", "Client"],
         "individualsExclude": ["Technician"],
         "caregiverResponse": "Parent/Family is trying to learn new strategies, but there are some small barriers to generalization.",
         "followupItems": [1, 3],
-        "followupMentions": ["BT"]
+        "followupMentions": [["BT", "technician"]]
       }
     }
   ]
