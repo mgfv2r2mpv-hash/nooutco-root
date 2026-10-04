@@ -18,9 +18,15 @@
  * row or log carries it. Without a usable seed key the route answers
  * unavailable before it spends the ticket or stores anything.
  *
- * Every other live device of the account is marked pending at enrolment, and
- * a device registered later starts pending (src/devices.js): a pending device
- * reaches only /nonce and /unlock until a code it proves is accepted.
+ * SOLE DEVICE (A5 security review, item 1). Enrolment succeeds only for the
+ * account's sole live device, checked in the ticket spend and again in the
+ * seed insert, so a device registered in between still blocks it. A second
+ * live device answers enrol-blocked (and a refused spend leaves the ticket
+ * live). A password thief who registers a device of its own therefore cannot
+ * enrol first, and until enrolment no device is pending, so either device can
+ * remove the other. A device registered after enrolment starts pending
+ * (src/devices.js): it reaches only /nonce and /unlock until a code it
+ * proves is accepted.
  */
 import { base32Encode, otpauthUri } from "../../../packages/account-engine/src/totp.mjs";
 import { Refusal, LIVE_DEVICE, b64url, fromB64url, findDevice } from "./checks.js";
@@ -35,6 +41,14 @@ const SEED_BYTES = 20;
 const NONCE_BYTES = 12;
 const MIN_SECRET_BYTES = 32;
 const enc = new TextEncoder();
+
+// A condition bound to an account id: the account has exactly one live
+// device. Beside LIVE_DEVICE for the signing device, that device is it.
+const SOLE_LIVE = "(SELECT COUNT(*) FROM device WHERE account_id = ? AND removed_at IS NULL) = 1";
+
+async function isSoleLive(db, accountId) {
+  return Boolean(await db.prepare(`SELECT 1 AS yes WHERE ${SOLE_LIVE}`).bind(accountId).first());
+}
 
 function readSecret(text) {
   try {
@@ -84,25 +98,27 @@ export async function enrolOtp({ db, device, body, now, env }) {
   // and the spend and the insert re-check the device is not removed (L2).
   const own = await db.prepare("SELECT sign_key, agree_key FROM device WHERE id = ? AND removed_at IS NULL").bind(device.id).first();
   if (!own) throw new Refusal("no-device", 401);
+  // Both writes also require the device to be the account's sole live one
+  // (A5 security review, item 1).
   const spent = await db.prepare(
-    `UPDATE ticket SET used = 1 WHERE digest = ? AND account_id = ? AND key_digest = ? AND used = 0 AND expires_at > ? AND ${LIVE_DEVICE} RETURNING account_id`,
-  ).bind(await keys.ticketDigest(body.ticket), device.account_id, await deviceKeyDigest(own.sign_key, own.agree_key), now, device.id).first();
+    `UPDATE ticket SET used = 1 WHERE digest = ? AND account_id = ? AND key_digest = ? AND used = 0 AND expires_at > ? AND ${LIVE_DEVICE} AND ${SOLE_LIVE} RETURNING account_id`,
+  ).bind(await keys.ticketDigest(body.ticket), device.account_id, await deviceKeyDigest(own.sign_key, own.agree_key), now, device.id, device.account_id).first();
   if (!spent) {
     await findDevice(db, device.id); // refuses no-device when the removal is what stopped it
+    if (!(await isSoleLive(db, device.account_id))) throw new Refusal("enrol-blocked", 409);
     throw new Refusal("bad-ticket", 401);
   }
   const seed = crypto.getRandomValues(new Uint8Array(SEED_BYTES));
   const box = await sealSeed(boxKey, device.account_id, seed);
   const made = await db.prepare(
-    `INSERT INTO otp (account_id, box, last_step, created_at) SELECT ?, ?, 0, ? WHERE ${LIVE_DEVICE} ON CONFLICT (account_id) DO NOTHING RETURNING account_id`,
-  ).bind(device.account_id, box, now, device.id).first();
+    `INSERT INTO otp (account_id, box, last_step, created_at) SELECT ?, ?, 0, ? WHERE ${LIVE_DEVICE} AND ${SOLE_LIVE} ON CONFLICT (account_id) DO NOTHING RETURNING account_id`,
+  ).bind(device.account_id, box, now, device.id, device.account_id).first();
   if (!made) {
     seed.fill(0);
     await findDevice(db, device.id);
-    throw new Refusal("enrolled", 409);
+    const enrolled = await db.prepare("SELECT 1 AS yes FROM otp WHERE account_id = ?").bind(device.account_id).first();
+    throw enrolled ? new Refusal("enrolled", 409) : new Refusal("enrol-blocked", 409);
   }
-  await db.prepare("UPDATE device SET pending = 1 WHERE account_id = ? AND id != ? AND removed_at IS NULL")
-    .bind(device.account_id, device.id).run();
   const json = { secret: base32Encode(seed), uri: otpauthUri({ key: seed, ...OTP_LABEL }) };
   seed.fill(0);
   return { status: 200, json };

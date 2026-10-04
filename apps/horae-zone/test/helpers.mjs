@@ -177,13 +177,21 @@ export async function registeredDevice(h, email, { fresh = true } = {}) {
 // before the handler's own writes (security review L2). `nonces: false`
 // stamps the row only, so the nonce spend is what has to notice.
 export function removedMidFlight(h, id, after, { nonces = true } = {}) {
+  landsMidFlight(h, after, (db) => {
+    if (nonces) db.sqlite.prepare('UPDATE nonce SET used = 1 WHERE device_id = ?').run(id);
+    db.sqlite.prepare('UPDATE device SET removed_at = ? WHERE id = ?').run(h.clock.ms, id);
+  });
+}
+
+// The database the handler sees, with `change(db)` run once, the moment a
+// statement starting with `after` has run (a removal, a registration).
+export function landsMidFlight(h, after, change) {
   const db = h.db;
   let landed = false;
   const land = () => {
     if (landed) return;
     landed = true;
-    if (nonces) db.sqlite.prepare('UPDATE nonce SET used = 1 WHERE device_id = ?').run(id);
-    db.sqlite.prepare('UPDATE device SET removed_at = ? WHERE id = ?').run(h.clock.ms, id);
+    change(db);
   };
   const wrap = (s) => ({
     ...s,
