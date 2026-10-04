@@ -19,8 +19,9 @@
  * y before replacing a Worker already named horae-zone there; ask the values only the owner has
  * (the Resend key on a hidden prompt); create or find the D1 database, write
  * the gitignored wrangler.deploy.toml and apply schema.sql (idempotent); show
- * the edge rule clicks; deploy; put each secret through stdin; check
- * everything and print a PASS/FAIL checklist.
+ * the rate rule clicks; deploy; put each secret through stdin; check
+ * everything (with the hostname checks to make once the Worker exists) and
+ * print a PASS/FAIL checklist.
  *
  * A secret value is never on a command line, in a child's environment, in a
  * file or in the output: every printed line passes through scrub(), which
@@ -79,7 +80,7 @@ const ADMIN_BUILT = Object.entries(ROUTES).some(([p, r]) => p.startsWith("/admin
 const ADMIN_NOTE = "A5c (admin) is not built: the /admin routes answer not-built, and the owner has no account until sign-up through this Worker. This step adds the owner's admin role once A5c lands.";
 
 const EDGE_STEPS = [
-  "Cloudflare steps this script cannot do safely (dashboard, account confirmed above):",
+  "Cloudflare step this script cannot do safely (dashboard, account confirmed above):",
   "  1. Rate rule on sign-up and sign-in (required at the first deploy, DESIGN-REVIEW A3 item 13):",
   `     dash.cloudflare.com > the nooutco.me zone > Security > Security rules > Create rule > Rate limiting rule`,
   `     (older dashboards: Security > WAF > Rate limiting rules > Create rule).`,
@@ -88,12 +89,17 @@ const EDGE_STEPS = [
   `     With the same characteristics: IP. When rate exceeds: 10 requests per 1 minute (or the shortest period`,
   `     the plan offers, with the count scaled down). Then take action: Block, for 10 minutes (or the plan's longest). Deploy.`,
   "     (Turnstile is not wired into the service, so the rate rule is the edge rule to add.)",
-  "  2. Hostname proxied, so cf-connecting-ip comes from the Cloudflare edge and cannot be set by a caller:",
-  `     Workers & Pages > horae-zone > Settings > Domains & Routes: ${HOSTNAME} listed as a Custom domain.`,
-  `     DNS > Records: the horae-zone row shows Proxy status "Proxied" (orange cloud). A Custom domain is always proxied;`,
-  "     the checklist also looks for the cf-ray header on the route's answer.",
-  "  3. Only if a managed rule or Bot Fight Mode challenges the app's calls (D-22): Security > Security rules > Create rule >",
-  `     Custom rule, expression (http.host eq "${HOSTNAME}"), action Skip, tick the managed rules and Super Bot Fight Mode.`,
+];
+
+// Printed in Step 7, once the Worker exists: before the deploy there is no
+// horae-zone under Workers & Pages to look in.
+const AFTER_DEPLOY_STEPS = [
+  "Check after the deploy (dashboard; the route check below looks for the cf-ray header too):",
+  "  Hostname proxied, so cf-connecting-ip comes from the Cloudflare edge and cannot be set by a caller:",
+  `    Workers & Pages > horae-zone > Settings > Domains & Routes: ${HOSTNAME} listed as a Custom domain.`,
+  `    DNS > Records: the horae-zone row shows Proxy status "Proxied" (orange cloud). A Custom domain is always proxied.`,
+  "  Only if a managed rule or Bot Fight Mode challenges the app's calls (D-22): Security > Security rules > Create rule >",
+  `    Custom rule, expression (http.host eq "${HOSTNAME}"), action Skip, tick the managed rules and Super Bot Fight Mode.`,
 ];
 
 class Stop extends Error {}
@@ -366,6 +372,7 @@ async function checkRoute(ctx, deps) {
 
 async function runChecks(ctx, deps, deployOut, edgeConfirmed) {
   ctx.say("Step 7. Checks");
+  for (const line of AFTER_DEPLOY_STEPS) ctx.say(`  ${line}`);
   const expected = schemaTables(deps.readFile(path.join(deps.root, "schema.sql")));
   try {
     const rows = parseJson(ctx.checked("the schema check", await ctx.wrangler(COMMANDS.tables)));
@@ -419,6 +426,7 @@ function dryRun(deps) {
     "Step 6. Owner as administrator",
     `  ${ADMIN_BUILT ? "set the owner's admin role" : `SKIPPED. ${ADMIN_NOTE}`}`,
     "Step 7. Checks, then the PASS/FAIL checklist",
+    ...AFTER_DEPLOY_STEPS.map((l) => `  ${l}`),
     `  ${show(COMMANDS.tables)}`,
     `    expect tables: ${schemaTables(deps.readFile(path.join(deps.root, "schema.sql"))).join(", ")}`,
     `  ${show(COMMANDS.secretList)}`,
