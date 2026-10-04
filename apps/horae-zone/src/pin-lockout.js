@@ -17,14 +17,15 @@
  * THE LINK is the code path's: /unlock/reopen finds the token's hash in
  * pin_limits and reopens PIN entry only, with its own note.
  *
- * MAIL. The notes name the rule and nothing else: never a PIN, a hash or a
- * count beyond the rule, and never which device.
+ * MAIL. The notes say what happened and nothing else: never a PIN, a hash,
+ * a date, a duration or a count (plan test 5), and never which device or
+ * which rule closed PIN entry. The code path's notes (A5) keep their numbers.
  */
 import { admit, confirm, reject } from "../../../packages/account-engine/src/limits.mjs";
 import { fragmentLink } from "../../../packages/account-engine/src/mailer.mjs";
 import { Refusal, b64url } from "./checks.js";
 import {
-  ruleLimits, mailAfter, settleCapped, capDay, dayHasRoom, WRONG_PER_ACCOUNT_DAY, LINK_HOURS, WINDOW_SECONDS,
+  ruleLimits, mailAfter, settleCapped, capDay, dayHasRoom,
 } from "./lockout.js";
 
 const TRY_BYTES = 16;
@@ -34,8 +35,8 @@ function windowNote() {
   return {
     subject: "Horae Zone: PIN entry paused",
     text: [
-      `Three wrong app PINs were entered for this account within ${WINDOW_SECONDS} seconds.`,
-      `PIN entry for this account is paused for the rest of that ${WINDOW_SECONDS}-second window.`,
+      "Wrong app PINs were entered for this account in quick succession.",
+      "PIN entry for this account is paused for a short while.",
       "No PIN was accepted.",
     ].join("\n"),
   };
@@ -43,9 +44,8 @@ function windowNote() {
 
 function closedLine(event) {
   if (!event) return "PIN entry for this account is closed, and the last reopen link had expired.";
-  if (event.reason === "day-cap") return `${WRONG_PER_ACCOUNT_DAY} wrong PINs were entered for this account in one day.`;
-  const rule = event.reason === "four-in-a-day" ? "four times in one day" : "in two windows in a row";
-  return `Wrong app PINs paused PIN entry for this account ${rule}.`;
+  if (event.reason === "day-cap") return "Too many wrong app PINs were entered for this account.";
+  return "Wrong app PINs paused PIN entry for this account too often.";
 }
 
 function closedNote(event, link) {
@@ -55,7 +55,7 @@ function closedNote(event, link) {
       closedLine(event),
       "PIN entry stays closed until this link is opened:",
       link,
-      `Works once. Expires ${LINK_HOURS} hours after it was sent.`,
+      "Works once, for a short time.",
       "Opening it reopens PIN entry only. The right PIN is still needed on the device.",
     ].join("\n"),
   };

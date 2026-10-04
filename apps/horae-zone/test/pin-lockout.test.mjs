@@ -181,7 +181,7 @@ test('the day cap: 12 wrong PINs a day close PIN entry, never more than 2 a wind
   assert.equal(pinState(h).pathLocked, true, 'the 12th wrong PIN closes it');
   const note = lockMail(h, ADDRESS).at(-1);
   assertPlainPinNote(note);
-  assert.match(note.text, /12 wrong PINs/);
+  assert.match(note.text, /Too many wrong app PINs/);
   assert.ok(reopenTokenFrom(h, ADDRESS), 'the note carries the link');
   h.clock.ms += 2 * WINDOW_MS;
   assert.deepEqual(await rightPin(h, dev), LOCKED);
