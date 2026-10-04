@@ -185,11 +185,14 @@ test.describe('an identifier cannot be screened by any route', () => {
 
   test('the identifier check refuses a labelled record number made only of letters', async ({ page }) => {
     await openScrubPage(page);
-    // "policy abcdef" is two plain words, which the letters-only rule admits.
-    // The labelled-ID pattern reads it as a record number, and that is the lock
-    // that has to answer here.
+    // "policy ABCDEF" is two plain words to the letters-only rule, which
+    // admits it. The labelled-ID pattern reads it as a record number, and that
+    // is the lock that has to answer here. Capitals, because since Kaleb's
+    // rule A (2026-10-04) a record number is capitals or digits: lowercase
+    // "policy abcdef" is two ordinary words, and the identifier pass, which
+    // never reads the screen list, still catches "policy ABCDEF" in a note.
     const out = await page.evaluate(() => ({
-      added: window.NotesGate.screen.add('policy abcdef'),
+      added: window.NotesGate.screen.add('policy ABCDEF'),
       count: window.NotesGate.screen.count(),
     }));
     expect(out.added).toBe(false);
