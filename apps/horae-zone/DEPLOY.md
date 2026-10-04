@@ -17,6 +17,8 @@ To see every step and command first, with nothing run, asked, written or fetched
 node bin/deploy.mjs --dry-run
 ```
 
+The dry run lists each prompt with the rule its answer is checked against, each generated key and each secret put as `[masked]` (it generates no key), and the tables and secret names the checklist expects.
+
 ## What it asks
 
 The script first prints the wrangler version it found (`wrangler --version`) and stops there if wrangler is missing. Every wrangler call runs with `WRANGLER_LOG_SANITIZE=true`, so a shell that turned wrangler's log redaction off cannot turn it off for this run.

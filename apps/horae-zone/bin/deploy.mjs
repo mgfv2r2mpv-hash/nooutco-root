@@ -398,7 +398,7 @@ function dryRun(deps) {
     `  ${show(COMMANDS.whoami)}   then: confirm the account name (prompt)`,
     `  ${show(COMMANDS.deployments)}   when Worker ${WORKER} already exists: prompt, y replaces its code, anything else stops`,
     "Step 2. Values only you have",
-    ...CATALOG.filter((s) => s.source === "asked").map((s) => `  prompt${s.hidden ? " (hidden)" : ""}: ${s.label} -> ${s.name}${s.store === "var" ? ` ([vars] in ${DEPLOY_CONFIG} when answered)` : ""}`),
+    ...CATALOG.filter((s) => s.source === "asked").map((s) => `  prompt${s.hidden ? " (hidden)" : ""}: ${s.label} -> ${s.name}${s.store === "var" ? ` ([vars] in ${DEPLOY_CONFIG} when answered)` : ""}   checked: ${s.rule}`),
     `  generate: HZ_ACCOUNT_KEY = [masked] (${ACCOUNT_KEY_BYTES} random bytes, base64url)`,
     `  generate: HZ_SEED_KEY = [masked] (${SEED_KEY_BYTES} random bytes, base64url)`,
     "  generate: HZ_TICKET_KEY = [masked] (ECDSA P-256 private key, JWK)",
@@ -420,7 +420,9 @@ function dryRun(deps) {
     `  ${ADMIN_BUILT ? "set the owner's admin role" : `SKIPPED. ${ADMIN_NOTE}`}`,
     "Step 7. Checks, then the PASS/FAIL checklist",
     `  ${show(COMMANDS.tables)}`,
+    `    expect tables: ${schemaTables(deps.readFile(path.join(deps.root, "schema.sql"))).join(", ")}`,
     `  ${show(COMMANDS.secretList)}`,
+    `    expect secrets (names only): ${SECRET_NAMES.join(", ")}`,
     `  cron: "schedule: ${CRON}" in the deploy output`,
     `  GET https://${HOSTNAME}/account   expect 405 method with a cf-ray header`,
   ].forEach((l) => say(l));
@@ -433,8 +435,8 @@ export async function deploy(deps) {
     deps.write("Usage: node bin/deploy.mjs [--dry-run] [--new-account-key] [--new-ticket-key]   (from apps/horae-zone; see DEPLOY.md)");
     return { ok: true, checklist: [] };
   }
-  if (argv.includes("--dry-run")) return dryRun(deps);
   const full = { readFile: (f) => readFileSync(f, "utf8"), generateTicketKey: ticketKeyJwk, ...deps };
+  if (argv.includes("--dry-run")) return dryRun(full);
   const ctx = makeContext(full);
   try {
     await wranglerVersion(ctx);
