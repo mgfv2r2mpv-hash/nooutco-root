@@ -257,3 +257,26 @@ CREATE TABLE IF NOT EXISTS account_lock (
   account_id   TEXT    PRIMARY KEY,
   locked_at    INTEGER NOT NULL
 );
+
+-- The account's replaced PINs, each locked from reuse (plan §3.4 "Reuse
+-- lock"): the replaced PIN's verifier (a keyed hash under the account's salt,
+-- which a change keeps, so a new PIN is checked against every lock with one
+-- slow hash) and the moment it may be chosen again. Several can be locked at
+-- once; rows past locked_until are purged hourly. Never the PIN.
+CREATE TABLE IF NOT EXISTS pin_lock (
+  account_id   TEXT    NOT NULL,
+  verifier     TEXT    NOT NULL,
+  locked_until INTEGER NOT NULL,
+  PRIMARY KEY (account_id, verifier)
+);
+
+-- Every write that replaces a PIN locks the one it replaced, whether a
+-- change, a reset or the annual review's: 365 days from the new PIN's set_at
+-- (31536000000 ms, src/pin.js PIN_LIMITS.reuseLockMs, which a test holds
+-- equal). A PIN locked again keeps the later lock-until.
+CREATE TRIGGER IF NOT EXISTS pin_replaced_locks AFTER UPDATE OF verifier ON pin
+WHEN OLD.verifier <> NEW.verifier
+BEGIN
+  INSERT INTO pin_lock (account_id, verifier, locked_until) VALUES (OLD.account_id, OLD.verifier, NEW.set_at + 31536000000)
+  ON CONFLICT (account_id, verifier) DO UPDATE SET locked_until = MAX(pin_lock.locked_until, excluded.locked_until);
+END;
