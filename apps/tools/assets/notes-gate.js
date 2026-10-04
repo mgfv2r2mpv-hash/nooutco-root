@@ -997,7 +997,14 @@
    // of [[Tn]] tokens. Same test as the words above: common in a program
    // title, not a given name, not a surname, not a place.
    "Complete Implement Toilet Training One-Step Two-Step Step Steps " +
-   "Prompt Prompts Sit Interval Production Bathroom Use Timer Resp Responses")
+   "Prompt Prompts Sit Interval Production Bathroom Use Timer Resp Responses " +
+   // Added 2026-10-03 from the parent note test cases, run through the page:
+   // a behaviour row ("Climbing (Bx Reduction)") and the goal titles a parent
+   // intake writes ("Present Token Board Before Demand", "Use First-Then
+   // Language", "Follow Visual Schedule", "Transitions Between Activities")
+   // still left as tokens. Same test as above.
+   "Bx Reduction Climbing Stand Add Deliver Present Demand Token Board " +
+   "First-Then Language Follow Visual Schedule Picture Point Between Activities")
     .split(/\s+/).forEach(function (w) { if (w) PROGRAM_WORDS[w.toLowerCase()] = true; });
 
   /* GOAL AND SECTION HEADERS AFTER A ROLE WORD. "Client Goals:" and "Parent
