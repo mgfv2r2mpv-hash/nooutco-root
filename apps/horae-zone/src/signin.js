@@ -5,8 +5,13 @@
  * account's, and a uniform 401 bad-login otherwise. An address with no
  * account answers the same way, after hashing the password the same way, so
  * neither the answer nor how long it takes says whether an account exists.
- * Tries are rate limited per address (from any requester) and per requester
- * (across addresses); a refused try is not counted.
+ * Tries are rate limited per requester (across addresses, every try) and per
+ * address (from any requester, wrong passwords only); a refused try is not
+ * counted. A success takes back its place in the address bucket, in the same
+ * batch that stores the ticket, so the owner's own sign-ins never fill it.
+ * A request signed by a registered device of the account skips the address
+ * bucket and still pays the requester bucket (security review H2): strangers
+ * who fill the address bucket hold back a new device, never a known one.
  *
  * The ticket is 32 random bytes, handed out once and stored only as a keyed
  * digest bound to its account. It registers one device (src/devices.js) and
@@ -20,7 +25,7 @@
 import { sameHex } from "../../../packages/account-engine/src/limits.mjs";
 import { Refusal, b64url } from "./checks.js";
 import { SIGNUP_LIMITS, hasOnly, addressOf, keysOrUnavailable, requesterOf } from "./signup.js";
-import { admitThrottle } from "./throttle.js";
+import { admitThrottle, releaseThrottle } from "./throttle.js";
 
 export const SIGNIN_LIMITS = Object.freeze({
   ticketTtlMs: 5 * 60 * 1000,
@@ -41,23 +46,26 @@ function passwordOf(value) {
   return value;
 }
 
-export async function signIn({ db, body, now, env, request }) {
+export async function signIn({ db, device, body, now, env, request }) {
   if (!hasOnly(body, ["email", "password"])) throw new Refusal("shape", 400);
   const address = addressOf(body.email);
   const password = passwordOf(body.password);
   const keys = await keysOrUnavailable(env);
   const addressKey = await keys.addressKey(address);
   const requester = await keys.requesterKey(requesterOf(request));
-  const admitted = await admitThrottle(db, now, SIGNIN_LIMITS.windowMs, [
-    { bucket: `signin-requester:${requester}`, limit: SIGNIN_LIMITS.perRequesterHour },
-    { bucket: `signin-address:${addressKey}`, limit: SIGNIN_LIMITS.perAddressHour },
-  ]);
-  if (!admitted) throw new Refusal("slow-down", 429);
   const account = await db.prepare("SELECT id, login_hash, login_salt FROM account WHERE address_key = ?").bind(addressKey).first();
+  // device is set only when the request passed every signed check (routes.js "signable").
+  const known = Boolean(device && account && device.account_id === account.id);
+  const addressBucket = `signin-address:${addressKey}`;
+  const perRequester = { bucket: `signin-requester:${requester}`, limit: SIGNIN_LIMITS.perRequesterHour };
+  const perAddress = { bucket: addressBucket, limit: SIGNIN_LIMITS.perAddressHour };
+  const buckets = known ? [perRequester] : [perRequester, perAddress];
+  if (!(await admitThrottle(db, now, SIGNIN_LIMITS.windowMs, buckets))) throw new Refusal("slow-down", 429);
   const login = await keys.hashLogin(password, account ? account.login_salt : NO_ACCOUNT_SALT);
   if (!account || !sameHex(login.hash, account.login_hash)) throw new Refusal("bad-login", 401);
   const ticket = b64url(crypto.getRandomValues(new Uint8Array(TICKET_BYTES)));
-  await db.prepare("INSERT INTO ticket (digest, account_id, expires_at, used) VALUES (?, ?, ?, 0)")
-    .bind(await keys.ticketDigest(ticket), account.id, now + SIGNIN_LIMITS.ticketTtlMs).run();
+  const store = db.prepare("INSERT INTO ticket (digest, account_id, expires_at, used) VALUES (?, ?, ?, 0)")
+    .bind(await keys.ticketDigest(ticket), account.id, now + SIGNIN_LIMITS.ticketTtlMs);
+  await db.batch(known ? [store] : [store, releaseThrottle(db, addressBucket, now)]);
   return { status: 200, json: { ticket } };
 }

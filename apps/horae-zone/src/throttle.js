@@ -20,3 +20,10 @@ export async function admitThrottle(db, now, windowMs, buckets) {
   ).bind(...values).all();
   return results.length === buckets.length;
 }
+
+// The statement that takes back one row admitThrottle recorded in `bucket` at
+// `now`, for a try that turned out not to count. Returned unrun, so a caller
+// can batch it with the write that depends on it.
+export function releaseThrottle(db, bucket, now) {
+  return db.prepare("DELETE FROM throttle WHERE rowid = (SELECT rowid FROM throttle WHERE bucket = ? AND at = ? LIMIT 1)").bind(bucket, now);
+}

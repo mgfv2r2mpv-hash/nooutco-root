@@ -66,10 +66,11 @@ async function run(request, env, ctx, { routes, now, mailer }) {
     if (!route) throw new Refusal("no-route", 404);
     const { bytes, body } = await readBody(request);
     let device = null;
-    if (route.checks !== "open") {
+    const checks = route.checks !== "signable" ? route.checks : request.headers.has("x-hz-device") ? "signed" : "open";
+    if (checks !== "open") {
       device = await findDevice(db, request.headers.get("x-hz-device"));
-      if (route.checks === "signed" || route.checks === "admin") await checkSignature(db, device, request, url.pathname, bytes, now);
-      if (route.checks === "admin" && !(await isAdmin(db, device.account_id))) throw new Refusal("not-admin", 403);
+      if (checks === "signed" || checks === "admin") await checkSignature(db, device, request, url.pathname, bytes, now);
+      if (checks === "admin" && !(await isAdmin(db, device.account_id))) throw new Refusal("not-admin", 403);
     }
     if (!route.handler) throw new Refusal("not-built", 501);
     const out = await route.handler({ db, device, body, now, env, request, mailer: mailer ?? mailerFrom(env) });

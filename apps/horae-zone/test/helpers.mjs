@@ -64,14 +64,15 @@ export async function nonceFor(call, device) {
 }
 
 // A request signed by the device over a fresh nonce. `tamper` lets a test
-// change what is signed without changing what is sent.
-export async function signed(call, device, pathname, body = {}, { nonce, der = false, tamper = null } = {}) {
+// change what is signed without changing what is sent; `headers` adds to the
+// request's headers (a connecting address).
+export async function signed(call, device, pathname, body = {}, { nonce, der = false, tamper = null, headers = {} } = {}) {
   const n = nonce ?? await nonceFor(call, device);
   const text = JSON.stringify(body);
   const bytes = signedBytes(n, tamper?.path ?? pathname, new TextEncoder().encode(tamper?.body ?? text));
   let sig = new Uint8Array(await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, device.key, bytes));
   if (der) sig = rawToDer(sig);
-  return post(pathname, text, { 'x-hz-device': device.id, 'x-hz-nonce': n, 'x-hz-sig': b64url(sig) });
+  return post(pathname, text, { ...headers, 'x-hz-device': device.id, 'x-hz-nonce': n, 'x-hz-sig': b64url(sig) });
 }
 
 // DER, the form the Secure Enclave gives, from WebCrypto's raw r||s.

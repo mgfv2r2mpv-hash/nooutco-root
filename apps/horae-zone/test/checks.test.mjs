@@ -17,7 +17,8 @@ test('the route table names the plan routes and every one declares its checks', 
     '/reverify', '/pair/offer', '/pair/take', '/recover', '/vault/switch', '/admin/unlock-pins', '/admin/unlock-account', '/nonce']) {
     assert.ok(ROUTES[p], p);
   }
-  for (const [p, r] of Object.entries(ROUTES)) assert.ok(['open', 'device', 'signed', 'admin'].includes(r.checks), p);
+  for (const [p, r] of Object.entries(ROUTES)) assert.ok(['open', 'signable', 'device', 'signed', 'admin'].includes(r.checks), p);
+  assert.deepEqual(byCheck('signable'), ['/signin'], 'only sign-in takes an optional device signature (security review H2)');
   assert.ok(byCheck('admin').every((p) => p.startsWith('/admin/')));
   assert.ok(Object.keys(ROUTES).filter((p) => p.startsWith('/admin/')).every((p) => ROUTES[p].checks === 'admin'));
 });
