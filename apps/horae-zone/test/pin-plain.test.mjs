@@ -4,8 +4,8 @@
 // any timing"). One run drives every A5b route through its answers and every
 // mail it sends: the first PIN, opens right and wrong, the code at 12 hours,
 // a too easy and a locked PIN, the online lockout with its link and reopen,
-// the day cap, the reset mail and the reset, the review and its snoozes, the
-// check and the offline block.
+// the day cap, the reset mail, the reset and its day cap, the review and its
+// snoozes, the check and the offline block.
 //
 // Each answer is swept whole: its headers, every key and every value. Each
 // mail is swept but for its link, whose fragment is a random token the app
@@ -163,6 +163,15 @@ async function everyAnswer() {
     if (i % 2 === 1) g.clock.ms += WINDOW_MS;
   }
   await q.pin(capped, '/pin/verify', { pin: PIN });
+
+  // The reset day cap, on the same account: twelve wrong factors over three
+  // hours fill the day and mail its note, and a try past it waits.
+  const wrongReset = { pin: RESET_PIN, password: 'not the password FAKE', emailCode: 'AAAAAAAAAAAAAAAAAAAAAA' };
+  for (let i = 0; i < 12; i += 1) {
+    await q.pin(capped, '/pin/reset', wrongReset);
+    if (i % 5 === 4) g.clock.ms += HOUR_MS;
+  }
+  await q.pin(capped, '/pin/reset', { ...wrongReset, password: PASSWORD });
   return { answers: [...r.answers, ...q.answers], mails: [...r.mails, ...q.mails] };
 }
 
@@ -195,7 +204,7 @@ test('the run reaches every A5b answer and every A5b mail', async () => {
   const subjects = new Set(mails.map((m) => m.message.subject));
   for (const want of [
     'Horae Zone: PIN entry paused', 'Horae Zone: PIN entry closed', 'Horae Zone: PIN entry reopened',
-    'Horae Zone: app PIN reset link', 'Horae Zone: app PIN reset', 'Horae Zone: account locked',
+    'Horae Zone: app PIN reset link', 'Horae Zone: app PIN reset', 'Horae Zone: app PIN reset paused', 'Horae Zone: account locked',
   ]) assert.ok(subjects.has(want), `the run mails ${want}`);
   assert.ok(mails.filter((m) => m.message.subject === 'Horae Zone: PIN entry closed').length >= 2, 'both closing rules mail');
 });

@@ -28,9 +28,15 @@
  * LIMITS. Every reset try with two factors takes a place in the account's
  * try bucket before any factor is compared (PIN_RESET_LIMITS.triesPerHour,
  * so a device that holds one factor guesses another at that rate), and every
- * mail a place in its mail bucket. Only the account's own devices reach
- * either bucket, so a stranger cannot fill them. The limits are the agent's
- * safe defaults, listed for the owner in the design review.
+ * mail a place in its mail bucket. The try also takes a place in the
+ * account's day of wrong factors (wrongPerDay, the code path's 12 a day),
+ * which it gives back once its factors were right, so only wrong factors
+ * count and the day caps a device that holds one factor at 12 guesses
+ * however the hours fall (security review LOW-2). The try that fills the
+ * day, and any try refused while it is full, mail the owner a note with no
+ * number, at most once an hour. Only the account's own devices reach these
+ * buckets, so a stranger cannot fill them. The limits are the agent's safe
+ * defaults, listed for the owner in the design review.
  *
  * THE NEW PIN passes the PIN rules and is not the current PIN or one locked
  * from reuse (pin-reused, with PIN_LOCKED). The rules answer too-easy only
@@ -41,13 +47,13 @@
  * A reset does not open the app: the next open is a /pin/verify, with the
  * code when 12 hours have passed, so a reset never extends the offline grant.
  */
-import { sameHex } from "../../../packages/account-engine/src/limits.mjs";
+import { sameHex, DAY_MS } from "../../../packages/account-engine/src/limits.mjs";
 import { fragmentLink } from "../../../packages/account-engine/src/mailer.mjs";
 import { PIN_LOCKED } from "../../../packages/account-engine/src/pin.mjs";
 import { Refusal, ACCOUNT_CHANGER, b64url, findDevice, mayChangeAccount } from "./checks.js";
 import { SIGNUP_LIMITS, hasOnly, keysOrUnavailable } from "./signup.js";
-import { admitThrottle } from "./throttle.js";
-import { mailAfter } from "./lockout.js";
+import { admitThrottle, releaseThrottle } from "./throttle.js";
+import { mailAfter, WRONG_PER_ACCOUNT_DAY } from "./lockout.js";
 import { PIN, MAX_TICKET, readTicket, spendTicket, allowedOrRefuse, lockedForReuse } from "./pin.js";
 
 const HOUR_MS = 60 * 60 * 1000;
@@ -57,7 +63,14 @@ export const PIN_RESET_LIMITS = Object.freeze({
   triesPerHour: 5,
   mailsPerHour: 3,
   windowMs: HOUR_MS,
+  wrongPerDay: WRONG_PER_ACCOUNT_DAY,
+  dayMs: DAY_MS,
 });
+
+// The account's day of wrong reset factors; src/retention.js keeps its rows
+// a day.
+export const WRONG_BUCKET_PREFIX = "pin-reset-wrong:";
+const wrongBucket = (accountId) => `${WRONG_BUCKET_PREFIX}${accountId}`;
 
 const FACTORS = ["ticket", "password", "emailCode"];
 const CODE_BYTES = 16;
@@ -77,6 +90,15 @@ function codeMail(link) {
     ].join("\n"),
   };
 }
+
+export const PAUSED_NOTE = Object.freeze({
+  subject: "Horae Zone: app PIN reset paused",
+  text: [
+    "Wrong reset factors were entered for this account too often.",
+    "PIN reset for this account is paused for a while.",
+    "No PIN was changed.",
+  ].join("\n"),
+});
 
 export const RESET_NOTE = Object.freeze({
   subject: "Horae Zone: app PIN reset",
@@ -125,6 +147,28 @@ async function pinRowOrRefuse(db, accountId) {
 
 async function admitOrSlowDown(db, now, bucket, limit) {
   if (!(await admitThrottle(db, now, PIN_RESET_LIMITS.windowMs, [{ bucket, limit }]))) throw new Refusal("slow-down", 429);
+}
+
+// The owner's note when the account's day of wrong factors is full, at most
+// one an hour; undefined otherwise.
+async function pausedAfter({ db, device, now, keys, mailer }) {
+  const accountId = device.account_id;
+  const { n } = await db.prepare("SELECT COUNT(*) AS n FROM throttle WHERE bucket = ? AND at > ?")
+    .bind(wrongBucket(accountId), now - PIN_RESET_LIMITS.dayMs).first();
+  if (n < PIN_RESET_LIMITS.wrongPerDay) return undefined;
+  if (!(await admitThrottle(db, now, HOUR_MS, [{ bucket: `pin-reset-paused:${accountId}`, limit: 1 }]))) return undefined;
+  return mailAfter({ db, keys, mailer, accountId, notes: [PAUSED_NOTE] });
+}
+
+// Admits one reset try into the account's hour of tries and its day of wrong
+// factors together, or refuses slow-down with no time in it.
+async function admitTry(ctx) {
+  const accountId = ctx.device.account_id;
+  const admitted = await admitThrottle(ctx.db, ctx.now, PIN_RESET_LIMITS.windowMs, [
+    { bucket: `pin-reset-try:${accountId}`, limit: PIN_RESET_LIMITS.triesPerHour },
+    { bucket: wrongBucket(accountId), limit: PIN_RESET_LIMITS.wrongPerDay, windowMs: PIN_RESET_LIMITS.dayMs },
+  ]);
+  if (!admitted) throw new Refusal("slow-down", 429, await pausedAfter(ctx));
 }
 
 // The refusal for a write its conditions stopped: the device's standing,
@@ -179,9 +223,11 @@ export async function resetPin({ db, device, body, now, env, pinRules, mailer })
   const keys = await keysOrUnavailable(env);
   if (!PIN.test(given.pin)) throw new Refusal("shape", 400);
   const row = await pinRowOrRefuse(db, device.account_id);
-  await admitOrSlowDown(db, now, `pin-reset-try:${device.account_id}`, PIN_RESET_LIMITS.triesPerHour);
+  await admitTry({ db, device, now, keys, mailer });
   const { right, claims, digest } = await factorsRight({ db, device, now, env, keys }, given);
-  if (!right) throw new Refusal("bad-reset", 401);
+  if (!right) throw new Refusal("bad-reset", 401, await pausedAfter({ db, device, now, keys, mailer }));
+  // Right factors are no wrong guess: the try gives back its day place.
+  await releaseThrottle(db, wrongBucket(device.account_id), now).run();
   allowedOrRefuse(pinRules, given.pin);
   const verifier = await keys.pinVerifier(given.pin, row.salt);
   if (await lockedForReuse(db, device.account_id, verifier, row, now)) throw new Refusal("pin-reused", 409, undefined, PIN_LOCKED);
