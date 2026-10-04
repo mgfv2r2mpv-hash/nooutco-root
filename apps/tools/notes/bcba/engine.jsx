@@ -1431,6 +1431,13 @@ function freshSession(tool) {
        rebuilds the marks from scratch and the decision would otherwise be
        forgotten exactly when it is needed. */
     heldOut: [],
+    /* The note as NoMe last wrote it, before the technician typed a word: the
+       draft with the corrections pass applied, then whatever an accepted
+       revision or an answered ask put in. Only NoMe writes it, so the retyped
+       count can measure the technician's own typing against it and nothing
+       else. A section still under marks is read off the marks instead, because
+       an undo changes it without a keystroke. See retypeBaseline. */
+    nomeText: null,
 
     // ── Assistant panel ──────────────────────────────────────────────────
     // What the clinician sees, which is not what the model sees: `conversation`
@@ -1695,10 +1702,12 @@ function App() {
   // Copy until each lesson has been sent once (see styleTaughtRef).
   const learnFromNote = () => {
     if (styleTaughtRef.current && voiceTaughtRef.current) return;
-    const modelOut = lastModelOutput();
-    if (!modelOut) return;
+    // The section the book has no marks for starts from what NoMe last wrote
+    // there, not from the last model reply, which can be a revision the
+    // technician discarded. See retypeBaseline.
+    if (!S.nomeText) return;
     if (!window.NoteSpecimens) return;
-    const leaving = NoteSpecimens.pairs({ ids: narrativeIds(), draft: modelOut, book: specimenBook.current, shipped: S.output });
+    const leaving = NoteSpecimens.pairs({ ids: narrativeIds(), draft: S.nomeText, book: specimenBook.current, shipped: S.output });
     if (!styleTaughtRef.current && leaving.length) {
       styleTaughtRef.current = true;
       leaving.forEach((p) => emitStyle(p.before, p.after, p.source, p.own));
@@ -2216,16 +2225,43 @@ function App() {
     return out;
   };
 
-  // The last thing the model actually returned, parsed. Both the manual-edit
-  // measures below compare against this, so an accepted revision is treated as
-  // the model's work and not as the clinician's own typing.
-  const lastModelOutput = () => {
-    if (!S.conversation.length) return null;
-    for (let i = S.conversation.length - 1; i >= 0; i--) {
-      if (S.conversation[i].role !== "assistant") continue;
-      try { return JSON.parse(S.conversation[i].content.match(/\{[\s\S]*\}/)[0]); } catch (e) { return null; }
-    }
-    return null;
+  /* WHAT THE TECHNICIAN'S OWN TYPING IS MEASURED AGAINST, fixed 2026-10-03.
+
+     Both manual-edit measures below used to compare against the last thing the
+     model returned in the conversation. The corrections pass runs after that
+     and rewrites the draft before anyone reads it, so every correction left
+     standing was counted as characters the technician retyped: a note copied
+     without a keystroke reported the length of NoMe's own changes. The same
+     reading went wrong two other ways. A revision the technician discarded
+     still sat last in the conversation and became the draft, and a queued ask
+     rewrote sections with nothing to say the new words were NoMe's.
+
+     So the baseline is the note as NoMe last left it, per section. A section
+     still under marks reads off the marks with the undos applied and the
+     rewordings not: an undo is a click that puts NoMe's draft back, and a
+     rewording is typed. Every other section reads off `nomeText`, which only
+     NoMe's writes move (the draft, an accepted revision, an answered ask, and
+     the marks' last reading when they are put away). */
+  const undoneReading = (st, id) => {
+    const sections = st.corrections && st.corrections.sections;
+    if (!sections || !sections[id] || !window.NoteCorrections) return null;
+    return NoteCorrections.textFor(sections, id, NoteCorrections.undosOnly(st.markState));
+  };
+
+  // `nomeText` with each of `ids` that still has marks set to how the marks
+  // read without the rewordings. Called just before those marks go away.
+  const settledNomeText = (st, ids) => {
+    const out = { ...(st.nomeText || {}) };
+    ids.forEach((id) => {
+      const text = undoneReading(st, id);
+      if (text !== null) out[id] = text;
+    });
+    return out;
+  };
+
+  const retypeBaseline = (id) => {
+    const marked = undoneReading(S, id);
+    return marked !== null ? marked : String((S.nomeText || {})[id] || "");
   };
 
   const narrativeIds = () =>
@@ -2278,11 +2314,9 @@ function App() {
      sanitiser keeps, on the reading that teaches least. */
   const manualEditBySection = () => {
     const out = {};
-    if (!S.output) return out;
-    const modelOut = lastModelOutput();
-    if (!modelOut) return out;
+    if (!S.output || !S.nomeText) return out;
     narrativeIds().forEach((id) => {
-      const before = String(modelOut[id] || "");
+      const before = retypeBaseline(id);
       const after = String(S.output[id] || "");
       if (before === after) return;
       out[id] = Math.abs(after.length - before.length) || after.length;
@@ -2764,7 +2798,7 @@ function App() {
      intake and confirmations go with it, so a confirmed name on the last note
      never stands on the next one. */
   const forgetNote = () => {
-    patchS({ output: null, proposal: null, conversation: [], questions: null, readiness: null, pendingValues: null, expert: null, corrections: null, markState: {}, askQueue: {}, heldOut: [], draftIntake: null, goalConfirmed: {} });
+    patchS({ output: null, proposal: null, conversation: [], questions: null, readiness: null, pendingValues: null, expert: null, corrections: null, markState: {}, askQueue: {}, heldOut: [], nomeText: null, draftIntake: null, goalConfirmed: {} });
     /* Again here, because the follow-up questions sit between Generate and this
        call with the last note still on screen, and a word typed into its table
        in that gap would otherwise be drawn into this new note. */
@@ -2975,6 +3009,9 @@ function App() {
 
       patchS({
         output: corrected,
+        // The corrected copy, not the draft: a correction nobody touched is
+        // NoMe's work, and measuring from the draft counted it as typing.
+        nomeText: corrected,
         conversation,
         generated: true,
         lastCallAt: Date.now(),
@@ -4399,6 +4436,10 @@ function App() {
       if (built && built.count) {
         patchS({
           output: { ...S.output, ...NoteCorrections.outputFor(built.sections, {}) },
+          // The old marks go, so what they read as goes into the baseline first.
+          // A section the new pass left alone would otherwise fall back to the
+          // first draft's reading, and an undo made in it would count as typing.
+          nomeText: settledNomeText(S, Object.keys((S.corrections && S.corrections.sections) || {})),
           corrections: built,
           markState: {},
           askQueue: {},
@@ -4456,7 +4497,11 @@ function App() {
       const mine = st.corrections.marks.filter((m) => m.id === id);
       const kept = mine.filter((m) => !(st.markState[m.key] && st.markState[m.key].reverted)).length;
       audit("corrections_done", { kept, undone: mine.length - kept });
-      if (!marks.length) return { corrections: null, markState: {}, askQueue: {} };
+      // The section becomes a textarea, so its baseline can no longer be read
+      // off the marks. Kept as they read, without the rewordings, which are
+      // the technician's typing whichever way they were entered.
+      const nomeText = settledNomeText(st, [id]);
+      if (!marks.length) return { corrections: null, markState: {}, askQueue: {}, nomeText };
       const sections = {};
       Object.keys(st.corrections.sections).forEach((k) => {
         if (k !== id) sections[k] = st.corrections.sections[k];
@@ -4476,6 +4521,7 @@ function App() {
         corrections: { ...st.corrections, sections, marks, changed: Object.keys(sections), count: marks.length },
         markState,
         askQueue,
+        nomeText,
       };
     });
   };
@@ -4544,7 +4590,10 @@ function App() {
       const next = { ...s.output };
       s.proposal.changes.forEach((c) => { next[c.id] = c.value; });
       next.hints = s.proposal.hints;
-      return { output: next, proposal: null };
+      // An accepted revision is NoMe's wording, so it moves the baseline too.
+      const nomeText = { ...(s.nomeText || {}) };
+      s.proposal.changes.forEach((c) => { nomeText[c.id] = c.value; });
+      return { output: next, proposal: null, nomeText };
     });
     markSectionRevised(S.proposal.changes.map((c) => c.id));
   };

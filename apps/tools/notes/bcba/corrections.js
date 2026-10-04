@@ -258,12 +258,27 @@
     return next;
   }
 
+  /* The mark state with every rewording taken out and every undo left in.
+     That is the note as NoMe left it once the technician's clicks are counted
+     and their typing is not, and two readers need exactly that: the specimen
+     chain, for the stage between a rejection and a rewording, and the retyped
+     count in engine.jsx, for the baseline the technician's own typing is
+     measured against. Returns a NEW map. */
+  function undosOnly(state) {
+    var out = {};
+    Object.keys(state || {}).forEach(function (k) {
+      if (state[k] && state[k].reverted) out[k] = { reverted: true };
+    });
+    return out;
+  }
+
   window.NoteCorrections = {
     build: build,
     textFor: textFor,
     outputFor: outputFor,
     toggle: toggle,
     edit: edit,
+    undosOnly: undosOnly,
     keyOf: keyOf,
     tidy: tidy,
   };
