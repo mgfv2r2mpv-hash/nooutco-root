@@ -13,10 +13,11 @@
  *
  * CONFIRMATION (A5 security review, item 3). An enrolment stays unconfirmed
  * until the first accepted code (src/unlock.js). Until then a repeat, with a
- * fresh ticket and under the sole-device rule below, answers a new seed that
+ * fresh ticket and under the owner rule below, answers a new seed that
  * replaces the old one, so a seed nobody scanned does not lock the account
  * in, and an exchange built on the old seed cannot finish. Once confirmed, a
- * repeat answers enrolled and carries no seed.
+ * repeat answers enrolled and carries no seed. Only the owner device can
+ * confirm it (src/unlock.js).
  *
  * CUSTODY. The seed is 20 random bytes, stored only sealed: AES-GCM under a
  * key HKDF derives from the Worker secret HZ_SEED_KEY (base64url, at least
@@ -25,20 +26,22 @@
  * row or log carries it. Without a usable seed key the route answers
  * unavailable before it spends the ticket or stores anything.
  *
- * SOLE DEVICE (A5 security review, item 1). Enrolment succeeds only for the
- * account's sole live device, checked in the ticket spend and again in the
- * seed insert, so a device registered in between still blocks it. A second
- * live device answers enrol-blocked (and a refused spend leaves the ticket
- * live). A5 re-review: a device a /signin ticket registered is pending from
- * registration (src/devices.js), code or no code, so it reaches neither this
- * route nor /device/remove: a password thief's device cannot enrol, remove
- * the owner device or replace an unconfirmed seed, and the owner device can
- * remove it. The first accepted code holds back every other live device; a
- * pending device reaches only /nonce and /unlock until a code it proves is
- * accepted.
+ * OWNER DEVICE (A5 re-review, items 1 and 2; it replaces the sole-device
+ * rule of A5 security review item 1). Until the first accepted code confirms
+ * the enrolment, only the owner device, the one the sign-up link registered,
+ * enrols or re-enrols, checked in the ticket spend and again in the seed
+ * insert (ACCOUNT_CHANGER), so a device whose standing changes in between
+ * stores nothing. Any other device answers not-owner, and a refused spend
+ * leaves the ticket live. A device a /signin ticket registered is pending
+ * from registration (src/devices.js), so it never reaches this route, and it
+ * no longer blocks the owner's enrolment either: a password thief could
+ * otherwise keep the owner from enrolling by registering devices. The first
+ * accepted code holds back every other live device; a pending device reaches
+ * only /nonce and /unlock, and tries a code only once the enrolment is
+ * confirmed.
  */
 import { base32Encode, otpauthUri } from "../../../packages/account-engine/src/totp.mjs";
-import { Refusal, LIVE_DEVICE, b64url, fromB64url, findDevice } from "./checks.js";
+import { Refusal, ACCOUNT_CHANGER, b64url, fromB64url, findDevice, mayChangeAccount } from "./checks.js";
 import { deviceKeyDigest } from "./devices.js";
 import { hasOnly, keysOrUnavailable } from "./signup.js";
 
@@ -50,14 +53,6 @@ const SEED_BYTES = 20;
 const NONCE_BYTES = 12;
 const MIN_SECRET_BYTES = 32;
 const enc = new TextEncoder();
-
-// A condition bound to an account id: the account has exactly one live
-// device. Beside LIVE_DEVICE for the signing device, that device is it.
-const SOLE_LIVE = "(SELECT COUNT(*) FROM device WHERE account_id = ? AND removed_at IS NULL) = 1";
-
-async function isSoleLive(db, accountId) {
-  return Boolean(await db.prepare(`SELECT 1 AS yes WHERE ${SOLE_LIVE}`).bind(accountId).first());
-}
 
 function readSecret(text) {
   try {
@@ -107,14 +102,15 @@ export async function enrolOtp({ db, device, body, now, env }) {
   // and the spend and the insert re-check the device is not removed (L2).
   const own = await db.prepare("SELECT sign_key, agree_key FROM device WHERE id = ? AND removed_at IS NULL").bind(device.id).first();
   if (!own) throw new Refusal("no-device", 401);
-  // Both writes also require the device to be the account's sole live one
-  // (A5 security review, item 1).
+  // Both writes also require the device to be one that may change the
+  // account: before the first accepted code, the owner device (A5 re-review,
+  // item 2). ACCOUNT_CHANGER implies the device is live.
   const spent = await db.prepare(
-    `UPDATE ticket SET used = 1 WHERE digest = ? AND account_id = ? AND key_digest = ? AND used = 0 AND expires_at > ? AND ${LIVE_DEVICE} AND ${SOLE_LIVE} RETURNING account_id`,
-  ).bind(await keys.ticketDigest(body.ticket), device.account_id, await deviceKeyDigest(own.sign_key, own.agree_key), now, device.id, device.account_id).first();
+    `UPDATE ticket SET used = 1 WHERE digest = ? AND account_id = ? AND key_digest = ? AND used = 0 AND expires_at > ? AND ${ACCOUNT_CHANGER} RETURNING account_id`,
+  ).bind(await keys.ticketDigest(body.ticket), device.account_id, await deviceKeyDigest(own.sign_key, own.agree_key), now, device.id).first();
   if (!spent) {
     await findDevice(db, device.id); // refuses no-device when the removal is what stopped it
-    if (!(await isSoleLive(db, device.account_id))) throw new Refusal("enrol-blocked", 409);
+    if (!(await mayChangeAccount(db, device.id))) throw new Refusal("not-owner", 403);
     throw new Refusal("bad-ticket", 401);
   }
   const seed = crypto.getRandomValues(new Uint8Array(SEED_BYTES));
@@ -122,15 +118,15 @@ export async function enrolOtp({ db, device, body, now, env }) {
   // An unconfirmed enrolment is replaced (item 3): a new box, and the
   // enrolment counted up so an exchange built on the old seed cannot finish.
   const made = await db.prepare(
-    `INSERT INTO otp (account_id, box, last_step, created_at) SELECT ?, ?, 0, ? WHERE ${LIVE_DEVICE} AND ${SOLE_LIVE}
+    `INSERT INTO otp (account_id, box, last_step, created_at) SELECT ?, ?, 0, ? WHERE ${ACCOUNT_CHANGER}
      ON CONFLICT (account_id) DO UPDATE SET box = excluded.box, created_at = excluded.created_at, enrolment = otp.enrolment + 1
      WHERE otp.confirmed_by IS NULL RETURNING account_id`,
-  ).bind(device.account_id, box, now, device.id, device.account_id).first();
+  ).bind(device.account_id, box, now, device.id).first();
   if (!made) {
     seed.fill(0);
     await findDevice(db, device.id);
     const confirmed = await db.prepare("SELECT 1 AS yes FROM otp WHERE account_id = ? AND confirmed_by IS NOT NULL").bind(device.account_id).first();
-    throw confirmed ? new Refusal("enrolled", 409) : new Refusal("enrol-blocked", 409);
+    throw confirmed ? new Refusal("enrolled", 409) : new Refusal("not-owner", 403);
   }
   const json = { secret: base32Encode(seed), uri: otpauthUri({ key: seed, ...OTP_LABEL }) };
   seed.fill(0);

@@ -21,11 +21,14 @@
  *
  * POST /device/remove {device}, signed by a device of the same account,
  * stamps the device removed and spends its live nonces, so it is refused at
- * once, by every route. The answer is {ok:true} whatever the id names, so it
- * never says whether a device of another account exists. The row stays,
- * marked with when it was removed.
+ * once, by every route. Only a device that may change the account removes
+ * one (A5 re-review, item 2): a pending device never reaches the route, and
+ * until the first accepted code confirms the enrolment only the owner device
+ * may; any other device answers not-owner. The answer is {ok:true} whatever
+ * the id names, so it never says whether a device of another account exists.
+ * The row stays, marked with when it was removed.
  */
-import { Refusal, LIVE_DEVICE, b64url, fromB64url } from "./checks.js";
+import { Refusal, ACCOUNT_CHANGER, b64url, fromB64url, findDevice, mayChangeAccount } from "./checks.js";
 import { hasOnly, keysOrUnavailable, KEY_DIGEST } from "./signup.js";
 
 export { KEY_DIGEST };
@@ -87,14 +90,21 @@ export async function registerDevice({ db, body, now, env }) {
 export async function removeDevice({ db, device, body, now }) {
   if (!hasOnly(body, ["device"])) throw new Refusal("shape", 400);
   if (typeof body.device !== "string" || !DEVICE_ID.test(body.device)) throw new Refusal("shape", 400);
+  // Only a device that may change the account removes one (A5 re-review,
+  // item 2): before the first accepted code, the owner device alone.
+  if (!(await mayChangeAccount(db, device.id))) {
+    await findDevice(db, device.id); // refuses no-device when a removal is what stopped it
+    throw new Refusal("not-owner", 403);
+  }
   // Both statements match only a device of the caller's account, and only
-  // while the caller is not removed (security review L2), so a removal of the
-  // caller that lands mid-flight wins and this one changes nothing. The
-  // nonces go first, while the device is still live.
+  // while the caller still may change it (security review L2, A5 re-review
+  // item 2), so a removal or a hold of the caller that lands mid-flight wins
+  // and this one changes nothing. The nonces go first, while the device is
+  // still live.
   await db.batch([
-    db.prepare(`UPDATE nonce SET used = 1 WHERE device_id = ? AND used = 0 AND EXISTS (SELECT 1 FROM device WHERE id = ? AND account_id = ?) AND ${LIVE_DEVICE}`)
+    db.prepare(`UPDATE nonce SET used = 1 WHERE device_id = ? AND used = 0 AND EXISTS (SELECT 1 FROM device WHERE id = ? AND account_id = ?) AND ${ACCOUNT_CHANGER}`)
       .bind(body.device, body.device, device.account_id, device.id),
-    db.prepare(`UPDATE device SET removed_at = ? WHERE id = ? AND account_id = ? AND removed_at IS NULL AND ${LIVE_DEVICE}`)
+    db.prepare(`UPDATE device SET removed_at = ? WHERE id = ? AND account_id = ? AND removed_at IS NULL AND ${ACCOUNT_CHANGER}`)
       .bind(now, body.device, device.account_id, device.id),
   ]);
   return { status: 200, json: { ok: true } };

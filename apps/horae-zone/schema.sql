@@ -130,10 +130,10 @@ CREATE INDEX IF NOT EXISTS ticket_expires_at ON ticket (expires_at);
 -- the account id (src/otp.js). last_step is the newest 30-second step whose
 -- code was accepted; no step at or before it is offered again, so a code is
 -- accepted once. A5 security review item 3: until the first accepted code
--- the enrolment is unconfirmed (confirmed_by is null) and the sole live
--- device may enrol again, which replaces box and counts enrolment up, so an
+-- the enrolment is unconfirmed (confirmed_by is null) and the owner device
+-- may enrol again, which replaces box and counts enrolment up, so an
 -- exchange started on the old seed no longer matches. confirmed_by is the
--- device whose code confirmed it.
+-- device whose code confirmed it, the owner device (A5 re-review, item 2).
 CREATE TABLE IF NOT EXISTS otp (
   account_id   TEXT    PRIMARY KEY,
   box          TEXT    NOT NULL,

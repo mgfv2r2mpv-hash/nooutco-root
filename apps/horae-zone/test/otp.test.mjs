@@ -10,8 +10,8 @@
 // that proved it, reaches only /nonce and /unlock until a code it proves is
 // accepted (A4 open point 1: sign-in for a further device is address +
 // password + code). Until that first accepted code the enrolment is
-// unconfirmed and the sole live device may enrol again for a new seed (A5
-// security review item 3).
+// unconfirmed and the owner device may enrol again for a new seed (A5
+// security review item 3, A5 re-review item 2).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { OTP_LABEL, openSeed } from '../src/otp.js';
@@ -212,27 +212,23 @@ test('a device registered after the first accepted code reaches only /nonce and 
   assert.equal((await answer(await h.call(await signed(h.call, next, '/reverify', {})))).json.error, 'not-built', 'it now passes the device checks');
 });
 
-// A5 security review, item 1 (HIGH): enrolment is open only to the account's
-// sole live device, so a password thief who registers a device of its own
-// cannot enrol first and hold the owner's devices back. A5 re-review: that
-// device is pending from registration, so it reaches neither /otp/enrol nor
-// /device/remove; the owner device removes it.
-const ENROL_BLOCKED = { status: 409, json: { error: 'enrol-blocked' } };
-
-test('A5 review 1: a second registered device cannot enrol', async () => {
+// A5 security review, item 1 (HIGH): a password thief who registers a device
+// of its own must not enrol first and hold the owner's devices back. A5
+// re-review: that device is pending from registration, so it reaches neither
+// /otp/enrol nor /device/remove, and the owner device removes it. Item 2 of
+// the re-review replaced the sole-device rule with the owner rule: until the
+// first accepted code only the owner device enrols, and a pending device no
+// longer blocks it.
+test('A5 re-review 2: a second registered device cannot enrol, and does not block the owner device', async () => {
   const h = harness();
   const first = await registeredDevice(h, ADDRESS);
   const second = await registeredDevice(h, ADDRESS, { fresh: false });
   assert.deepEqual(await answer(await h.call(await enrolRequest(h.call, second, await enrolTicket(h, ADDRESS, second)))), NO_DEVICE, 'it is pending');
-  const ticket = await enrolTicket(h, ADDRESS, first);
-  assert.deepEqual(await answer(await h.call(await enrolRequest(h.call, first, ticket))), ENROL_BLOCKED, 'nor the owner, while the second is live');
   assert.deepEqual(otpRows(h.db), [], 'no seed was stored');
+  assert.equal((await h.call(await enrolRequest(h.call, first, await enrolTicket(h, ADDRESS, first)))).status, 200, 'the owner enrols');
   assert.equal(pendingOf(h.db, first.id), 0);
   assert.equal(pendingOf(h.db, second.id), 1);
-  // The refusal left the ticket unspent: once the owner device removes the
-  // second, it is the sole live device and enrols with it.
-  assert.equal((await h.call(await signed(h.call, first, '/device/remove', { device: second.id }))).status, 200);
-  assert.equal((await h.call(await enrolRequest(h.call, first, ticket))).status, 200);
+  assert.equal((await h.call(await signed(h.call, first, '/device/remove', { device: second.id }))).status, 200, 'and removes the second');
 });
 
 test('A5 review 1: the probe (password thief registers and tries to enrol first) ends with the thief refused and removed', async () => {
@@ -245,10 +241,10 @@ test('A5 review 1: the probe (password thief registers and tries to enrol first)
   assert.equal(pendingOf(h.db, owner.id), 0, 'the owner\'s device is not held back');
   assert.deepEqual(await answer(await h.call(await signed(h.call, owner, '/device/remove', { device: thief.id }))), { status: 200, json: { ok: true } });
   assert.deepEqual(await answer(await h.call(post('/nonce', {}, { 'x-hz-device': thief.id }))), { status: 401, json: { error: 'no-device' } }, 'the thief is out');
-  assert.equal((await h.call(await enrolRequest(h.call, owner, await enrolTicket(h, ADDRESS, owner)))).status, 200, 'the owner, now sole, enrols');
+  assert.equal((await h.call(await enrolRequest(h.call, owner, await enrolTicket(h, ADDRESS, owner)))).status, 200, 'the owner enrols');
 });
 
-test('A5 review 1: a device registered between the ticket spend and the seed insert blocks the enrolment', async () => {
+test('A5 re-review 2: a device registered between the ticket spend and the seed insert is pending and does not block the enrolment', async () => {
   const h = harness();
   const dev = await registeredDevice(h, ADDRESS);
   const late = await deviceKeys();
@@ -257,11 +253,12 @@ test('A5 review 1: a device registered between the ticket spend and the seed ins
     db.sqlite.prepare('INSERT INTO device (id, account_id, sign_key, agree_key, created_at) VALUES (?, ?, ?, ?, ?)')
       .run('late-device', dev.account, late.signKey, late.agreeKey, h.clock.ms);
   });
-  assert.deepEqual(await answer(await h.call(request)), ENROL_BLOCKED);
-  assert.deepEqual(otpRows(h.db), [], 'no seed was stored');
+  assert.equal((await h.call(request)).status, 200);
+  assert.equal(otpRows(h.db).length, 1);
+  assert.equal(pendingOf(h.db, 'late-device'), 1);
 });
 
-test('A5 review 1 NEGATIVE CONTROL: a removed device does not count, so the sole live device enrols', async () => {
+test('A5 review 1 NEGATIVE CONTROL: after the owner device removes another, it enrols', async () => {
   const h = harness();
   const dev = await registeredDevice(h, ADDRESS);
   const gone = await registeredDevice(h, ADDRESS, { fresh: false });
@@ -272,8 +269,8 @@ test('A5 review 1 NEGATIVE CONTROL: a removed device does not count, so the sole
 
 // A5 security review, item 3 (MEDIUM): a seed nobody claimed must not lock
 // the account in. Until the first accepted code the enrolment is unconfirmed
-// and repeatable (a fresh ticket, the sole live device), and a repeat
-// replaces the seed; only a confirmed enrolment makes other devices pending.
+// and repeatable (a fresh ticket, the owner device), and a repeat replaces
+// the seed. A5 re-review: every device but the owner's is pending anyway.
 const BAD_CODE = { status: 401, json: { error: 'bad-code' } };
 const seedOf = (json) => base32Decode(json.secret);
 
@@ -320,12 +317,11 @@ test('A5 review 3: an exchange started on the old seed is refused once a repeat 
   assert.equal(otpRows(h.db)[0].last_step, 0, 'no code was accepted');
 });
 
-test('A5 review 3: a repeat enrol keeps the sole-live-device rule, and the old seed stays', async () => {
+test('A5 re-review 2: a repeat enrol is the owner device\'s alone, so a pending device leaves the old seed', async () => {
   const h = harness();
   const dev = await enrolledDevice(h, ADDRESS);
   const second = await registeredDevice(h, ADDRESS, { fresh: false });
   const [before] = otpRows(h.db);
-  assert.deepEqual(await answer(await h.call(await enrolRequest(h.call, dev, await enrolTicket(h, ADDRESS, dev)))), ENROL_BLOCKED);
   assert.deepEqual(await answer(await h.call(await enrolRequest(h.call, second, await enrolTicket(h, ADDRESS, second)))), NO_DEVICE, 'it is pending');
   assert.equal(otpRows(h.db)[0].box, before.box, 'the seed is unchanged');
   assert.equal((await tryCode(h, dev, await codeAt(dev, h.clock.ms))).finish.status, 200, 'the old seed still works');

@@ -3,7 +3,9 @@
  * /unlock/reopen). The device proves the account's code with CPace (the
  * engine's pake.mjs), keyed by the code under unlockChannelFor(device), so
  * the code never crosses the wire. Start and finish are signed by the same
- * registered device; a pending device may use them (src/routes.js).
+ * registered device; a pending device may use them (src/routes.js) once the
+ * owner device's first accepted code has confirmed the enrolment, and before
+ * that answers not-enrolled (A5 re-review, item 2).
  *
  *   /unlock/start  {sid, Ya, clock}   -> {exchange, replies: [{Yb, tagB}] x2}
  *   /unlock/finish {exchange, tagA}   -> {ticket}
@@ -45,7 +47,7 @@ import { fragmentLink } from "../../../packages/account-engine/src/mailer.mjs";
 import { responderReply, unlockChannelFor } from "../../../packages/account-engine/src/pake.mjs";
 import { hotp, windowOf, clockOffset } from "../../../packages/account-engine/src/totp.mjs";
 import { ristretto255 } from "../../../packages/account-engine/vendor/noble/curves/ed25519.js";
-import { Refusal, LIVE_DEVICE, b64url, fromB64url, findDevice } from "./checks.js";
+import { Refusal, LIVE_DEVICE, ACCOUNT_CHANGER, b64url, fromB64url, findDevice } from "./checks.js";
 import { hasOnly, keysOrUnavailable } from "./signup.js";
 import { openSeed, seedBoxKey } from "./otp.js";
 import { ruleLimits, pathClosed, lockNotes, mailAfter, reopenedNote, spendReopen } from "./lockout.js";
@@ -162,8 +164,11 @@ async function admitPendingTry(db, device, now) {
 export async function startUnlock({ db, device, body, now, env, mailer }) {
   const { sid, Ya, clock } = startBody(body);
   const { keys, reopenBase } = await configOrUnavailable(env, mailer);
-  const otp = await db.prepare("SELECT box, last_step, enrolment FROM otp WHERE account_id = ?").bind(device.account_id).first();
-  if (!otp) throw new Refusal("not-enrolled", 409);
+  const otp = await db.prepare("SELECT box, last_step, enrolment, confirmed_by FROM otp WHERE account_id = ?").bind(device.account_id).first();
+  // A pending device has nothing to prove until the owner device's first
+  // accepted code confirms the enrolment (A5 re-review, item 2), so it can
+  // never confirm the enrolment and hold the owner device back.
+  if (!otp || (device.pending && otp.confirmed_by === null)) throw new Refusal("not-enrolled", 409);
   const exchange = b64url(crypto.getRandomValues(new Uint8Array(EXCHANGE_BYTES)));
   const after = device.pending
     ? await admitPendingTry(db, device, now)
@@ -241,10 +246,13 @@ export async function finishUnlock({ db, device, body, now, env, mailer }) {
   // only while the device is not removed (security review L2), and only on
   // the enrolment the exchange was built on (A5 security review item 3). The
   // first accepted code confirms the enrolment, and the otp_confirmed trigger
-  // (schema.sql) holds back every other live device in the same write.
+  // (schema.sql) holds back every other live device in the same write. Only
+  // the owner device confirms it (A5 re-review, item 2): before then, the
+  // update also requires a device that may change the account.
   const accepted = step !== null && Boolean(await db.prepare(
-    `UPDATE otp SET last_step = ?, confirmed_by = COALESCE(confirmed_by, ?) WHERE account_id = ? AND last_step < ? AND enrolment = ? AND ${LIVE_DEVICE} RETURNING account_id`,
-  ).bind(step, device.id, row.account_id, step, row.enrolment, device.id).first());
+    `UPDATE otp SET last_step = ?, confirmed_by = COALESCE(confirmed_by, ?) WHERE account_id = ? AND last_step < ? AND enrolment = ? AND ${LIVE_DEVICE}
+     AND (confirmed_by IS NOT NULL OR ${ACCOUNT_CHANGER}) RETURNING account_id`,
+  ).bind(step, device.id, row.account_id, step, row.enrolment, device.id, device.id).first());
   if (!accepted) await findDevice(db, device.id);
   const ruled = await ruleLimits(db, row.account_id, now, (state) => {
     const settled = settle(state, now);
