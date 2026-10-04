@@ -27,6 +27,9 @@
  * is (security review M3). The account and its owner ticket are written in
  * one batch, so an account never exists without one. A password-only
  * /signin on an account with no device registers nothing (src/signin.js).
+ * MEDIUM-1: a link for an account that has never had a device, verified with
+ * the account's password, answers a new owner ticket the same way and voids
+ * any older one still unspent; the account itself is unchanged.
  *
  * The limits below are the agent's safe defaults, listed for the owner in the
  * design review ("Decisions for Kaleb"): the plan does not fix them.
@@ -384,6 +387,30 @@ export async function startSignup({ db, body, now, env, request, mailer }) {
   return { status: 200, json: { ok: true }, after: afterAll(works) };
 }
 
+// MEDIUM-1 (final A5 re-review): a link minted for an account that has never
+// had a device, verified with the account's password, answers a new owner
+// ticket bound to keyDigest, as the sign-up verify does. The link is already
+// spent, so a wrong password costs it (bad-login) and changes nothing else.
+// One batch voids every unspent owner ticket of the account and writes the new
+// one, only while the account still has no device, removed ones included (the
+// rule the ticket is spent under, src/devices.js). A device that landed after
+// the link was minted leaves no ticket, and the answer is bad-code.
+async function reissueOwnerTicket(db, keys, account, password, keyDigest, now) {
+  const login = await keys.hashLogin(password, account.login_salt);
+  if (!sameHex(login.hash, account.login_hash)) throw new Refusal("bad-login", 401);
+  const ticket = b64url(crypto.getRandomValues(new Uint8Array(TICKET_BYTES)));
+  const digest = await keys.ticketDigest(ticket);
+  await db.batch([
+    db.prepare("UPDATE ticket SET used = 1 WHERE account_id = ? AND owner = 1 AND used = 0").bind(account.id),
+    db.prepare(
+      "INSERT INTO ticket (digest, account_id, key_digest, expires_at, used, owner) SELECT ?, ?, ?, ?, 0, 1 WHERE NOT EXISTS (SELECT 1 FROM device WHERE account_id = ?)",
+    ).bind(digest, account.id, keyDigest, now + OWNER_TICKET_TTL_MS, account.id),
+  ]);
+  const stored = await db.prepare("SELECT 1 AS yes FROM ticket WHERE digest = ?").bind(digest).first();
+  if (!stored) throw new Refusal("bad-code", 401);
+  return ticket;
+}
+
 export async function verifySignup({ db, body, now, env, request }) {
   if (!hasOnly(body, ["email", "code", "password", "keyDigest"])) throw new Refusal("shape", 400);
   const address = addressOf(body.email);
@@ -408,6 +435,10 @@ export async function verifySignup({ db, body, now, env, request }) {
   if (match === null) throw new Refusal("bad-code", 401);
   const spent = await db.prepare("UPDATE challenge SET used = 1, link_box = NULL WHERE id = ? AND used = 0 RETURNING id").bind(match).first();
   if (!spent) throw new Refusal("bad-code", 401);
+  const account = await db.prepare("SELECT id, login_hash, login_salt FROM account WHERE address_key = ?").bind(addressKey).first();
+  if (account) {
+    return { status: 200, json: { ok: true, ticket: await reissueOwnerTicket(db, keys, account, password, body.keyDigest, now) } };
+  }
   const login = await keys.hashLogin(password);
   const box = await keys.sealAddress(address, addressKey);
   const id = crypto.randomUUID();

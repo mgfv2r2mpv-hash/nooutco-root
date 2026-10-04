@@ -112,3 +112,106 @@ test('MEDIUM-1: a start answers and runs the same statements for a deviceless ac
   assert.deepEqual(withDevice.sql, deviceless.sql);
   assert.deepEqual(none.sql, deviceless.sql);
 });
+
+// Item 2: the fresh link's verify, with the account's password, answers a new
+// owner ticket bound to the presented key digest, as the sign-up verify does.
+const ownerTickets = (h) => h.db.sqlite.prepare('SELECT COUNT(*) AS n FROM ticket WHERE owner = 1 AND used = 0 AND expires_at > ?').get(h.clock.ms).n;
+const devices = (h) => h.db.sqlite.prepare('SELECT owner, pending FROM device').all().map((d) => ({ ...d }));
+
+// A stranded account, then a start past the sign-up link's life: the fresh link.
+async function freshLink(h, ip = '192.0.2.40') {
+  const stranded = await strandedAccount(h);
+  pastSignupLink(h);
+  const before = mailTo(h, OWNER).length;
+  await start(h, OWNER, ip);
+  const sent = mailTo(h, OWNER).slice(before).filter((m) => m.text.includes(LINK_BASE));
+  assert.equal(sent.length, 1, 'the start mailed a fresh link');
+  return { ...stranded, code: codeOf(sent[0]) };
+}
+
+test('MEDIUM-1: the review\'s sequence ends with a fresh link, verify, a new owner ticket, register 200 and one owner device', async () => {
+  const h = harness();
+  const { code } = await freshLink(h);
+  const keys = await deviceKeys();
+  const verified = await answer(await h.call(verifyRequest(OWNER, code, await keyDigestOf(keys), { ip: '192.0.2.40' })));
+  assert.equal(verified.status, 200);
+  assert.match(verified.json.ticket, /^[A-Za-z0-9_-]{43}$/);
+  assert.deepEqual(Object.keys(verified.json).sort(), ['ok', 'ticket']);
+  assert.equal(h.db.sqlite.prepare('SELECT COUNT(*) AS n FROM account').get().n, 1, 'no second account');
+  // Bound to the presented keys: other keys answer bad-ticket and leave it unspent.
+  assert.deepEqual(await answer(await h.call(registerRequest(verified.json.ticket, await deviceKeys()))), { status: 401, json: { error: 'bad-ticket' } });
+  const registered = await answer(await h.call(registerRequest(verified.json.ticket, keys)));
+  assert.equal(registered.status, 200);
+  assert.deepEqual(devices(h), [{ owner: 1, pending: 0 }], 'one owner device');
+  assert.equal(liveCodes(h), 0, 'the link is spent');
+});
+
+test('MEDIUM-1: a wrong password spends the fresh link and issues nothing', async () => {
+  const h = harness();
+  const { code } = await freshLink(h);
+  const hash = h.db.sqlite.prepare('SELECT login_hash FROM account').get().login_hash;
+  const digest = await keyDigestOf(await deviceKeys());
+  assert.deepEqual(await answer(await h.call(verifyRequest(OWNER, code, digest, { password: 'not the owner password', ip: '192.0.2.40' }))),
+    { status: 401, json: { error: 'bad-login' } });
+  assert.equal(ownerTickets(h), 0, 'no owner ticket');
+  assert.equal(liveCodes(h), 0, 'the link is spent');
+  assert.deepEqual(await answer(await h.call(verifyRequest(OWNER, code, digest, { ip: '192.0.2.41' }))), { status: 401, json: { error: 'bad-code' } });
+  assert.equal(ownerTickets(h), 0, 'the right password on the spent link issues nothing');
+  assert.equal(h.db.sqlite.prepare('SELECT login_hash FROM account').get().login_hash, hash, 'the password is unchanged');
+});
+
+test('MEDIUM-1: a new owner ticket voids an older one still unspent', async () => {
+  const h = harness();
+  const first = await freshLink(h);
+  // Verified late in the link's life, so its ticket outlives the link.
+  h.clock.ms += SIGNUP_LIMITS.codeTtlMs - 60 * 1000;
+  const oldKeys = await deviceKeys();
+  const old = await answer(await h.call(verifyRequest(OWNER, first.code, await keyDigestOf(oldKeys), { ip: '192.0.2.40' })));
+  assert.equal(old.status, 200);
+  h.clock.ms += 60 * 1000; // the first fresh link has expired, its ticket has not
+  const before = mailTo(h, OWNER).length;
+  await start(h, OWNER, '192.0.2.50');
+  const code = codeOf(mailTo(h, OWNER).slice(before).find((m) => m.text.includes(LINK_BASE)));
+  const keys = await deviceKeys();
+  const fresh = await answer(await h.call(verifyRequest(OWNER, code, await keyDigestOf(keys), { ip: '192.0.2.50' })));
+  assert.equal(fresh.status, 200);
+  assert.equal(ownerTickets(h), 1, 'one live owner ticket');
+  assert.deepEqual(await answer(await h.call(registerRequest(old.json.ticket, oldKeys))), { status: 401, json: { error: 'bad-ticket' } });
+  assert.equal((await h.call(registerRequest(fresh.json.ticket, keys))).status, 200);
+  assert.deepEqual(devices(h), [{ owner: 1, pending: 0 }]);
+});
+
+test('MEDIUM-1 NEGATIVE CONTROL: the password alone still gets no ticket', async () => {
+  const h = harness();
+  const { keys } = await strandedAccount(h);
+  pastSignupLink(h);
+  const digest = await keyDigestOf(keys);
+  assert.deepEqual(await answer(await h.call(signInRequest(OWNER, PASSWORD, '192.0.2.60', digest))), { status: 403, json: { error: 'no-owner-device' } });
+  assert.deepEqual(await answer(await h.call(verifyRequest(OWNER, 'A'.repeat(22), digest, { ip: '192.0.2.61' }))), { status: 401, json: { error: 'bad-code' } });
+  assert.equal(h.db.sqlite.prepare('SELECT COUNT(*) AS n FROM ticket WHERE used = 0 AND expires_at > ?').get(h.clock.ms).n, 0, 'no live ticket of any kind');
+  assert.deepEqual(devices(h), []);
+});
+
+test('MEDIUM-1 NEGATIVE CONTROL: a link for an account that has a device, a removed one included, issues nothing', async () => {
+  for (const removed of [null, T0]) {
+    const h = harness();
+    const { code } = await freshLink(h);
+    const account = h.db.sqlite.prepare('SELECT id FROM account').get().id;
+    await addDevice(h.db, { id: 'dev-owner', account, removed });
+    const res = await answer(await h.call(verifyRequest(OWNER, code, await keyDigestOf(await deviceKeys()), { ip: '192.0.2.40' })));
+    assert.deepEqual(res, { status: 401, json: { error: 'bad-code' } }, `removed_at ${removed}`);
+    assert.equal(ownerTickets(h), 0, 'no owner ticket');
+    assert.equal(liveCodes(h), 0, 'the link is spent');
+  }
+});
+
+test('MEDIUM-1 NEGATIVE CONTROL: two verifies of one fresh link together issue one ticket', async () => {
+  const h = harness();
+  const { code } = await freshLink(h);
+  const [a, b] = await Promise.all([
+    h.call(verifyRequest(OWNER, code, await keyDigestOf(await deviceKeys()), { ip: '192.0.2.70' })),
+    h.call(verifyRequest(OWNER, code, await keyDigestOf(await deviceKeys()), { ip: '192.0.2.71' })),
+  ]);
+  assert.deepEqual([a.status, b.status].sort(), [200, 401]);
+  assert.equal(ownerTickets(h), 1, 'one owner ticket');
+});
