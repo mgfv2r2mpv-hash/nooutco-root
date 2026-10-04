@@ -105,6 +105,18 @@
        exactly that reason while chromium passed, because chromium measures this
        nav about 38px narrower than the other two engines do.
        At 12px/13px the widest font measured leaves 37.4px of margin. */
+    /* Pending Suggestions: tick rows, decide them together from a bar that
+       stays in view. No select-all on purpose (Kaleb, 2026-10-04): every
+       suppression is ticked by hand, so approving many is deliberate. */
+    .sug-row { display: flex; gap: 12px; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid #eef2e6; cursor: pointer; }
+    .sug-row input[type=checkbox] { width: 18px; height: 18px; margin: 2px 0 0; flex-shrink: 0; accent-color: var(--sage); cursor: pointer; }
+    .sug-row.is-picked { background: #f3f7ee; }
+    .sug-bar { position: sticky; bottom: 0; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; padding: 10px 12px; background: #fff; border: 1px solid #c0d4a8; border-radius: 10px; box-shadow: 0 -4px 14px rgba(45, 58, 31, 0.08); }
+    .sug-bar[hidden] { display: none; }
+    .sug-bar-count { font-weight: 700; margin-right: auto; }
+    .sug-clear { background: none; border: none; color: var(--muted); text-decoration: underline; cursor: pointer; font: inherit; font-size: 13px; padding: 4px 2px; }
+    .sug-bar-note { flex-basis: 100%; font-size: 13px; color: #9a3412; }
+    .sug-bar-note:empty { display: none; }
     .tab-btn { background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -2px; padding: 9px 12px; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; border-radius: 0; white-space: nowrap; }
     .tab-btn.active { color: var(--sage); border-bottom-color: var(--sage); }
     .tab-btn:hover:not(.active) { color: var(--text); }
@@ -331,8 +343,15 @@
             <h2 style="margin: 0;">Pending Suggestions</h2>
             <span class="pill on" id="sugCount">0</span>
           </div>
-          <p class="muted" style="margin: 0 0 14px;">Terms proposed by the nightly run for global suppression.<br>Detection is <strong>unchanged</strong> until approved.<br>Reject anything that could be a real name.</p>
+          <p class="muted" style="margin: 0 0 14px;">Terms proposed by the nightly run for global suppression.<br>Detection is <strong>unchanged</strong> until approved.<br>Reject anything that could be a real name.<br>Tick the terms, then decide them together below.</p>
           <div id="sugRows"></div>
+          <div class="sug-bar" id="sugBar" hidden>
+            <span class="sug-bar-count" id="sugBarCount" aria-live="polite"></span>
+            <button class="btn-ghost" id="sugApprove" type="button">Approve</button>
+            <button class="btn-danger" id="sugReject" type="button">Reject</button>
+            <button class="sug-clear" id="sugClear" type="button">Clear all</button>
+            <span class="sug-bar-note" id="sugBarNote" role="status"></span>
+          </div>
         </div>
 
         <div class="card">
@@ -1003,6 +1022,29 @@
         loadSuggestions();
       }
 
+      /* PENDING SUGGESTIONS ARE DECIDED IN BATCHES (Kaleb, 2026-10-04).
+         Each row had its own Approve and Reject, and Approve asked in a dialog
+         every time, which made a long queue a chore. Now each row is ticked by
+         hand, there is deliberately no select-all, and one bar that stays in
+         view decides every ticked row: "Approve" / "Reject" for one, "Approve
+         All" / "Reject All" for more, and "Clear all" to untick. The ticking is
+         the deliberate step, so the bar does not ask again.
+
+         Ticks are kept by id across a reload, so a row whose decision failed
+         stays ticked for another try, and a decided row drops out on its own. */
+      var sugPicked = {};
+
+      function sugPickedIds() { return Object.keys(sugPicked).filter(function (id) { return sugPicked[id]; }); }
+
+      function renderSugBar() {
+        var ids = sugPickedIds();
+        var n = ids.length;
+        document.getElementById("sugBar").hidden = n === 0;
+        document.getElementById("sugBarCount").textContent = n + " selected";
+        document.getElementById("sugApprove").textContent = n > 1 ? "Approve All" : "Approve";
+        document.getElementById("sugReject").textContent = n > 1 ? "Reject All" : "Reject";
+      }
+
       function loadSuggestions() {
         adminFetch("/api/admin/scrub-suggestions").then(function (d) {
           var list = d.suggestions || [];
@@ -1010,32 +1052,65 @@
           var rows = document.getElementById("sugRows");
           document.getElementById("sugCount").textContent = list.length;
           card.style.display = list.length ? "block" : "none";
+          // A tick on a row that is no longer pending goes with it.
+          var live = {};
+          list.forEach(function (s) { live[s.id] = true; });
+          Object.keys(sugPicked).forEach(function (id) { if (!live[id]) delete sugPicked[id]; });
           rows.innerHTML = "";
           list.forEach(function (s) {
-            var row = document.createElement("div");
-            row.style.cssText = "display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-bottom:1px solid #eef2e6;";
+            var row = document.createElement("label");
+            row.className = "sug-row" + (sugPicked[s.id] ? " is-picked" : "");
+            row.setAttribute("data-sug-id", s.id);
             row.innerHTML =
+              '<input type="checkbox" class="sug-pick"' + (sugPicked[s.id] ? " checked" : "") + ">" +
               '<div style="flex:1;min-width:0;">' +
                 '<div style="font-weight:700;font-size:15px;">' + escapeHtml(s.term) +
                   ' <span class="pill ' + (s.confidence === "high" ? "on" : "off") + '" style="font-weight:600;">' + escapeHtml(s.confidence || "low") + "</span></div>" +
                 '<div class="muted" style="margin-top:3px;font-size:13px;">' + escapeHtml(s.reason || "") + "</div>" +
-              "</div>" +
-              '<div class="row-actions" style="flex-shrink:0;">' +
-                '<button class="btn-ghost" data-act="approve">Approve</button>' +
-                '<button class="btn-danger" data-act="reject">Reject</button>' +
               "</div>";
-            row.querySelector('[data-act=approve]').addEventListener("click", function () {
-              if (confirm('Approve "' + s.term + '"? It will be globally suppressed and never flagged as a name again.')) {
-                adminFetch("/api/admin/scrub-suggestions", "POST", { id: s.id, decision: "approve" }).then(loadAlgStatus).catch(function () {});
-              }
-            });
-            row.querySelector('[data-act=reject]').addEventListener("click", function () {
-              adminFetch("/api/admin/scrub-suggestions", "POST", { id: s.id, decision: "reject" }).then(loadAlgStatus).catch(function () {});
+            row.querySelector(".sug-pick").addEventListener("change", function (ev) {
+              if (ev.target.checked) sugPicked[s.id] = true; else delete sugPicked[s.id];
+              row.classList.toggle("is-picked", ev.target.checked);
+              renderSugBar();
             });
             rows.appendChild(row);
           });
+          renderSugBar();
         }).catch(function () {});
       }
+
+      /* One request per ticked row, in order, then one reload. A failure is
+         counted and its row stays ticked; nothing is retried behind his back. */
+      function decideSuggestions(decision) {
+        var ids = sugPickedIds();
+        if (!ids.length) return;
+        var buttons = ["sugApprove", "sugReject", "sugClear"].map(function (id) { return document.getElementById(id); });
+        var note = document.getElementById("sugBarNote");
+        buttons.forEach(function (b) { b.disabled = true; });
+        note.textContent = "";
+        var failed = 0;
+        ids.reduce(function (chain, id) {
+          return chain.then(function () {
+            return adminFetch("/api/admin/scrub-suggestions", "POST", { id: id, decision: decision })
+              .then(function () { delete sugPicked[id]; })
+              .catch(function () { failed += 1; });
+          });
+        }, Promise.resolve()).then(function () {
+          buttons.forEach(function (b) { b.disabled = false; });
+          if (failed) note.textContent = failed + " of " + ids.length + " did not go through and are still selected. Try again.";
+          loadAlgStatus();
+        });
+      }
+
+      document.getElementById("sugApprove").addEventListener("click", function () { decideSuggestions("approve"); });
+      document.getElementById("sugReject").addEventListener("click", function () { decideSuggestions("reject"); });
+      document.getElementById("sugClear").addEventListener("click", function () {
+        sugPicked = {};
+        document.getElementById("sugBarNote").textContent = "";
+        Array.prototype.forEach.call(document.querySelectorAll("#sugRows .sug-pick"), function (cb) { cb.checked = false; });
+        Array.prototype.forEach.call(document.querySelectorAll("#sugRows .sug-row"), function (r) { r.classList.remove("is-picked"); });
+        renderSugBar();
+      });
 
       /* The run says what it did, in a sentence.
 
