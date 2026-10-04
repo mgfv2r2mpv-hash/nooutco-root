@@ -266,6 +266,24 @@ body {
 /* A revision that reached past the section that was clicked, held rather than
    applied. Amber for the same reason the skip button is amber: this is a call
    the clinician has to make, not a failure and not a warning. */
+/* The earlier-rounds chip (revision-panel.jsx EarlierRounds). Quieter than a
+   question: it is a record of what was answered, not something to act on. */
+.earlier-rounds { margin: 4px 0 10px; }
+.earlier-rounds-chip {
+  font: inherit; font-size: 12px; font-weight: 600; color: #374528;
+  background: #f7fbf3; border: 1px solid #c0d4a8; border-radius: 999px;
+  padding: 3px 11px; cursor: pointer;
+}
+.earlier-rounds-chip:hover { background: #eef4e6; }
+.earlier-rounds-chip:focus-visible { outline: 2px solid #374528; outline-offset: 2px; }
+.earlier-rounds-list { max-height: 40vh; overflow-y: auto; overscroll-behavior: contain; }
+.earlier-round { margin: 8px 0 0; padding: 8px 11px; border: 1px solid #ddecd0; border-radius: 8px; background: white; }
+.earlier-round-label { margin: 0 0 4px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #7a9460; }
+.earlier-pair + .earlier-pair { margin-top: 7px; }
+.earlier-q { margin: 0; font-size: 12.5px; line-height: 1.5; color: #41502c; font-weight: 600; overflow-wrap: anywhere; }
+.earlier-a { margin: 2px 0 0; font-size: 12.5px; line-height: 1.5; color: #2d3a1f; overflow-wrap: anywhere; }
+.earlier-a-none { color: #7a8a6a; font-style: italic; }
+
 .routing-ask {
   border: 1.5px solid #e3c26a;
   background: #fffaf0;

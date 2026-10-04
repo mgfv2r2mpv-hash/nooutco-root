@@ -1469,6 +1469,11 @@ function freshSession(tool) {
     ticketFiling: false,
     triageAnswers: "",     // everything they have answered so far, scrubbed
     triageRound: 0,        // rounds asked; capped so this cannot become an interrogation
+    // Earlier rounds as the technician saw them, for the "N answered earlier"
+    // chip: [{ round, pairs: [{ question, answers }] }]. Display only. The
+    // model reads triageAnswers, the scrubbed copy; this one never leaves the
+    // page and, like the questions it sits above, is never persisted.
+    answeredRounds: [],
     // True once a Generate on this page load has landed a round or a draft.
     // The main button then reads Regenerate. Never persisted, and Clear builds
     // a fresh session, so a reload or a Clear puts it back to Generate Note.
@@ -3214,7 +3219,7 @@ function App() {
        and be sent as answers to questions they were never written for. */
     forgetNote();
     patchS({
-      answerDrafts: {}, suggestState: {}, triageAnswers: "", triageRound: 0,
+      answerDrafts: {}, suggestState: {}, triageAnswers: "", triageRound: 0, answeredRounds: [],
       routingAsks: null, design: null, conflicts: null, bcbaOffer: "", claimAnswers: {},
     });
     setLoading(true);
@@ -3257,7 +3262,7 @@ function App() {
          the other is what the tool knew for certain before it read one - and a
          single total would answer neither question later. */
       audit("gap_questions", { asked: questions.length, misfiled: misfiled.length, round: 1, readiness, ...barsFor(questions) });
-      patchS({ questions, readiness, pendingValues: scrubbed, triageAnswers: "", triageRound: 1, suggestState: {}, generated: true });
+      patchS({ questions, readiness, pendingValues: scrubbed, triageAnswers: "", triageRound: 1, answeredRounds: [], suggestState: {}, generated: true });
       return;
     }
     audit("gap_questions", { asked: 0 });
@@ -3515,6 +3520,19 @@ function App() {
     return [...answered, ...loose].join("\n\n");
   };
 
+  /* The same round as answerBlock sends it, in the words on screen, for the
+     earlier-rounds chip. The panel's box answers every open question, as it
+     does in what is sent; with no box an open question shows as not refined.
+     A box with no open question to answer is its own row. */
+  const roundAsShown = (round, pairs, free) => {
+    const loose = String(free || "").trim();
+    const open = pairs.some((p) => !p.answers.length && p.question);
+    const rows = pairs
+      .filter((p) => p.question)
+      .map((p) => ({ question: p.question, answers: p.answers.length ? p.answers : (loose ? [loose] : []) }));
+    return { round, pairs: loose && !open ? [...rows, { question: "", answers: [loose] }] : rows };
+  };
+
   /* THE NOTE'S WHOLE MAP, not this scrub's share of it. The question on screen
      was restored, so it holds words the intake sent as tokens. This scrub mints
      a fresh token for such a word, and sending that would hand the model an
@@ -3715,7 +3733,7 @@ function App() {
     // Anything they answered in an earlier round still counts. Dropping it
     // because they skipped the last question would throw away work they did.
     const answered = [S.triageAnswers, carried].filter((x) => x && x.trim()).join("\n\n");
-    patchS({ triageAnswers: "", triageRound: 0, suggestState: {} });
+    patchS({ triageAnswers: "", triageRound: 0, answeredRounds: [], suggestState: {} });
     draftNote(S.pendingValues || scrubValues([]), answered);
   };
 
@@ -4308,11 +4326,14 @@ function App() {
           // three questions is exactly the case where the note got closer. The
           // Send lock no longer reads it here: this round follows a Send, so
           // sendLockSeconds already returns 0 (feedbackGiven).
-          patchS({ questions: more, readiness, triageAnswers: answered, triageRound: round, suggestState: {} });
+          patchS({
+            questions: more, readiness, triageAnswers: answered, triageRound: round, suggestState: {},
+            answeredRounds: [...(S.answeredRounds || []), roundAsShown(round - 1, pairs, free)],
+          });
           return;
         }
       }
-      patchS({ triageAnswers: "", triageRound: 0, suggestState: {} });
+      patchS({ triageAnswers: "", triageRound: 0, answeredRounds: [], suggestState: {} });
       await draftNote(S.pendingValues, answered);
       return;
     }
@@ -5473,6 +5494,7 @@ function App() {
         }}
         loading={loading}
         questions={S.questions}
+        answeredRounds={S.answeredRounds}
         suggestState={S.suggestState}
         changes={changeEntries}
         onApproveChange={approveChange}
