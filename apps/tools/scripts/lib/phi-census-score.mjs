@@ -26,6 +26,9 @@ export const MISS_CLASSES = [
   'identifier-cue-swallowed-a-word',
   'cue-word-splits-a-two-word-name',
   'sentence-start-survivor',
+  // 2026-10-04: the lowercase-name pass flags a lowercase word the English
+  // list (assets/english-words.js) does not know. Each is one "not a name" tap.
+  'lowercase-word-not-in-english-list',
   'unclassified',
 ];
 
@@ -101,6 +104,7 @@ export function classifyFalsePositive(term, doc, ctx) {
   if (ctx && ctx.isNicknamePrefixOf && ctx.isNicknamePrefixOf(t)) return 'nickname-prefix-pass';
   if (ctx && ctx.isFirstName && ctx.isFirstName(t)) return 'dictionary-collision-with-clinical-vocabulary';
   if (onlyAtSentenceStart(t, text)) return 'sentence-start-survivor';
+  if (onlyLowercase(t, text)) return 'lowercase-word-not-in-english-list';
   return 'unclassified';
 }
 

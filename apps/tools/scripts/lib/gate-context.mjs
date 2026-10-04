@@ -23,7 +23,8 @@
  *                 human opens the login modal, which no census run does
  */
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createContext, runInContext } from 'node:vm';
 
@@ -79,12 +80,17 @@ function browserish(localStorage) {
 }
 
 /** Load a notes-gate.js SOURCE STRING and return what the census needs. */
-export function loadGateSource(source, label) {
+/* `prelude` is the English word list (assets/english-words.js), run first the
+   way the page loads it before notes-gate.js, so the lowercase-name pass sees
+   what the browser sees. Without it that pass is off, as on a page that did
+   not load the list. */
+export function loadGateSource(source, label, prelude = null) {
   const localStorage = emptyStorage();
   const win = {};
   const globals = browserish(localStorage);
   const ctx = createContext({ ...globals, window: win });
   Object.assign(win, globals);
+  if (prelude) runInContext(prelude, ctx, { filename: 'english-words.js' });
   runInContext(source, ctx, { filename: label || 'notes-gate.js' });
   const gate = win.NotesGate;
   if (!gate || !gate._scrub) {
@@ -111,7 +117,9 @@ export function loadGateSource(source, label) {
 
 /** Load the file as it sits in the working tree. */
 export function loadGateFromFile(file, label) {
-  return loadGateSource(readFileSync(file, 'utf8'), label || file);
+  const words = join(dirname(file), 'english-words.js');
+  const prelude = existsSync(words) ? readFileSync(words, 'utf8') : null;
+  return loadGateSource(readFileSync(file, 'utf8'), label || file, prelude);
 }
 
 /**
@@ -127,5 +135,12 @@ export function loadGateFromRef(ref, repoPath, cwd) {
     cwd, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024,
   });
   const sha = execFileSync('git', ['rev-parse', '--short', ref], { cwd, encoding: 'utf8' }).trim();
-  return { gate: loadGateSource(source, `${ref} (${sha})`), source, sha };
+  // The word list as that commit had it, or none before it existed.
+  let prelude = null;
+  try {
+    prelude = execFileSync('git', ['show', `${ref}:${repoPath.replace(/notes-gate\.js$/, 'english-words.js')}`], {
+      cwd, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024, stdio: ['ignore', 'pipe', 'ignore'],
+    });
+  } catch { prelude = null; }
+  return { gate: loadGateSource(source, `${ref} (${sha})`, prelude), source, sha };
 }

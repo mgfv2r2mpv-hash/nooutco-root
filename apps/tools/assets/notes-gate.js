@@ -1034,6 +1034,32 @@
       if (!STOPWORDS[wl]) PROGRAM_WORDS[wl] = true;
     });
 
+  /* THE ENGLISH WORD LIST, for the lowercase-name pass in detectNames. Loaded
+   * as its own script (assets/english-words.js, SCOWL size 50) before this
+   * file, and read once into a lookup the first time a note is scanned. Null
+   * when the page did not load it, which turns the lowercase pass off. */
+  var ENGLISH = null;
+  function englishWords() {
+    if (ENGLISH) return ENGLISH;
+    var raw = typeof window !== "undefined" ? window.NotesEnglishWords : null;
+    if (typeof raw !== "string" || !raw) return null;
+    ENGLISH = {};
+    raw.split("\n").forEach(function (w) { if (w) ENGLISH[w] = true; });
+    return ENGLISH;
+  }
+
+  /* The tool's own words that SCOWL lacks: ABA terms, assessment names and
+   * everyday tech words, lowercase as a note types them. Kept short; a word
+   * missing here costs one "not a name" tap, a name added here leaks. Each is
+   * checked against FIRST_NAMES by lowercase-names.spec.js. */
+  var LOWER_OK = {};
+  ("manding manded mands tacting tacted tacts echoic echoics intraverbal intraverbals " +
+   "reinforcer reinforcers toileting stimming stims eloped eloping elopes tantruming gestural " +
+   "vbmapp ablls afls bcba bcbas bcaba rbts " +
+   "app apps ipad ipads iphone youtube email emails emailed texted texting online " +
+   "website websites wifi playdough legos")
+    .split(/\s+/).forEach(function (w) { if (w) LOWER_OK[w] = true; });
+
   // Common US first names (lowercase). Any word in the note matching one of these
   // is flagged as a name candidate regardless of capitalisation, giving the clinician
   // a chance to certify it as non-PII or assign a role token. Sourced from SSA
@@ -1825,6 +1851,35 @@
       if (FIRST_NAMES[dwl]) push(dw);
     }
 
+    /* LOWERCASE NAMES, as of 2026-10-04 (Kaleb's Masking Quality review).
+       A name typed in lowercase with nothing before it, and too uncommon for
+       FIRST_NAMES ("kaelen", "tavion"), went to the model in the clear. Now a
+       lowercase word of 4 or more letters that is not English (SCOWL size 50,
+       assets/english-words.js), not one of the tool's own words, and not one
+       he excused is flagged like any name. His ruling: it is masked until he
+       excuses it, through the "not a name" offer that already follows every
+       draft, so each ordinary word costs one tap, once.
+
+       Off when the word list has not loaded, which is the behaviour before
+       this existed. */
+    var english = englishWords();
+    if (english) {
+      var lowRe = /(?:^|[^A-Za-z'’\-])([a-z]+(?:['’][a-z]+)*)(?![A-Za-z'’\-])/g;
+      var lm;
+      while ((lm = lowRe.exec(text)) !== null) {
+        var lw = lm[1].replace(/’/g, "'");
+        // A possessive or a contraction is checked as its base word: "client's"
+        // as client, "didn't" as did, "can't" and "won't" as can and will.
+        var bare = lw === "can't" ? "can" : lw === "won't" ? "will" : lw === "shan't" ? "shall"
+          : lw.replace(/(?:'s|n't|'re|'ve|'ll|'d|'m)$/, "");
+        if (bare.length < 4 && bare !== lw) continue;
+        if (bare.length < 4) continue;
+        if (seen[lw] || seen[bare] || excluded[lw] || excluded[bare]) continue;
+        if (english[lw] || english[bare] || STOPWORDS[bare] || PROGRAM_WORDS[bare] || HEADER_WORDS[bare] || LOWER_OK[bare]) continue;
+        push(bare);
+      }
+    }
+
     // Longest first so "Barbara Jean" is replaced before "Barbara".
     out.sort(function (a, b) { return b.length - a.length; });
     return out;
@@ -2502,6 +2557,8 @@
       },
       // The program-word list, read by the spec that holds it outside FIRST_NAMES.
       programWords: function () { return Object.keys(PROGRAM_WORDS); },
+      lowerOkWords: function () { return Object.keys(LOWER_OK); },
+      hasEnglishWords: function () { return !!englishWords(); },
       applyScrub: applyScrub, restoreDeep: restoreDeep, dehydrateWords: dehydrateWords,
       inferRoles: inferRoles, buildRoleMap: buildRoleMap,
     },
