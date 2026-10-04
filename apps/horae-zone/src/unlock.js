@@ -112,7 +112,7 @@ async function ticketKey(env) {
   }
 }
 
-function reopenBaseOk(base) {
+export function reopenBaseOk(base) {
   try {
     fragmentLink(base, "x");
     return true;

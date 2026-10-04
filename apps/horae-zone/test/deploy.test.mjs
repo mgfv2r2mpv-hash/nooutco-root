@@ -14,6 +14,7 @@ import { ROOT, SCHEMA } from './helpers.mjs';
 import { deploy, runWrangler } from '../bin/deploy.mjs';
 import { CATALOG, LineReader, deployConfig, scrub, schemaTables, HOSTNAME } from '../bin/deploy-parts.mjs';
 import { accountKeys } from '../src/account-keys.js';
+import { reopenBaseOk } from '../src/unlock.js';
 
 const FAKE_DB_ID = '11111111-2222-3333-4444-555555555555';
 const FAKE_ACCOUNT = { id: 'acc0000000000000000000000000fake', name: 'Example Test Account' };
@@ -25,6 +26,7 @@ const ANSWERS = {
   HZ_MAIL_FROM: 'Horae Zone <mail@example.test>',
   HZ_ALERT_TO: 'alerts@example.test',
   HZ_LINK_BASE: 'https://example.test/signup',
+  HZ_REOPEN_BASE: 'https://example.test/reopen',
   HZ_CODES_PER_DAY: '',
 };
 // A fixed ticket key, made here with WebCrypto (not by the script), so a run
@@ -36,7 +38,7 @@ const SECRET_VALUES = [GENERATED, ANSWERS.RESEND_KEY, ANSWERS.HZ_MAIL_FROM, ANSW
 // The tables schema.sql creates, read the way the script reads them, so a new
 // table never needs this file changed.
 const TABLES = schemaTables(SCHEMA);
-const SECRET_NAMES = ['HZ_ACCOUNT_KEY', 'HZ_TICKET_KEY', 'RESEND_KEY', 'HZ_MAIL_FROM', 'HZ_ALERT_TO', 'HZ_LINK_BASE'];
+const SECRET_NAMES = ['HZ_ACCOUNT_KEY', 'HZ_TICKET_KEY', 'RESEND_KEY', 'HZ_MAIL_FROM', 'HZ_ALERT_TO', 'HZ_LINK_BASE', 'HZ_REOPEN_BASE'];
 
 // A wrangler stand-in. `state` decides what each command answers; every call
 // is recorded with its args, stdin, cwd and env.
@@ -593,6 +595,35 @@ test('a bad answer is asked again, and three bad answers stop the run before any
   const result = await deploy(h.deps);
   assert.equal(result.ok, false);
   assert.equal(h.asked.filter((a) => a.name === 'HZ_LINK_BASE').length, 3);
+  assert.equal(h.wrangler.calls.some((c) => c.args[1] === 'create' || c.args[0] === 'deploy' || c.args[0] === 'secret'), false);
+});
+
+test('the reopen link base is asked with a plain prompt, checked the way src/unlock.js checks it, and put through stdin', async () => {
+  const h = harness();
+  const result = await deploy(h.deps);
+  assert.equal(result.ok, true, h.output());
+  const asked = h.asked.filter((a) => a.name === 'HZ_REOPEN_BASE');
+  assert.equal(asked.length, 1);
+  assert.equal(asked[0].hidden, false);
+  const put = h.wrangler.calls.find((c) => c.args[0] === 'secret' && c.args[2] === 'HZ_REOPEN_BASE');
+  assert.ok(put, 'HZ_REOPEN_BASE is put');
+  assert.equal(put.input, ANSWERS.HZ_REOPEN_BASE);
+  assert.equal(put.args.includes(ANSWERS.HZ_REOPEN_BASE), false, 'the value is never in argv');
+  // The script's check is unlock.js's own reopenBaseOk, so the two cannot drift.
+  const entry = CATALOG.find((s) => s.name === 'HZ_REOPEN_BASE');
+  assert.equal(entry?.check, reopenBaseOk);
+  for (const bad of ['http://example.test/reopen', 'https://example.test/reopen?x=1', 'https://example.test/reopen#x', 'not a url', '']) {
+    assert.equal(reopenBaseOk(bad), false, bad);
+  }
+  assert.equal(reopenBaseOk(ANSWERS.HZ_REOPEN_BASE), true);
+});
+
+test('a bad reopen link base is asked again, and three bad answers stop the run before any write', async () => {
+  const h = harness({ answers: { ...ANSWERS, HZ_REOPEN_BASE: 'https://example.test/reopen?next=1' } });
+  const result = await deploy(h.deps);
+  assert.equal(result.ok, false);
+  assert.equal(h.asked.filter((a) => a.name === 'HZ_REOPEN_BASE').length, 3);
+  assert.ok(h.output().includes('Not accepted (https, no ? and no #)'));
   assert.equal(h.wrangler.calls.some((c) => c.args[1] === 'create' || c.args[0] === 'deploy' || c.args[0] === 'secret'), false);
 });
 
