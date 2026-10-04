@@ -496,8 +496,8 @@ test.describe('what the technician does with them', () => {
        and answering nothing is exactly who the gate holds, so below the bar an
        empty Send is held. The line names both ways out rather than leaving them
        to work out which one the tool wanted. */
-    await expect(page.locator('.revision-send')).toBeDisabled();
-    await expect(page.locator('[data-skip-held]')).toHaveText(/Generates after one chosen suggestion/);
+    await expect(page.locator('.revision-send')).toHaveCount(0);
+    await expect(page.locator('[data-skip-held]')).toHaveText('Send opens after one question above is picked or answered.');
   });
 
   test('and on a note already at the bar an empty Send is a plain skip again', async ({ page }) => {

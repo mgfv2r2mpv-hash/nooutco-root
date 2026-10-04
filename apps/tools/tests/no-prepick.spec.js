@@ -197,17 +197,46 @@ test.describe('nothing is picked until the technician picks it', () => {
     expect(content).toMatch(notRefined(q2.question));
   });
 
-  test('below the bar an untouched round is held until something is chosen', async ({ page }) => {
+  /* His review of #235: "Instead of the disabled-out 'Generate' button, have
+     it say 'Please respond to some items above to proceed' or something like
+     that but better." So a held round has no greyed Send: a line of text
+     stands where it was. */
+  test('below the bar an untouched round shows a line where Send was, not a greyed button', async ({ page }) => {
     await ask(page, ROUND(70));
     await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
     const send = page.locator('.revision-send');
     await page.clock.runFor(61_000);
-    await expect(send).toBeDisabled();
-    await expect(page.locator('[data-skip-held]')).toHaveText(/Generates after one chosen suggestion or one answer/);
+    await expect(send).toHaveCount(0);
+    const held = page.locator('.revision-compose [data-skip-held]');
+    await expect(held).toHaveText('Send opens after one question above is picked or answered.');
+    await expect(page.locator('.revision-input')).toHaveAttribute('aria-describedby', /revision-send-held/);
+    await expect(page.locator('#revision-send-held')).toHaveCount(1);
 
     await page.locator('[data-suggestion="1:0"]').click();
     await expect(send).toBeEnabled();
     await expect(page.locator('[data-skip-held]')).toHaveCount(0);
+  });
+
+  test('a round with nothing to pick says answered, not picked', async ({ page }) => {
+    await ask(page, { sufficient: false, readiness: 70, questions: [{ field: 'fBehavior', question: 'How many times?', suggestions: [] }] });
+    await expect(page.getByText(/How many times/i)).toBeVisible({ timeout: 20000 });
+    await expect(page.locator('.revision-send')).toHaveCount(0);
+    await expect(page.locator('[data-skip-held]')).toHaveText('Send opens after one question above is answered.');
+    await page.locator('.revision-input').fill('Twice.');
+    await expect(page.locator('.revision-send')).toBeEnabled();
+  });
+
+  test('while the wait runs, its note stands where Send was, and Send comes back when it ends', async ({ page }) => {
+    await ask(page, ROUND(70));
+    await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
+    // Answered, so no longer held, but short of 25 characters, so still waiting.
+    await page.locator('.revision-input').fill('Twice.');
+    await expect(page.locator('[data-skip-held]')).toHaveCount(0);
+    await expect(page.locator('.revision-send')).toHaveCount(0);
+    await expect(page.locator('.revision-compose [data-send-lock]')).toBeVisible();
+    await page.clock.runFor(61_000);
+    await expect(page.locator('.revision-send')).toBeEnabled();
+    await expect(page.locator('[data-send-lock]')).toHaveCount(0);
   });
 });
 
@@ -217,7 +246,7 @@ test.describe('a picked suggestion counts as an answer for the Send wait', () =>
     await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
     const send = page.locator('.revision-send');
     const lock = page.locator('[data-send-lock]');
-    await expect(send).toBeDisabled();
+    await expect(send).toHaveCount(0);
     await expect(lock).toBeVisible();
 
     await page.locator('[data-suggestion-tick="1:0"]').click();
@@ -240,7 +269,7 @@ test.describe('a picked suggestion counts as an answer for the Send wait', () =>
     await own.fill('On his own.');
     await own.press('Enter');
     await expect(page.locator('[data-suggestion-accepted="1"]')).toHaveCount(0);
-    await expect(send).toBeDisabled();
+    await expect(send).toHaveCount(0);
     await expect(lock).toBeVisible();
   });
 });
@@ -302,13 +331,93 @@ test.describe('an edit left behind by a pick', () => {
     await expect(row.locator('.tg-unsaved-dot')).toHaveCount(1);
     await expect(row.locator('.tg-unsaved-say')).toHaveText(/unsaved/i);
 
-    // Picking it again brings the edit back, still unsaved, still theirs.
-    await pencil.click();
+    // A click on the faded sentence picks it again with the edit still unsaved.
+    await page.locator('[data-suggestion="0:0"]').click();
     await expect(field).toHaveValue(edited);
     await expect(field).toBeFocused();
     await expect(page.locator('[data-suggestion-pencil="0:0"]')).toHaveAttribute('data-suggestion-dirty', '1');
     await expect(row).toHaveAttribute('data-suggestion-unsaved', '0');
     await expect(page.locator('[data-suggestion="0:1"]')).toHaveAttribute('data-suggestion-accepted', '0');
+  });
+
+  /* His review of #235: "Clicking with unsaved also leaves an amber icon to
+     revert to suggestion / discard edits idempotent with save. On save, it
+     selects that item if unselected." */
+  const strand = async (page) => {
+    await ask(page, ROUND());
+    await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
+    await page.locator('[data-suggestion="0:0"]').click();
+    await page.keyboard.type(' Inside a minute.');
+    await page.locator('[data-suggestion="0:1"]').click();
+    await expect(page.locator('[data-suggestion-row="0:0"]')).toHaveAttribute('data-suggestion-unsaved', '1');
+    return FLOOR + ' Inside a minute.';
+  };
+
+  test('the amber pencil saves the edit and picks the row', async ({ page }) => {
+    const edited = await strand(page);
+    const pencil = page.locator('[data-suggestion-pencil="0:0"]');
+    await expect(pencil).toHaveAttribute('aria-label', /save/i);
+    await pencil.click();
+
+    const field = page.locator('[data-suggestion-field="0:0"]');
+    await expect(field).toHaveAttribute('data-suggestion-accepted', '1');
+    await expect(field).toHaveValue(edited);
+    await expect(field).toBeFocused();
+    await expect(page.locator('[data-suggestion-pencil="0:0"]')).toHaveAttribute('data-suggestion-dirty', '0');
+    await expect(page.locator('[data-suggestion="0:1"]')).toHaveAttribute('data-suggestion-accepted', '0');
+    await expect(page.locator('[data-suggestion-row="0:0"]')).toHaveAttribute('data-suggestion-unsaved', '0');
+  });
+
+  test('saving twice is the same as saving once', async ({ page }) => {
+    const edited = await strand(page);
+    // Two presses inside one task, so the second lands before any re-render.
+    await page.locator('[data-suggestion-pencil="0:0"]').evaluate((el) => { el.click(); el.click(); });
+    await expect(page.locator('[data-suggestion-field="0:0"]')).toHaveValue(edited);
+    await expect(page.locator('[data-suggestion-accepted="1"]')).toHaveCount(1);
+    await expect(page.locator('[data-suggestion-field="0:0"]')).toHaveAttribute('data-suggestion-accepted', '1');
+  });
+
+  test('an amber revert beside it discards the unsaved words and puts the suggestion back', async ({ page }) => {
+    await strand(page);
+    const revert = page.locator('[data-suggestion-revert="0:0"]');
+    await expect(revert).toBeVisible();
+    await expect(revert).toHaveAttribute('aria-label', /discard/i);
+    await expect(revert).toHaveClass(/is-unsaved/);
+    const [r, , b] = (await revert.evaluate((el) => window.getComputedStyle(el).color)).match(/\d+/g).map(Number);
+    expect(r, 'the stranded revert is not amber').toBeGreaterThan(b + 60);
+
+    // Keyboard reachable: it takes focus and Enter presses it.
+    await revert.focus();
+    await expect(revert).toBeFocused();
+    await page.keyboard.press('Enter');
+
+    await expect(page.locator('[data-suggestion="0:0"]')).toHaveText(FLOOR);
+    await expect(page.locator('[data-suggestion-row="0:0"]')).toHaveAttribute('data-suggestion-unsaved', '0');
+    await expect(page.locator('[data-suggestion="0:0"]')).toHaveAttribute('data-suggestion-accepted', '0');
+    await expect(page.locator('[data-suggestion-tick="0:0"]')).toBeVisible();
+    // The pick it lost stays where it went.
+    await expect(page.locator('[data-suggestion-field="0:1"]')).toHaveAttribute('data-suggestion-accepted', '1');
+  });
+
+  test('discarding twice is the same as discarding once', async ({ page }) => {
+    await strand(page);
+    await page.locator('[data-suggestion-revert="0:0"]').evaluate((el) => { el.click(); el.click(); });
+    await expect(page.locator('[data-suggestion="0:0"]')).toHaveText(FLOOR);
+    await expect(page.locator('[data-suggestion-row="0:0"]')).toHaveAttribute('data-suggestion-unsaved', '0');
+    await expect(page.locator('[data-suggestion-accepted="1"]')).toHaveCount(1);
+    await expect(page.locator('[data-suggestion-field="0:1"]')).toHaveAttribute('data-suggestion-accepted', '1');
+  });
+
+  test('the own row discards back to what was saved, which is empty', async ({ page }) => {
+    await ask(page, ROUND());
+    await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
+    const own = page.locator('[data-suggestion-own="0:own"]');
+    await own.fill('It was in the plan.');
+    await page.locator('[data-suggestion="0:0"]').click();
+    await page.locator('[data-suggestion-revert="0:own"]').click();
+    await expect(own).toHaveValue('');
+    await expect(page.locator('[data-suggestion-row="0:own"]')).toHaveAttribute('data-suggestion-unsaved', '0');
+    await expect(page.locator('[data-suggestion-field="0:0"]')).toHaveAttribute('data-suggestion-accepted', '1');
   });
 
   test('own words typed and not saved show the same way when a suggestion is picked', async ({ page }) => {

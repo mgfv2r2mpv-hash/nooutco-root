@@ -139,6 +139,9 @@ test.describe('one Send ends the round', () => {
     await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
     await expect(page.locator('.revision-skip')).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Use these and generate|Nothing to add|Generate without adding answers/i })).toHaveCount(0);
+    // While the round is held a note stands where Send was (his review of
+    // #235); once a suggestion is chosen, Send is the one button.
+    await page.locator('[data-suggestion-tick="0:1"]').click();
     await expect(page.getByRole('button', { name: /^Send$/ })).toHaveCount(1);
   });
 
@@ -178,29 +181,29 @@ test.describe('Send waits a minute on revisions nobody has answered', () => {
     const send = page.locator('.revision-send');
     const lock = page.locator('[data-send-lock]');
 
-    await expect(send).toBeDisabled();
+    await expect(send).toHaveCount(0);
     await expect(lock).toBeVisible();
     await expect(lock).toHaveText(/\b(60|59|58)s\b/, { timeout: 2000 });
-    // The disabled button leaves the tab order, so the field carries the note.
-    await expect(page.locator('.revision-input')).toHaveAttribute('aria-describedby', 'revision-send-lock');
+    // With a note standing where Send was, the field carries the note.
+    await expect(page.locator('.revision-input')).toHaveAttribute('aria-describedby', /revision-send-lock/);
 
     /* A short answer in hand, because nothing arrives chosen (2 Oct 2026) and
        below the bar the gate holds an untouched round after the minute too.
        Short of 25 characters, it leaves the wait to run. */
     await page.locator('.revision-input').fill('Twice.');
-    await expect(send).toBeDisabled();
+    await expect(send).toHaveCount(0);
 
     await page.clock.runFor(30_000);
-    await expect(send).toBeDisabled();
+    await expect(send).toHaveCount(0);
     await expect(lock).toHaveText(/\b(30|29|28)s\b/, { timeout: 2000 });
 
     await page.clock.runFor(25_000);
-    await expect(send).toBeDisabled();
+    await expect(send).toHaveCount(0);
 
     await page.clock.runFor(6_000);
     await expect(send).toBeEnabled();
     await expect(lock).toHaveCount(0);
-    await expect(page.locator('.revision-input')).not.toHaveAttribute('aria-describedby', 'revision-send-lock');
+    await expect(page.locator('.revision-input')).not.toHaveAttribute('aria-describedby', /revision-send-lock/);
   });
 
   test('typing short of 25 characters does not restart the count', async ({ page }) => {
@@ -213,7 +216,7 @@ test.describe('Send waits a minute on revisions nobody has answered', () => {
     // Every keystroke re-renders the engine; the count must not start over.
     await page.locator('.revision-input').pressSequentially('Twice.');
     await expect(lock).toHaveText(/\b(30|29|28)s\b/, { timeout: 2000 });
-    await expect(send).toBeDisabled();
+    await expect(send).toHaveCount(0);
 
     await page.clock.runFor(31_000);
     await expect(lock).toHaveCount(0);
@@ -240,7 +243,7 @@ test.describe('Send waits a minute on revisions nobody has answered', () => {
     expect(twentyFour.length).toBe(24);
     // Padding does not count: the rule is on what was written.
     await box.fill('   ' + twentyFour + '   ');
-    await expect(send).toBeDisabled();
+    await expect(send).toHaveCount(0);
     // Enter is the other way to send, and it is locked too.
     await box.press('Enter');
     await expect(box).toHaveValue('   ' + twentyFour + '   ');
@@ -296,7 +299,7 @@ test.describe('the lock holds only until the first feedback', () => {
     await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
     const send = page.locator('.revision-send');
     const lock = page.locator('[data-send-lock]');
-    await expect(send).toBeDisabled();
+    await expect(send).toHaveCount(0);
 
     await page.locator('.revision-input').fill('He ran to the door twice.');
     await send.click();
@@ -307,7 +310,7 @@ test.describe('the lock holds only until the first feedback', () => {
     await expect(page.getByText(/right after he reached the door/i)).toBeVisible({ timeout: 20000 });
     await expect(send).toBeEnabled();
     await expect(lock).toHaveCount(0);
-    await expect(page.locator('.revision-input')).not.toHaveAttribute('aria-describedby', 'revision-send-lock');
+    await expect(page.locator('.revision-input')).not.toHaveAttribute('aria-describedby', /revision-send-lock/);
     expect(seen.notes).toHaveLength(0);
   });
 
@@ -332,9 +335,9 @@ test.describe('the lock holds only until the first feedback', () => {
     // Generating again is a new note, and its first round is locked again.
     await generate(page, 'Regenerate');
     await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
-    await expect(send).toBeDisabled();
+    await expect(send).toHaveCount(0);
     await expect(lock).toBeVisible();
-    await expect(page.locator('.revision-input')).toHaveAttribute('aria-describedby', 'revision-send-lock');
+    await expect(page.locator('.revision-input')).toHaveAttribute('aria-describedby', /revision-send-lock/);
   });
 });
 
@@ -347,7 +350,7 @@ test.describe('answers typed in place count toward the 25 characters', () => {
     await expect(second).toBeVisible();
     const send = page.locator('.revision-send');
     const lock = page.locator('[data-send-lock]');
-    await expect(send).toBeDisabled();
+    await expect(send).toHaveCount(0);
     await expect(page.locator('.revision-input')).toHaveValue('');
 
     const a = 'It was in the plan.';
@@ -355,13 +358,13 @@ test.describe('answers typed in place count toward the 25 characters', () => {
     await first.fill(a);
     // Padding does not count here either: 19 + 5 written is 24.
     await second.fill('  Block  ');
-    await expect(send).toBeDisabled();
+    await expect(send).toHaveCount(0);
     await expect(lock).toBeVisible();
 
     await second.fill('Block.');
     await expect(send).toBeEnabled();
     await expect(lock).toHaveCount(0);
-    await expect(send).not.toHaveAttribute('aria-describedby', 'revision-send-lock');
+    await expect(send).not.toHaveAttribute('aria-describedby', /revision-send-lock/);
   });
 
   /* His ruling, 2026-10-03: the panel's own-words row counts too, so the lock
@@ -373,7 +376,7 @@ test.describe('answers typed in place count toward the 25 characters', () => {
     const send = page.locator('.revision-send');
     const lock = page.locator('[data-send-lock]');
     const own = page.locator('[data-suggestion-own="1:own"]');
-    await expect(send).toBeDisabled();
+    await expect(send).toHaveCount(0);
     await expect(page.locator('.revision-input')).toHaveValue('');
 
     const short = 'Back on his own.';
@@ -382,7 +385,7 @@ test.describe('answers typed in place count toward the 25 characters', () => {
 
     await own.fill(short);
     await own.press('Enter');
-    await expect(send).toBeDisabled();
+    await expect(send).toHaveCount(0);
     await expect(lock).toBeVisible();
 
     await own.fill(enough);
@@ -404,9 +407,9 @@ test.describe('answers typed in place count toward the 25 characters', () => {
     expect([ten.length, fourteen.length, fifteen.length]).toEqual([10, 14, 15]);
 
     await inPlace.fill(ten);
-    await expect(send).toBeDisabled();
+    await expect(send).toHaveCount(0);
     await box.fill(fourteen);
-    await expect(send).toBeDisabled();
+    await expect(send).toHaveCount(0);
     await expect(page.locator('[data-send-lock]')).toBeVisible();
 
     await box.fill(fifteen);
@@ -442,6 +445,10 @@ for (const width of [1280, 400]) {
     await ask(page, REVISIONS);
     await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
     await expect(page.locator('[data-speak]')).toBeVisible();
+    /* A chosen suggestion first: nothing arrives chosen, and while the round
+       is held a note stands where Send was (his review of #235). */
+    await page.locator('[data-suggestion-tick="0:1"]').click();
+    await expect(page.locator('.revision-send')).toBeEnabled();
 
     const g = await row(page);
     expect(g.mic.right, 'the mic ends before the field starts').toBeLessThanOrEqual(g.field.left + 1);
@@ -456,9 +463,6 @@ for (const width of [1280, 400]) {
     await expect.poll(async () => (await row(page)).overflow, { timeout: 5000, intervals: [100, 200, 400, 1000] }).toBe(false);
 
     // And the keyboard walks it the same way: Tab from the mic reaches the field, then Send.
-    // A chosen suggestion first, since nothing arrives chosen and a disabled
-    // Send leaves the tab order.
-    await page.locator('[data-suggestion-tick="0:1"]').click();
     await page.clock.runFor(61_000);
     await page.locator('[data-speak]').focus();
     await page.keyboard.press('Tab');

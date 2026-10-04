@@ -371,7 +371,12 @@ body {
 /* THE COMPOSER ROW: box, mic, plane.
    align-items:flex-end so the two squares stay on the box's bottom edge when it
    grows with a long instruction, rather than floating beside its middle. */
-.revision-compose { display: flex; gap: 6px; align-items: flex-end; }
+.revision-compose { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-end; }
+/* Where Send stands while a round is held (his review of #235): the notes on
+   state take a row of their own under the field, since a sentence does not fit
+   the 46px square the button had. */
+.send-wait { flex: 1 1 100%; display: flex; flex-direction: column; gap: 6px; }
+.send-wait .send-lock, .send-wait .skip-held { margin: 0; }
 
 /* ONE SHAPE FOR BOTH ICON BUTTONS. 46px is not a taste call: it is the thumb
    target the speaking control was already held to, and tests/speech.spec.js
@@ -1077,6 +1082,19 @@ body.is-pointing, body.is-pointing * { cursor: crosshair !important; }
 }
 .tg-pencil.is-unsaved:hover, .tg-pencil.is-unsaved:focus-visible {
   background: var(--amber-50);
+  outline: 2px solid var(--amber-700);
+  outline-offset: 2px;
+}
+/* The arrow beside it discards the unsaved words. Amber like the pencil, with
+   the same ring, so the pair reads as one state; its name says what it does. */
+.tg-revert.is-unsaved {
+  color: var(--amber-700);
+  background: var(--amber-50);
+  box-shadow: 0 0 0 1.5px var(--amber-300);
+  font-weight: 700;
+}
+.tg-revert.is-unsaved:hover, .tg-revert.is-unsaved:focus-visible {
+  background: var(--amber-100);
   outline: 2px solid var(--amber-700);
   outline-offset: 2px;
 }

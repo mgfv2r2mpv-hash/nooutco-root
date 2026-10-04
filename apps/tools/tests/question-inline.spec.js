@@ -210,7 +210,7 @@ test.describe('what the answers do', () => {
 
     // Held, and saying so in words rather than with a dead button.
     await expect(page.locator('[data-skip-held="1"]')).toBeVisible();
-    await expect(page.locator('.revision-send')).toBeDisabled();
+    await expect(page.locator('.revision-send')).toHaveCount(0);
 
     await page.locator('[data-question-answer="0"]').fill('It was in the plan.');
     await expect(page.locator('[data-skip-held="1"]')).toHaveCount(0);
