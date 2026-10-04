@@ -442,6 +442,67 @@ test('NEGATIVE CONTROL: an ASCII local part with a non-ASCII domain, a dot or a 
   assert.equal(h.mail.length, 3);
 });
 
+// Item 6 (second security review): the domain was only lower-cased, so a
+// trailing dot (the DNS root) made a new address key for the same mailbox,
+// and a domain with characters no DNS name has was accepted. The address is
+// now keyed by its DNS name: one trailing dot stripped, IDNA-mapped to ASCII,
+// and every label letters, digits and inner hyphens.
+const startAddressBuckets = (h) => h.db.sqlite.prepare("SELECT DISTINCT bucket FROM throttle WHERE bucket LIKE 'start-address:%'").all().map((r) => r.bucket);
+
+test('item 6: a trailing dot or another case is the same address as the plain one', async () => {
+  const h = harness();
+  assert.deepEqual(await answer(await start(h, 'v@example.test.')), { status: 200, json: { ok: true } });
+  const code = codeFrom(h, 'v@example.test');
+  assert.deepEqual(await answer(await verify(h, { email: 'V@EXAMPLE.TEST', code })), { status: 200, json: { ok: true } });
+  assert.equal(accounts(h.db).length, 1);
+
+  const k = harness();
+  for (const [email, ip] of [['v@example.test.', '192.0.2.60'], ['V@EXAMPLE.TEST', '192.0.2.61'], ['v@example.test', '192.0.2.62']]) {
+    assert.deepEqual(await answer(await start(k, email, ip)), { status: 200, json: { ok: true } }, email);
+  }
+  assert.equal(startAddressBuckets(k).length, 1, 'the three spellings share one per-address bucket');
+  assert.ok(k.mail.every((m) => m.to === 'v@example.test'), 'every mail goes to the plain address');
+});
+
+test('item 6: a full-width or decomposed spelling of a domain is the same address as its DNS name', async () => {
+  const pairs = [
+    ['v@ｅｘａｍｐｌｅ.test', 'v@example.test'],
+    ['v@bücher.example.test', 'v@bücher.example.test'],
+  ];
+  for (const [odd, plain] of pairs) {
+    const h = harness();
+    await start(h, odd, '192.0.2.70');
+    await start(h, plain, '192.0.2.71');
+    assert.equal(startAddressBuckets(h).length, 1, JSON.stringify(odd));
+    assert.equal(new Set(h.mail.map((m) => m.to)).size, 1, JSON.stringify(odd));
+  }
+});
+
+test('item 6: a domain that is not a plain DNS name is refused as shape before any write', async () => {
+  const h = harness();
+  const bad = [
+    'v@-example.test',
+    'v@example-.test',
+    'v@example..test',
+    'v@.example.test',
+    'v@example.test..',
+    'v@exa_mple.test',
+    'v@exa%41mple.test',
+    'v@exa!mple.test',
+    'v@exa*mple.test',
+    'v@example.123',
+    `v@${'a'.repeat(64)}.test`,
+  ];
+  for (const email of bad) {
+    assert.deepEqual(await answer(await start(h, email)), { status: 400, json: { error: 'shape' } }, email);
+    assert.deepEqual(await answer(await verify(h, { email, code: NEVER_SENT })), { status: 400, json: { error: 'shape' } }, email);
+    assert.deepEqual(await answer(await h.call(post('/signin', { email, password: PASSWORD, keyDigest: ANY_KEY_DIGEST }, { 'cf-connecting-ip': IP }))), { status: 400, json: { error: 'shape' } }, email);
+  }
+  assert.deepEqual(h.mail, []);
+  assert.deepEqual(challenges(h.db), []);
+  assert.equal(h.db.sqlite.prepare('SELECT COUNT(*) AS n FROM throttle').get().n, 0, 'a refused address is not counted');
+});
+
 // M2: every '+tag' of one mailbox was its own address, so the per-address
 // start limit did not bound mail to that mailbox. Tagged starts share one
 // bucket per mailbox (the address with the tag stripped). The account key
