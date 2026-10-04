@@ -26,6 +26,10 @@ export const NONCE_TTL_MS = 60_000;
 // that could fill the table.
 export const LIVE_NONCES_PER_DEVICE = 5;
 
+// A condition a statement adds, bound to a device id, so a write happens only
+// while that device is not removed (security review L2).
+export const LIVE_DEVICE = "EXISTS (SELECT 1 FROM device WHERE id = ? AND removed_at IS NULL)";
+
 export class Refusal extends Error {
   constructor(reason, status) {
     super(reason);
@@ -93,15 +97,17 @@ export async function findDevice(db, id) {
   return row;
 }
 
-// Spends the nonce (only once, only for its own device, only before expiry),
-// then checks the signature. The nonce is spent even when the signature
-// fails, so a guesser cannot retry one nonce.
+// Spends the nonce (only once, only for its own device, only before expiry,
+// only while the device is not removed), then checks the signature. The nonce
+// is spent even when the signature fails, so a guesser cannot retry one nonce.
+// The device check rides in the spend itself (security review L2), so a
+// removal that lands after findDevice still wins.
 export async function checkSignature(db, device, request, path, bytes, now) {
   const nonce = request.headers.get("x-hz-nonce");
   const sig = fromB64url(request.headers.get("x-hz-sig"));
   if (typeof nonce !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(nonce)) throw new Refusal("stale-nonce", 401);
-  const spent = await db.prepare("UPDATE nonce SET used = 1 WHERE value = ? AND device_id = ? AND used = 0 AND expires_at > ? RETURNING value")
-    .bind(nonce, device.id, now).first();
+  const spent = await db.prepare(`UPDATE nonce SET used = 1 WHERE value = ? AND device_id = ? AND used = 0 AND expires_at > ? AND ${LIVE_DEVICE} RETURNING value`)
+    .bind(nonce, device.id, now, device.id).first();
   if (!spent) throw new Refusal("stale-nonce", 401);
   const raw = !sig ? null : sig.length === 64 ? sig : derToRaw(sig);
   const keyBytes = fromB64url(device.sign_key);
@@ -122,13 +128,18 @@ export async function isAdmin(db, accountId) {
 }
 
 // POST /nonce: a fresh challenge for a registered device, refused once the
-// device already holds LIVE_NONCES_PER_DEVICE live ones. The count and the
-// insert are one statement, so requests arriving together cannot pass the cap.
+// device already holds LIVE_NONCES_PER_DEVICE live ones. The count, the
+// device check and the insert are one statement, so requests arriving
+// together cannot pass the cap, and a device removed after findDevice gets no
+// nonce (security review L2).
 export async function issueNonce({ db, device, now }) {
   const value = b64url(crypto.getRandomValues(new Uint8Array(32)));
   const made = await db.prepare(
-    "INSERT INTO nonce (value, device_id, expires_at, used) SELECT ?, ?, ?, 0 WHERE (SELECT COUNT(*) FROM nonce WHERE device_id = ? AND used = 0 AND expires_at > ?) < ? RETURNING value",
-  ).bind(value, device.id, now + NONCE_TTL_MS, device.id, now, LIVE_NONCES_PER_DEVICE).first();
-  if (!made) throw new Refusal("slow-down", 429);
+    `INSERT INTO nonce (value, device_id, expires_at, used) SELECT ?, ?, ?, 0 WHERE ${LIVE_DEVICE} AND (SELECT COUNT(*) FROM nonce WHERE device_id = ? AND used = 0 AND expires_at > ?) < ? RETURNING value`,
+  ).bind(value, device.id, now + NONCE_TTL_MS, device.id, device.id, now, LIVE_NONCES_PER_DEVICE).first();
+  if (!made) {
+    await findDevice(db, device.id); // refuses no-device when the removal is what stopped it
+    throw new Refusal("slow-down", 429);
+  }
   return { status: 200, json: { nonce: value } };
 }

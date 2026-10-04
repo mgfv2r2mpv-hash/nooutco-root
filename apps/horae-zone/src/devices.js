@@ -19,7 +19,7 @@
  * never says whether a device of another account exists. The row stays,
  * marked with when it was removed.
  */
-import { Refusal, b64url, fromB64url } from "./checks.js";
+import { Refusal, LIVE_DEVICE, b64url, fromB64url } from "./checks.js";
 import { hasOnly, keysOrUnavailable } from "./signup.js";
 
 const TICKET = /^[A-Za-z0-9_-]{43}$/;
@@ -76,13 +76,15 @@ export async function registerDevice({ db, body, now, env }) {
 export async function removeDevice({ db, device, body, now }) {
   if (!hasOnly(body, ["device"])) throw new Refusal("shape", 400);
   if (typeof body.device !== "string" || !DEVICE_ID.test(body.device)) throw new Refusal("shape", 400);
-  // Both statements match only a device of the caller's account; the nonces
-  // go first, while the device is still live.
+  // Both statements match only a device of the caller's account, and only
+  // while the caller is not removed (security review L2), so a removal of the
+  // caller that lands mid-flight wins and this one changes nothing. The
+  // nonces go first, while the device is still live.
   await db.batch([
-    db.prepare("UPDATE nonce SET used = 1 WHERE device_id = ? AND used = 0 AND EXISTS (SELECT 1 FROM device WHERE id = ? AND account_id = ?)")
-      .bind(body.device, body.device, device.account_id),
-    db.prepare("UPDATE device SET removed_at = ? WHERE id = ? AND account_id = ? AND removed_at IS NULL")
-      .bind(now, body.device, device.account_id),
+    db.prepare(`UPDATE nonce SET used = 1 WHERE device_id = ? AND used = 0 AND EXISTS (SELECT 1 FROM device WHERE id = ? AND account_id = ?) AND ${LIVE_DEVICE}`)
+      .bind(body.device, body.device, device.account_id, device.id),
+    db.prepare(`UPDATE device SET removed_at = ? WHERE id = ? AND account_id = ? AND removed_at IS NULL AND ${LIVE_DEVICE}`)
+      .bind(now, body.device, device.account_id, device.id),
   ]);
   return { status: 200, json: { ok: true } };
 }

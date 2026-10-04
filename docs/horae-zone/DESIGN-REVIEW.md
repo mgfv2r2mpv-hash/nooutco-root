@@ -385,6 +385,18 @@ Tests (`test/devices.test.mjs`): "M3: a ticket refuses keys other than the ones 
 
 Left as is (residual): the ticket is still a bearer value between the owner's own `/signin` and `/device/register`; the binding means only the device holding the private halves of the bound keys can use what it registers.
 
+**L2 (low): a removal landing mid-flight did not win.** The device check (`findDevice`) ran once, before the handler, and the writes after it did not look again. A request from a device removed between that check and its writes still acted: it removed another device of the account, got a fresh nonce, spent a nonce, or got a sign-in ticket by the H2 path.
+
+What changed: every write a device's request makes now carries `LIVE_DEVICE` (`src/checks.js`), `EXISTS (SELECT 1 FROM device WHERE id = ? AND removed_at IS NULL)` bound to the calling device, in the same statement.
+- The nonce spend in `checkSignature`, so a nonce is spent only while its device is live; a refused spend answers `stale-nonce`.
+- The nonce insert in `issueNonce`, beside the cap. When the insert makes no row, a second `findDevice` tells a removed device (`no-device`) from a full cap (`slow-down`).
+- Both statements of `/device/remove`, so a caller removed mid-flight changes nothing. The answer stays `{ok:true}`, as it is for any id (decision 6).
+- The ticket insert of a sign-in signed by a device of the account (the H2 path), now `INSERT ... SELECT ... WHERE` it with `RETURNING`; no row answers `no-device` and no ticket is stored. An unsigned sign-in is unchanged.
+
+Tests (`test/devices.test.mjs`): a test helper hands the handler a database where the removal lands right after a named statement has run (after the nonce spend for signed routes, after `findDevice` for `/nonce`). "L2: a device removed after its checks passed cannot remove another device", "L2: a device removed after its id was checked gets no nonce" and "L2: a nonce of a device stamped removed after its id was checked is not spent" fail on a `3c3cac63` extract. "L2: a device removed after its signed sign-in passed the checks gets no ticket" fails on `8a8f064f`, the commit before this fix; the signed sign-in path did not exist on `3c3cac63` (it came with H2). "L2 NEGATIVE CONTROL: a live device removes another, and itself" passes on both.
+
+Left as is (residual): a wrong-password try from a device removed mid-flight still skips the address bucket for that one try (the rate check runs before the ticket insert); it is one try per removal and pays the per-requester bucket. A read-only route has no write to guard, and none exists yet.
+
 ### Open points for the reviewer
 
 | # | Point | Where | Proposed resolution |
