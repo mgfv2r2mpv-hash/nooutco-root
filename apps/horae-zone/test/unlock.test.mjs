@@ -24,7 +24,7 @@ import { initiatorStart, initiatorFinish, unlockChannelFor } from '../../../pack
 import { CONFIRM_MS, WINDOW_MS } from '../../../packages/account-engine/src/limits.mjs';
 import { b64url, fromB64url } from '../src/checks.js';
 import {
-  harness, signed, auditRows, everyRow, registeredDevice, enrolledDevice, codeAt, wrongCodeAt, tryCode,
+  harness, signed, auditRows, everyRow, registeredDevice, enrolledDevice, confirmedDevice, codeAt, wrongCodeAt, tryCode,
   TICKET_PUBLIC_KEY, ROOT, T0, removedMidFlight, SPEND_NONCE,
 } from './helpers.mjs';
 
@@ -58,8 +58,9 @@ async function readTicket(ticket) {
   return ok ? JSON.parse(new TextDecoder().decode(fromB64url(payload))) : null;
 }
 
-// A device of the same account that has not proved a code yet; the unlock
-// routes are the ones it may use.
+// A device of the same account that has not proved a code yet. Once the
+// account's enrolment is confirmed (confirmedDevice) it starts pending, and
+// the unlock routes are the ones it may use.
 async function secondDevice(h, first) {
   const next = await registeredDevice(h, first.email, { fresh: false });
   return { ...next, email: first.email, seed: first.seed };
@@ -220,7 +221,7 @@ test('L2: a device removed after its exchange was spent does not use up the code
 
 test('L2: a device removed after its code was accepted gets no ticket and stays held back', async () => {
   const h = harness();
-  const dev = await enrolledDevice(h, ADDRESS);
+  const dev = await confirmedDevice(h, ADDRESS);
   const other = await secondDevice(h, dev);
   const { exchange, tagA } = await startOnly(h, other, await codeAt(dev, h.clock.ms));
   const request = await signedFinish(h, other, exchange, tagA);
@@ -244,7 +245,7 @@ test('L2 NEGATIVE CONTROL: a removal of some other device mid-flight does not st
 
 test('three tries in one window are admitted even when more arrive together', async () => {
   const h = harness();
-  const dev = await enrolledDevice(h, ADDRESS);
+  const dev = await confirmedDevice(h, ADDRESS);
   // Two devices, so six nonces can be live at once; the second proves the
   // code first, so its tries count in the account's windows (security review
   // item 2: a pending device's do not).
@@ -263,7 +264,7 @@ test('three tries in one window are admitted even when more arrive together', as
 
 test('A5 review 2: a pending device\'s 3 tries a day hold when more arrive together', async () => {
   const h = harness();
-  const dev = await enrolledDevice(h, ADDRESS);
+  const dev = await confirmedDevice(h, ADDRESS);
   const other = await secondDevice(h, dev);
   // The owner's two wrong codes fill most of the account's window; the
   // pending device's cap is its own, so it still gets exactly 3.

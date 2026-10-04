@@ -238,6 +238,21 @@ export async function enrolledDevice(h, email) {
   return { ...dev, email, secret, uri, seed: base32Decode(secret) };
 }
 
+// The 30-second step of a code (and of a lockout window).
+const STEP_MS = 30_000;
+
+// An enrolled device that has proved its first code, which confirms the
+// enrolment (A5 security review item 3): only then does a device registered
+// later start pending. The clock moves on one step, so the step that code
+// used is behind it and the next code is fresh.
+export async function confirmedDevice(h, email) {
+  const dev = await enrolledDevice(h, email);
+  const tried = await tryCode(h, dev, await codeAt(dev, h.clock.ms));
+  if (tried.finish?.status !== 200) throw new Error(`the first code answered ${tried.finish?.status ?? tried.start.status}`);
+  h.clock.ms += STEP_MS;
+  return dev;
+}
+
 // The code an authenticator holding `device.seed` shows at `ms`.
 export async function codeAt(device, ms) {
   const { totpAt } = await engine();

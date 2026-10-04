@@ -7,9 +7,16 @@
  * seed and its otpauth URI, for the QR. The ticket is spent first, and only
  * when it was issued to the signing device's account and bound to its own
  * keys (security review M3), so another account's ticket, or one named for
- * other keys, is refused and stays live. A second enrolment answers enrolled
- * and carries no seed. A removal of the device that lands mid-flight wins
- * (L2): the spend and the insert re-check it, and the answer is no-device.
+ * other keys, is refused and stays live. A removal of the device that lands
+ * mid-flight wins (L2): the spend and the insert re-check it, and the answer
+ * is no-device.
+ *
+ * CONFIRMATION (A5 security review, item 3). An enrolment stays unconfirmed
+ * until the first accepted code (src/unlock.js). Until then a repeat, with a
+ * fresh ticket and under the sole-device rule below, answers a new seed that
+ * replaces the old one, so a seed nobody scanned does not lock the account
+ * in, and an exchange built on the old seed cannot finish. Once confirmed, a
+ * repeat answers enrolled and carries no seed.
  *
  * CUSTODY. The seed is 20 random bytes, stored only sealed: AES-GCM under a
  * key HKDF derives from the Worker secret HZ_SEED_KEY (base64url, at least
@@ -23,8 +30,9 @@
  * seed insert, so a device registered in between still blocks it. A second
  * live device answers enrol-blocked (and a refused spend leaves the ticket
  * live). A password thief who registers a device of its own therefore cannot
- * enrol first, and until enrolment no device is pending, so either device can
- * remove the other. A device registered after enrolment starts pending
+ * enrol first, and until the enrolment is confirmed no device is pending, so
+ * either device can remove the other. The first accepted code holds back
+ * every other live device, and a device registered after it starts pending
  * (src/devices.js): it reaches only /nonce and /unlock until a code it
  * proves is accepted.
  */
@@ -110,14 +118,18 @@ export async function enrolOtp({ db, device, body, now, env }) {
   }
   const seed = crypto.getRandomValues(new Uint8Array(SEED_BYTES));
   const box = await sealSeed(boxKey, device.account_id, seed);
+  // An unconfirmed enrolment is replaced (item 3): a new box, and the
+  // enrolment counted up so an exchange built on the old seed cannot finish.
   const made = await db.prepare(
-    `INSERT INTO otp (account_id, box, last_step, created_at) SELECT ?, ?, 0, ? WHERE ${LIVE_DEVICE} AND ${SOLE_LIVE} ON CONFLICT (account_id) DO NOTHING RETURNING account_id`,
+    `INSERT INTO otp (account_id, box, last_step, created_at) SELECT ?, ?, 0, ? WHERE ${LIVE_DEVICE} AND ${SOLE_LIVE}
+     ON CONFLICT (account_id) DO UPDATE SET box = excluded.box, created_at = excluded.created_at, enrolment = otp.enrolment + 1
+     WHERE otp.confirmed_by IS NULL RETURNING account_id`,
   ).bind(device.account_id, box, now, device.id, device.account_id).first();
   if (!made) {
     seed.fill(0);
     await findDevice(db, device.id);
-    const enrolled = await db.prepare("SELECT 1 AS yes FROM otp WHERE account_id = ?").bind(device.account_id).first();
-    throw enrolled ? new Refusal("enrolled", 409) : new Refusal("enrol-blocked", 409);
+    const confirmed = await db.prepare("SELECT 1 AS yes FROM otp WHERE account_id = ? AND confirmed_by IS NOT NULL").bind(device.account_id).first();
+    throw confirmed ? new Refusal("enrolled", 409) : new Refusal("enrol-blocked", 409);
   }
   const json = { secret: base32Encode(seed), uri: otpauthUri({ key: seed, ...OTP_LABEL }) };
   seed.fill(0);

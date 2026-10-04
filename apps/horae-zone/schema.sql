@@ -14,8 +14,9 @@
 -- A device's public P-256 signing key and agreement key (raw uncompressed
 -- points, base64url). The private halves never leave the device's Secure
 -- Enclave. A removed device keeps its row, stamped removed_at, and every
--- route refuses it. A5: pending is 1 for a device of an account with a code
--- that has not proved the code yet; it reaches only /nonce and /unlock.
+-- route refuses it. A5: pending is 1 for a device of an account with a
+-- confirmed code that has not proved the code yet; it reaches only /nonce
+-- and /unlock.
 CREATE TABLE IF NOT EXISTS device (
   id          TEXT    PRIMARY KEY,
   account_id  TEXT    NOT NULL,
@@ -122,25 +123,42 @@ CREATE INDEX IF NOT EXISTS ticket_expires_at ON ticket (expires_at);
 -- AES-GCM under a key derived from the Worker secret HZ_SEED_KEY and bound to
 -- the account id (src/otp.js). last_step is the newest 30-second step whose
 -- code was accepted; no step at or before it is offered again, so a code is
--- accepted once.
+-- accepted once. A5 security review item 3: until the first accepted code
+-- the enrolment is unconfirmed (confirmed_by is null) and the sole live
+-- device may enrol again, which replaces box and counts enrolment up, so an
+-- exchange started on the old seed no longer matches. confirmed_by is the
+-- device whose code confirmed it.
 CREATE TABLE IF NOT EXISTS otp (
   account_id   TEXT    PRIMARY KEY,
   box          TEXT    NOT NULL,
   last_step    INTEGER NOT NULL DEFAULT 0,
-  created_at   INTEGER NOT NULL
+  created_at   INTEGER NOT NULL,
+  enrolment    INTEGER NOT NULL DEFAULT 1,
+  confirmed_by TEXT
 );
+
+-- The confirmation and the pending flags move together: the statement that
+-- sets confirmed_by (the first accepted code, src/unlock.js) holds back every
+-- other live device of the account in the same write, so no device is left
+-- unheld by a Worker that stops between two statements.
+CREATE TRIGGER IF NOT EXISTS otp_confirmed AFTER UPDATE OF confirmed_by ON otp
+WHEN OLD.confirmed_by IS NULL AND NEW.confirmed_by IS NOT NULL
+BEGIN
+  UPDATE device SET pending = 1 WHERE account_id = NEW.account_id AND id <> NEW.confirmed_by AND removed_at IS NULL;
+END;
 
 -- A5, one CPace exchange per /unlock/start, finished once by the device that
 -- started it. candidates holds only keyed digests of the tags the service
--- expects (with the step each would accept), never a tag or a code. Spent
--- and expired rows are purged hourly.
+-- expects (with the step each would accept), never a tag or a code, and the
+-- enrolment it was built on. Spent and expired rows are purged hourly.
 CREATE TABLE IF NOT EXISTS exchange (
   id           TEXT    PRIMARY KEY,
   account_id   TEXT    NOT NULL,
   device_id    TEXT    NOT NULL,
   candidates   TEXT    NOT NULL,
   expires_at   INTEGER NOT NULL,
-  used         INTEGER NOT NULL DEFAULT 0
+  used         INTEGER NOT NULL DEFAULT 0,
+  enrolment    INTEGER NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS exchange_expires_at ON exchange (expires_at);

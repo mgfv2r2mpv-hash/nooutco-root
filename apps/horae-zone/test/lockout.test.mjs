@@ -12,7 +12,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { WINDOW_MS, CONFIRM_MS, UNLOCK_TTL_MS, DAY_MS, parseState } from '../../../packages/account-engine/src/limits.mjs';
 import {
-  harness, post, auditRows, everyRow, enrolledDevice, registeredDevice, codeAt, wrongCodeAt, tryCode, reopenTokenFrom, REOPEN_BASE,
+  harness, post, auditRows, everyRow, enrolledDevice, confirmedDevice, registeredDevice, codeAt, wrongCodeAt, tryCode, reopenTokenFrom, REOPEN_BASE,
 } from './helpers.mjs';
 
 // Fixed, fake values: reserved-domain addresses.
@@ -246,7 +246,8 @@ test('a refused start and a reopen each write one audit row of route and reason'
 });
 
 // ---- A5 security review, item 2 (MEDIUM): a pending device cannot close the path ----
-// A pending device has shown only the password. Its tries count against its
+// A pending device (registered once the owner's first code confirmed the
+// enrolment, item 3) has shown only the password. Its tries count against its
 // own cap (3 a day, a right code included) and never
 // toward the account's windows, so a password thief cannot lock the owner out.
 
@@ -255,7 +256,7 @@ const pathState = (h) => parseState(h.db.sqlite.prepare('SELECT state FROM limit
 
 test('A5 review 2: the probe (a pending device burns tries in two windows) leaves the owner\'s path open', async () => {
   const h = harness();
-  const owner = await enrolledDevice(h, ADDRESS);
+  const owner = await confirmedDevice(h, ADDRESS);
   const thief = await pendingDevice(h, owner);
   await lockWindow(h, thief);
   const same = await rightTry(h, owner);
@@ -271,7 +272,7 @@ test('A5 review 2: the probe (a pending device burns tries in two windows) leave
 
 test('A5 review 2: a pending device gets 3 tries a day, a right code included, then the next day 3 more', async () => {
   const h = harness();
-  const owner = await enrolledDevice(h, ADDRESS);
+  const owner = await confirmedDevice(h, ADDRESS);
   const next = await pendingDevice(h, owner);
   const first = h.clock.ms;
   for (let i = 0; i < 3; i += 1) {
@@ -288,7 +289,7 @@ test('A5 review 2: a pending device gets 3 tries a day, a right code included, t
 
 test('A5 review 2 NEGATIVE CONTROL: a pending device\'s tries are its own, so another pending device keeps its 3', async () => {
   const h = harness();
-  const owner = await enrolledDevice(h, ADDRESS);
+  const owner = await confirmedDevice(h, ADDRESS);
   const thief = await pendingDevice(h, owner);
   const mine = await pendingDevice(h, owner);
   await lockWindow(h, thief);
@@ -298,7 +299,7 @@ test('A5 review 2 NEGATIVE CONTROL: a pending device\'s tries are its own, so an
 
 test('A5 review 2 NEGATIVE CONTROL: a non-pending device\'s wrongs still close the path, for pending devices too', async () => {
   const h = harness();
-  const owner = await enrolledDevice(h, ADDRESS);
+  const owner = await confirmedDevice(h, ADDRESS);
   const next = await pendingDevice(h, owner);
   await lockWindow(h, owner);
   h.clock.ms += WINDOW_MS;
