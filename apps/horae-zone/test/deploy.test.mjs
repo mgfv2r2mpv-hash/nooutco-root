@@ -164,6 +164,45 @@ test('dry run prints every step and command, masks secrets and touches nothing',
   assert.match(out, /--new-ticket-key/);
 });
 
+test('the dry run shows each A5 step from the catalog and schema.sql, with every value masked and no key generated', async () => {
+  const forbidden = (what) => () => { throw new Error(`dry run called ${what}`); };
+  const lines = [];
+  await deploy({
+    argv: ['--dry-run'], root: ROOT, write: (t) => lines.push(t),
+    run: forbidden('wrangler'), ask: forbidden('a prompt'), fetchImpl: forbidden('fetch'),
+    writeFile: forbidden('writeFile'), makeTempDir: forbidden('makeTempDir'), removeDir: forbidden('removeDir'),
+    randomBytes: forbidden('randomBytes'), generateTicketKey: forbidden('generateTicketKey'), sleep: forbidden('sleep'),
+  });
+  const out = lines.join('\n');
+  const step = (n) => out.slice(out.indexOf(`Step ${n}.`), out.indexOf(`Step ${n + 1}.`) === -1 ? undefined : out.indexOf(`Step ${n + 1}.`));
+  // Each asked value shows its prompt and the rule its check applies, so the reopen base reads as https, no ? and no #.
+  for (const s of CATALOG.filter((c) => c.source === 'asked')) {
+    const line = lines.find((l) => l.includes(`-> ${s.name}`));
+    assert.ok(line && step(2).includes(line), `Step 2 prompts for ${s.name}`);
+    assert.equal(line.includes('(hidden)'), Boolean(s.hidden), `${s.name} hidden only when the catalog says so`);
+    assert.ok(line.includes(`checked: ${s.rule}`), `${s.name} prompt shows its rule: ${line}`);
+  }
+  assert.ok(lines.find((l) => l.includes('-> HZ_REOPEN_BASE')).includes('checked: https, no ? and no #'));
+  for (const s of CATALOG.filter((c) => c.source === 'generated')) {
+    assert.match(step(2), new RegExp(`generate: ${s.name} = \\[masked\\] \\(`), `Step 2 generates ${s.name}, masked`);
+  }
+  for (const name of ['HZ_ACCOUNT_KEY', 'HZ_SEED_KEY', 'HZ_TICKET_KEY']) assert.ok(step(5).includes(`an ${name}`) || step(5).includes(`or ${name}`), `Step 5 says when ${name} is kept`);
+  for (const s of CATALOG.filter((c) => c.store === 'secret')) {
+    assert.match(step(5), new RegExp(`wrangler secret put ${s.name} --config wrangler\\.deploy\\.toml\\s+< stdin: \\[masked\\]`));
+  }
+  // Step 7 names what the checklist expects: every schema.sql table (A5's included) and every secret, by name only.
+  const tablesLine = lines.find((l) => l.includes('expect tables:'));
+  assert.ok(tablesLine && step(7).includes(tablesLine), 'Step 7 names the tables the schema check expects');
+  assert.deepEqual(tablesLine.split('expect tables:')[1].split(',').map((t) => t.trim()), TABLES);
+  for (const t of ['otp', 'exchange', 'limits', 'pending_try']) assert.ok(TABLES.includes(t));
+  const secretsLine = lines.find((l) => l.includes('expect secrets (names only):'));
+  assert.ok(secretsLine && step(7).includes(secretsLine), 'Step 7 names the secrets the checklist looks for');
+  assert.deepEqual(secretsLine.split('expect secrets (names only):')[1].split(',').map((n) => n.trim()).sort(), [...SECRET_NAMES].sort());
+  // Masked means no value: none of the test's fake values, and no JWK or base64url key shape.
+  for (const v of [...SECRET_VALUES, ANSWERS.HZ_LINK_BASE, ANSWERS.HZ_REOPEN_BASE]) assert.equal(out.includes(v), false, 'dry run prints no value');
+  assert.doesNotMatch(out, /"d"\s*:|"kty"|[A-Za-z0-9_-]{43}/);
+});
+
 test('a full run against mocked wrangler creates the database, sets every secret through stdin and passes the checklist', async () => {
   const h = harness();
   const result = await deploy(h.deps);
