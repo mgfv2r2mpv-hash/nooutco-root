@@ -22,6 +22,13 @@
  * finish, from its own device only. Every refusal at finish is bad-code: a
  * wrong code, an unknown, spent or expired exchange, another device's.
  *
+ * REMOVAL (security review L2). The exchange insert, the exchange spend, the
+ * last_step update and the pending clear each re-check in the same statement
+ * that the device is not removed, so a removal that lands mid-flight answers
+ * no-device: no exchange, no accepted code where the spend or the step update
+ * noticed it, and never a ticket. A start or exchange left unfinished that
+ * way ages past CONFIRM_MS and counts as a try, as any abandoned one does.
+ *
  * TICKET. The service's ECDSA P-256 signature (Worker secret HZ_TICKET_KEY,
  * a private JWK) over `${TICKET_LABEL}.${payload}`, the payload base64url
  * JSON {v, account, device, at, exp}. The limits below are the agent's safe
@@ -33,7 +40,7 @@ import { fragmentLink } from "../../../packages/account-engine/src/mailer.mjs";
 import { responderReply, unlockChannelFor } from "../../../packages/account-engine/src/pake.mjs";
 import { hotp, windowOf, clockOffset } from "../../../packages/account-engine/src/totp.mjs";
 import { ristretto255 } from "../../../packages/account-engine/vendor/noble/curves/ed25519.js";
-import { Refusal, b64url, fromB64url } from "./checks.js";
+import { Refusal, LIVE_DEVICE, b64url, fromB64url, findDevice } from "./checks.js";
 import { hasOnly, keysOrUnavailable } from "./signup.js";
 import { openSeed, seedBoxKey } from "./otp.js";
 import { ruleLimits, lockNotes, mailAfter, reopenedNote, spendReopen } from "./lockout.js";
@@ -131,8 +138,10 @@ export async function startUnlock({ db, device, body, now, env, mailer }) {
     if (offered) candidates.push({ step: s, digest: await keys.tagDigest(exchange, b64url(expect.tagA)) });
   }
   seed.fill(0);
-  await db.prepare("INSERT INTO exchange (id, account_id, device_id, candidates, expires_at, used) VALUES (?, ?, ?, ?, ?, 0)")
-    .bind(exchange, device.account_id, device.id, JSON.stringify(candidates), now + CONFIRM_MS).run();
+  const stored = await db.prepare(
+    `INSERT INTO exchange (id, account_id, device_id, candidates, expires_at, used) SELECT ?, ?, ?, ?, ?, 0 WHERE ${LIVE_DEVICE} RETURNING id`,
+  ).bind(exchange, device.account_id, device.id, JSON.stringify(candidates), now + CONFIRM_MS, device.id).first();
+  if (!stored) throw new Refusal("no-device", 401, after);
   return { status: 200, json: { exchange, replies }, after };
 }
 
@@ -158,14 +167,19 @@ export async function finishUnlock({ db, device, body, now, env, mailer }) {
   }
   const { keys, signKey, reopenBase } = await configOrUnavailable(env, mailer);
   const row = await db.prepare(
-    "UPDATE exchange SET used = 1 WHERE id = ? AND device_id = ? AND used = 0 AND expires_at > ? RETURNING account_id, candidates",
-  ).bind(body.exchange, device.id, now).first();
-  if (!row) throw new Refusal("bad-code", 401);
+    `UPDATE exchange SET used = 1 WHERE id = ? AND device_id = ? AND used = 0 AND expires_at > ? AND ${LIVE_DEVICE} RETURNING account_id, candidates`,
+  ).bind(body.exchange, device.id, now, device.id).first();
+  if (!row) {
+    await findDevice(db, device.id); // refuses no-device when the removal is what stopped it
+    throw new Refusal("bad-code", 401);
+  }
   const step = matchedStep(JSON.parse(row.candidates), await keys.tagDigest(body.exchange, body.tagA));
-  // A code is accepted once: only an update that moves last_step forward wins.
+  // A code is accepted once: only an update that moves last_step forward wins,
+  // and only while the device is not removed (security review L2).
   const accepted = step !== null && Boolean(await db.prepare(
-    "UPDATE otp SET last_step = ? WHERE account_id = ? AND last_step < ? RETURNING account_id",
-  ).bind(step, row.account_id, step).first());
+    `UPDATE otp SET last_step = ? WHERE account_id = ? AND last_step < ? AND ${LIVE_DEVICE} RETURNING account_id`,
+  ).bind(step, row.account_id, step, device.id).first());
+  if (!accepted) await findDevice(db, device.id);
   const ruled = await ruleLimits(db, row.account_id, now, (state) => {
     const settled = settle(state, now);
     if (accepted) return { state: confirm(settled.state, body.exchange), events: settled.events };
@@ -174,7 +188,8 @@ export async function finishUnlock({ db, device, body, now, env, mailer }) {
   });
   const after = mailAfter({ db, keys, mailer, accountId: row.account_id, notes: lockNotes(ruled.events, ruled.token, reopenBase) });
   if (!accepted) throw new Refusal("bad-code", 401, after);
-  await db.prepare("UPDATE device SET pending = 0 WHERE id = ?").bind(device.id).run();
+  const cleared = await db.prepare("UPDATE device SET pending = 0 WHERE id = ? AND removed_at IS NULL RETURNING id").bind(device.id).first();
+  if (!cleared) throw new Refusal("no-device", 401, after);
   const ticket = await signTicket(signKey, { v: 1, account: row.account_id, device: device.id, at: now, exp: now + UNLOCK_LIMITS.ticketTtlMs });
   return { status: 200, json: { ticket }, after };
 }
