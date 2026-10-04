@@ -249,8 +249,11 @@ Safe defaults the plan does not fix. Each is one constant in `src/signup.js`.
 | 6 | Account password length | 12 to 256 characters | `passwordMin`, `passwordMax` |
 | 7 | The mail wording (second review, item 1: no code to type): subject "Horae Zone sign-up link", then "Link for the device signing up:", the link, "Works once. Expires within N minutes." (N is the link's remaining life, rounded up: 10 for a new link, less for a re-sent one, item 3) and "No account is made without this link." | As written | `codeMessage` |
 | 8 | Codes mailed per hour across every `+tag` of one mailbox (M2) | 3 | `codesPerMailboxHour` |
-| 9 | Codes sent per day across every address and requester (M2) | 500, or `HZ_CODES_PER_DAY` when set (a plain Worker variable, not a secret) | `codesPerDay` |
+| 9 | The hard cap on sign-up starts per day across every address and requester (M2). Since the second review, item 5, it is the mail plan's daily limit, not a guard: set `HZ_CODES_PER_DAY` to the plan's limit at deploy. The agent's reading of Resend's pricing (not checked against the live page) is 3000 a month with 100 a day on the free plan and no daily limit on the paid ones, so the default only fits a paid plan | 3000 (was 500), or `HZ_CODES_PER_DAY` when set (a plain Worker variable, not a secret) | `codesPerDay` |
 | 10 | Re-sends of the newest live link per hour, per address and per mailbox across its `+tag`s, once the start cap is reached (second review, item 3). Mail to one address is bounded at 3 minted plus 3 re-sent an hour | 3 | `resendsPerAddressHour` |
+| 11 | When the operator alert goes out (second review, item 5): one mail a day once the day's starts reach this share of the hard cap | 50 percent | `alertAtPercent` |
+| 12 | The operator alert address (second review, item 5). It is set at deploy with `wrangler secret put HZ_ALERT_TO` (or as a Worker variable) and is never written in the repo; the tests use a fake. Unset, the half-cap start is audited `alert-unset` instead of mailed | Unset; Kaleb picks it | `HZ_ALERT_TO` |
+| 13 | Cloudflare Turnstile or a WAF rate rule on `/account` (and `/signin`) at the first deploy (second review, item 5). The service's own caps bound each connecting address and the day; only an edge rule bounds a stranger with many connecting addresses before the day's cap. The agent recommends one at the first deploy | Not built (deploy-time) | Cloudflare dashboard |
 
 ### Security review findings and what changed
 
@@ -300,7 +303,7 @@ Tests: in `test/signup.test.mjs`, "M2: an address with a format or zero-width ch
 Left as is (residual):
 - ~~A non-ASCII domain is still taken as written.~~ Closed by the second review, item 6: the domain is mapped to its ASCII DNS name before the address key. Mail systems map some spellings of a domain (full-width letters, for one) to the same ASCII domain, so those spellings still make new address keys for one mailbox. They still pay the requester and daily limits. Converting the domain to its ASCII form at the boundary would close it (open point 6).
 - Providers that ignore dots in the local part (`first.last` and `firstlast`) give two address keys for one mailbox. Only `+tag` is stripped, because dot rules differ by provider.
-- Anyone can fill the daily cap from many connecting addresses (each at 10 starts an hour) and stop sign-up for everyone until the day passes. The cap trades that for a bound on mail sent, and the WAF rate rule at the first deploy is the second layer.
+- Anyone can fill the daily cap from many connecting addresses (each at 10 starts an hour) and stop sign-up for everyone until the day passes. The cap trades that for a bound on mail sent, and the WAF rate rule at the first deploy is the second layer. **Narrowed by the second review, item 5:** the cap is the mail plan's limit (3000 by default, was 500), and the operator is mailed at half of it, so filling it takes 300 connecting-address hours and the operator hears of it first.
 
 **M5 (medium): one password could hash two ways.** `hashLogin` hashed the password's code points as sent. The same password typed on two keyboards can arrive composed (`é` as one point) or decomposed (`e` plus a combining accent), or with a compatibility form (a ligature, a full-width letter), so an owner who set it on one device was refused on another.
 
@@ -328,6 +331,7 @@ A second review of `8ebe205a` found that what was left of H1, H2 and M2 had one 
 | 2 | No address-level verify cap and no per-code try ceiling, so strangers' wrong tries never make the owner's link answer 429 or end it | A3 |
 | 3 | A start at the per-address cap answers the same 200 and re-sends the newest live link instead of minting, under a re-send cap; up to 5 live codes per address | A3 |
 | 4 | `/signin` has no hard per-address lock: a per (address, requester) failure cap, a per-address ceiling of 100 failures an hour, and a backoff on the address that never passes 15 minutes | A4 |
+| 5 | The daily cap is the mail plan's limit (`HZ_CODES_PER_DAY`, default 3000), and one alert a day goes to `HZ_ALERT_TO` at half of it | A3 |
 | 6 | The address is keyed by its domain's DNS name: one trailing dot stripped, mapped to ASCII, and a domain that is not a plain DNS name is `shape` | A3 |
 | 7 | A sign-in signed by a registered device of the account still pays the per (address, requester) failure cap from item 4 | A4 |
 
@@ -376,6 +380,23 @@ Tests (`test/devices.test.mjs`): "item 4: ten strangers' wrong passwords from te
 Left as is (residual):
 - The backoff is still a delay a stranger can cause. With wrong passwords from at least 3 connecting addresses (5 each), a stranger puts an address into backoff in a minute, and one more wrong password each time the quiet time ends keeps it there; the owner's unsigned sign-in in that time answers `slow-down` until a gap of at most 15 minutes. Holding an address for an hour takes fewer than 20 wrong passwords, each from a requester under its own caps. The owner's registered devices are not held (H2), and Turnstile or a WAF rule on `/signin` at the first deploy is the second layer.
 - The failure count is read before the admitting statement. Tries sent together at exactly `backoffAfter` failures can each be admitted with no quiet time; the pair, requester and address caps still bound them.
+
+**Item 5: the global daily cap is the mail plan's limit, with an alert at half.** M2 capped sign-up starts at 500 a day across everyone. That bounded mail, but a stranger with 50 connecting addresses (10 starts an hour each) stopped every sign-up for a day, and nobody was told.
+
+What changed (`src/signup.js`, `src/index.js`, `src/retention.js`):
+- `SIGNUP_LIMITS.codesPerDay` is 3000, the default mail plan limit, and `HZ_CODES_PER_DAY` still sets it (a bad value still answers `unavailable`). It stays a hard cap, since past it the mail plan refuses anyway; a start over it answers `slow-down`. Below it every start goes on as before.
+- After a start takes its daily place, one statement takes a row in a new `alert-day` bucket when the day's count has reached `alertAtPercent` (50) of the cap and no alert row is younger than a day. The check and the write are one `INSERT ... SELECT`, so two starts together cannot both alert. The start that takes the row mails one alert after the answer to `HZ_ALERT_TO`: subject "Horae Zone sign-ups at half the daily cap", the count reached and the cap, what happens at the cap, and that no other alert goes out for 24 hours. It names no address and no requester. Every start past the first step runs this statement, so the M1 statements still match.
+- `HZ_ALERT_TO` comes from the Worker's environment (set at deploy, never in the repo). Unset or not an address, the start that reaches half the cap is audited `alert-unset` instead of mailed; a send that fails or throws is audited `alert-failed`. Neither changes the answer or the start's own link. An after-work may now name more than one reason, and `src/index.js` audits each.
+- The hourly purge keeps `alert-day` rows for a day, as it keeps `codes-day` rows, so the alert goes out once a day and not once an hour.
+- The daily count is taken at the first step, so it counts every start past the requester cap, including ones that mail nothing (an address with an account, or past the re-send cap). That keeps the M1 statements the same, and it can only overcount the mail sent, never undercount it. The alert is one mail more a day.
+
+New audit-only words: `alert-unset` and `alert-failed`.
+
+Tests: in `test/signup.test.mjs`, "item 5: without configuration the hard daily cap is the mail plan limit, 3000" (500 on `4c2c53ca`), "item 5: the alert fires once at 50 percent of the daily cap and sign-ups continue below the hard cap" (a cap of 10: no alert at 4 starts, one at the 5th, still one after 10, every start below the cap mailed its link, the 11th is `slow-down`; on `4c2c53ca` no alert went out), "item 5: one alert a day, and the next day can alert again", "item 5: at half the cap without an alert address the start is audited alert-unset and the answer is unchanged", "item 5: an alert that cannot be sent is audited alert-failed and the link still goes out" and "item 5: the alert check sends the same statements whether or not the address has an account" (the statements matched on `4c2c53ca` too; it failed there on the missing alert); in `test/purge.test.mjs`, "item 5: a purge keeps the daily alert row for a day and clears it after" (on `4c2c53ca` a two-hour-old `alert-day` row was purged). All 7 fail on `4c2c53ca` with only the test files changed.
+
+Left as is (residual):
+- The hard cap is still a cap a stranger can fill: 3000 starts a day from 300 connecting-address hours stops sign-up for everyone until the day passes. The alert reaches the operator at half, and Turnstile or a WAF rule on `/account` at the first deploy (Decision for Kaleb 13) is what bounds a stranger with many addresses.
+- The alert is sent through the same mailer as the links, so a mail plan that is already refusing sends no alert either; that send is audited `alert-failed`.
 
 **Item 6: one domain, one address key.** The domain was only lower-cased. `v@example.test.` (a trailing dot is the DNS root, so it names the same domain) made a new address key for the same mailbox, with its own per-address limits, and a domain with characters no DNS name has (`exa_mple.test`, `exa%41mple.test`, `-example.test`) was taken and mailed.
 

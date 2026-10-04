@@ -573,6 +573,91 @@ test('M2: without configuration the daily cap is the default, and a bad value re
   }
 });
 
+// Second review, item 5: a hard cap of 500 starts a day let a stranger stop
+// every sign-up. The hard cap is the mail plan's limit (HZ_CODES_PER_DAY,
+// default 3000), and at half of it one alert a day goes to the operator
+// address (HZ_ALERT_TO, set at deploy; here a fake).
+const OPERATOR = 'operator@example.test';
+const alertsIn = (h) => h.mail.filter((m) => m.to === OPERATOR);
+const startsFrom = async (h, count, tag) => {
+  const statuses = [];
+  for (let i = 0; i < count; i += 1) {
+    statuses.push((await start(h, `${tag}-${i}@example.test`, `198.51.100.${i + 1}`)).status);
+  }
+  return statuses;
+};
+
+test('item 5: without configuration the hard daily cap is the mail plan limit, 3000', () => {
+  assert.equal(SIGNUP_LIMITS.codesPerDay, 3000);
+  assert.equal(SIGNUP_LIMITS.alertAtPercent, 50);
+});
+
+test('item 5: the alert fires once at 50 percent of the daily cap and sign-ups continue below the hard cap', async () => {
+  const h = harness({ env: { HZ_CODES_PER_DAY: '10', HZ_ALERT_TO: OPERATOR } });
+  assert.deepEqual(await startsFrom(h, 4, 'early'), [200, 200, 200, 200]);
+  assert.deepEqual(alertsIn(h), [], 'no alert below half the cap');
+  assert.deepEqual(await startsFrom(h, 1, 'half'), [200]);
+  assert.equal(alertsIn(h).length, 1, 'one alert at half the cap');
+  assert.deepEqual(await startsFrom(h, 5, 'late'), [200, 200, 200, 200, 200], 'sign-ups continue past half');
+  assert.equal(alertsIn(h).length, 1, 'still one alert');
+  assert.equal(h.mail.filter((m) => m.to !== OPERATOR).length, 10, 'every start below the hard cap mailed its link');
+  assert.deepEqual(await answer(await start(h, 'over@example.test', '198.51.100.99')), { status: 429, json: { error: 'slow-down' } }, 'the hard cap still holds');
+  const [alert] = alertsIn(h);
+  assert.match(alert.subject, /half the daily cap/);
+  assert.match(alert.text, /\b5\b/);
+  assert.match(alert.text, /\b10\b/);
+  assert.equal(/@/.test(alert.text), false, 'the alert names no address');
+  assert.equal(`${alert.subject}${alert.text}`.includes(String.fromCharCode(0x2014)), false, 'no em dash');
+});
+
+test('item 5: one alert a day, and the next day can alert again', async () => {
+  const h = harness({ env: { HZ_CODES_PER_DAY: '4', HZ_ALERT_TO: OPERATOR } });
+  await startsFrom(h, 3, 'one');
+  assert.equal(alertsIn(h).length, 1);
+  h.clock.ms = T0 + SIGNUP_LIMITS.dayMs - 1;
+  await startsFrom(h, 1, 'two');
+  assert.equal(alertsIn(h).length, 1, 'no second alert inside the day');
+  h.clock.ms = T0 + 2 * SIGNUP_LIMITS.dayMs;
+  await startsFrom(h, 2, 'three');
+  assert.equal(alertsIn(h).length, 2, 'a new day at half the cap alerts again');
+});
+
+test('item 5: at half the cap without an alert address the start is audited alert-unset and the answer is unchanged', async () => {
+  const h = harness({ env: { HZ_CODES_PER_DAY: '2' } });
+  assert.deepEqual(await startsFrom(h, 1, 'no-alert'), [200]);
+  assert.deepEqual(auditRows(h.db), [{ route: '/account', reason: 'ok' }, { route: '/account', reason: 'alert-unset' }]);
+  assert.equal(h.mail.length, 1, 'only the sign-up link is mailed');
+  const bad = harness({ env: { HZ_CODES_PER_DAY: '2', HZ_ALERT_TO: 'not an address' } });
+  assert.deepEqual(await startsFrom(bad, 1, 'bad-alert'), [200]);
+  assert.deepEqual(auditRows(bad.db).at(-1), { route: '/account', reason: 'alert-unset' });
+});
+
+test('item 5: an alert that cannot be sent is audited alert-failed and the link still goes out', async () => {
+  const sent = [];
+  const h = harness({
+    env: { HZ_CODES_PER_DAY: '2', HZ_ALERT_TO: OPERATOR },
+    mailer: async (m) => { if (m.to === OPERATOR) return false; sent.push(m); return true; },
+  });
+  assert.deepEqual(await startsFrom(h, 1, 'alert-down'), [200]);
+  assert.equal(sent.length, 1);
+  assert.deepEqual(auditRows(h.db), [{ route: '/account', reason: 'ok' }, { route: '/account', reason: 'alert-failed' }]);
+});
+
+test('item 5: the alert check sends the same statements whether or not the address has an account', async () => {
+  const h = harness({ env: { HZ_CODES_PER_DAY: '6', HZ_ALERT_TO: OPERATOR } });
+  await start(h);
+  await verify(h, { code: codeFrom(h) });
+  const shape = (s) => s.sql.replace(/\s+/g, ' ');
+  const from = h.db.bound.length;
+  await start(h, ADDRESS, '198.51.100.50');
+  const withAccount = h.db.bound.slice(from).map(shape);
+  const mid = h.db.bound.length;
+  await start(h, 'fresh@example.test', '198.51.100.51');
+  const without = h.db.bound.slice(mid).map(shape);
+  assert.deepEqual(withAccount, without);
+  assert.equal(alertsIn(h).length, 1, 'the third start reached half the cap');
+});
+
 test('an address that is not an address, extra fields, or a password outside the length rule are refused as shape', async () => {
   const h = harness();
   for (const email of ['', 'no-at-sign', 'two@@example.test', 'a b@example.test', `${'x'.repeat(250)}@example.test`, 7, null]) {

@@ -45,15 +45,18 @@ function mailerFrom(env) {
   return createMailer({ from: env.HZ_MAIL_FROM, readKey: async () => env.RESEND_KEY });
 }
 
-// Runs a handler's after-work and audits a failure reason it names.
+// Runs a handler's after-work and audits each failure reason it names (one
+// reason word, or a list of them).
 async function runAfter(db, at, route, after) {
-  let reason;
+  let reasons;
   try {
-    reason = await after();
+    reasons = await after();
   } catch {
-    reason = "after-failed";
+    reasons = "after-failed";
   }
-  if (reason) await audit(db, at, route, reason);
+  for (const reason of [reasons].flat()) {
+    if (reason) await audit(db, at, route, reason);
+  }
 }
 
 async function run(request, env, ctx, { routes, now, mailer }) {

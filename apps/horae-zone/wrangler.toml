@@ -7,7 +7,10 @@
 #
 # SECRETS are never in this file. The deploy script (plan §4) sets them with
 # `wrangler secret put` from hidden prompts on stdin: PIN pepper, seed sealing
-# key, ticket signing key, Resend key.
+# key, ticket signing key, Resend key. The operator alert address
+# (HZ_ALERT_TO, src/signup.js item 5) is set the same way and never written
+# here; HZ_CODES_PER_DAY, the mail plan's daily limit, is set at deploy when
+# the plan's limit is not the default 3000.
 
 name = "horae-zone"
 main = "src/index.js"

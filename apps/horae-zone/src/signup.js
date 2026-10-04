@@ -38,6 +38,9 @@ import { admitThrottle } from "./throttle.js";
 // (or codesPerMailboxHour for a tagged address) a start re-sends the newest
 // live link, at most resendsPerAddressHour times an hour, so mail to one
 // address is bounded at codesPerAddressHour + resendsPerAddressHour an hour.
+// Item 5: codesPerDay is the hard cap, the mail plan's daily limit (3000, or
+// HZ_CODES_PER_DAY), and at alertAtPercent of it one alert a day goes to
+// HZ_ALERT_TO.
 export const SIGNUP_LIMITS = Object.freeze({
   codeTtlMs: 10 * 60 * 1000,
   liveCodes: 5,
@@ -45,7 +48,8 @@ export const SIGNUP_LIMITS = Object.freeze({
   codesPerAddressHour: 3,
   codesPerMailboxHour: 3,
   resendsPerAddressHour: 3,
-  codesPerDay: 500,
+  codesPerDay: 3000,
+  alertAtPercent: 50,
   dayMs: 24 * 60 * 60 * 1000,
   startsPerRequesterHour: 10,
   verifiesPerRequesterHour: 20,
@@ -65,6 +69,8 @@ const CODE_BYTES = 16;
 const CODE = /^[A-Za-z0-9_-]{22}$/;
 // The one bucket with no key: every start counts toward the daily cap.
 export const DAILY_BUCKET = "codes-day";
+// Item 5: a row here means the half-cap alert went out in the last day.
+export const ALERT_BUCKET = "alert-day";
 // A live code for one address; binds address_key, now.
 const LIVE = "address_key = ? AND used = 0 AND expires_at > ?";
 
@@ -130,7 +136,8 @@ function taggedMailbox(address) {
   return plus >= 0 && plus < at ? `${address.slice(0, plus)}${address.slice(at)}` : null;
 }
 
-// M2: the global daily cap on codes, from HZ_CODES_PER_DAY when set. A value
+// M2: the global daily cap on codes, from HZ_CODES_PER_DAY when set (item 5:
+// the mail plan's daily limit, default 3000). A value
 // that is set but is not a whole number of 1 or more stops starts rather
 // than opening the cap.
 function codesPerDayOf(env) {
@@ -247,6 +254,71 @@ async function resendCode(db, keys, addressKey, mailboxKey, now) {
   }
 }
 
+// Item 5: true for the one start that brings the day's count to
+// alertAtPercent of the cap while no alert went out in the last day. One
+// statement checks both and takes the alert row, so two starts together
+// cannot both alert. Every start past the first step runs it, so the M1
+// statements still match.
+async function takeAlert(db, now, codesPerDay) {
+  const threshold = Math.ceil((codesPerDay * SIGNUP_LIMITS.alertAtPercent) / 100);
+  const since = now - SIGNUP_LIMITS.dayMs;
+  const row = await db.prepare(
+    `INSERT INTO throttle (bucket, at) SELECT ?, ?
+     WHERE (SELECT COUNT(*) FROM throttle WHERE bucket = ? AND at > ?) >= ?
+     AND NOT EXISTS (SELECT 1 FROM throttle WHERE bucket = ? AND at > ?) RETURNING bucket`,
+  ).bind(ALERT_BUCKET, now, DAILY_BUCKET, since, threshold, ALERT_BUCKET, since).first();
+  return row ? threshold : null;
+}
+
+// The operator's address from HZ_ALERT_TO (set at deploy, never in the
+// repo), or null when it is unset or not an address.
+function alertAddressOf(env) {
+  try {
+    return addressOf(env.HZ_ALERT_TO);
+  } catch {
+    return null;
+  }
+}
+
+// Plain notes on state; it names no address and no requester.
+function alertMessage(to, reached, codesPerDay) {
+  return {
+    to,
+    subject: "Horae Zone sign-ups at half the daily cap",
+    text: [
+      `Sign-up starts in the last 24 hours reached ${reached}, half the daily cap of ${codesPerDay}.`,
+      "At the cap, new sign-up starts answer slow-down until the 24-hour count falls.",
+      "No other alert is sent for 24 hours.",
+    ].join("\n"),
+  };
+}
+
+// Item 5: the alert's after-work. A missing or bad HZ_ALERT_TO is audited
+// alert-unset, a send that fails or throws alert-failed.
+function alertAfter(env, mailer, reached, codesPerDay) {
+  const to = alertAddressOf(env);
+  if (!to) return async () => "alert-unset";
+  return async () => {
+    try {
+      return (await mailer(alertMessage(to, reached, codesPerDay))) ? null : "alert-failed";
+    } catch {
+      return "alert-failed";
+    }
+  };
+}
+
+// The link mail, then the alert; each failure is a reason for the audit.
+function afterAll(works) {
+  return async () => {
+    const reasons = [];
+    for (const work of works) {
+      const reason = await work();
+      if (reason) reasons.push(reason);
+    }
+    return reasons;
+  };
+}
+
 export async function startSignup({ db, body, now, env, request, mailer }) {
   if (!hasOnly(body, ["email"])) throw new Refusal("shape", 400);
   const address = addressOf(body.email);
@@ -265,6 +337,7 @@ export async function startSignup({ db, body, now, env, request, mailer }) {
     { bucket: DAILY_BUCKET, limit: codesPerDay, windowMs: SIGNUP_LIMITS.dayMs },
   ]);
   if (!counted) throw new Refusal("slow-down", 429);
+  const alerted = await takeAlert(db, now, codesPerDay);
   // The per-address (and per-mailbox) cap never refuses: past it a start
   // re-sends the newest live link instead of minting.
   const mints = await admitThrottle(db, now, SIGNUP_LIMITS.windowMs, [
@@ -272,8 +345,12 @@ export async function startSignup({ db, body, now, env, request, mailer }) {
     ...(mailboxKey ? [{ bucket: `start-mailbox:${mailboxKey}`, limit: SIGNUP_LIMITS.codesPerMailboxHour }] : []),
   ]);
   const sent = mints ? await mintCode(db, keys, addressKey, now) : await resendCode(db, keys, addressKey, mailboxKey, now);
-  if (!sent) return { status: 200, json: { ok: true } };
-  return { status: 200, json: { ok: true }, after: mailAfter(mailer, codeMessage(address, linkOf(env, sent.code), sent.msLeft)) };
+  const works = [
+    ...(sent ? [mailAfter(mailer, codeMessage(address, linkOf(env, sent.code), sent.msLeft))] : []),
+    ...(alerted ? [alertAfter(env, mailer, alerted, codesPerDay)] : []),
+  ];
+  if (works.length === 0) return { status: 200, json: { ok: true } };
+  return { status: 200, json: { ok: true }, after: afterAll(works) };
 }
 
 export async function verifySignup({ db, body, now, env, request }) {
