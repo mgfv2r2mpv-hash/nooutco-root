@@ -1269,7 +1269,7 @@ function RevisionPanel({
             be left of that text field, leave send on the right, text field in
             the middle." Drawn in bar mode too: with the old button gone, Send is
             the one control that ends a round. */}
-        {!signedOut && <div className="revision-compose">
+        {!signedOut && <div className={"revision-compose" + (sendWaiting ? " is-waiting" : "")}>
           {/* HIS RULING IS ON THE AFFORDANCE. He allowed the audio path and asked
               staff to keep names off it: "Staff should still avoid using client
               names on this surface so they should not be dictating it to Apple as

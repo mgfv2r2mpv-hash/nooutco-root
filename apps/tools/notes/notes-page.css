@@ -371,10 +371,12 @@ body {
 /* THE COMPOSER ROW: box, mic, plane.
    align-items:flex-end so the two squares stay on the box's bottom edge when it
    grows with a long instruction, rather than floating beside its middle. */
-.revision-compose { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-end; }
+.revision-compose { display: flex; gap: 6px; align-items: flex-end; }
 /* Where Send stands while a round is held (his review of #235): the notes on
    state take a row of their own under the field, since a sentence does not fit
-   the 46px square the button had. */
+   the 46px square the button had. Wrapping only then, because a wrapping row
+   with Send in it let firefox at 400px drop Send under the field. */
+.revision-compose.is-waiting { flex-wrap: wrap; }
 .send-wait { flex: 1 1 100%; display: flex; flex-direction: column; gap: 6px; }
 .send-wait .send-lock, .send-wait .skip-held { margin: 0; }
 
