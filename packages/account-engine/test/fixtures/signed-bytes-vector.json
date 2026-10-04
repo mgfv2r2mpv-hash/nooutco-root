@@ -1,0 +1,11 @@
+{
+  "note": "Shared test vector for the device signed-bytes format. The key pair was made for this file and its private half was discarded; nothing here is a real key, nonce or device.",
+  "label": "horae-zone-v1",
+  "nonce": "TEST-VECTOR-nonce-not-a-real-one-0123456789",
+  "path": "/reverify",
+  "body": "{\"vector\":\"horae-zone-v1 test, fake values\"}",
+  "bytesHex": "0000000d686f7261652d7a6f6e652d76310000002b544553542d564543544f522d6e6f6e63652d6e6f742d612d7265616c2d6f6e652d30313233343536373839000000092f72657665726966790000002c7b22766563746f72223a22686f7261652d7a6f6e652d763120746573742c2066616b652076616c756573227d",
+  "signKey": "BHrdbIz7DZkvApmeZuqC9sJJnpRCy2W6WiJKC_NHAAdcAWDq6D40lSRSvnFSzhQvMxP2p4fIrzVy1L7CqTOfLEY",
+  "sigRaw": "D5-zFTtMe3FJddI8Q5nQk3Y8je9otCR_QFyyRNk5jMKdaDUbokuXXGm6IQ3OAYIU3bRwSE3Dj_gwB2sMCET6Hg",
+  "sigDer": "MEUCIA-fsxU7THtxSXXSPEOZ0JN2PI3vaLQkf0BcskTZOYzCAiEAnWg1G6JLl1xpuiENzgGCFN20cEhNw4_4MAdrDAhE-h4"
+}

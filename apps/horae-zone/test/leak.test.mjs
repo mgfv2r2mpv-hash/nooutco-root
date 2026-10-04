@@ -7,7 +7,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ROUTES } from '../src/routes.js';
 import { createHandler } from '../src/index.js';
-import { harness, addDevice, makeAdmin, post, signed, ROOT } from './helpers.mjs';
+import { harness, addDevice, makeAdmin, post, signed, everyRow, signUp, signInRequest, deviceKeys, registerRequest, ROOT } from './helpers.mjs';
 
 // Fixed, fake test values: a body marker, a 6-digit code, a base32 seed, a
 // PIN and an address on a reserved domain.
@@ -75,6 +75,41 @@ test('a sign-up leaves no address, email code or password in any answer, table, 
     for (const text of seen) assert.equal(carries(text), false, 'a response carries a sign-up value');
     assert.equal(carries(dump), false, 'the audit table or a bound statement carries a sign-up value');
     assert.equal(carries(logs.join('\n')), false, 'console output carries a sign-up value');
+  }
+});
+
+// A4: a real sign-in, registration and removal, so the address, the
+// password and the ticket reach the code paths that check, hash and spend
+// them. The ticket may appear in the one answer that hands it out, and
+// nowhere else.
+test('sign-in, register and remove leave no address, password or ticket in any answer, table, bound value or log', async (t) => {
+  const logs = captureConsole(t);
+  const h = harness();
+  const address = 'leak-canary-device@example.test';
+  const password = 'CANARY-password-a4-long-enough';
+  await signUp(h, address, { password });
+  const seen = [];
+  const keep = async (req) => {
+    const res = await h.call(req);
+    seen.push(await everything(res.clone()));
+    return res;
+  };
+  await keep(signInRequest(address, `${password}-wrong`));
+  await keep(signInRequest('no-account-canary@example.test', password));
+  const handed = await keep(signInRequest(address, password));
+  const handout = seen.pop();
+  const { ticket } = await handed.json();
+  assert.ok(handout.includes(ticket), 'NEGATIVE CONTROL: the sign-in answer carries the ticket');
+  const keys = await deviceKeys();
+  await keep(post('/device/register', { ticket, signKey: 'off', agreeKey: keys.agreeKey }));
+  const { device } = await (await keep(registerRequest(ticket, keys))).json();
+  await keep(registerRequest(ticket, keys));
+  await keep(await signed(h.call, { id: device, key: keys.key }, '/device/remove', { device }));
+  const stored = `${everyRow(h.db)}${JSON.stringify(h.db.bound.map((b) => b.values))}`;
+  for (const value of [address, password, ticket]) {
+    for (const text of seen) assert.equal(text.includes(value), false, 'an answer carries a sign-in value');
+    assert.equal(stored.includes(value), false, 'a table or a bound statement carries a sign-in value');
+    assert.equal(logs.join('\n').includes(value), false, 'console output carries a sign-in value');
   }
 });
 

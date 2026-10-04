@@ -97,3 +97,49 @@ export function everyRow(db) {
 export function auditRows(db) {
   return db.sqlite.prepare('SELECT route, reason FROM audit ORDER BY id').all().map((r) => ({ ...r }));
 }
+
+// A4 flow helpers. Each goes through the routes as a device will: sign-up by
+// the emailed code, sign-in for a ticket, then registration with fresh keys.
+export const PASSWORD = 'correct horse battery staple CANARY';
+
+export async function signUp(h, email, { password = PASSWORD, ip = '192.0.2.10' } = {}) {
+  await h.call(post('/account', { email }, { 'cf-connecting-ip': ip }));
+  const message = h.mail.filter((m) => m.to === email).at(-1);
+  const code = new URL(message.text.match(/https:\/\/\S+/)[0]).hash.slice(1);
+  const res = await h.call(post('/account/email/verify', { email, code, password }, { 'cf-connecting-ip': ip }));
+  if (res.status !== 200) throw new Error(`sign-up answered ${res.status}`);
+  return h.db.sqlite.prepare('SELECT id FROM account ORDER BY created_at DESC, rowid DESC LIMIT 1').get().id;
+}
+
+export function signInRequest(email, password = PASSWORD, ip = '192.0.2.10') {
+  return post('/signin', { email, password }, { 'cf-connecting-ip': ip });
+}
+
+export async function signIn(h, email, options = {}) {
+  const res = await h.call(signInRequest(email, options.password, options.ip));
+  if (res.status !== 200) throw new Error(`sign-in answered ${res.status}`);
+  return (await res.json()).ticket;
+}
+
+// A device's two P-256 key pairs, the public halves as raw points in base64url.
+export async function deviceKeys() {
+  const sign = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign', 'verify']);
+  const agree = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, false, ['deriveBits']);
+  const raw = async (k) => b64url(new Uint8Array(await crypto.subtle.exportKey('raw', k)));
+  return { key: sign.privateKey, signKey: await raw(sign.publicKey), agreeKey: await raw(agree.publicKey) };
+}
+
+export function registerRequest(ticket, keys) {
+  return post('/device/register', { ticket, signKey: keys.signKey, agreeKey: keys.agreeKey });
+}
+
+// Signs up (when `email` has no account yet), signs in and registers a new
+// device; returns it in the shape signed() takes.
+export async function registeredDevice(h, email, { fresh = true } = {}) {
+  const account = fresh ? await signUp(h, email) : null;
+  const keys = await deviceKeys();
+  const res = await h.call(registerRequest(await signIn(h, email), keys));
+  if (res.status !== 200) throw new Error(`register answered ${res.status}`);
+  const { device } = await res.json();
+  return { id: device, account, key: keys.key, signKey: keys.signKey };
+}
