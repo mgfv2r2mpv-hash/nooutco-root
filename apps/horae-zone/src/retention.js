@@ -13,6 +13,7 @@
  */
 
 import { SIGNUP_LIMITS } from "./signup.js";
+import { SIGNIN_LIMITS } from "./signin.js";
 
 export const RETENTION =Object.freeze({
   auditYears: 6,
@@ -39,14 +40,16 @@ function checkedYears(value) {
 
 // Spent or expired nonces go (a spent row can never be accepted again, and a
 // deleted one is refused the same way), spent, used-up and expired email
-// codes likewise, rate-limit rows at or past their window (no count reads
-// them again), and audit rows older than the cutoff.
+// codes and sign-in tickets likewise, rate-limit rows at or past the longest
+// window (no count reads them again), and audit rows older than the cutoff.
 export async function purgeExpired(db, now, { auditYears = RETENTION.auditYears } = {}) {
   const cutoff = auditCutoff(now, checkedYears(auditYears));
+  const throttleWindow = Math.max(SIGNUP_LIMITS.windowMs, SIGNIN_LIMITS.windowMs);
   await db.batch([
     db.prepare("DELETE FROM nonce WHERE used = 1 OR expires_at <= ?").bind(now),
     db.prepare("DELETE FROM challenge WHERE used = 1 OR tries >= ? OR expires_at <= ?").bind(SIGNUP_LIMITS.codeTries, now),
-    db.prepare("DELETE FROM throttle WHERE at <= ?").bind(now - SIGNUP_LIMITS.windowMs),
+    db.prepare("DELETE FROM ticket WHERE used = 1 OR expires_at <= ?").bind(now),
+    db.prepare("DELETE FROM throttle WHERE at <= ?").bind(now - throttleWindow),
     db.prepare("DELETE FROM audit WHERE at < ?").bind(cutoff),
   ]);
 }

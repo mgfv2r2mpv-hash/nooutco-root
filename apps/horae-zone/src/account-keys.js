@@ -12,6 +12,8 @@
  *                   bucket before a device has a registered key
  *   login pepper  - HMAC over the PBKDF2 output of the account password, so a
  *                   copied table cannot be guessed against without the secret
+ *   ticket digest - HMAC of a sign-in ticket: the only form of a ticket that
+ *                   is stored (A4)
  * A missing or short secret gives null, and the account routes then answer
  * unavailable without writing anything.
  */
@@ -45,12 +47,13 @@ export async function accountKeys(env) {
   const base = await subtle().importKey("raw", secret, "HKDF", false, ["deriveKey"]);
   secret.fill(0);
   const hmac = { name: "HMAC", hash: "SHA-256", length: 256 };
-  const [addressMac, boxKey, codeMac, requesterMac, pepper] = await Promise.all([
+  const [addressMac, boxKey, codeMac, requesterMac, pepper, ticketMac] = await Promise.all([
     derive(base, "address key", hmac, ["sign"]),
     derive(base, "address box", { name: "AES-GCM", length: 256 }, ["encrypt", "decrypt"]),
     derive(base, "code digest", hmac, ["sign"]),
     derive(base, "requester key", hmac, ["sign"]),
     derive(base, "login pepper", hmac, ["sign"]),
+    derive(base, "ticket digest", hmac, ["sign"]),
   ]);
   const mac = async (key, text) => hex(await subtle().sign("HMAC", key, enc.encode(text)));
 
@@ -58,6 +61,7 @@ export async function accountKeys(env) {
     addressKey: (address) => mac(addressMac, address),
     requesterKey: (requester) => mac(requesterMac, requester),
     codeDigest: (addressKey, code) => mac(codeMac, `${addressKey}:${code}`),
+    ticketDigest: (ticket) => mac(ticketMac, ticket),
 
     async sealAddress(address, addressKey) {
       const iv = crypto.getRandomValues(new Uint8Array(NONCE_BYTES));
