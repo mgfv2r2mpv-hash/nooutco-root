@@ -13,6 +13,7 @@ export const HOSTNAME = "horae-zone.nooutco.me";
 export const DEPLOY_CONFIG = "wrangler.deploy.toml";
 export const CRON = "0 * * * *";
 export const ACCOUNT_KEY_BYTES = 32; // src/account-keys.js MIN_SECRET_BYTES
+export const SEED_KEY_BYTES = 32; // src/otp.js MIN_SECRET_BYTES
 const PLACEHOLDER_ID = "00000000-0000-0000-0000-000000000000";
 const SAMPLE_CODE = "AAAAAAAAAAAAAAAAAAAAAA";
 
@@ -41,9 +42,11 @@ const isLinkBase = (v) => {
  * pepper, the ticket digest key, the address and link sealing keys and every
  * other key are derived from it by HKDF (src/account-keys.js). HZ_TICKET_KEY
  * is a second: A5 signs tickets with an ECDSA P-256 private key (a JWK), which
- * an HKDF output cannot stand in for, so it is generated too. The seed sealing key
- * arrives with A5 (not built); test/deploy.test.mjs fails when src/ reads a
- * name this list does not carry.
+ * an HKDF output cannot stand in for, so it is generated too. HZ_SEED_KEY is a
+ * third: A5 seals each authenticator seed under an AES-GCM key HKDF derives
+ * from it (src/otp.js seedBoxKey), not from HZ_ACCOUNT_KEY.
+ * test/deploy.test.mjs fails when src/ reads a name this list does not carry,
+ * or this list carries a name src/ never reads.
  *   source    generated (crypto randomness) or asked (a prompt)
  *   store     secret (wrangler secret put, value on stdin) or var (the
  *             deploy-only config, for a value that is not secret)
@@ -51,6 +54,7 @@ const isLinkBase = (v) => {
  */
 export const CATALOG = Object.freeze([
   { name: "HZ_ACCOUNT_KEY", source: "generated", store: "secret", sensitive: true, label: `account key (${ACCOUNT_KEY_BYTES} random bytes, base64url; pepper, ticket and sealing keys derive from it)` },
+  { name: "HZ_SEED_KEY", source: "generated", store: "secret", sensitive: true, label: `seed sealing key (${SEED_KEY_BYTES} random bytes, base64url; src/otp.js seals each authenticator seed under a key derived from it)` },
   { name: "HZ_TICKET_KEY", source: "generated", store: "secret", sensitive: true, label: "ticket signing key (ECDSA P-256 private key, JWK; src/unlock.js signs each ticket with it)" },
   { name: "RESEND_KEY", source: "asked", store: "secret", sensitive: true, hidden: true, label: "Resend API key", check: (v) => /^\S{8,}$/.test(v), rule: "at least 8 characters, no spaces" },
   { name: "HZ_MAIL_FROM", source: "asked", store: "secret", sensitive: true, label: "From address for sign-up mail (on the domain verified in Resend), e.g. Horae Zone <mail@your-domain>", check: isFrom, rule: "an address, or Name <address>" },

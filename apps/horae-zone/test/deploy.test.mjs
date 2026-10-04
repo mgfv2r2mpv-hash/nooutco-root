@@ -14,13 +14,17 @@ import { ROOT, SCHEMA } from './helpers.mjs';
 import { deploy, runWrangler } from '../bin/deploy.mjs';
 import { CATALOG, LineReader, deployConfig, scrub, schemaTables, HOSTNAME } from '../bin/deploy-parts.mjs';
 import { accountKeys } from '../src/account-keys.js';
+import { seedBoxKey } from '../src/otp.js';
 import { reopenBaseOk } from '../src/unlock.js';
 
 const FAKE_DB_ID = '11111111-2222-3333-4444-555555555555';
 const FAKE_ACCOUNT = { id: 'acc0000000000000000000000000fake', name: 'Example Test Account' };
-// 32 fixed bytes stand in for crypto randomness, so the generated key is known.
+// 32 fixed bytes stand in for crypto randomness, so each generated key is
+// known: the first draw is the account key, the second the seed sealing key.
 const FIXED_BYTES = Buffer.alloc(32, 0x5a);
 const GENERATED = FIXED_BYTES.toString('base64url');
+const FIXED_SEED_BYTES = Buffer.alloc(32, 0x3c);
+const GENERATED_SEED = FIXED_SEED_BYTES.toString('base64url');
 const ANSWERS = {
   RESEND_KEY: 're_FAKE_resend_key_7d1c',
   HZ_MAIL_FROM: 'Horae Zone <mail@example.test>',
@@ -34,11 +38,11 @@ const ANSWERS = {
 const FIXED_TICKET_PAIR = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
 const FIXED_TICKET_JWK = await crypto.subtle.exportKey('jwk', FIXED_TICKET_PAIR.privateKey);
 const FIXED_TICKET_KEY = JSON.stringify({ kty: FIXED_TICKET_JWK.kty, crv: FIXED_TICKET_JWK.crv, x: FIXED_TICKET_JWK.x, y: FIXED_TICKET_JWK.y, d: FIXED_TICKET_JWK.d });
-const SECRET_VALUES = [GENERATED, ANSWERS.RESEND_KEY, ANSWERS.HZ_MAIL_FROM, ANSWERS.HZ_ALERT_TO, FIXED_TICKET_KEY, FIXED_TICKET_JWK.d];
+const SECRET_VALUES = [GENERATED, GENERATED_SEED, ANSWERS.RESEND_KEY, ANSWERS.HZ_MAIL_FROM, ANSWERS.HZ_ALERT_TO, FIXED_TICKET_KEY, FIXED_TICKET_JWK.d];
 // The tables schema.sql creates, read the way the script reads them, so a new
 // table never needs this file changed.
 const TABLES = schemaTables(SCHEMA);
-const SECRET_NAMES = ['HZ_ACCOUNT_KEY', 'HZ_TICKET_KEY', 'RESEND_KEY', 'HZ_MAIL_FROM', 'HZ_ALERT_TO', 'HZ_LINK_BASE', 'HZ_REOPEN_BASE'];
+const SECRET_NAMES = ['HZ_ACCOUNT_KEY', 'HZ_SEED_KEY', 'HZ_TICKET_KEY', 'RESEND_KEY', 'HZ_MAIL_FROM', 'HZ_ALERT_TO', 'HZ_LINK_BASE', 'HZ_REOPEN_BASE'];
 
 // A wrangler stand-in. `state` decides what each command answers; every call
 // is recorded with its args, stdin, cwd and env.
@@ -75,8 +79,9 @@ function mockWrangler(state = {}) {
   return { run, calls };
 }
 
-function harness({ wrangler = mockWrangler(), argv = [], answers = ANSWERS, confirm = 'y', edge = 'y', replaceKey, replaceTicketKey, replaceWorker = 'y', ticketKey = FIXED_TICKET_KEY, route = { status: 405, body: '{"error":"method"}', ray: true } } = {}) {
+function harness({ wrangler = mockWrangler(), argv = [], answers = ANSWERS, confirm = 'y', edge = 'y', replaceKey, replaceTicketKey, replaceWorker = 'y', ticketKey = FIXED_TICKET_KEY, randomBytes, route = { status: 405, body: '{"error":"method"}', ray: true } } = {}) {
   const lines = [];
+  const draws = [FIXED_BYTES, FIXED_SEED_BYTES];
   const files = new Map();
   const fetched = [];
   const asked = [];
@@ -96,7 +101,11 @@ function harness({ wrangler = mockWrangler(), argv = [], answers = ANSWERS, conf
     run: wrangler.run,
     ask,
     write: (text) => lines.push(text),
-    randomBytes: (n) => { assert.equal(n, 32); return Buffer.from(FIXED_BYTES); },
+    randomBytes: randomBytes ?? ((n) => {
+      assert.equal(n, 32);
+      assert.ok(draws.length > 0, 'two random draws: the account key, then the seed key');
+      return Buffer.from(draws.shift());
+    }),
     writeFile: (file, text) => files.set(file, text),
     makeTempDir: () => '/tmp/hz-deploy-test-empty',
     removeDir: () => {},
@@ -151,6 +160,7 @@ test('dry run prints every step and command, masks secrets and touches nothing',
   assert.match(out, /WAF|rate limiting rule/i);
   assert.match(out, /A5c/);
   assert.match(out, /generate: HZ_TICKET_KEY = \[masked\] \(ECDSA P-256 private key, JWK\)/);
+  assert.match(out, /generate: HZ_SEED_KEY = \[masked\] \(32 random bytes, base64url\)/);
   assert.match(out, /--new-ticket-key/);
 });
 
@@ -170,6 +180,7 @@ test('a full run against mocked wrangler creates the database, sets every secret
     assert.ok(put.input.length > 0);
   }
   assert.equal(h.wrangler.calls.find((c) => c.args[2] === 'HZ_ACCOUNT_KEY').input, GENERATED);
+  assert.equal(h.wrangler.calls.find((c) => c.args[2] === 'HZ_SEED_KEY').input, GENERATED_SEED);
   assert.equal(h.wrangler.calls.find((c) => c.args[2] === 'HZ_TICKET_KEY').input, FIXED_TICKET_KEY);
   assert.equal(h.wrangler.calls.find((c) => c.args[2] === 'RESEND_KEY').input, ANSWERS.RESEND_KEY);
   assert.equal(h.asked.find((a) => a.name === 'RESEND_KEY').hidden, true);
@@ -511,6 +522,58 @@ test('the generated account key is 32 random bytes, base64url, and the service a
   assert.ok(await accountKeys({ HZ_ACCOUNT_KEY: key }));
 });
 
+test('the generated seed key is 32 random bytes of its own, base64url, and the service seals seeds with it', async () => {
+  const h = harness();
+  await deploy(h.deps);
+  const key = h.wrangler.calls.find((c) => c.args[0] === 'secret' && c.args[2] === 'HZ_SEED_KEY')?.input;
+  assert.equal(key, GENERATED_SEED, 'HZ_SEED_KEY is put through stdin');
+  assert.match(key, /^[A-Za-z0-9_-]{43}$/);
+  assert.ok(await seedBoxKey({ HZ_SEED_KEY: key }), 'src/otp.js makes a seed box key from it');
+  assert.match(h.output(), /Generated HZ_SEED_KEY/);
+  assertNoSecretAnywhere(h);
+
+  // Real randomness: the seed key is its own draw, never the account key again.
+  const real = harness({ randomBytes: (n) => crypto.getRandomValues(new Uint8Array(n)) });
+  await deploy(real.deps);
+  const putOf = (name) => real.wrangler.calls.find((c) => c.args[0] === 'secret' && c.args[2] === name)?.input;
+  assert.notEqual(putOf('HZ_SEED_KEY'), putOf('HZ_ACCOUNT_KEY'));
+  assert.ok(await seedBoxKey({ HZ_SEED_KEY: putOf('HZ_SEED_KEY') }));
+  assert.equal(real.output().includes(putOf('HZ_SEED_KEY')), false, 'the real seed key is never printed');
+});
+
+test('a rerun keeps the seed key already set; only a confirmed --new-account-key replaces it', async () => {
+  const stored = (names = ['HZ_ACCOUNT_KEY', 'HZ_SEED_KEY', 'HZ_TICKET_KEY']) => mockWrangler({ dbPresent: true, existingSecrets: names });
+  const putOf = (h, name) => h.wrangler.calls.find((c) => c.args[0] === 'secret' && c.args[1] === 'put' && c.args[2] === name);
+
+  const keep = harness({ wrangler: stored() });
+  const kept = await deploy(keep.deps);
+  assert.equal(kept.ok, true, keep.output());
+  assert.equal(putOf(keep, 'HZ_SEED_KEY'), undefined, 'the stored seed key is not replaced');
+  assert.match(keep.output(), /Kept HZ_SEED_KEY \(already set; a new one would make every enrolled authenticator code unusable, --new-account-key replaces it\)/);
+  assert.equal(statusOf(kept, 'Secret HZ_SEED_KEY'), 'PASS');
+
+  const ticket = harness({ argv: ['--new-ticket-key'], replaceTicketKey: 'y', wrangler: stored() });
+  assert.equal((await deploy(ticket.deps)).ok, true, ticket.output());
+  assert.equal(putOf(ticket, 'HZ_SEED_KEY'), undefined, '--new-ticket-key leaves the seed key alone');
+
+  const yes = harness({ argv: ['--new-account-key'], replaceKey: 'replace', wrangler: stored() });
+  assert.equal((await deploy(yes.deps)).ok, true, yes.output());
+  assert.equal(putOf(yes, 'HZ_SEED_KEY')?.input, GENERATED_SEED);
+  assert.equal(putOf(yes, 'HZ_ACCOUNT_KEY')?.input, GENERATED);
+  assert.match(yes.output(), /HZ_ACCOUNT_KEY and HZ_SEED_KEY/);
+  assertNoSecretAnywhere(yes);
+
+  const no = harness({ argv: ['--new-account-key'], replaceKey: 'n', wrangler: stored() });
+  assert.equal((await deploy(no.deps)).ok, false);
+  assert.equal(no.wrangler.calls.some((c) => c.args[0] === 'deploy' || (c.args[0] === 'secret' && c.args[1] === 'put')), false, 'refused: no deploy, no secret put');
+
+  // A seed key set without an account key still needs the typed replace.
+  const seedOnly = harness({ argv: ['--new-account-key'], replaceKey: 'n', wrangler: stored(['HZ_SEED_KEY']) });
+  assert.equal((await deploy(seedOnly.deps)).ok, false);
+  assert.ok(seedOnly.asked.some((a) => a.name === 'confirm-replace-key'), 'a stored seed key is confirmed before it is replaced');
+  assert.equal(seedOnly.wrangler.calls.some((c) => c.args[0] === 'secret' && c.args[1] === 'put'), false);
+});
+
 // The ticket call unlock.js makes (ticketKey): a test drifts loudly if it changes.
 const UNLOCK_IMPORT = 'crypto.subtle.importKey("jwk", jwk, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"])';
 
@@ -635,13 +698,17 @@ test('the schema check expects every table schema.sql creates, A5 tables include
 test('every environment name the service reads is handled by the deploy script', () => {
   const src = path.join(ROOT, 'src');
   const read = new Set();
-  for (const f of readdirSync(src)) {
-    for (const m of readFileSync(path.join(src, f), 'utf8').matchAll(/\benv\??\.([A-Z][A-Z0-9_]*)/g)) read.add(m[1]);
+  for (const f of readdirSync(src, { recursive: true }).filter((f) => /\.(m?js)$/.test(f))) {
+    const text = readFileSync(path.join(src, f), 'utf8');
+    // Only env.X and env?.X are scanned, so any other way of reading env fails here.
+    assert.doesNotMatch(text, /\benv\??\.?\[|\}\s*=\s*env\b/, `${f} reads env some way other than env.NAME`);
+    for (const m of text.matchAll(/\benv\??\.([A-Z][A-Z0-9_]*)/g)) read.add(m[1]);
   }
   read.delete('DB'); // the D1 binding, from the deploy config
   const handled = new Set(CATALOG.map((s) => s.name));
-  assert.ok(read.size >= 6);
+  for (const name of ['HZ_ACCOUNT_KEY', 'HZ_SEED_KEY', 'HZ_TICKET_KEY', 'HZ_REOPEN_BASE', 'HZ_LINK_BASE', 'RESEND_KEY']) assert.ok(read.has(name), `the scan finds ${name}`);
   for (const name of read) assert.ok(handled.has(name), `${name} is read by src/ but the deploy script does not set it`);
+  for (const name of handled) assert.ok(read.has(name), `${name} is set by the deploy script but src/ never reads it`);
 });
 
 test('the hidden prompt never echoes what is typed, and piped lines are read in turn', async () => {
