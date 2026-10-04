@@ -27,6 +27,7 @@ import { startUnlock, finishUnlock, reopenUnlock } from "./unlock.js";
 import { setPin, verifyPin } from "./pin.js";
 import { reportBlock } from "./account-lock.js";
 import { resetPin } from "./pin-reset.js";
+import { reviewPin } from "./pin-review.js";
 
 export const ROUTES = Object.freeze({
   "/account": { checks: "open", handler: startSignup },
@@ -48,7 +49,7 @@ export const ROUTES = Object.freeze({
   "/pin/set": { checks: "signed", handler: setPin },
   "/pin/blocked": { checks: "signed", handler: reportBlock, lockedOk: true },
   "/pin/reset": { checks: "signed", handler: resetPin },
-  "/pin/review": { checks: "signed" },
+  "/pin/review": { checks: "signed", handler: reviewPin },
   "/reverify": { checks: "signed" },
   "/pair/offer": { checks: "signed" },
   "/pair/take": { checks: "signed" },
