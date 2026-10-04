@@ -113,6 +113,14 @@ const PARENT_SHAPE = [
   '1. Parent Goal: Implement Toilet Training Plan|Use Timer|2/0|100%',
   'The caregiver ran the Client Goal and two Parent Goals today.',
   'BT reviewed the client Programs and the caregiver Targets.',
+  // Added with the wider list: rows of the parent note test cases.
+  '2. Climbing (Bx Reduction) 2 instances during the session.',
+  '1. Parent Goal: Deliver Token Board|Present Token Board Before Demand|4/1|80%',
+  '1. Parent Goal: Use First-Then Language|At Home|5/0|100%',
+  '1. Parent Goal: Follow Visual Schedule|Point to Next Picture|3/1|75%',
+  'Client Goals: Transitions Between Activities|with visual|3/0|100%',
+  'A: Add Parent Goal: Implement BIP Climbing: Prompt FCR (Antecedent) 6/1 85%.',
+  'The target was "Stand up" + raise hands.',
 ];
 
 test.describe('goal headers after a role word are not names', () => {
