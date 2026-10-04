@@ -561,6 +561,7 @@ test('item 6: a domain that is not a plain DNS name is refused as shape before a
 // stays the full address, and the plain address keeps its own bucket, so a
 // flood of tags cannot stop the owner's own sign-up.
 test('M2: starts for every +tag of one mailbox share one limit, and the plain address is not held by it', async () => {
+  assert.equal(SIGNUP_LIMITS.codesPerMailboxHour, 10, 'R2: 10 mints an hour for the +tags of one mailbox');
   const h = harness();
   for (let i = 0; i < SIGNUP_LIMITS.codesPerMailboxHour; i += 1) {
     assert.equal((await start(h, `new-user+t${i}@example.test`, `192.0.2.${60 + i}`)).status, 200);
