@@ -194,19 +194,39 @@ async function edgeRule(ctx, deps) {
   return yes === "y" || yes === "yes";
 }
 
+const UNREADABLE_SECRETS = "could not read the secret list; nothing was changed; rerun, or pass --new-account-key if you mean to replace it";
+// wrangler 4's words for a Worker never deployed (wrangler-dist secret list).
+const WORKER_NOT_FOUND = /Worker "horae-zone"[^\n]* not found/;
+
 // The names of the Worker's secrets (never values: wrangler lists names).
+// Anything but an array of entries with a string name throws: read as "no
+// secrets", it would let a rerun replace HZ_ACCOUNT_KEY.
 async function secretNames(ctx, label) {
   const list = parseJson(ctx.checked(label, await ctx.wrangler(COMMANDS.secretList)));
-  return new Set((Array.isArray(list) ? list : []).map((s) => s?.name));
+  if (!Array.isArray(list) || !list.every((s) => typeof s?.name === "string")) throw new Error(`${label} is not an array of named entries`);
+  return new Set(list.map((s) => s.name));
+}
+
+// Before the deploy, so an unreadable list stops the run with the Worker
+// untouched. Only wrangler's "not found" means no Worker and so no secrets.
+async function secretsBeforeDeploy(ctx, newAccountKey) {
+  try {
+    return await secretNames(ctx, "the secret list");
+  } catch (err) {
+    if (WORKER_NOT_FOUND.test(err.message)) return new Set();
+    if (newAccountKey) return null;
+    throw new Stop(`${UNREADABLE_SECRETS}\n${err.message}`);
+  }
 }
 
 // A new HZ_ACCOUNT_KEY makes every stored account unreadable, so a rerun
 // keeps the one already set unless --new-account-key says otherwise.
 async function deployWorker(ctx, values, newAccountKey) {
   ctx.say("Step 5. Deploy the Worker, then put each secret");
+  const existing = await secretsBeforeDeploy(ctx, newAccountKey);
+  const keep = !newAccountKey && existing.has("HZ_ACCOUNT_KEY");
   const out = await ctx.wrangler(COMMANDS.deploy);
   ctx.item("Worker deployed", "PASS", `horae-zone, route ${HOSTNAME} (Custom domain)`);
-  const keep = !newAccountKey && (await secretNames(ctx, "the secret list")).has("HZ_ACCOUNT_KEY");
   for (const name of SECRET_NAMES) {
     if (name === "HZ_ACCOUNT_KEY" && keep) {
       ctx.say("  Kept HZ_ACCOUNT_KEY (already set; a new one would make every stored account unreadable, --new-account-key replaces it).");
@@ -291,8 +311,8 @@ function dryRun(deps) {
     ...EDGE_STEPS.map((l) => `  ${l}`),
     "  prompt: is the rate rule in place?",
     "Step 5. Deploy the Worker, then put each secret",
+    `  ${show(COMMANDS.secretList)}   (an HZ_ACCOUNT_KEY already set is kept unless --new-account-key; an unreadable list stops here)`,
     `  ${show(COMMANDS.deploy)}`,
-    `  ${show(COMMANDS.secretList)}   (an HZ_ACCOUNT_KEY already set is kept unless --new-account-key)`,
     ...SECRET_NAMES.map((n) => `  ${put(n)}`),
     "Step 6. Owner as administrator",
     `  ${ADMIN_BUILT ? "set the owner's admin role" : `SKIPPED. ${ADMIN_NOTE}`}`,
