@@ -12,9 +12,9 @@
  * POST /account/email/verify {email, code, password} makes the account only
  * when the code is one of the live ones for that address (up to
  * SIGNUP_LIMITS.liveCodes; a newer start never ends an older code). Each try
- * is reserved before the compare (so parallel guesses cannot pass the try
- * limits), the compare is sameHex over keyed digests against every live code,
- * and a code is spent by the first right try.
+ * is reserved in the throttle before the compare (so parallel guesses cannot
+ * pass the try limits), the compare is sameHex over keyed digests against
+ * every live code, and a code is spent by the first right try.
  *
  * The limits below are the agent's safe defaults, listed for the owner in the
  * design review ("Decisions for Kaleb"): the plan does not fix them.
@@ -27,15 +27,14 @@ import { admitThrottle } from "./throttle.js";
 
 // H1 (security review): a start never ends a live code and a wrong guess
 // never ends one either, so no one but the address owner can spend or kill
-// the owner's code. Guessing is bounded instead by the per-address try cap
-// (triesPerAddressHour), of which one requester gets a share
-// (triesPerAddressRequesterHour). codeTries is each code's own ceiling and
-// is never reached first: a code lives inside one window.
+// the owner's code. Second review, item 2: with a 128-bit token no cap is
+// needed to stop guessing, so there is no address-level try cap and no
+// per-code try ceiling (either was a cap a stranger could fill to lock the
+// owner out). Tries stay capped per requester and per (address, requester)
+// pair, which bounds load, not guessing.
 export const SIGNUP_LIMITS = Object.freeze({
   codeTtlMs: 10 * 60 * 1000,
   liveCodes: 3,
-  codeTries: 15,
-  triesPerAddressHour: 15,
   triesPerAddressRequesterHour: 5,
   codesPerAddressHour: 3,
   codesPerMailboxHour: 3,
@@ -59,8 +58,8 @@ const CODE_BYTES = 16;
 const CODE = /^[A-Za-z0-9_-]{22}$/;
 // The one bucket with no key: every start counts toward the daily cap.
 export const DAILY_BUCKET = "codes-day";
-// A live code for one address; binds address_key, codeTries, now.
-const LIVE = "address_key = ? AND used = 0 AND tries < ? AND expires_at > ?";
+// A live code for one address; binds address_key, now.
+const LIVE = "address_key = ? AND used = 0 AND expires_at > ?";
 
 // The id of the live code whose digest is `digest`, or null. Every digest is
 // compared, with no early exit, so how long this takes does not say which
@@ -198,7 +197,7 @@ export async function startSignup({ db, body, now, env, request, mailer }) {
     `INSERT INTO challenge (address_key, digest, expires_at, tries, used)
      SELECT ?, ?, ?, 0, EXISTS (SELECT 1 FROM account WHERE address_key = ?)
      WHERE (SELECT COUNT(*) FROM challenge WHERE ${LIVE}) < ? RETURNING used`,
-  ).bind(addressKey, digest, now + SIGNUP_LIMITS.codeTtlMs, addressKey, addressKey, SIGNUP_LIMITS.codeTries, now, SIGNUP_LIMITS.liveCodes).first();
+  ).bind(addressKey, digest, now + SIGNUP_LIMITS.codeTtlMs, addressKey, addressKey, now, SIGNUP_LIMITS.liveCodes).first();
   if (!made || made.used !== 0) return { status: 200, json: { ok: true } };
   return { status: 200, json: { ok: true }, after: mailAfter(mailer, codeMessage(address, link)) };
 }
@@ -214,14 +213,14 @@ export async function verifySignup({ db, body, now, env, request }) {
   const addressKey = await keys.addressKey(address);
   const admitted = await admitThrottle(db, now, SIGNUP_LIMITS.windowMs, [
     { bucket: `verify-requester:${requester}`, limit: SIGNUP_LIMITS.verifiesPerRequesterHour },
-    { bucket: `verify-address:${addressKey}`, limit: SIGNUP_LIMITS.triesPerAddressHour },
     { bucket: `verify-pair:${addressKey}:${requester}`, limit: SIGNUP_LIMITS.triesPerAddressRequesterHour },
   ]);
   if (!admitted) throw new Refusal("slow-down", 429);
   const digest = await keys.codeDigest(addressKey, body.code);
-  // The try is counted on every live code before the compare.
+  // The try is counted on every live code (a record only: no count ends a
+  // code) before the compare.
   const { results: live } = await db.prepare(`UPDATE challenge SET tries = tries + 1 WHERE ${LIVE} RETURNING id, digest`)
-    .bind(addressKey, SIGNUP_LIMITS.codeTries, now).all();
+    .bind(addressKey, now).all();
   const match = matchingId(live, digest);
   if (match === null) throw new Refusal("bad-code", 401);
   const spent = await db.prepare("UPDATE challenge SET used = 1 WHERE id = ? AND used = 0 RETURNING id").bind(match).first();

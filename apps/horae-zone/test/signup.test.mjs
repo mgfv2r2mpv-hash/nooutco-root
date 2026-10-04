@@ -192,23 +192,35 @@ test('H1: wrong guesses from another requester do not end the owner\'s code', as
   assert.equal(accounts(h.db).length, 1);
 });
 
-test('H1: tries at one address are still capped across requesters', async () => {
+// Second security review, item 2: with a 128-bit token no number of tries
+// finds the code, so an address-level try cap (and a per-code try ceiling)
+// only gave strangers a way to make the owner's link answer 429 or die. The
+// per-requester and per-pair caps stay.
+test('item 2: 15 strangers\' wrong tries from 3 requesters, then the owner\'s link still verifies', async () => {
   const h = harness();
   await start(h);
-  const code = codeFrom(h);
-  const share = SIGNUP_LIMITS.triesPerAddressRequesterHour;
-  for (let i = 0; i < SIGNUP_LIMITS.triesPerAddressHour; i += 1) {
-    assert.equal((await verify(h, { code: wrongOf(code), ip: `192.0.2.${100 + Math.floor(i / share)}` })).status, 401);
+  const owners = codeFrom(h);
+  for (let i = 0; i < 15; i += 1) {
+    assert.equal((await verify(h, { code: wrongOf(owners), ip: `192.0.2.${100 + (i % 3)}` })).status, 401, `stranger try ${i + 1}`);
   }
-  assert.deepEqual(await answer(await verify(h, { code: wrongOf(code), ip: '192.0.2.200' })), { status: 429, json: { error: 'slow-down' } });
-  assert.deepEqual(accounts(h.db), []);
-  h.clock.ms = T0 + SIGNUP_LIMITS.windowMs;
-  await start(h, ADDRESS, '192.0.2.201');
-  assert.equal((await verify(h, { code: codeFrom(h), ip: '192.0.2.201' })).status, 200, 'the cap lifts after its window');
+  assert.deepEqual(await answer(await verify(h, { code: owners, ip: '192.0.2.200' })), { status: 200, json: { ok: true } });
+  assert.equal(accounts(h.db).length, 1);
+  assert.equal(h.db.sqlite.prepare("SELECT COUNT(*) AS n FROM throttle WHERE bucket LIKE 'verify-address:%'").get().n, 0, 'no address-level try bucket');
 });
 
-test('H1: the address cap stops tries before any one code reaches its own try limit', () => {
-  assert.ok(SIGNUP_LIMITS.triesPerAddressHour <= SIGNUP_LIMITS.codeTries);
+test('item 2: many strangers\' wrong tries never end the owner\'s code', async () => {
+  const h = harness();
+  await start(h);
+  const owners = codeFrom(h);
+  for (let i = 0; i < 60; i += 1) {
+    assert.equal((await verify(h, { code: wrongOf(owners), ip: `192.0.2.${100 + (i % 12)}` })).status, 401, `stranger try ${i + 1}`);
+  }
+  assert.equal((await verify(h, { code: owners })).status, 200);
+});
+
+test('H1: a code lives inside one window', () => {
+  assert.equal(Object.hasOwn(SIGNUP_LIMITS, 'triesPerAddressHour'), false, 'no address-level try cap (item 2)');
+  assert.equal(Object.hasOwn(SIGNUP_LIMITS, 'codeTries'), false, 'no per-code try ceiling (item 2)');
   assert.ok(SIGNUP_LIMITS.codeTtlMs <= SIGNUP_LIMITS.windowMs, 'a code lives inside one window');
   assert.ok(SIGNUP_LIMITS.codesPerAddressHour <= SIGNUP_LIMITS.liveCodes, 'the start limit never asks for more live codes than are kept');
 });

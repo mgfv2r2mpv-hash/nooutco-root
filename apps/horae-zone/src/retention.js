@@ -39,7 +39,7 @@ function checkedYears(value) {
 }
 
 // Spent or expired nonces go (a spent row can never be accepted again, and a
-// deleted one is refused the same way), spent, used-up and expired email
+// deleted one is refused the same way), spent and expired email
 // codes and sign-in tickets likewise, rate-limit rows at or past the longest
 // window (no count reads them again; the daily cap's rows after a day), and
 // audit rows older than the cutoff.
@@ -48,7 +48,7 @@ export async function purgeExpired(db, now, { auditYears = RETENTION.auditYears 
   const throttleWindow = Math.max(SIGNUP_LIMITS.windowMs, SIGNIN_LIMITS.windowMs);
   await db.batch([
     db.prepare("DELETE FROM nonce WHERE used = 1 OR expires_at <= ?").bind(now),
-    db.prepare("DELETE FROM challenge WHERE used = 1 OR tries >= ? OR expires_at <= ?").bind(SIGNUP_LIMITS.codeTries, now),
+    db.prepare("DELETE FROM challenge WHERE used = 1 OR expires_at <= ?").bind(now),
     db.prepare("DELETE FROM ticket WHERE used = 1 OR expires_at <= ?").bind(now),
     db.prepare("DELETE FROM throttle WHERE at <= ? AND (bucket <> ? OR at <= ?)")
       .bind(now - throttleWindow, DAILY_BUCKET, now - SIGNUP_LIMITS.dayMs),

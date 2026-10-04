@@ -242,7 +242,7 @@ Safe defaults the plan does not fix. Each is one constant in `src/signup.js`.
 | # | Point | Default now | Where |
 |---|---|---|---|
 | 1 | How long an email code lives | 10 minutes | `SIGNUP_LIMITS.codeTtlMs` |
-| 2 | Code tries at one address per hour, from everyone (H1) | 15 | `triesPerAddressHour` |
+| 2 | ~~Code tries at one address per hour, from everyone (H1)~~ | - | **Removed** by the second review, item 2: with a 128-bit token the cap only let strangers hold the owner's link at `slow-down` |
 | 3 | Codes mailed to one address per hour, and codes live at once | 3 and 3 | `codesPerAddressHour`, `liveCodes` |
 | 4 | Sign-up starts per connecting address per hour | 10 | `startsPerRequesterHour` |
 | 5 | Code tries per connecting address per hour, and at one address from one connecting address (H1) | 20 and 5 | `verifiesPerRequesterHour`, `triesPerAddressRequesterHour` |
@@ -277,7 +277,7 @@ What changed (`src/signup.js`):
 
 Tests (`test/signup.test.mjs`): "H1: a second start leaves the first code live, so the owner's code still works", "H1: every live code for an address works, the newest included", "H1: wrong guesses from another requester do not end the owner's code", "H1: tries at one address are still capped across requesters", and "H1: the address cap stops tries before any one code reaches its own try limit". They replace "wrong tries end a code" and "a newer code replaces the older one", which pinned the old behaviour.
 
-Left as is (residual): 15 wrong guesses at one address within an hour, from 3 or more connecting addresses, still hold that address's verifies at `slow-down` until the window passes. No guess ends the owner's code, so a code still inside its 10 minutes works once the cap lifts. Any cap on guesses is a cap a stranger can fill; this one bounds a 6-digit code to 45 in a million per address per hour (15 tries against up to 3 live codes).
+Left as is (residual), at the time: 15 wrong guesses at one address within an hour, from 3 or more connecting addresses, held that address's verifies at `slow-down` until the window passed. Any cap on guesses is a cap a stranger can fill; that one bounded a 6-digit code to 45 in a million per address per hour. **Closed by the second review, item 2:** the code is a 128-bit token, so `triesPerAddressHour` and `codeTries` are gone and no number of strangers' tries holds or ends the owner's link.
 
 **M1 (medium): the time to answer said which addresses have accounts.** `startSignup` looked the address up and, for one with an account, answered before the challenge write, so that path skipped a D1 round trip and a write.
 
@@ -324,6 +324,7 @@ A second review of `8ebe205a` found that what was left of H1, H2 and M2 had one 
 | Item | What | Slice |
 |---|---|---|
 | 1 | The email secret is a 128-bit random token in the link fragment; the mail shows no code to type | A3 |
+| 2 | No address-level verify cap and no per-code try ceiling, so strangers' wrong tries never make the owner's link answer 429 or end it | A3 |
 
 **Item 1: the email secret becomes unguessable.** The code already rode in the link fragment and was clicked, not typed, so a 6-digit code bought nothing but guessability.
 
@@ -332,6 +333,14 @@ What changed (`src/signup.js`): `newCode` draws 16 random bytes and writes them 
 Tests (`test/signup.test.mjs`): "the email secret is a 128-bit random token, and the mail shows no code to type" and "a 6-digit typed code, or any other shape than the token, is refused as shape before a try is counted" are new. The existing tests now build wrong tries as well-formed tokens. On `8ebe205a` 9 tests fail (the two new ones, and seven whose wrong tries or shape checks assume the token; for example a well-formed token never sent answers `shape` there, expected `bad-code`).
 
 Left as is: the request field stays `code`, so a client posts what it read from the fragment unchanged.
+
+**Item 2: the address-level verify cap stops being a lockout lever.** With a 6-digit code, 15 wrong tries at one address from any 3 connecting addresses held the owner's verify at `slow-down` for the hour, and 15 tries on one code ended it. With a 128-bit token no cap is needed to stop guessing, so both caps only served a stranger.
+
+What changed (`src/signup.js`, `src/retention.js`): the `verify-address` bucket and `SIGNUP_LIMITS.triesPerAddressHour` are gone, and so is the per-code ceiling `codeTries`: a live code is now unspent and unexpired, whatever its try count. The per-requester cap (`verifiesPerRequesterHour`, 20) and the per (address, requester) cap (`triesPerAddressRequesterHour`, 5) stay, and they bound load, not guessing. The `tries` column is still counted on every live code before the compare, as a record; no count ends a code. The hourly purge drops spent and expired codes only.
+
+Tests: in `test/signup.test.mjs`, "item 2: 15 strangers' wrong tries from 3 requesters, then the owner's link still verifies" (on `d672e603` the owner's link answered `slow-down`), "item 2: many strangers' wrong tries never end the owner's code" (60 tries from 12 requesters; on `d672e603` the 16th answered 429) and "H1: a code lives inside one window" (which now also checks the two limits are gone). They replace "H1: tries at one address are still capped across requesters" and "H1: the address cap stops tries before any one code reaches its own try limit", which pinned the old caps. In `test/purge.test.mjs`, the purge test keeps a live code with 15 tries (on `d672e603` it was purged as used up).
+
+Left as is: one requester still gets 5 tries at one address and 20 in all per hour, so a single connecting address cannot use `/account/email/verify` as a load lever.
 
 ### Open points for the reviewer
 
