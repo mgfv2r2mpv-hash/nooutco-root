@@ -286,3 +286,12 @@ export function renderChecklist(items) {
     failed === 0 ? "RESULT: PASS" : `RESULT: FAIL (${failed} item${failed === 1 ? "" : "s"})`,
   ].join("\n");
 }
+
+// A Cloudflare challenge answered in the Worker's place: the edge marks it
+// with cf-mitigated: challenge, and the page itself loads the challenge
+// platform under the "Just a moment..." title.
+const CHALLENGE_PAGE = /\/cdn-cgi\/challenge-platform\/|<title>\s*Just a moment\.\.\.\s*<\/title>/i;
+
+export function isChallenge(headers, body) {
+  return (headers.get("cf-mitigated") ?? "").trim().toLowerCase() === "challenge" || CHALLENGE_PAGE.test(String(body ?? ""));
+}

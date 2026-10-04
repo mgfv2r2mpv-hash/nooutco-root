@@ -44,7 +44,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { ROUTES } from "../src/routes.js";
 import {
   CATALOG, SECRET_NAMES, DATABASE, HOSTNAME, DEPLOY_CONFIG, CRON, ACCOUNT_KEY_BYTES, SEED_KEY_BYTES,
-  LineReader, deployConfig, scrub, parseJson, findDatabaseId, schemaTables, renderChecklist, ticketKeyJwk,
+  LineReader, deployConfig, scrub, parseJson, findDatabaseId, schemaTables, renderChecklist, ticketKeyJwk, isChallenge,
 } from "./deploy-parts.mjs";
 
 const ROUTE_TRIES = 6;
@@ -98,8 +98,21 @@ const AFTER_DEPLOY_STEPS = [
   "  Hostname proxied, so cf-connecting-ip comes from the Cloudflare edge and cannot be set by a caller:",
   `    Workers & Pages > horae-zone > Settings > Domains & Routes: ${HOSTNAME} listed as a Custom domain.`,
   `    DNS > Records: the horae-zone row shows Proxy status "Proxied" (orange cloud). A Custom domain is always proxied.`,
-  "  Only if a managed rule or Bot Fight Mode challenges the app's calls (D-22): Security > Security rules > Create rule >",
-  `    Custom rule, expression (http.host eq "${HOSTNAME}"), action Skip, tick the managed rules and Super Bot Fight Mode.`,
+  "  The route check below reads Cloudflare's challenge header: when bot protection answers first, it prints the skip rule to add (D-22).",
+];
+
+// Printed when the route check meets a Cloudflare challenge: the zone's bot
+// protection answered, so the Worker never saw the request. Rate limiting
+// stays unskipped, so the rate rule from step 4 still covers the route.
+const SKIP_RULE = [
+  "Cloudflare's bot protection is answering before the Worker: the zone challenged GET /account, so the Worker never saw it.",
+  "Add this skip rule (dashboard), then re-check the route:",
+  "  dash.cloudflare.com > the nooutco.me zone > Security > Security rules > Create rule > Custom rule",
+  `  Rule name: horae-zone skip bot protection. Click "Edit expression" and paste:`,
+  `    (http.host eq "${HOSTNAME}")`,
+  `  Then take action: Skip. WAF components to skip: tick only "All Super Bot Fight Mode Rules";`,
+  `  leave "All rate limiting rules" unticked, so the rate rule (step 4) still applies.`,
+  "  Place at: First. Deploy.",
 ];
 
 class Stop extends Error {}
@@ -345,7 +358,8 @@ function adminStep(ctx) {
   ctx.item("Owner as administrator", ADMIN_BUILT ? "FAIL" : "SKIPPED", ADMIN_BUILT ? "A5c is built but this script does not set the role yet" : "A5c not built (see step 6)");
 }
 
-async function checkRoute(ctx, deps) {
+// One look at the route, retried only while it answers 5xx or not at all.
+async function probeRoute(ctx, deps) {
   const url = `https://${HOSTNAME}/account`;
   let last = "no answer";
   for (let i = 0; i < ROUTE_TRIES; i++) {
@@ -353,6 +367,10 @@ async function checkRoute(ctx, deps) {
     try {
       const res = await deps.fetchImpl(url, { method: "GET", redirect: "manual" });
       const body = ctx.checked("the route check", await res.text());
+      if (isChallenge(res.headers, body)) {
+        const mark = res.headers.has("cf-mitigated") ? " (cf-mitigated: challenge)" : "";
+        return { pass: false, challenged: true, detail: `GET /account answered ${res.status} with a challenge${mark}: Cloudflare's bot protection is answering before the Worker; add the skip rule printed above` };
+      }
       let error = null;
       try {
         error = JSON.parse(body)?.error ?? null;
@@ -360,14 +378,27 @@ async function checkRoute(ctx, deps) {
         error = null;
       }
       const edge = res.headers.has("cf-ray");
-      if (res.status === 405 && error === "method" && edge) return ctx.item("Route answers", "PASS", "GET /account refused as method (405) through the Cloudflare edge");
+      if (res.status === 405 && error === "method" && edge) return { pass: true, detail: "GET /account refused as method (405) through the Cloudflare edge" };
       last = `GET /account answered ${res.status}${error ? ` ${error}` : ""}${edge ? "" : ", with no cf-ray header (not through the Cloudflare edge)"}`;
       if (res.status < 500) break;
     } catch (err) {
       last = `GET /account failed: ${ctx.checked("the route check", err?.message ?? "error")}`;
     }
   }
-  ctx.item("Route answers", "FAIL", `${last}; expected 405 method through the edge`);
+  return { pass: false, challenged: false, detail: `${last}; expected 405 method through the edge` };
+}
+
+// A challenged route prints the skip rule and offers a re-check of the route
+// alone, as often as it stays challenged; no other step runs again.
+async function checkRoute(ctx, deps) {
+  for (;;) {
+    const result = await probeRoute(ctx, deps);
+    if (result.pass) return ctx.item("Route answers", "PASS", result.detail);
+    if (!result.challenged) return ctx.item("Route answers", "FAIL", result.detail);
+    for (const line of SKIP_RULE) ctx.say(`  ${line}`);
+    const again = (await deps.ask({ name: "confirm-recheck-route", question: "  Re-check the route now? (y) Type y once the skip rule is in place, anything else leaves it FAIL: ", hidden: false })).trim().toLowerCase();
+    if (again !== "y") return ctx.item("Route answers", "FAIL", result.detail);
+  }
 }
 
 async function runChecks(ctx, deps, deployOut, edgeConfirmed) {
@@ -433,6 +464,7 @@ function dryRun(deps) {
     `    expect secrets (names only): ${SECRET_NAMES.join(", ")}`,
     `  cron: "schedule: ${CRON}" in the deploy output`,
     `  GET https://${HOSTNAME}/account   expect 405 method with a cf-ray header`,
+    "    a Cloudflare challenge (cf-mitigated: challenge, or a challenge page): prints the skip rule, then prompt: re-check the route now? (y)",
   ].forEach((l) => say(l));
   return { ok: true, dryRun: true, checklist: [] };
 }
