@@ -175,7 +175,11 @@
     <!-- Admin UI -->
     <div id="adminUI" class="hidden">
       <nav class="tab-nav">
+        <!-- Grouped by what each tab is for, on his 2026-10-04 ruling that the
+             order read as random: people (Passwords, Profiles), what is hidden
+             (PII, Non-PII, Algorithm Lab), how it judges (Expert, Knowledge). -->
         <button class="tab-btn active" data-tab="passwords">Passwords</button>
+        <button class="tab-btn" data-tab="profiles">Profiles</button>
         <button class="tab-btn" data-tab="pii">PII</button>
         <button class="tab-btn" data-tab="nonpii">Non-PII</button>
         <button class="tab-btn" data-tab="alglab">Algorithm Lab</button>
@@ -185,7 +189,6 @@
              the most this 700px nav should carry. -->
         <button class="tab-btn" data-tab="expert">Expert</button>
         <button class="tab-btn" data-tab="knowledge">Knowledge</button>
-        <button class="tab-btn" data-tab="profiles">Profiles</button>
       </nav>
 
       <!-- ── Passwords tab ── -->
