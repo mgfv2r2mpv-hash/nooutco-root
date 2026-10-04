@@ -200,6 +200,7 @@ export class LineReader {
   }
 
   cancel() {
+    this.buffer = ""; // a partly typed key must not outlive the cancel
     if (this.waiting) this.fail(new Error("cancelled"));
   }
 

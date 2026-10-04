@@ -66,7 +66,7 @@ export const COMMANDS = Object.freeze({
 // The command words before the first flag, e.g. "secret put RESEND_KEY".
 const labelOf = (args) => {
   const flag = args.findIndex((a) => a.startsWith("-"));
-  return flag === -1 ? args : args.slice(0, flag);
+  return flag === -1 ? args : args.slice(0, Math.max(flag, 1)); // `--version` names itself
 };
 const show = (args) => `wrangler ${args.map((a) => (/[\s'*]/.test(a) ? `"${a}"` : a)).join(" ")}`;
 
@@ -232,7 +232,7 @@ async function edgeRule(ctx, deps) {
   return yes === "y" || yes === "yes";
 }
 
-const UNREADABLE_SECRETS = "could not read the secret list; nothing was changed; rerun, or pass --new-account-key if you mean to replace it";
+const UNREADABLE_SECRETS = "could not read the secret list; the Worker and its secrets were not changed; rerun, or pass --new-account-key if you mean to replace it";
 // wrangler 4's words for a Worker never deployed (wrangler-dist secret list).
 const WORKER_NOT_FOUND = /Worker "horae-zone"[^\n]* not found/;
 
@@ -263,7 +263,7 @@ async function confirmReplaceKey(ctx, deps, existing) {
   ctx.say(`  --new-account-key: HZ_ACCOUNT_KEY ${existing ? "is already set" : "may already be set (the secret list could not be read)"}.`);
   ctx.say("  If it is replaced, every enrolment, ticket and account becomes unusable, and none can be recovered.");
   const answer = (await deps.ask({ name: "confirm-replace-key", question: "  Type replace to replace it (anything else stops): ", hidden: false })).trim();
-  if (answer !== "replace") throw new Stop("HZ_ACCOUNT_KEY not replaced; nothing was changed. Rerun without --new-account-key to keep it.");
+  if (answer !== "replace") throw new Stop("HZ_ACCOUNT_KEY not replaced; the Worker and its secrets were not changed. Rerun without --new-account-key to keep it.");
 }
 
 // A new HZ_ACCOUNT_KEY makes every stored account unreadable, so a rerun
