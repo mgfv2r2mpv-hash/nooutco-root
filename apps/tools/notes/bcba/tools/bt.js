@@ -434,6 +434,7 @@ TERMINOLOGY (non-negotiable)\n\
 - Reinforcement is contingent on behavior. Write \"[behavior] was reinforced\" or \"reinforcement was delivered contingent on [behavior]\" - never \"[person] was reinforced.\"\n\
 - Precise verbs: prompted, faded, modeled, shaped, chained, redirected, blocked, delivered/withheld reinforcement, ran a trial, presented the SD.\n\
 - Name prompt types specifically (gestural, partial verbal, full physical, errorless). No loose synonyms (rewarded, encouraged, motivated).\n\
+- Never \"responded well\", \"did great\", \"went well\", \"did well\", \"throughout the session\", \"supported the client\", or \"helped\" without what it changed. Each says nothing a reader can check; write what the client did instead.\n\
 - Objective, observable language. Report what was seen and done; do not attribute cause or infer intent.\n\n\
 PLAIN LANGUAGE (applies alongside the terminology rules, never against them)\n\
 - Expand every acronym on first use, then abbreviate: \"Functional Communication Training (FCT) was implemented...\" and \"FCT\" thereafter. Same for DTT, NET, AAC, SD, IOA, BST.\n\
@@ -543,7 +544,7 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
       "- actionItems: " + menu(BCBA_ACTION_ITEMS),
       "",
       "ALLOWED SINGLE-SELECT OPTIONS (one verbatim value, or \"\" if unclear):",
-      "- consequenceEffectiveness: " + menu(EFFECTIVENESS),
+      "- consequenceEffectiveness: " + menu(EFFECTIVENESS) + " Always exactly one, never \"\": the form requires a pick (Kaleb, 2026-10-04).",
       "- clientProgress: " + menu(CLIENT_PROGRESS),
       "",
       "NARRATIVE GUIDANCE:",
@@ -555,6 +556,12 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
          session actually ran that way. The universal register block states the
          rule; this states it where it bites, which is the program narrative. */
       "  Within a program, write it in the order it ran: how the opportunity was arranged, then what was presented, then the prompt if one was needed, then what the client did, then what followed. Never write the prompt before the arrangement.",
+      /* Kaleb's rulings from his marks on six example BT notes, 2026-10-04
+         (scripts/bench/rulings/bt.md). "Worked on manding for help" with no
+         result was a fault; "mastering is not for a technician to say"; a
+         program not run is left out unless it is a barrier to address; and he
+         liked one program per paragraph. */
+      "  Every program you mention gets its result: what the client did, and at what prompt level. A program named with no result is a gap, so emit a hint rather than naming it bare. A technician never masters a target and never writes that the client mastered one: write that the target met mastery criteria. Leave out a program that was not run, unless the notes give a reason that keeps recurring, which goes in followUpNarrative as an item for the BCBA. Give each program its own paragraph, opening with its name and a colon (\"Body part identification: ...\"), separated by a blank line.",
       // The comparison is CONDITIONAL, and it was not before. "State whether
       // behavior increased, decreased, or held steady relative to recent
       // sessions" is a standing order, so a technician who never wrote a
@@ -567,14 +574,26 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
          no_response_described has existed since this catalog was written and
          the guidance never told the model what would earn it. */
       "  For each behavior: what happened, what the technician did in response, and what followed. A behavior named with no response is a gap rather than a short sentence, so emit the no_response_described hint instead of inventing one.",
+      // Kaleb, 2026-10-04: "how do you block a flop?", "did he follow the
+      // prompt and ask for a break or did the BT just end up modeling?", "It
+      // should say no aggression occurred, not was observed", and a break must
+      // not read as reinforcement for the flop.
+      "  Name exactly what the technician did, in the notes' words (not \"blocked\" alone when the notes say how). Say whether the client then did what was prompted or the technician modeled it. Where the notes say a strategy helped, write what that meant (shorter, less often, or lower intensity than usual); if the notes do not say, write what followed and stop. A behavior that did not occur is written \"No aggression occurred\", never \"was observed\". When a break or item followed a behavior, say what it was contingent on (\"after the client requested a break\"), so the note never reads as reinforcement delivered for the problem behavior.",
       /* "As applied and their impact" is two parts of three, and the missing
          one is the client. His shipped antecedent narrative read "Choices were
          offered when appropriate to increase opportunities for the client to
          participate", which satisfies both halves of the old line and says
          nothing about what the client did. */
       "- antecedentNarrative: three parts for each strategy. How it was actually applied, what the client did in response, and whether it worked. \"Choices were offered\" is the first part alone. Where the notes give you a strategy and not the response or the effect, write the part you have, emit the antecedent_effect_unstated hint, and supply neither of the others yourself.",
-      "- clinicalStatusNarrative: up to 2 sentences on mood/behavior at session start.",
+      // Kaleb, 2026-10-04: status "rooted in a BEHAVIOR", "what does perked up
+      // mean (give a sign or two)", "Why mention someone NOT there?"
+      "- clinicalStatusNarrative: up to 2 sentences on the client's behavior at session start, with the evidence: \"The client appeared tired as evidenced by yawning and rubbing his eyes.\" A word like \"perked up\" or \"in a good mood\" needs the signs that showed it, or it stays out. Name another person only when the notes place them in the session or say they took part; never someone who was not there.",
       "- followUpNarrative: brief; use the default sentence above if nothing reported. Write it as the person filing the note, not about them. The technician IS the direct staff, so never write \"Direct staff report...\" or \"The behavior technician has no concerns\" here, that is the author describing themselves in the third person, which reads as though someone else wrote the note. \"No new questions or concerns for the BCBA at this time\" is the register.",
+      // Kaleb, 2026-10-04, rewriting "Mom asked about potty training. Velcro is
+      // needed": "BT to follow up with BCBA about 1. Request from parent about
+      // toilet training program goal 2. Replace worn / missing pieces velco on
+      // the token board".
+      "  When there are items, write them as numbered actions, direct and formal: \"BT to follow up with BCBA about: 1. Caregiver's request about a toilet training goal. 2. Replacing worn velcro on the token board.\"",
     ].join("\n");
   }
 
@@ -584,7 +603,7 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
      schema makes this near-redundant, but ?schema=off and the recovery ladder
      both bypass the schema, so this stays the last line of defence. */
 
-  function normalizeOutput(raw) {
+  function normalizeOutput(raw, ctx) {
     var o = raw && typeof raw === "object" ? raw : {};
     var out = {};
     Object.keys(GROUP_OPTIONS).forEach(function (key) {
@@ -601,7 +620,16 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
       out[key] = typeof o[key] === "string" ? o[key] : "";
     });
     out.servicePaused = o.servicePaused === "Yes" ? "Yes" : "No";
-    out.hints = normalizeHints(o.hints, HINT_CATALOG, SECTION_IDS);
+    /* EFFECTIVENESS IS NEVER BLANK (Kaleb, 2026-10-04: "only 3 options to
+       choose from; must choose 1"). On a real draft, where the engine passes
+       the intake, a blank pick becomes the middle option, and a hint says the
+       tool chose it, the way parent's Caregiver Response does since #247. */
+    var extraHints = [];
+    if (ctx && typeof ctx.intake === "string" && !out.consequenceEffectiveness) {
+      out.consequenceEffectiveness = EFFECTIVENESS[1];
+      extraHints.push({ section: "consequenceEffectiveness", code: "other", detail: "Notes did not say; set to the middle option. Check it." });
+    }
+    out.hints = normalizeHints((Array.isArray(o.hints) ? o.hints : []).concat(extraHints), HINT_CATALOG, SECTION_IDS);
     // Only present on a revision that reached past the section the clinician
     // pointed at. Validated against the same closed section list as hints, so a
     // fabricated section name cannot route a change anywhere. bt carried its own
