@@ -327,6 +327,8 @@ test.describe('the defaults hold in code', () => {
     'Parent Goals:\n1. Parent Goal: Timer|5/5|100%',
     'Caregiver never forgot the timer.',
     'Client missed 2 trials of matching.',
+    'Mom said the client missed school on Friday.',
+    'Dad arrived late to the session.',
   ]) {
     test(`"no barriers" stands when the notes name none: ${intake.split("\n").pop()}`, async ({ page }) => {
       await parentTool(page);
