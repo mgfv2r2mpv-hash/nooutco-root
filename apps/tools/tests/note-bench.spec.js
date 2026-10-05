@@ -41,7 +41,10 @@ const GOOD = {
   followup: 'Review the missed FCR prompt with caregivers before the next session.',
   hints: [],
 };
-const BAD = { ...GOOD, caregiverResponse: 'Parent/Family is responding to training and generalization of skills is occurring. There are no barriers with their training.', summary: GOOD.summary + ' Caregivers met criterion on all three parent goals.' };
+// The first option, not the third: the code moves "no barriers" down on its
+// own when the notes name a barrier (#264), so only a pick the code leaves
+// alone shows the check firing.
+const BAD = { ...GOOD, caregiverResponse: 'Parent/Family is not responding to training due to large barriers and/or resistance.', summary: GOOD.summary + ' Caregivers met criterion on all three parent goals.' };
 
 async function stub(page, draft) {
   const seen = { triage: 0, drafts: [] };
