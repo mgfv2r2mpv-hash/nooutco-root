@@ -1,0 +1,113 @@
+{
+  "_about": "BT bench cases. Invented sessions, no client data, typed the way a BT types at the end of a session. The checks come from Kaleb's rulings in scripts/bench/rulings/bt.md and his BT Session Note Resources handout. Each case tests different rulings: status as behavior, every program with its result, antecedents as implemented, the behavior sequence, no ReThink numbers, numbered BT actions in Concerns.",
+  "tool": "bt",
+  "cases": [
+    {
+      "id": "bt-tired-flopping",
+      "page": "/notes/bt/",
+      "toggles": { "Place of Service": "Home", "Provided via Telehealth": "No" },
+      "fields": {
+        "Session Start & Context": "client yawning and rubbing eyes first 15 min, mom said up at 5am. after snack sat at table and answered first trial right away",
+        "Skill Acquisition": "body part ID moved to gesture prompt (was partial physical last wk), nose and ears hit mastery criteria. manding for help mostly indep, verbal model on rest. puzzle TA steps 1-4 indep, step 5 full physical",
+        "Antecedent Strategies": "first-then board shown before puzzles. choice of 2 puzzles before sitting down. 2 min verbal warning before ipad turned off",
+        "Behavior & Staff Response": "flopping x2 at clean up, both under 1 min, less than usual. stood next to him, prompted 'break please', he said it, 1 min break, came back and finished clean up. ipad off with no crying. no aggression",
+        "Follow-Up & Concerns": "mom asked about starting potty training. token board velcro worn, need more"
+      },
+      "truth": [
+        { "about": ["block", "flop", "how"], "answer": "I stood beside him and put a hand on the table so he could not slide off the chair, no physical holding." },
+        { "about": ["prompt", "said", "model", "follow"], "answer": "He said break please himself after one verbal prompt both times." },
+        { "about": ["usual", "baseline", "normal", "typically"], "answer": "Usually 4 or 5 flops at clean up." }
+      ],
+      "expect": {
+        "mentions": ["gesture", "full physical", "mastery criteria", "toilet"],
+        "forbid": ["responded well", "did great", "went well", "throughout the session", "mastered", "was observed", "was reinforced", "the behavior analyst", "as evidenced by being tired"],
+        "picks": {
+          "antecedentStrategies": ["Utilized Premack principle (first-then)", "Priming/provided warning", "Offered choices"],
+          "consequenceStrategies": ["Prompted functional communication", "Allowed break"]
+        },
+        "notPicks": { "individualsPresent": ["Sibling(s)/Peer(s)", "BCBA"] },
+        "noData": true,
+        "singlesNeverBlank": ["consequenceEffectiveness", "clientProgress"],
+        "tasksOnly": ["followUpNarrative"]
+      }
+    },
+    {
+      "id": "bt-clinic-hitting-new-med",
+      "page": "/notes/bt/",
+      "toggles": { "Place of Service": "Clinic/Center", "Provided via Telehealth": "No" },
+      "fields": {
+        "Session Start & Context": "client walked in, greeted me w hi, went to schedule on own. mom said new med started yesterday",
+        "Skill Acquisition": "imitating 2 step actions w objects indep on most, needed model on new ones. waiting 1 min for preferred item, waited every time w timer visible. tacting actions still needs echoic on run, jump",
+        "Antecedent Strategies": "visual schedule reviewed at start and before each switch. timer shown before every wait",
+        "Behavior & Staff Response": "hit me on arm 3x (open hand) when timer for swing ended, never hit at swing before. I blocked w forearm, said 'all done swing, first table then swing', no attention to hitting, he went to table after about 2 min. BCBA came in for last 20 min and saw 1",
+        "Follow-Up & Concerns": "hitting at swing is new, BCBA saw it. new med started yesterday"
+      },
+      "truth": [
+        { "about": ["intensity", "injury", "mark", "hit"], "answer": "Open hand to my forearm, no marks, each one a single swing." },
+        { "about": ["precursor", "before", "warning", "timer"], "answer": "He whined and grabbed the chains when the timer beeped, no warning before the timer ended." },
+        { "about": ["medication", "med", "name"], "answer": "Mom did not say which med, only that it was new yesterday." }
+      ],
+      "expect": {
+        "mentions": ["swing", "novel", "medication", "forearm"],
+        "forbid": ["responded well", "did great", "went well", "throughout the session", "mastered", "was observed", "was reinforced", "the behavior analyst"],
+        "picks": {
+          "individualsPresent": ["Client", "BCBA"],
+          "antecedentStrategies": ["Visual schedule"]
+        },
+        "noData": true,
+        "singlesNeverBlank": ["consequenceEffectiveness", "clientProgress"],
+        "tasksOnly": ["followUpNarrative"]
+      }
+    },
+    {
+      "id": "bt-school-no-behaviors",
+      "page": "/notes/bt/",
+      "toggles": { "Place of Service": "School", "Provided via Telehealth": "No" },
+      "fields": {
+        "Session Start & Context": "pulled into hallway room after recess, client walked w me holding my hand, sat right away",
+        "Skill Acquisition": "greeting peers at line up, said hi to 2 kids w gesture prompt, 1 indep. turn taking w peer during game, waited his turn w visual 'my turn / your turn' card each time. requesting help in class, raised hand once w verbal prompt",
+        "Antecedent Strategies": "turn card shown before game started. reminded of hand raise rule before going back to class",
+        "Behavior & Staff Response": "no behaviors of concern today",
+        "Follow-Up & Concerns": "teacher asked for a copy of the turn card for the classroom"
+      },
+      "truth": [
+        { "about": ["greeting", "peers", "prompt"], "answer": "Gesture was a wave cue from me; the independent one was to a kid he plays with often." },
+        { "about": ["teacher", "card", "copy"], "answer": "I said I would ask the BCBA before giving her a copy." }
+      ],
+      "expect": {
+        "mentions": ["turn", "gesture", "teacher"],
+        "forbid": ["responded well", "did great", "went well", "throughout the session", "mastered", "was observed", "was reinforced", "the behavior analyst", "no behaviors were observed"],
+        "noData": true,
+        "singlesNeverBlank": ["consequenceEffectiveness", "clientProgress"],
+        "tasksOnly": ["followUpNarrative"]
+      }
+    },
+    {
+      "id": "bt-telehealth-parent-coaching",
+      "page": "/notes/bt/",
+      "toggles": { "Place of Service": "Home", "Provided via Telehealth": "Yes" },
+      "fields": {
+        "Session Start & Context": "telehealth, dad ran trials w me coaching on video. client running around room and squealing first 5 min, dad got him to the couch w his blanket",
+        "Skill Acquisition": "dad ran following 1 step directions, client did 'give me' and 'come here' w dad's gesture, 'sit down' needed dad to guide him. labeling colors w blocks, said red and blue w echoic, green indep. could not run play skills, toys were packed for a move again this wk",
+        "Antecedent Strategies": "coached dad to show first-then pic (blocks then tablet) before each set",
+        "Behavior & Staff Response": "screaming 1x when tablet put away, about 30 sec. dad gave 2 choices of next toy like we practiced, client picked one and stopped",
+        "Follow-Up & Concerns": "family moving in 2 wks, play skills not run 2 wks in a row bc toys packed"
+      },
+      "truth": [
+        { "about": ["dad", "coaching", "feedback", "implement"], "answer": "I told dad to wait 3 seconds before guiding; he did it on the next 3 trials." },
+        { "about": ["move", "toys", "play"], "answer": "Toys stay packed until the move; play skills will not run for 2 more weeks." }
+      ],
+      "expect": {
+        "mentions": ["dad", "first-then", "move", "play skills"],
+        "forbid": ["responded well", "did great", "went well", "throughout the session", "mastered", "was observed", "was reinforced", "the behavior analyst"],
+        "picks": {
+          "individualsPresent": ["Client", "Parent/Caregiver"],
+          "antecedentStrategies": ["Utilized Premack principle (first-then)"]
+        },
+        "noData": true,
+        "singlesNeverBlank": ["consequenceEffectiveness", "clientProgress"],
+        "tasksOnly": ["followUpNarrative"]
+      }
+    }
+  ]
+}

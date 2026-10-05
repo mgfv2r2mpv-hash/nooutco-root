@@ -26,10 +26,15 @@ async function clearGates(page) {
   if (await review.isVisible({ timeout: 1200 }).catch(() => false)) await review.click();
 }
 
-async function fillCase(page, c) {
+export async function fillCase(page, c) {
+  // A toggle is its label paragraph followed by a row of buttons.
   for (const [label, value] of Object.entries(c.toggles || {})) {
-    const group = page.getByRole('group', { name: new RegExp(label, 'i') });
-    await group.getByRole('button', { name: value, exact: true }).click();
+    const row = page.locator('p', { hasText: label }).first().locator('xpath=following-sibling::div[1]');
+    await row.getByRole('button', { name: value, exact: true }).click();
+  }
+  // BT's arrival question: one button per choice, by its value.
+  for (const [field, value] of Object.entries(c.choices || {})) {
+    await page.locator(`[data-arrival-field="${field}"] [data-arrival="${value}"]`).click();
   }
   for (const [label, text] of Object.entries(c.fields || {})) {
     await page.getByRole('textbox', { name: new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') }).fill(text);
@@ -84,7 +89,9 @@ export async function readNote(page) {
       const ta = sec.querySelector('textarea');
       if (ta) text[key] = ta.value;
     });
-    return { picks, text, all: [card.innerText, ...[...card.querySelectorAll('textarea')].map((t) => t.value)].join('\n') };
+    // The goals table edits in inputs, which innerText does not carry.
+    const fields = [...card.querySelectorAll('textarea, input:not([type]), input[type="text"]')].map((t) => t.value);
+    return { picks, text, all: [card.innerText, ...fields].join('\n') };
   });
 }
 
