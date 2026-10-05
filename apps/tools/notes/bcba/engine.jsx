@@ -91,6 +91,14 @@ function expertEnabled(toolId) {
 }
 window.expertEnabled = expertEnabled;
 
+/* What the follow-up answers ride under in the first draft, for every tool.
+   The last clause is Kaleb's Assessment note of 2026-10-04: his answer said
+   rates were lower with BCBA present, and the draft still kept the reasons the
+   notes had guessed for them being higher. Exposed so the bench and the live
+   parent script send the same header the page does. */
+const ANSWERS_HEADER = "\n\nTHE TECHNICIAN ADDED, ANSWERING FOLLOW-UP QUESTIONS (each A: answers the Q: above it, so write it where that question points; treat as part of the notes above; where an answer corrects the notes, the answer wins and what it corrected goes):\n";
+window.ANSWERS_HEADER = ANSWERS_HEADER;
+
 /* The corrections pass runs for the same people the expert pass runs for, and
    the gate is the same check for the same reason: the route takes any live
    login and then refuses a tool the login's own list does not carry, so a
@@ -2837,7 +2845,7 @@ function App() {
     try {
       let userMsg = tool.buildUserPrompt(scrubbedValues);
       if (extra && extra.trim()) {
-        userMsg += "\n\nTHE TECHNICIAN ADDED, ANSWERING FOLLOW-UP QUESTIONS (each A: answers the Q: above it, so write it where that question points; treat as part of the notes above):\n" + extra.trim();
+        userMsg += ANSWERS_HEADER + extra.trim();
       }
       // Snapshot the technician's learned style for this whole conversation.
       // Empty for a new technician, and empty when the profile store is

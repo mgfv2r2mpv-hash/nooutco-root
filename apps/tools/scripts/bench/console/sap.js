@@ -388,9 +388,10 @@
         if (!b) throw new Error(`no "${value}" choice for ${field}`);
         b.click();
       }
+      // Waited for, not looked up once: after a Clear the form is drawn again,
+      // and on a slow run the box is not there yet the moment Clear returns.
       for (const [label, text] of Object.entries(c.fields || {})) {
-        const el = fieldNamed(label);
-        if (!el) throw new Error(`no field named "${label}" on this page`);
+        const el = await until(() => fieldNamed(label), `a field named "${label}" on this page`, 10000);
         type(el, text);
       }
       await sleep(300);

@@ -3,12 +3,12 @@
  * never this file.
  *
  * Open tools.nooutco.me/notes/assess/ logged in, keep the tab in front, and paste
- * the whole file into the console. It runs the 4 invented cases in
+ * the whole file into the console. It runs the 5 invented cases in
  * scripts/bench/cases/assess.json the way a user does: types each one, presses
  * Generate, answers the page's questions from the case's hidden details,
  * Sends, reads the note back and scores it. Between cases it presses Clear.
  *
- * It costs 4 drafts plus their question rounds, and sends only the
+ * It costs 5 drafts plus their question rounds, and sends only the
  * invented cases below. The results land on your clipboard. */
 (() => {
   /* Chrome lends the console's copy() only while pasted code first runs, so
@@ -214,6 +214,59 @@
         "notPicks": {
           "activities": [
             "Administration of assessment tool",
+            "Client Observation"
+          ]
+        }
+      }
+    },
+    {
+      "id": "assess-records-review-answer-overturns",
+      "page": "/notes/assess/",
+      "fields": {
+        "Summary Notes": "BCBA reviewed FBA data from the current authorization across the reduction targets \"Hugging/Jumping on People,\" \"Aggression,\" \"Tantrum\" and \"Climbing.\" Climbing was recorded after peer play ended in 3 of 4 instances. Aggression rose during summer camp in July and has stayed at zero since the regular school year began. BCBA updated the background, medical history and service history sections and looked at session conditions across the authorization. Behavior levels look higher in sessions with BCBA present, maybe from extra staff attention, or the BT splitting attention between the client and BCBA. Rates look lower in telehealth sessions."
+      },
+      "truth": [
+        {
+          "about": [
+            "bcba present",
+            "higher",
+            "with bcba",
+            "supervision",
+            "rates"
+          ],
+          "answer": "Checked the ABC data: hugging/jumping on people was 3 instances in 3 sessions with BCBA present and 11 in 5 sessions without, so it is actually lower with BCBA."
+        },
+        {
+          "about": [
+            "aggression",
+            "camp",
+            "summer",
+            "average"
+          ],
+          "answer": "Aggression averaged 2 per session during camp, zero since school started."
+        }
+      ],
+      "expect": {
+        "mentions": [
+          "Hugging",
+          "Climbing",
+          "camp"
+        ],
+        "forbid": [
+          "The Behavior Analyst",
+          "unsupervised",
+          "staffing structure",
+          "following resumption",
+          "extra staff attention"
+        ],
+        "picks": {
+          "reporting": [
+            "Analysis of past data"
+          ]
+        },
+        "notPicks": {
+          "activities": [
+            "Review results with parent",
             "Client Observation"
           ]
         }
@@ -458,9 +511,10 @@
         if (!b) throw new Error(`no "${value}" choice for ${field}`);
         b.click();
       }
+      // Waited for, not looked up once: after a Clear the form is drawn again,
+      // and on a slow run the box is not there yet the moment Clear returns.
       for (const [label, text] of Object.entries(c.fields || {})) {
-        const el = fieldNamed(label);
-        if (!el) throw new Error(`no field named "${label}" on this page`);
+        const el = await until(() => fieldNamed(label), `a field named "${label}" on this page`, 10000);
         type(el, text);
       }
       await sleep(300);
