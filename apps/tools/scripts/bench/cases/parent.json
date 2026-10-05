@@ -101,7 +101,7 @@
       "id": "v2-missed-prompt-and-a-teacher",
       "page": "/notes/parent/",
       "fields": {
-        "Session Notes": "Parent training.\nClient Goals:\nManding for Breaks|independent|3/2|60%\nElopement (Bx Reduction) 1 instance during the session.\nParent Goals:\n1. Parent Goal: Deliver Token Board|Present Token Board Before Demand|4/1|80%\nCaregiver forgot the token board once before a demand, and elopement followed. Teacher reported the same pattern at school and asked to meet."
+        "Session Notes": "Parent training.\nClient Goals:\nManding for Breaks|independent|3/2|60%\nBoth errors were grabbing the break card without saying \"break\", each after 10+ min of work.\nElopement (Bx Reduction) 1 instance during the session, ran to the hallway about 30 sec, mom blocked and walked him back to the table.\nParent Goals:\n1. Parent Goal: Deliver Token Board|Present Token Board Before Demand|4/1|80%\nCaregiver forgot the token board once before a demand, and elopement followed. BCBA modeled presenting the board, mom did the next 2 on her own. Teacher reported the same pattern at school and asked to meet. Mom wants school to use the same token board."
       },
       "truth": [
         {
@@ -167,7 +167,7 @@
       "id": "v3-generalization-stated",
       "page": "/notes/parent/",
       "fields": {
-        "Session Notes": "Parent training.\nParent Goals:\n1. Parent Goal: Use First-Then Language|At Home|5/0|100%\n2. Parent Goal: Use First-Then Language|In the Community|4/0|100%\nCaregiver used first-then language at the grocery store without a reminder from BCBA. No barriers reported. Client Goals:\nWaiting|2 minutes|4/0|100%"
+        "Session Notes": "Parent training.\nParent Goals:\n1. Parent Goal: Use First-Then Language|At Home|5/0|100%\n2. Parent Goal: Use First-Then Language|In the Community|4/0|100%\nCaregiver used first-then language at the grocery store without a reminder from BCBA. Said \"first cart, then snack\" and client walked with the cart to checkout. Dad ran it at home during teeth brushing and bath. Parents said it feels automatic now. No barriers reported. Client Goals:\nWaiting|2 minutes|4/0|100%\nWaited in the checkout line with a visual timer, no behaviors. Discussed moving the waiting goal to 3 minutes next session. Mom asked for a first-then card to use at church on Sundays."
       },
       "truth": [
         {
@@ -210,7 +210,7 @@
       "id": "v4-no-bt-today",
       "page": "/notes/parent/",
       "fields": {
-        "Session Notes": "Parent training, caregiver and client only. Follow up when the BT is present on fading the visual schedule.\nParent Goals:\n1. Parent Goal: Follow Visual Schedule|Point to Next Picture|3/1|75%\nClient Goals:\nTransitions Between Activities|with visual|3/0|100%"
+        "Session Notes": "Parent training, caregiver and client only. Follow up when the BT is present on fading the visual schedule.\nParent Goals:\n1. Parent Goal: Follow Visual Schedule|Point to Next Picture|3/1|75%\nMom pointed to the next picture before 3 of 4 transitions. On the 4th, bath to bed, she skipped it and gave a vocal direction only. Client went anyway, no protest. Mom held each picture at chest height as practiced.\nClient Goals:\nTransitions Between Activities|with visual|3/0|100%\nAll transitions took under 1 min, no behaviors. Mom asked whether the schedule can drop to 3 pictures. Plan to try removing the first picture next week if the data hold."
       },
       "truth": [
         {

@@ -1,0 +1,140 @@
+{
+  "_about": "SAP cases for the note bench. A SAP designs a program rather than reporting a session: the tool may choose the mechanics, but never a fact about the learner it was not given. Every word is invented.",
+  "tool": "sap",
+  "cases": [
+    {
+      "id": "sap-aac-manding",
+      "page": "/notes/sap/",
+      "fields": {
+        "Treatment Goal": "Client will independently request preferred items using a 2-button AAC page (more, help) in 8 of 10 opportunities across 3 consecutive sessions, absent behaviors targeted for reduction, as measured by direct observation during play and snack.",
+        "SAP Specifications": "already taps \"more\" with a gesture prompt at snack. grabs items from adult hands when the demand goes up. tried a PECS binder last auth, abandoned it, too slow for him. works for the tablet and goldfish crackers. has to work at the clinic with 2 staff and at home with mom. 60 min sessions, one technician. use most-to-least for \"help\", he gets frustrated with errors. mastery as in the goal."
+      },
+      "truth": [
+        {
+          "about": [
+            "baseline",
+            "currently",
+            "how often",
+            "right now",
+            "rate"
+          ],
+          "answer": "Right now he taps more about 3 of 10 times at snack with a gesture; help he does not use at all."
+        },
+        {
+          "about": [
+            "reinforc",
+            "prefer",
+            "reward"
+          ],
+          "answer": "Tablet for 30 seconds or one goldfish cracker per request."
+        },
+        {
+          "about": [
+            "behavior",
+            "grab",
+            "problem",
+            "aggress"
+          ],
+          "answer": "Grabbing, about 5 times a session, no aggression."
+        }
+      ],
+      "expect": {
+        "mentions": [
+          "8 of 10",
+          "tablet",
+          "most-to-least",
+          "help"
+        ],
+        "forbid": [
+          "The Behavior Analyst"
+        ]
+      }
+    },
+    {
+      "id": "sap-two-step-instructions",
+      "page": "/notes/sap/",
+      "fields": {
+        "Treatment Goal": "Client will follow 2-step related instructions (e.g., get your shoes and sit down) within 5 seconds in 80% of opportunities across 2 consecutive sessions, with 2 different staff, during home and school routines.",
+        "SAP Specifications": "follows 1-step instructions reliably, breaks down on step 2, usually does step 1 then wanders. responds best when the instruction is paired with a point. walks off when demands stack up, no aggression. home sessions 2 hrs, 3x a week, plus 1 school day with a shadow. generalize to mom and his teacher. maintenance probes weekly for 4 weeks after mastery. error correction: never repeat the instruction more than once."
+      },
+      "truth": [
+        {
+          "about": [
+            "which instructions",
+            "examples",
+            "targets",
+            "start with"
+          ],
+          "answer": "Start with get X and bring it to me, put X away and come here, wash hands and sit down."
+        },
+        {
+          "about": [
+            "baseline",
+            "currently",
+            "how often",
+            "right now"
+          ],
+          "answer": "About 2 of 10 two-step instructions done fully right now."
+        }
+      ],
+      "expect": {
+        "mentions": [
+          "5 seconds",
+          "80%",
+          "teacher",
+          "4 weeks",
+          "point"
+        ],
+        "forbid": [
+          "The Behavior Analyst"
+        ]
+      }
+    },
+    {
+      "id": "sap-thin-waiting",
+      "page": "/notes/sap/",
+      "fields": {
+        "Treatment Goal": "Client will tolerate a 2-minute wait for a preferred item without behaviors in 4 of 5 opportunities across 3 sessions.",
+        "SAP Specifications": "screams when told wait. home only."
+      },
+      "truth": [
+        {
+          "about": [
+            "current",
+            "how long",
+            "baseline",
+            "now",
+            "tolerat"
+          ],
+          "answer": "He waits about 10 seconds before screaming."
+        },
+        {
+          "about": [
+            "reinforc",
+            "prefer",
+            "item"
+          ],
+          "answer": "Tablet and the swing in the yard."
+        },
+        {
+          "about": [
+            "tried",
+            "before",
+            "timer",
+            "history"
+          ],
+          "answer": "A visual timer was tried once and he threw it."
+        }
+      ],
+      "expect": {
+        "mentions": [
+          "4 of 5",
+          "wait"
+        ],
+        "forbid": [
+          "The Behavior Analyst"
+        ]
+      }
+    }
+  ]
+}
