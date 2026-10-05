@@ -304,7 +304,11 @@ export async function finishUnlock({ db, device, body, now, env, mailer }) {
   const notes = [...gateNotes, ...lockNotes(ruled.events, ruled.token, reopenBase), ...pendingWrong];
   const after = mailAfter({ db, keys, mailer, accountId: row.account_id, notes });
   if (!accepted) throw new Refusal("bad-code", 401, after);
-  const cleared = await db.prepare("UPDATE device SET pending = 0 WHERE id = ? AND removed_at IS NULL RETURNING id").bind(device.id).first();
+  // confirmed_at moves only when this code is what clears the flag, so a
+  // confirmed device's unlock leaves it (src/device-list.js).
+  const cleared = await db.prepare(
+    "UPDATE device SET confirmed_at = CASE WHEN pending = 1 OR confirmed_at IS NULL THEN ? ELSE confirmed_at END, pending = 0 WHERE id = ? AND removed_at IS NULL RETURNING id",
+  ).bind(now, device.id).first();
   if (!cleared) throw new Refusal("no-device", 401, after);
   const ticket = await signTicket(signKey, { v: 1, account: row.account_id, device: device.id, at: now, exp: now + UNLOCK_LIMITS.ticketTtlMs });
   return { status: 200, json: { ticket }, after };
