@@ -235,10 +235,17 @@ TERMINOLOGY (non-negotiable)\n\
       if (/\bparent goals?\s*:/i.test(line)) inParent = true;
       else if (/\b(?:client|child|skill|behavior) goals?\s*:/i.test(line)) inParent = false;
       var parentLine = inParent || /\bparent goal\b/i.test(line);
+      /* A percentage on the line settles the notation. Some authors write a/b
+         as correct out of total, so "5/5 100%" is a perfect caregiver, not 5
+         misses: with a percentage, a miss is anything under 100 and no trial
+         correct is 0. Without one, a/b is read as correct/incorrect. */
+      var pct = /\b(\d{1,3})\s*%/.exec(line);
       counts(line).forEach(function (c) {
         if (reason) return;
-        if (parentLine && c.missed > 0) reason = "a caregiver step was missed (" + c.done + "/" + c.missed + " on a parent goal)";
-        else if (!parentLine && c.done === 0 && c.missed > 0) reason = "the client got no trial correct on a goal (" + c.done + "/" + c.missed + ")";
+        var missed = pct ? +pct[1] < 100 : c.missed > 0;
+        var noneCorrect = pct ? +pct[1] === 0 : c.done === 0 && c.missed > 0;
+        if (parentLine && missed) reason = "a caregiver step was missed (" + c.done + "/" + c.missed + " on a parent goal)";
+        else if (!parentLine && noneCorrect) reason = "the client got no trial correct on a goal (" + c.done + "/" + c.missed + ")";
       });
       if (!reason && line.split(/[.!?;]\s+/).some(caregiverMissedStep)) reason = "the notes say a caregiver missed a step";
     });

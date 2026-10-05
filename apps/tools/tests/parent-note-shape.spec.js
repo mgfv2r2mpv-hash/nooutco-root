@@ -310,6 +310,7 @@ test.describe('the defaults hold in code', () => {
     ['a parent goal count with a miss', 'Parent Goals:\n1. Parent Goal: Deliver Token Board|Present Token Board Before Demand|4/1|80%', /caregiver step was missed \(4\/1/],
     ['a caregiver who forgot', 'Parent training. Caregiver forgot the timer once.', /caregiver missed a step/],
     ['a late prompt from mom', 'Mom gave the prompt late twice.', /caregiver missed a step/],
+    ['a correct-out-of-total count under 100 percent', 'Parent Goals:\n1. Parent Goal: Timer|4/5|80%', /caregiver step was missed \(4\/5/],
     ['a client goal with no trial correct', 'Client Goals:\nOne-Step Instructions|Stand up|0/3\nParent Goals:\n1. Parent Goal: Prompt to Sit|2/0|100%', /client got no trial correct/],
   ];
   for (const [name, intake, why] of BARRIERS) {
@@ -323,10 +324,11 @@ test.describe('the defaults hold in code', () => {
 
   for (const intake of [
     'Parent Goals:\n1. Parent Goal: First-Then|At Home|5/0|100%\nCaregiver used it without a reminder. Client Goals:\nWaiting|2 minutes|4/0|100%',
+    'Parent Goals:\n1. Parent Goal: Timer|5/5|100%',
     'Caregiver never forgot the timer.',
     'Client missed 2 trials of matching.',
   ]) {
-    test(`"no barriers" stands when the notes name none: ${intake.split('\n')[0]}`, async ({ page }) => {
+    test(`"no barriers" stands when the notes name none: ${intake.split("\n").pop()}`, async ({ page }) => {
       await parentTool(page);
       const out = await norm(page, { individualsPresent: [], caregiverResponse: THIRD }, { intake });
       expect(out.caregiverResponse).toBe(THIRD);
