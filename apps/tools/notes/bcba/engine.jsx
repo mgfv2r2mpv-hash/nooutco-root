@@ -585,7 +585,9 @@ function Checklist({ options, selected, single = false, sectionId: sid }) {
             border: "1.5px solid #374528", background: "#374528", color: "white",
             fontSize: 11, fontWeight: 700, lineHeight: "14px", textAlign: "center",
           }}>✓</span>
-          <span style={{ fontSize: 13.5, lineHeight: 1.45, color: "#2d3a1f", fontWeight: 600 }}>{answer}</span>
+          {/* data-single-answer is how the note bench (scripts/bench) reads the
+              pick back off the card without depending on its styling. */}
+          <span data-single-answer={answer} style={{ fontSize: 13.5, lineHeight: 1.45, color: "#2d3a1f", fontWeight: 600 }}>{answer}</span>
         </div>
         <p className="section-note" style={{ fontSize: 11.5, color: "#8a9678", margin: "7px 0 0", lineHeight: 1.5 }}>
           Suggested from the intake.<br />
