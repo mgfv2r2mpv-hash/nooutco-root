@@ -292,6 +292,37 @@ body {
   margin: 4px 0 10px;
 }
 .routing-ask-q { margin: 0 0 7px; font-size: 12.5px; line-height: 1.5; color: #6d5410; }
+/* The expert's questions in the panel (expert-questions.js). Green, the expert
+   reading's own colour, so the block reads as the same voice it was under the
+   note. */
+.expert-questions {
+  border: 1.5px solid #cfe0bd;
+  background: #f7fbf3;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 4px 0 10px;
+}
+.expert-questions-head {
+  margin: 0 0 6px; font-size: 11px; letter-spacing: .07em; text-transform: uppercase;
+  color: #7a9460; font-weight: 700;
+}
+.expert-question { margin-bottom: 8px; }
+.expert-why {
+  margin-left: 6px; font-size: 11.5px; color: inherit; opacity: .6;
+  background: none; border: none; padding: 0; cursor: pointer; text-decoration: underline;
+}
+.expert-why-text { display: block; margin-top: 3px; opacity: .82; }
+.expert-stale { display: block; margin-top: 3px; font-size: 11.5px; color: #7a9460; font-style: italic; }
+.expert-answer {
+  display: block; width: 100%; box-sizing: border-box; margin-top: 4px;
+  font: inherit; font-size: 13px; line-height: 1.45;
+  border: 1.5px solid #cfe0bd; border-radius: 8px; padding: 7px 9px; resize: vertical;
+}
+.expert-send {
+  margin-top: 2px; padding: 7px 14px; border-radius: 8px; border: none;
+  background: #374528; color: #fff; font-weight: 600; font-size: 13px; cursor: pointer;
+}
+.expert-send:disabled { opacity: .6; cursor: not-allowed; }
 .routing-ask-q strong { color: #5a4408; }
 /* The wording itself, so the choice is made on what it says rather than on the
    name of a section. Bounded, because a long narrative would push the buttons
