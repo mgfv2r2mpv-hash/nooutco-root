@@ -416,3 +416,38 @@ After each fix the three suites passed: Horae Zone 354/354, 357/357 and 359/359,
 
 - The client side of the PIN, the grant and the review modal (A8).
 - `/admin/unlock-account` and the other admin routes (A5c), recovery (A6), the gatekeeper (A7).
+
+## The signed device list (`apps/horae-zone`)
+
+### Run
+
+As in A3: `node --test test/*.test.mjs` in `apps/horae-zone`.
+
+- **Expected result now:** Horae Zone 381 tests, 381 pass. `dev` at `2e2720aa` has 368; the route's commit `ab99c4bf` added 10 (378), and the item 2 tests added 3 (381).
+- **Test values are fake,** as in A5: `example.test` addresses, the fake ticket key pair made per run in `test/helpers.mjs`. No test calls a deployed service.
+
+**RED evidence.** `ab99c4bf` (the route): 9 of 10 tests in `device-list.test.mjs` failed on `no-route` before the build (the count in its commit message). The item 2 tests (public keys only, the nonce bound) were written after the route, so they passed on arrival; each was proved able to fail by a mutation of the source, run and then undone:
+
+| Mutation | Tests failing (of 13) |
+|---|---|
+| `count: devices.length` added to the signed claims | 2: the full-list test and "the list carries public keys only" |
+| The nonce cap's `< ?` made `<= ?` in `issueNonce` (`src/checks.js`) | 1: "the list is bounded like every signed route" |
+| Each `agreeKey` cut to 43 characters (not a whole public point) | 3: the full-list test, the unlock test and "the list carries public keys only" |
+
+### What each file proves
+
+| File | Proves | Negative controls |
+|---|---|---|
+| `test/device-list.test.mjs` (added) | A confirmed device gets one signed list of every confirmed device of its account, each with both public keys and `confirmedAt`, and every confirmed device gets the same list. A pending or removed device is never listed, and an unlock does not move `confirmedAt`. A pending, removed, other-account, unsigned or badly signed caller is refused, a body naming an account answers `shape`, and a locked account answers `account-locked`. A list never verifies as an unlock ticket (in the test verifier and in the service's own `readTicket`), and a ticket never as a list; the label and the typ each keep them apart alone. A list is refused from `exp` on and before `at`. The claims hold exactly `v, typ, account, at, exp, kid, devices`, each entry exactly `device, signKey, agreeKey, confirmedAt`, each key a 65-byte public point, and no address, password or authenticator secret; a wrong code changes nothing in the list. Each list spends one single-use nonce, a device holds at most five live ones, and a nonce lives a minute | The list verifies as a list and the ticket as a ticket; a list is good until its last millisecond; `NEGATIVE CONTROL: the secrets check catches a planted address, count, extra field or private key` |
+| `test/helpers.mjs` | `verifyDeviceList` and `verifyUnlockTicket`, written apart from `src/`: the check Sass mirrors (pinned JWK, RFC 7638 kid, label, `v` 1, typ, account match, `at <= now < exp`) | As above |
+
+### Manual checks for the reviewer
+
+1. **Public keys only.** `grep -n "SELECT" apps/horae-zone/src/device-list.js` shows one read of `id, sign_key, agree_key, confirmed_at` from `device`, nothing from `account`, `otp`, `limits` or `pin`.
+2. **No console calls,** as in A5: `grep -rn "console\." apps/horae-zone/src` prints nothing.
+3. **Local smoke test:** `curl -s -X POST -H 'content-type: application/json' -d '{}' localhost:8787/devices` answers `{"error":"no-device"}`.
+
+### Not in the device list (do not add here)
+
+- Sass's side: `sharedPeerKey` reading the list, the pinned key check and the fingerprint fallback (Sass PR #159).
+- A device label or name: the device table has none, and `test/config.test.mjs` forbids a column name holding `name`.

@@ -12,10 +12,10 @@
 // test/helpers.mjs, the check Sass mirrors.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { fromB64url } from '../src/checks.js';
+import { fromB64url, NONCE_TTL_MS, LIVE_NONCES_PER_DEVICE } from '../src/checks.js';
 import { readTicket } from '../src/pin.js';
 import {
-  harness, post, signed, nonceFor, registeredDevice, confirmedDevice, codeAt, tryCode, ticketFor,
+  harness, post, signed, nonceFor, registeredDevice, confirmedDevice, codeAt, wrongCodeAt, tryCode, ticketFor, PASSWORD,
   verifyDeviceList, verifyUnlockTicket, signWithTicketKey, jwkThumbprint,
   TICKET_PUBLIC_JWK, DEVICE_LIST_LABEL_TEXT, UNLOCK_TICKET_LABEL_TEXT, DEVICE_LIST_TYP_TEXT, T0,
 } from './helpers.mjs';
@@ -176,4 +176,85 @@ test('a list is refused from its expiry on, and before it was issued', async () 
   assert.equal(await at(issued + LIST_TTL_MS), null);
   assert.equal(await at(issued - 1), null);
   assert.equal(claimsOf(list).exp - claimsOf(list).at, LIST_TTL_MS, 'it lives ten minutes');
+});
+
+// Item 2: nothing secret. The claims hold exactly these keys, each key in a
+// device entry is a raw uncompressed P-256 point (65 bytes, first byte 4,
+// so a public key and never a 32-byte private scalar), and no value carries
+// the account's address, password or authenticator secret. Returns what it
+// finds, so the negative control can plant each kind.
+const CLAIM_KEYS = ['account', 'at', 'devices', 'exp', 'kid', 'typ', 'v'];
+const ENTRY_KEYS = ['agreeKey', 'confirmedAt', 'device', 'signKey'];
+
+function isPublicPoint(text) {
+  const raw = fromB64url(text);
+  return raw.length === 65 && raw[0] === 4;
+}
+
+function secretsIn(claims, forbidden) {
+  const found = [];
+  if (JSON.stringify(Object.keys(claims).sort()) !== JSON.stringify(CLAIM_KEYS)) found.push('claim keys');
+  for (const d of claims.devices ?? []) {
+    if (JSON.stringify(Object.keys(d).sort()) !== JSON.stringify(ENTRY_KEYS)) found.push('entry keys');
+    if (!isPublicPoint(d.signKey) || !isPublicPoint(d.agreeKey)) found.push('a key that is not a public point');
+  }
+  const text = JSON.stringify(claims);
+  for (const value of forbidden) if (text.includes(value)) found.push('a forbidden value');
+  return found;
+}
+
+test('the list carries public keys only: no address, no code state, no count', async () => {
+  const h = harness();
+  const owner = await confirmedDevice(h, ADDRESS);
+  await secondConfirmed(h, owner);
+  const forbidden = [ADDRESS, PASSWORD, owner.secret];
+
+  const before = await listFor(h, owner);
+  const claims = await verifyDeviceList(before.json.list, { account: owner.account, now: h.clock.ms });
+  assert.deepEqual(secretsIn(claims, forbidden), []);
+  for (const value of forbidden) assert.equal(JSON.stringify(before.json).includes(value), false, 'the answer carries a forbidden value');
+
+  // A wrong code leaves the account's code state changed; the list must not show it.
+  const wrong = await tryCode(h, owner, await wrongCodeAt(owner, h.clock.ms));
+  assert.equal(wrong.proved, false, 'NEGATIVE CONTROL: the code try was wrong');
+  const after = await listFor(h, owner);
+  assert.deepEqual(await verifyDeviceList(after.json.list, { account: owner.account, now: h.clock.ms }), claims, 'a wrong code changes nothing in the list');
+});
+
+test('NEGATIVE CONTROL: the secrets check catches a planted address, count, extra field or private key', () => {
+  const pub = b64Point(65, 4);
+  const clean = { v: 1, typ: DEVICE_LIST_TYP_TEXT, account: 'a', at: 1, exp: 2, kid: 'k', devices: [{ device: 'd', signKey: pub, agreeKey: pub, confirmedAt: 1 }] };
+  assert.deepEqual(secretsIn(clean, [ADDRESS]), []);
+  assert.notDeepEqual(secretsIn({ ...clean, account: ADDRESS }, [ADDRESS]), []);
+  assert.notDeepEqual(secretsIn({ ...clean, count: 1 }, [ADDRESS]), []);
+  assert.notDeepEqual(secretsIn({ ...clean, devices: [{ ...clean.devices[0], email: 'x' }] }, [ADDRESS]), []);
+  assert.notDeepEqual(secretsIn({ ...clean, devices: [{ ...clean.devices[0], agreeKey: b64Point(32, 4) }] }, [ADDRESS]), []);
+});
+
+function b64Point(length, first) {
+  const raw = new Uint8Array(length).fill(1);
+  raw[0] = first;
+  return Buffer.from(raw).toString('base64url');
+}
+
+// Item 2: rate limited like the other signed routes. A signed route has no
+// throttle of its own; each request spends one single-use nonce, and a device
+// holds at most LIVE_NONCES_PER_DEVICE live ones, each for NONCE_TTL_MS.
+test('the list is bounded like every signed route: one single-use nonce per request, five live nonces per device', async () => {
+  const h = harness();
+  const owner = await confirmedDevice(h, ADDRESS);
+  assert.equal(LIVE_NONCES_PER_DEVICE, 5);
+  const nonces = [];
+  for (let i = 0; i < LIVE_NONCES_PER_DEVICE; i += 1) nonces.push(await nonceFor(h.call, owner));
+  const sixth = await answer(await h.call(post('/nonce', {}, { 'x-hz-device': owner.id })));
+  assert.deepEqual(sixth, { status: 429, json: { error: 'slow-down' } });
+
+  for (const n of nonces) assert.equal((await answer(await h.call(await signed(h.call, owner, '/devices', {}, { nonce: n })))).status, 200);
+  const again = await answer(await h.call(await signed(h.call, owner, '/devices', {}, { nonce: nonces[0] })));
+  assert.deepEqual(again, { status: 401, json: { error: 'stale-nonce' } }, 'a nonce lists once');
+
+  const late = await nonceFor(h.call, owner);
+  h.clock.ms += NONCE_TTL_MS;
+  const expired = await answer(await h.call(await signed(h.call, owner, '/devices', {}, { nonce: late })));
+  assert.deepEqual(expired, { status: 401, json: { error: 'stale-nonce' } }, 'a nonce lives a minute');
 });
