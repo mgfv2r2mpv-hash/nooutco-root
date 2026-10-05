@@ -62,7 +62,7 @@ export function checkNote(c, note) {
     }
   }
   if (/\[\[T\d+\]\]/.test(all)) fails.push('an opaque token was left in the note');
-  if (/—/.test(narratives)) fails.push('an em dash in a narrative');
+  if (/\u2014/.test(narratives)) fails.push('an em dash in a narrative');
   for (const group of e.singlesNeverBlank || []) {
     if (!((note.picks || {})[group] || [])[0]) fails.push(`${group} left blank`);
   }

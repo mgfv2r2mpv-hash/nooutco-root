@@ -1,0 +1,78 @@
+{
+  "_about": "Assessment bench cases. Invented sessions, no client data, typed the way a BCBA types after an assessment visit. Each tests different rules in assess.js: picks only for what was done, the summary says what the Behavior Analyst did and the results say what was found, a hypothesis stays a hypothesis, nothing scored that was not.",
+  "tool": "assess",
+  "cases": [
+    {
+      "id": "assess-vbmapp-and-interview",
+      "page": "/notes/assess/",
+      "fields": {
+        "Summary Notes": "ran VB-MAPP milestones levels 1 and 2 at home, 90 min. client did mands and tacts sections, mand at 6 items w full echoic, tact 8 items. listener 5 of the level 1 items. stopped level 2 at visual perceptual, client left table. barriers: prompt dependence and impaired mand. interviewed mom for 30 min about daily routine, sleep ok, eats 6 foods, tantrums mainly at bath time. scored level 1 today, level 2 partial. next visit finish level 2 and transition assessment."
+      },
+      "truth": [
+        { "about": ["score", "milestone", "level 1", "total"], "answer": "Level 1 total 11.5 of 15." },
+        { "about": ["barrier", "prompt", "dependence"], "answer": "Prompt dependence scored 2, impaired mand scored 3." },
+        { "about": ["bath", "tantrum", "routine"], "answer": "Mom says tantrums start when the water runs, about 5 minutes, 4 nights a week." }
+      ],
+      "expect": {
+        "mentions": ["VB-MAPP", "Level 1", "prompt dependence", "bath", "Level 2"],
+        "forbid": ["was reinforced", "The Behavior Analyst", "Level 2 was completed", "transition assessment was completed"],
+        "picks": {
+          "activities": ["Administration of assessment tool", "Caregiver/Guardian interview"],
+          "reporting": ["Assessment Scoring / Interpretation of results"]
+        },
+        "notPicks": { "activities": ["Functional Analysis", "Review results with parent"] }
+      }
+    },
+    {
+      "id": "assess-fba-observation-hypothesis",
+      "page": "/notes/assess/",
+      "fields": {
+        "Summary Notes": "FBA visit at school, observed 2 hrs in class and at recess. ABC data on hitting, 7 episodes, 5 after teacher said clean up or line up, 2 at recess when peer took ball. most hits followed by teacher removing the demand. maybe escape, maybe tangible at recess, need more data before calling it. interviewed teacher 20 min, she says worse on mondays. did not do FA. next: indirect assessment w parents and 1 more observation."
+      },
+      "truth": [
+        { "about": ["function", "hypothesis", "escape"], "answer": "Not decided yet, escape is the leading guess for class, tangible for recess." },
+        { "about": ["monday", "teacher", "setting"], "answer": "Teacher thinks weekends at dad's house, not confirmed." }
+      ],
+      "expect": {
+        "mentions": ["ABC", "escape", "tangible", "teacher", "observation"],
+        "forbid": ["was reinforced", "The Behavior Analyst", "function of the behavior is escape", "maintained by escape", "Functional Analysis was conducted"],
+        "picks": { "activities": ["Functional Behavior Assessment", "Client Observation"] },
+        "notPicks": { "activities": ["Functional Analysis", "Administration of assessment tool"] }
+      }
+    },
+    {
+      "id": "assess-report-writing-no-client",
+      "page": "/notes/assess/",
+      "fields": {
+        "Summary Notes": "report writing, no client contact. pulled prior treatment plan and last 6 months of data from rethink. read neuropsych eval from may and the speech eval. graphed manding and elopement trends, manding up steady, elopement flat since spring. drafted 4 new goals: 2 communication, 1 social, 1 behavior reduction for elopement. edited the background and history sections. still need to write the parent training goals before sending to clinical director."
+      },
+      "truth": [
+        { "about": ["goals", "draft", "new"], "answer": "Requesting help, 2 word mands, greeting peers, and elopement reduction." }
+      ],
+      "expect": {
+        "mentions": ["neuropsych", "speech", "elopement", "parent training"],
+        "forbid": ["was reinforced", "The Behavior Analyst", "client was observed", "parent training goals were written"],
+        "picks": {
+          "reporting": ["Medical Record Review", "Analysis of past data", "Treatment plan / goal development", "Report Review and Edits"]
+        },
+        "notPicks": { "activities": ["Client Observation", "Administration of assessment tool", "Caregiver/Guardian interview"] }
+      }
+    },
+    {
+      "id": "assess-results-review-with-parents",
+      "page": "/notes/assess/",
+      "fields": {
+        "Summary Notes": "met w both parents 1 hr to go over the reassessment. showed VB-MAPP level 1 now complete, level 2 at about half, up from level 1 only at intake. walked through 5 proposed goals. dad asked why toilet training not in goals, explained we start once sitting tolerance is 2 min, they agreed. mom wants more help with bedtime, will add a parent training goal for bedtime routine. parents signed off on goals."
+      },
+      "truth": [
+        { "about": ["bedtime", "parent training", "goal"], "answer": "Goal will be a visual bedtime routine with mom, 3 steps to start." }
+      ],
+      "expect": {
+        "mentions": ["toilet", "sitting tolerance", "bedtime", "signed off"],
+        "forbid": ["was reinforced", "The Behavior Analyst", "toilet training goal was added"],
+        "picks": { "activities": ["Review results with parent"] },
+        "notPicks": { "activities": ["Administration of assessment tool", "Client Observation"] }
+      }
+    }
+  ]
+}
