@@ -1076,3 +1076,35 @@ Tests: "wrong reset factors are capped per account each day at the code path's 1
 - The client: Face ID, the PIN screen, the offline check against the grant (on a trusted or monotonic clock, LOW-3 above), the ten-wrong count on the device, the review modal (A8).
 - `/admin/unlock-account` and the other admin routes (A5c), recovery and the vault switch (A6), the gatekeeper's use of the ticket (A7).
 - Any change to Sass or JanusMirror, real secrets, real mail and any deploy.
+
+## The signed device list (`apps/horae-zone`)
+
+Sass PR #159 section 1 asks Horae Zone to answer each device's public key, signed by the account, so Sass's shared store can confirm the other Mac's agreement key without a manual step. Kaleb, 4 Oct 2026: fingerprints now (ruling A), and this round in Horae Zone. Commits: `ab99c4bf` (the route, RED first, 9 of 10 failing on `no-route`), then the item 2 tests and these notes. After both: Horae Zone 381/381.
+
+### What is in it
+
+| File | Does |
+|---|---|
+| `src/device-list.js` | `POST /devices {}` answers `{list}`: base64url JSON `{v: 1, typ: "horae-zone-device-list", account, at, exp, kid, devices}`, then the service's ECDSA P-256 signature over `horae-zone-device-list-v1.<payload>` under `HZ_TICKET_KEY`. `exp` is `at` plus 10 minutes. Each entry of `devices` is `{device, signKey, agreeKey, confirmedAt}` for a live, not pending device of the caller's account, in one read |
+| `src/routes.js` | `/devices` with checks `signed`, not `pendingOk`, not `lockedOk` |
+| `src/devices.js`, `src/unlock.js` | Stamp `device.confirmed_at`: the owner device at registration, a later device when its first accepted code clears `pending` (later unlocks leave it alone) |
+| `schema.sql` | `device.confirmed_at INTEGER`, changed in place, since no database has been made from this file yet (as A4 and A5 did) |
+| `test/helpers.mjs` | The verifier Sass mirrors, apart from `src/` |
+
+### Decisions
+
+1. **The route is `/devices`, not `/pair/list`.** This review keeps `/pair/offer` and `/pair/take` for bringing a vault to a new device and names no list route, so the list takes no name from that flow. It is a read of the account's devices, beside `/device/register` and `/device/remove`.
+2. **Only a confirmed device asks, and only for its own account.** The body is exactly `{}`; the account is always the signing device's. A pending device answers `no-device`, a locked account `account-locked`, as on every route not marked `pendingOk` or `lockedOk`. When the signing device is missing from its own one-read list (a removal or a hold landing after its checks, security review L2), it gets `no-device`.
+3. **The same key and format as the unlock ticket, a different purpose.** Sass verifies the list with the ticket key it already pins (kid = RFC 7638 thumbprint). The label (`horae-zone-device-list-v1`, not `horae-zone-unlock-ticket-v1`) and the `typ` (a ticket carries none) each keep a list from passing as a ticket, and a ticket from passing as a list, so a slip in one is still caught by the other.
+4. **Public keys only.** The list carries device ids, both raw P-256 public points as registered, and the confirmed time; no address, no code state, no count. A device registers with no label, and the schema forbids a column name holding `name`, so an entry carries none.
+5. **Short life.** Ten minutes, so a removal reaches Sass soon: a list Sass holds goes stale within ten minutes of being issued.
+6. **Rate limited like the other signed routes.** No signed route has a throttle of its own. Each request spends a single-use nonce, a device holds at most five live ones, and each lives a minute, so a device has at most five lists in flight. The test asserts the same bound on `/devices`.
+
+### What Sass's verifier must do
+
+Split the list at the last `.`; check the signature over `horae-zone-device-list-v1.<payload>` with the pinned public key; require `kid` equal to that key's RFC 7638 thumbprint, `v` 1, `typ` `"horae-zone-device-list"`, `account` equal to the account Sass holds, and `at <= now < exp`. Any failure is no list. `sharedPeerKey` should take the other Mac's `agreeKey` from a list that verifies, and fall back to the fingerprint confirmation (ruling A) when Horae Zone is unreachable.
+
+### Out of scope
+
+- Sass's `sharedPeerKey`, its pinned key check and its fallback (Sass PR #159).
+- Any deploy, real secret or call to the live service.
