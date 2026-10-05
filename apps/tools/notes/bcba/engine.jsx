@@ -316,12 +316,21 @@ function InfoTooltip({ text }) {
 
   // Keep the bubble clamped to the viewport at all times - even while hidden -
   // so a right-side icon's (position:absolute) bubble never expands the page's
-  // horizontal scroll area. Reposition on resize/orientation change and on open.
+  // horizontal scroll area. Reposition on resize/orientation change, on open,
+  // and when the page reflows under it: a row added above or beside the icon
+  // (the deletions strip on a dismiss) moves the icon with no resize, and the
+  // stale offset left a hidden bubble 76px past a 375px screen in Firefox,
+  // which counts a visibility:hidden box toward the scroll width.
   React.useLayoutEffect(() => {
     position();
     const onResize = () => position();
     window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    const reflow = typeof ResizeObserver === "function" ? new ResizeObserver(onResize) : null;
+    if (reflow) reflow.observe(document.body);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      if (reflow) reflow.disconnect();
+    };
   }, [position]);
 
   React.useLayoutEffect(() => { if (open) position(); }, [open, position]);
