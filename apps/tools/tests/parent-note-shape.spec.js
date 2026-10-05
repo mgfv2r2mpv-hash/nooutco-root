@@ -42,6 +42,8 @@ test.describe('the parent prompt carries each ruling', () => {
     ['follow up is never a question', /NEVER a question to the author/],
     ['caregiver response: a missed prompt means option two', /A missed step, a missed or late prompt, prompting the caregiver needed, or any resistance means the second option/],
     ['progress weighs caregiver goals more', /caregivers' goal progress weighs more than the client's goal progress/],
+    ['a poor client response is a barrier too', /So does a poor client response, such as a client goal with no trial correct/],
+    ['moderate names both sides', /not Minimal, because the caregiver goals carry it, and not Substantial, because a client goal with no trial correct holds it back/],
     ['every goal named, answers included', /A goal the author adds in an answer to a follow-up question is a goal of this note/],
     ['no unsupported goal count', /Never state a count of goals/],
     ['prompt level beside the count', /PROMPT LEVEL GOES WITH THE COUNT/],
@@ -267,7 +269,7 @@ test.describe('the defaults hold in code', () => {
     expect(out.hints.some((h) => h.section === 'caregiverResponse' && /middle option/.test(h.detail))).toBe(true);
   });
 
-  test('a Caregiver Response the draft chose is never changed', async ({ page }) => {
+  test('a Caregiver Response the draft chose is kept when the notes name no barrier', async ({ page }) => {
     await parentTool(page);
     const out = await norm(page, { individualsPresent: [], caregiverResponse: THIRD }, { intake: 'Parent training.' });
     expect(out.caregiverResponse).toBe(THIRD);
@@ -300,5 +302,49 @@ test.describe('the defaults hold in code', () => {
     expect(await held('v4-no-bt-today')).not.toMatch(/Caregiver Response picked/);
     expect(await held('v4-no-bt-today')).not.toMatch(/lists "Technician"/);
     expect(await held('v2-missed-prompt-and-a-teacher')).toMatch(/lists "Teacher"/);
+  });
+
+  /* Kaleb, 2026-10-04 (Caregiver Response, A): "no barriers" never stands
+   * beside a missed caregiver step or a poor client response. */
+  const BARRIERS = [
+    ['a parent goal count with a miss', 'Parent Goals:\n1. Parent Goal: Deliver Token Board|Present Token Board Before Demand|4/1|80%', /caregiver step was missed \(4\/1/],
+    ['a caregiver who forgot', 'Parent training. Caregiver forgot the timer once.', /caregiver missed a step/],
+    ['a late prompt from mom', 'Mom gave the prompt late twice.', /caregiver missed a step/],
+    ['a client goal with no trial correct', 'Client Goals:\nOne-Step Instructions|Stand up|0/3\nParent Goals:\n1. Parent Goal: Prompt to Sit|2/0|100%', /client got no trial correct/],
+  ];
+  for (const [name, intake, why] of BARRIERS) {
+    test(`"no barriers" moves to the middle option on ${name}, with a hint saying why`, async ({ page }) => {
+      await parentTool(page);
+      const out = await norm(page, { individualsPresent: [], caregiverResponse: THIRD }, { intake });
+      expect(out.caregiverResponse).toBe(MIDDLE);
+      expect(out.hints.some((h) => h.section === 'caregiverResponse' && why.test(h.detail))).toBe(true);
+    });
+  }
+
+  for (const intake of [
+    'Parent Goals:\n1. Parent Goal: First-Then|At Home|5/0|100%\nCaregiver used it without a reminder. Client Goals:\nWaiting|2 minutes|4/0|100%',
+    'Caregiver never forgot the timer.',
+    'Client missed 2 trials of matching.',
+  ]) {
+    test(`"no barriers" stands when the notes name none: ${intake.split('\n')[0]}`, async ({ page }) => {
+      await parentTool(page);
+      const out = await norm(page, { individualsPresent: [], caregiverResponse: THIRD }, { intake });
+      expect(out.caregiverResponse).toBe(THIRD);
+    });
+  }
+
+  test('the barrier rule only moves down: a first or second pick is left alone', async ({ page }) => {
+    await parentTool(page);
+    const first = 'Parent/Family is not responding to training due to large barriers and/or resistance.';
+    const out = await norm(page, { individualsPresent: [], caregiverResponse: first }, { intake: 'Parent Goal: Timer|1/3' });
+    expect(out.caregiverResponse).toBe(first);
+  });
+
+  test('each fixture case lands on the Caregiver Response its truth names', async ({ page }) => {
+    await parentTool(page);
+    for (const c of fixture.cases.filter((x) => x.expect && x.expect.caregiverResponse)) {
+      const out = await norm(page, { individualsPresent: [], caregiverResponse: THIRD }, { intake: c.intake });
+      expect(out.caregiverResponse, c.id).toBe(c.expect.caregiverResponse);
+    }
   });
 });
