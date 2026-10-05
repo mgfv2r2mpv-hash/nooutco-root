@@ -1,0 +1,274 @@
+{
+  "_about": "Parent Training bench cases. Invented sessions, no client data. fields are typed into the page by label; truth answers the follow-up questions the page asks; expect and parentExpect are the checks (scripts/bench/lib/checks.mjs). Ported from tests/fixtures/parent-note-shape.json, whose v1 answers became truth.",
+  "tool": "parent",
+  "cases": [
+    {
+      "id": "v1-the-original-shape",
+      "page": "/notes/parent/",
+      "fields": {
+        "Session Notes": "Goals assessed in parent training session included parent goals, client skill goals, and client behavior goals.\nClient Goals:\nComplete Functional One-Step Instructions (Listener Resp.)|\"Stand up\" + raise hands|0/3|%O\n2. Climbing (Bx Reduction) 2 instances during parent training portion of the session.\nParent Goals:\n1. Parent Goal: Implement Toilet Training Plan|Prompt to Sit for Interval|2/0|100%|+,+\n2. Parent Goal: Implement Toilet Training Plan|Prompt to Go to Bathroom|2/0|100%|+,+\n3. Parent Goal: Implement Toilet Training Plan|Use Timer|2/0|100%|+,+\nBCBA met with caregivers and reviewed an upcoming staff transition the parents requested. Onboarding of a new technician begins in the next 2 weeks."
+      },
+      "truth": [
+        {
+          "about": [
+            "0/3",
+            "one-step",
+            "trials",
+            "instruction"
+          ],
+          "answer": "Tantrum behavior occurred on 1 trial, and the other 2 were completed with a physical prompt. The program is to complete them with a gesture prompt."
+        },
+        {
+          "about": [
+            "climbing",
+            "caregiver",
+            "respond",
+            "bip"
+          ],
+          "answer": "Add Parent Goal: Implement BIP Climbing: Prompt FCR (Antecedent) 6/1 85%. Parents prompted FCR 5 times when precursors were observed, and climbing happened in 1 of those 5."
+        },
+        {
+          "about": [
+            "bt",
+            "technician",
+            "present"
+          ],
+          "answer": "The BT was running the session earlier while BCBA revised a protocol."
+        },
+        {
+          "about": [
+            "2/0",
+            "+,+",
+            "toilet",
+            "notation"
+          ],
+          "answer": "2/0 means 2 trials correct at or above the intended prompt and 0 that were not."
+        }
+      ],
+      "expect": {
+        "tasksOnly": [
+          "followup"
+        ],
+        "singlesNeverBlank": [
+          "caregiverResponse",
+          "progressStatus"
+        ]
+      },
+      "parentExpect": {
+        "goalNames": [
+          "One-Step Instructions",
+          "Climbing",
+          "Prompt to Sit",
+          "Prompt to Go to Bathroom",
+          "Use Timer",
+          "Prompt FCR"
+        ],
+        "goalCount": 4,
+        "forbidCountClaims": [
+          "all three"
+        ],
+        "promptLevelWithCount": {
+          "count": [
+            "2 of 3",
+            "2/3",
+            "2 trials",
+            "two trials",
+            "other 2",
+            "other two"
+          ],
+          "level": "physical"
+        },
+        "forbidPhrases": [
+          "Parent Goals prompted",
+          "met with Parent Goals",
+          "performance feedback delivered",
+          "physical prompt was required on the other."
+        ],
+        "individualsInclude": [
+          "Parent/Caregiver",
+          "Client",
+          "Technician"
+        ],
+        "caregiverResponse": "Parent/Family is trying to learn new strategies, but there are some small barriers to generalization.",
+        "progressStatus": "Moderate progress towards goals",
+        "followupItems": [
+          1,
+          3
+        ]
+      }
+    },
+    {
+      "id": "v2-missed-prompt-and-a-teacher",
+      "page": "/notes/parent/",
+      "fields": {
+        "Session Notes": "Parent training.\nClient Goals:\nManding for Breaks|independent|3/2|60%\nElopement (Bx Reduction) 1 instance during the session.\nParent Goals:\n1. Parent Goal: Deliver Token Board|Present Token Board Before Demand|4/1|80%\nCaregiver forgot the token board once before a demand, and elopement followed. Teacher reported the same pattern at school and asked to meet."
+      },
+      "truth": [
+        {
+          "about": [
+            "teacher",
+            "meeting",
+            "school"
+          ],
+          "answer": "The teacher was not at the session; she called mom and asked to meet."
+        },
+        {
+          "about": [
+            "token",
+            "forgot",
+            "missed",
+            "prompt"
+          ],
+          "answer": "Mom forgot to show the token board once before a demand; BCBA modeled it once after."
+        }
+      ],
+      "expect": {
+        "tasksOnly": [
+          "followup"
+        ],
+        "singlesNeverBlank": [
+          "caregiverResponse",
+          "progressStatus"
+        ]
+      },
+      "parentExpect": {
+        "goalNames": [
+          "Manding for Breaks",
+          "Elopement",
+          "Present Token Board Before Demand"
+        ],
+        "goalCount": 3,
+        "forbidCountClaims": [
+          "all two",
+          "both parent goals"
+        ],
+        "forbidPhrases": [
+          "performance feedback delivered"
+        ],
+        "individualsInclude": [
+          "Parent/Caregiver",
+          "Client",
+          "Technician"
+        ],
+        "individualsExclude": [
+          "Teacher"
+        ],
+        "caregiverResponse": "Parent/Family is trying to learn new strategies, but there are some small barriers to generalization.",
+        "followupItems": [
+          1,
+          3
+        ],
+        "followupMentions": [
+          "teacher"
+        ]
+      }
+    },
+    {
+      "id": "v3-generalization-stated",
+      "page": "/notes/parent/",
+      "fields": {
+        "Session Notes": "Parent training.\nParent Goals:\n1. Parent Goal: Use First-Then Language|At Home|5/0|100%\n2. Parent Goal: Use First-Then Language|In the Community|4/0|100%\nCaregiver used first-then language at the grocery store without a reminder from BCBA. No barriers reported. Client Goals:\nWaiting|2 minutes|4/0|100%"
+      },
+      "truth": [
+        {
+          "about": [
+            "grocery",
+            "community",
+            "generaliz"
+          ],
+          "answer": "Mom used first-then at the grocery store on her own; BCBA was there and saw it."
+        }
+      ],
+      "expect": {
+        "tasksOnly": [
+          "followup"
+        ],
+        "singlesNeverBlank": [
+          "caregiverResponse",
+          "progressStatus"
+        ]
+      },
+      "parentExpect": {
+        "goalNames": [
+          "First-Then Language",
+          "Waiting"
+        ],
+        "goalCount": 3,
+        "individualsInclude": [
+          "Parent/Caregiver",
+          "Client",
+          "Technician"
+        ],
+        "caregiverResponse": "Parent/Family is responding to training and generalization of skills is occurring. There are no barriers with their training.",
+        "followupItems": [
+          1,
+          3
+        ]
+      }
+    },
+    {
+      "id": "v4-no-bt-today",
+      "page": "/notes/parent/",
+      "fields": {
+        "Session Notes": "Parent training, caregiver and client only. Follow up when the BT is present on fading the visual schedule.\nParent Goals:\n1. Parent Goal: Follow Visual Schedule|Point to Next Picture|3/1|75%\nClient Goals:\nTransitions Between Activities|with visual|3/0|100%"
+      },
+      "truth": [
+        {
+          "about": [
+            "bt",
+            "technician",
+            "present"
+          ],
+          "answer": "No BT today, caregiver and client only."
+        },
+        {
+          "about": [
+            "3/1",
+            "point",
+            "picture",
+            "missed"
+          ],
+          "answer": "3/1 means 3 correct at or above the intended prompt and 1 that was not; mom skipped pointing once."
+        }
+      ],
+      "expect": {
+        "tasksOnly": [
+          "followup"
+        ],
+        "singlesNeverBlank": [
+          "caregiverResponse",
+          "progressStatus"
+        ]
+      },
+      "parentExpect": {
+        "goalNames": [
+          "Point to Next Picture",
+          "Transitions Between Activities"
+        ],
+        "goalCount": 2,
+        "forbidPhrases": [
+          "3 of 1",
+          "3 of 0"
+        ],
+        "individualsInclude": [
+          "Parent/Caregiver",
+          "Client"
+        ],
+        "individualsExclude": [
+          "Technician"
+        ],
+        "caregiverResponse": "Parent/Family is trying to learn new strategies, but there are some small barriers to generalization.",
+        "followupItems": [
+          1,
+          3
+        ],
+        "followupMentions": [
+          [
+            "BT",
+            "technician"
+          ]
+        ]
+      }
+    }
+  ]
+}
