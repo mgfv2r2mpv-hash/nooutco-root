@@ -82,8 +82,10 @@ export async function registerDevice({ db, body, now, env }) {
   if (!spent) throw new Refusal("bad-ticket", 401);
   const id = b64url(crypto.getRandomValues(new Uint8Array(DEVICE_ID_BYTES)));
   const owner = spent.owner === 1 ? 1 : 0;
-  await db.prepare("INSERT INTO device (id, account_id, sign_key, agree_key, created_at, pending, owner) VALUES (?, ?, ?, ?, ?, ?, ?)")
-    .bind(id, spent.account_id, body.signKey, body.agreeKey, now, 1 - owner, owner).run();
+  // The owner device is confirmed as it registers; a pending one when its
+  // code clears the flag (src/unlock.js).
+  await db.prepare("INSERT INTO device (id, account_id, sign_key, agree_key, created_at, pending, owner, confirmed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+    .bind(id, spent.account_id, body.signKey, body.agreeKey, now, 1 - owner, owner, owner === 1 ? now : null).run();
   return { status: 200, json: { device: id } };
 }
 

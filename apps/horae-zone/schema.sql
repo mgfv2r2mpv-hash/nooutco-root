@@ -1,8 +1,9 @@
 -- Horae Zone, the nooutco account service. A2: what the route checks use.
 -- A3: accounts, email-code challenges and rate-limit rows. A4: a device's
 -- agreement key and sign-in tickets. A5: the sealed seed, code exchanges,
--- the code-path lockout and a device's pending flag. No database has been
--- made from this file yet, so A4 and A5 change the device table in place;
+-- the code-path lockout and a device's pending flag. The device list: when a
+-- device was confirmed. No database has been made from this file yet, so A4,
+-- A5 and the device list change the device table in place;
 -- once one exists, later slices add their tables as additive migrations.
 --
 -- WHAT MAY NOT GO IN HERE: a request body, a code, a seed in the clear, a PIN,
@@ -18,7 +19,10 @@
 -- account's code yet; it reaches only /nonce and /unlock. A5 re-review:
 -- owner is 1 for the account's first device, the one the sign-up link's
 -- ticket registered; it starts not pending. Every device registered after it
--- starts pending, code or no code.
+-- starts pending, code or no code. The device list: confirmed_at is when the
+-- device stopped being pending (the owner device's registration, or the code
+-- that cleared the flag), the moment the signed list (src/device-list.js)
+-- names; null while it never has.
 CREATE TABLE IF NOT EXISTS device (
   id          TEXT    PRIMARY KEY,
   account_id  TEXT    NOT NULL,
@@ -27,7 +31,8 @@ CREATE TABLE IF NOT EXISTS device (
   created_at  INTEGER NOT NULL,
   removed_at  INTEGER,
   pending     INTEGER NOT NULL DEFAULT 1,
-  owner       INTEGER NOT NULL DEFAULT 0
+  owner       INTEGER NOT NULL DEFAULT 0,
+  confirmed_at INTEGER
 );
 
 CREATE INDEX IF NOT EXISTS device_account_id ON device (account_id);

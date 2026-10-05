@@ -22,6 +22,7 @@ import { issueNonce } from "./checks.js";
 import { startSignup, verifySignup } from "./signup.js";
 import { signIn } from "./signin.js";
 import { registerDevice, removeDevice } from "./devices.js";
+import { listDevices } from "./device-list.js";
 import { enrolOtp } from "./otp.js";
 import { startUnlock, finishUnlock, reopenUnlock } from "./unlock.js";
 import { setPin, verifyPin } from "./pin.js";
@@ -40,6 +41,9 @@ export const ROUTES = Object.freeze({
   // requires the single-use ticket /signin handed out instead.
   "/device/register": { checks: "open", handler: registerDevice },
   "/device/remove": { checks: "signed", handler: removeDevice },
+  // The signed list of the account's confirmed devices and their public keys,
+  // for Sass's shared store (src/device-list.js).
+  "/devices": { checks: "signed", handler: listDevices },
   "/nonce": { checks: "device", handler: issueNonce, pendingOk: true, lockedOk: true },
   "/otp/enrol": { checks: "signed", handler: enrolOtp },
   "/unlock/start": { checks: "signed", handler: startUnlock, pendingOk: true },

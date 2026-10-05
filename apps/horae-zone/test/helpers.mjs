@@ -361,3 +361,74 @@ export async function pinnedDevice(h, email, pin) {
   if (set.status !== 200) throw new Error(`the first PIN answered ${set.status} ${JSON.stringify(set.json)}`);
   return dev;
 }
+
+// ---- The device list (Sass sharedPeerKey) ----
+
+// The public half of the fresh ticket key as a JWK, the form Sass pins.
+export const TICKET_PUBLIC_JWK = await crypto.subtle.exportKey('jwk', ticketPair.publicKey);
+
+// The labels each signed kind is signed under, and the list's typ. Written
+// here apart from src/, so the tests pin the form Sass checks.
+export const DEVICE_LIST_LABEL_TEXT = 'horae-zone-device-list-v1';
+export const UNLOCK_TICKET_LABEL_TEXT = 'horae-zone-unlock-ticket-v1';
+export const DEVICE_LIST_TYP_TEXT = 'horae-zone-device-list';
+
+// The RFC 7638 thumbprint of a P-256 public JWK: base64url SHA-256 over
+// {crv, kty, x, y} in that order, no spaces.
+export async function jwkThumbprint({ crv, kty, x, y }) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify({ crv, kty, x, y })));
+  return b64url(new Uint8Array(digest));
+}
+
+// `payload.sig`, the sig ECDSA P-256 raw r||s over `${label}.${payload}`, by
+// the pinned key, with the payload's kid that key's thumbprint. The claims,
+// or null.
+async function openSigned(text, label, jwk) {
+  if (typeof text !== 'string') return null;
+  const [payload, sigText, ...rest] = text.split('.');
+  if (rest.length > 0 || !payload || !sigText) return null;
+  let claims;
+  let sig;
+  try {
+    claims = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(fromB64url(payload)));
+    sig = fromB64url(sigText);
+  } catch {
+    return null;
+  }
+  if (claims === null || typeof claims !== 'object' || Array.isArray(claims)) return null;
+  if (!sig || sig.length !== 64 || claims.kid !== await jwkThumbprint(jwk)) return null;
+  const { crv, kty, x, y } = jwk;
+  const key = await crypto.subtle.importKey('jwk', { crv, kty, x, y }, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']);
+  const ok = await crypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, key, sig, new TextEncoder().encode(`${label}.${payload}`));
+  return ok ? claims : null;
+}
+
+const fresh = (claims, now) => Number.isSafeInteger(claims.at) && claims.at <= now && Number.isSafeInteger(claims.exp) && claims.exp > now;
+
+// The check Sass's sharedPeerKey mirrors: the pinned key and its kid, the
+// device-list label, v 1, the device-list typ, the account Sass signed in
+// to, and at <= now < exp. The claims, or null.
+export async function verifyDeviceList(text, { jwk = TICKET_PUBLIC_JWK, account, now }) {
+  const claims = await openSigned(text, DEVICE_LIST_LABEL_TEXT, jwk);
+  if (!claims || claims.v !== 1 || claims.typ !== DEVICE_LIST_TYP_TEXT || claims.account !== account) return null;
+  if (!fresh(claims, now) || !Array.isArray(claims.devices)) return null;
+  return claims;
+}
+
+// The same check for an unlock ticket: the ticket label, v 1, no typ, the
+// account and device it names, and at <= now < exp. The claims, or null.
+export async function verifyUnlockTicket(text, { jwk = TICKET_PUBLIC_JWK, account, device, now }) {
+  const claims = await openSigned(text, UNLOCK_TICKET_LABEL_TEXT, jwk);
+  if (!claims || claims.v !== 1 || Object.hasOwn(claims, 'typ') || claims.account !== account || claims.device !== device) return null;
+  return fresh(claims, now) ? claims : null;
+}
+
+// `claims` signed with the test ticket key under `label`, kid added: what a
+// signer holding HZ_TICKET_KEY could make, for the tests that cross kinds.
+export async function signWithTicketKey(claims, label) {
+  const jwk = JSON.parse(TICKET_KEY);
+  const key = await crypto.subtle.importKey('jwk', jwk, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
+  const payload = b64url(new TextEncoder().encode(JSON.stringify({ ...claims, kid: await jwkThumbprint(jwk) })));
+  const sig = await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, key, new TextEncoder().encode(`${label}.${payload}`));
+  return `${payload}.${b64url(new Uint8Array(sig))}`;
+}
