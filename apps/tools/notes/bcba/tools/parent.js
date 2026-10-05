@@ -125,8 +125,8 @@ RULES\n\
 - Plain, precise clinical language - no filler, no elevated vocabulary.\n\
 - \"individualsPresent\": Parent/Caregiver, Client and Technician are present by default. Leave one out only when the notes say so, for instance \"follow up when the BT is present\" or \"client was not present\". A technician the notes place in any part of the session was present. Anyone else is checked only when the notes place them in the session: someone who reported something, sent a message or asked for a meeting (a teacher reporting from school, say) is not present unless the notes say they were there. This governs the checkboxes only. The summary still names them and what they reported.\n\n\
 CHECKBOX INFERENCE: For each group return ONLY verbatim values from the allowed list. Infer conservatively - only options clearly supported by the notes. Single-selects: one verbatim value or \"\".\n\
-- caregiverResponse: the third option (responding, generalization occurring, no barriers) only when the notes say generalization is occurring AND name no barrier. A missed step, a missed or late prompt, prompting the caregiver needed, or any resistance means the second option, however good the rest of the data is. The first option only for large barriers or resistance.\n\
-- progressStatus: this is a parent training note, so the caregivers' goal progress weighs more than the client's goal progress. A client goal at 0 of 3 beside caregiver goals at 85 to 100 percent is moderate progress, not minimal.\n\n\
+- caregiverResponse: the third option (responding, generalization occurring, no barriers) only when the notes say generalization is occurring AND name no barrier. A missed step, a missed or late prompt, prompting the caregiver needed, or any resistance means the second option, however good the rest of the data is. So does a poor client response, such as a client goal with no trial correct: it is a barrier to the caregivers generalizing the skill. The first option only for large barriers or resistance.\n\
+- progressStatus: this is a parent training note, so the caregivers' goal progress weighs more than the client's goal progress. A client goal at 0 of 3 beside caregiver goals at 85 to 100 percent is Moderate progress: not Minimal, because the caregiver goals carry it, and not Substantial, because a client goal with no trial correct holds it back. Substantial only when the caregiver goals and the client goals both moved.\n\n\
 BEHAVIOR ANALYST FOLLOW UP (\"followup\")\n\
 - 1 to 3 items, rarely more, that the BCBA could put on a task list. Each is an action with a deliverable: what gets done, made or decided, and with whom when someone else is involved.\n\
 - Draw them from the notes: an action the notes call for, a follow-up with another person the notes say needs to happen (a technician, a teacher, a caregiver), or the next step that moves a goal toward a clinical answer or toward progress.\n\
@@ -190,7 +190,8 @@ TERMINOLOGY (non-negotiable)\n\
      left Technician out of 3 of 6 drafts and Caregiver Response wrong or blank
      in 3 of 8. The Follow Up check above is code and held in 8 of 8, so these
      are code too. Both only ever ADD a checkbox or fill a blank one: nothing
-     here removes a person or a word the notes name.
+     here removes a person or a word the notes name. (The barrier rule below
+     is the one that changes a pick, and only ever downward.)
 
      They run only on a real draft, where the engine passes the intake it was
      written from (ctx.intake, scrubbed, so a BT reads "[BT]"). */
@@ -201,6 +202,48 @@ TERMINOLOGY (non-negotiable)\n\
     "|when\\s+(?:the\\s+)?" + BT + "\\s+is\\s+(?:present|there|back)" +
     "|\\b(?:caregivers?|parents?|client)\\s+and\\s+(?:caregivers?|parents?|client)\\s+only\\b",
     "i");
+
+  /* A BARRIER TO GENERALIZATION, also held by code (Kaleb, 2026-10-04, Q
+     "Caregiver Response", A). The third Caregiver Response says there are no
+     barriers, and his run-3 drafts still picked it beside a missed step. Two
+     things in the notes are a barrier: a caregiver step missed (a Parent Goal
+     count a/b with b above 0, or a caregiver who forgot, missed or was late),
+     and a poor client response (a client goal with no trial correct), because
+     "there are barriers to generalization to caregivers (client response)".
+     Either one moves the third option down to the second, with a hint. */
+  var CAREGIVER = /\b(?:caregivers?|parents?|mom|dad|mother|father|grand(?:ma|pa|mother|father|parents?)|family)\b/i;
+  var MISSED_STEP = /\b(?:forg[eo]t\w*|miss(?:ed|es|ing)|late|needed\s+(?:a\s+|the\s+)?(?:reminder|prompt))\b/i;
+  var NEGATED = /\b(?:not|never|no|without|n't)\s+(?:\w+\s+)?$/i;
+  var COUNT = /\b(\d+)\s*\/\s*(\d+)\b/g;
+
+  function counts(line) {
+    var found = [], m;
+    COUNT.lastIndex = 0;
+    while ((m = COUNT.exec(line))) found.push({ done: +m[1], missed: +m[2] });
+    return found;
+  }
+
+  function caregiverMissedStep(sentence) {
+    if (!CAREGIVER.test(sentence)) return false;
+    var m = MISSED_STEP.exec(sentence);
+    return !!m && !NEGATED.test(sentence.slice(0, m.index));
+  }
+
+  function generalizationBarrier(intake) {
+    var inParent = false, reason = "";
+    String(intake).split(/\n/).forEach(function (line) {
+      if (/\bparent goals?\s*:/i.test(line)) inParent = true;
+      else if (/\b(?:client|child|skill|behavior) goals?\s*:/i.test(line)) inParent = false;
+      var parentLine = inParent || /\bparent goal\b/i.test(line);
+      counts(line).forEach(function (c) {
+        if (reason) return;
+        if (parentLine && c.missed > 0) reason = "a caregiver step was missed (" + c.done + "/" + c.missed + " on a parent goal)";
+        else if (!parentLine && c.done === 0 && c.missed > 0) reason = "the client got no trial correct on a goal (" + c.done + "/" + c.missed + ")";
+      });
+      if (!reason && line.split(/[.!?;]\s+/).some(caregiverMissedStep)) reason = "the notes say a caregiver missed a step";
+    });
+    return reason;
+  }
 
   function holdDefaults(out, intake) {
     var hints = [];
@@ -214,6 +257,12 @@ TERMINOLOGY (non-negotiable)\n\
     if (!response) {
       response = CAREGIVER_RESPONSES[1];
       hints.push({ section: "caregiverResponse", code: "thin_section", detail: "Notes say nothing on caregiver response; set to the middle option. Check it." });
+    }
+    // "No barriers" never stands beside a barrier the notes name.
+    var barrier = response === CAREGIVER_RESPONSES[2] ? generalizationBarrier(intake) : "";
+    if (barrier) {
+      response = CAREGIVER_RESPONSES[1];
+      hints.push({ section: "caregiverResponse", code: "other", detail: "Set to the middle option because " + barrier + ". Check it." });
     }
     return { individualsPresent: present, caregiverResponse: response, hints: hints };
   }
