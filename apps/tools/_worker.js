@@ -3728,6 +3728,10 @@ export const AUDIT_TYPES = new Set([
   "corrections_mark",
   "corrections_done",
   "function_claim_answered",
+  /* The expert's questions answered in the NoMe panel (2026-10-04,
+     expert-questions.js): how many were answered and how many were shown, two
+     integers and never a word of a question or an answer. */
+  "expert_questions_answered",
   /* WHERE THE RETYPING HAPPENED, added 2026-09-03. note_copied has carried
      `edited` for a note since the beginning; this carries the same characters
      split by the narrative section they were spent in, one integer per section
