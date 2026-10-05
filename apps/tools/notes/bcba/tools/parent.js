@@ -223,10 +223,22 @@ TERMINOLOGY (non-negotiable)\n\
     return found;
   }
 
+  /* The caregiver has to be the one who missed: the miss word follows the
+     caregiver within a few words, with no other actor between ("Mom said the
+     client missed school" is the client). "Late" counts only for a prompt or
+     reinforcement, never for arriving late. */
+  var OTHER_ACTOR = /\b(?:client|child|kid|he|she|they|sibling|brother|sister|teacher|bt|technician)\b/i;
+  var LATE_STEP = /\blate\s+(?:prompt|reinforc|deliver)|\b(?:prompt|reinforc|deliver)\w*\s+(?:\w+\s+){0,2}late\b/i;
+
   function caregiverMissedStep(sentence) {
-    if (!CAREGIVER.test(sentence)) return false;
-    var m = MISSED_STEP.exec(sentence);
-    return !!m && !NEGATED.test(sentence.slice(0, m.index));
+    var who = CAREGIVER.exec(sentence);
+    if (!who) return false;
+    var after = sentence.slice(who.index + who[0].length);
+    var m = MISSED_STEP.exec(after);
+    if (!m) return false;
+    var between = after.slice(0, m.index);
+    if (NEGATED.test(between) || OTHER_ACTOR.test(between) || between.split(/\s+/).filter(Boolean).length > 5) return false;
+    return !/^late$/i.test(m[0]) || LATE_STEP.test(sentence);
   }
 
   function generalizationBarrier(intake) {
