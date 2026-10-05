@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { createHmac } from 'node:crypto';
 import path from 'node:path';
 import { readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { isTriageCall } from './helpers/llm-call.js';
 
 /* THE NOTE BENCH'S MECHANICS, with the model stubbed.
@@ -131,4 +132,38 @@ test.describe('every bench case fits its page', () => {
       });
     }
   }
+});
+
+/* THE CONSOLE BENCH (Kaleb, 2026-10-04, bench access B): the same run, pasted
+ * into the console of a page he is logged in on. Pasted here into the local
+ * page with the model stubbed, the parent file runs every case, presses Clear
+ * between them so no case drafts with the last one's words, and reports. */
+test.describe('the console bench', () => {
+  test('every generated file is current with its cases and checks', () => {
+    const run = spawnSync(process.execPath, ['scripts/bench/build-console.mjs', '--check'], { cwd: ROOT, encoding: 'utf8' });
+    expect(run.stdout).not.toContain('stale');
+    expect(run.status).toBe(0);
+  });
+
+  test('pasted on the parent page, it runs each case after a Clear and reports', async ({ page }) => {
+    test.setTimeout(120000);
+    const seen = await stub(page, GOOD);
+    await page.goto('/notes/parent/');
+    let report = null;
+    let failed = null;
+    page.evaluate(readFileSync(path.join(ROOT, 'scripts/bench/console/parent.js'), 'utf8'))
+      .then((r) => { report = r; }, (e) => { failed = e; });
+    // The page runs on a fake clock, so time is moved on until the run ends.
+    for (let i = 0; i < 600 && !report && !failed; i++) await page.clock.runFor(1000);
+    expect(failed).toBeNull();
+
+    expect(report.results.map((r) => r.id)).toEqual(CASES.map((c) => c.id));
+    const v1 = report.results.find((r) => r.id === V1.id);
+    expect(v1.fails).toEqual([]);
+    expect(v1.asked[0].answered).toBe(true);
+    expect(v1.typed.intake).toBe(97);
+    expect(seen.drafts.length).toBe(CASES.length);
+    // Each draft carries its own case and not the one before it.
+    expect(seen.drafts[1]).not.toContain('Toilet Training');
+  });
 });
