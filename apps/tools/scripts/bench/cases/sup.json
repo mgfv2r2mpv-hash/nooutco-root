@@ -1,0 +1,244 @@
+{
+  "_about": "Supervision bench cases. Invented sessions, no client data, typed the way a BCBA types between sessions. fields are typed into the page by label, toggles pressed by group name; truth answers the page's follow-up questions; expect holds the checks (scripts/bench/lib/checks.mjs). Each case tests a different rule in sup.js: picks only when supported, made versus needed, one owner per facet, honest brevity on thin input.",
+  "tool": "sup",
+  "cases": [
+    {
+      "id": "sup-bt-present-fidelity",
+      "page": "/notes/sup/",
+      "toggles": {
+        "BT / RBT Present": "Yes"
+      },
+      "fields": {
+        "Session Notes": "ran manding probe, client mands for 6 items now (was 4 two wks ago), new ones are juice and bubbles. tacting animals stalled 3 sessions at 40% so changed to errorless w immediate echoic prompt starting today. elopement 2x at transitions, BT blocked and redirected, both under 1 min, no injury. reviewed last weeks notes, no concerns, data entry looks complete.",
+        "Staff Feedback": "PF on DTT pacing, BT waiting too long between trials, modeled 3 sec ITI, BT had it by 3rd block. IOA on manding 90%. follow up: BT runs tacting w new prompt from today, I update program sheet by Fri."
+      },
+      "truth": [
+        {
+          "about": [
+            "elopement",
+            "transition",
+            "antecedent"
+          ],
+          "answer": "Both at the end of iPad time going to the table; BT gave no warning either time."
+        },
+        {
+          "about": [
+            "ioa",
+            "fidelity",
+            "agreement"
+          ],
+          "answer": "IOA was on manding, 9 of 10 trials agreed, 90%."
+        },
+        {
+          "about": [
+            "tacting",
+            "prompt",
+            "errorless"
+          ],
+          "answer": "Echoic prompt at 0 sec delay for now, fade to 2 sec after 2 sessions at 80%."
+        }
+      ],
+      "expect": {
+        "mentions": [
+          "tacting",
+          "errorless",
+          "echoic",
+          "90%",
+          "pacing",
+          "program sheet"
+        ],
+        "forbid": [
+          "was reinforced",
+          "The Behavior Analyst"
+        ],
+        "picks": {
+          "sessionChecks": [
+            "Performance Feedback (PF)",
+            "IOA check",
+            "Reviewed last week's notes",
+            "Follow-up items"
+          ]
+        },
+        "single": {
+          "reviewedNotes": "Yes",
+          "overallProgress": "Client is making moderate progress towards meeting goals (see summary below)"
+        },
+        "tasksOnly": [
+          "followup"
+        ]
+      }
+    },
+    {
+      "id": "sup-no-bt-data-review",
+      "page": "/notes/sup/",
+      "toggles": {
+        "BT / RBT Present": "No, Behavior Analyst only"
+      },
+      "fields": {
+        "Session Notes": "no BT today, mom and client only, 1 hr at home. reviewed graphs for all programs w mom. receptive ID mastered 3 targets this wk (cup, shoe, ball), moved to maintenance. imitation w objects flat 2 wks, ran probe, client imitates 2 step actions w model but not 3 step, so 3 step needs to be broken down. mom asked about sleep, client up 2-3x a night for about a month, said I would look into a sleep goal. client calm whole visit, played w blocks while we talked.",
+        "Staff Feedback": "none, BT not present"
+      },
+      "truth": [
+        {
+          "about": [
+            "imitation",
+            "3 step",
+            "broken",
+            "task"
+          ],
+          "answer": "Not done yet, I will split it into two 2-step chains for next week."
+        },
+        {
+          "about": [
+            "sleep",
+            "mom",
+            "night"
+          ],
+          "answer": "I will bring sleep goal options to the next parent meeting."
+        }
+      ],
+      "expect": {
+        "mentions": [
+          "receptive",
+          "maintenance",
+          "imitation",
+          "sleep"
+        ],
+        "forbid": [
+          "was reinforced",
+          "The Behavior Analyst",
+          "IOA was",
+          "performance feedback was delivered"
+        ],
+        "notPicks": {
+          "sessionChecks": [
+            "Performance Feedback (PF)",
+            "IOA check"
+          ]
+        },
+        "single": {
+          "reviewedNotes": "No"
+        },
+        "tasksOnly": [
+          "followup"
+        ]
+      }
+    },
+    {
+      "id": "sup-behavior-plan-change-pending",
+      "page": "/notes/sup/",
+      "toggles": {
+        "BT / RBT Present": "Yes"
+      },
+      "fields": {
+        "Session Notes": "aggression (hitting) up this wk, 6x vs 2x usual, mostly when demands placed right after break ends. new baby sister home since mon, could be a setting event. BIP says no warning before break ends, think a 1 min warning is needed, not changed yet, need to talk to parents first. manding for break went 3 to 7 independent per session, good. FCR still needs a verbal model on new demands.",
+        "Staff Feedback": "watched BT run break routine, BT followed BIP as written, blocked hits fast and did not give attention. PF given, BT did well. fidelity 100% on break routine."
+      },
+      "truth": [
+        {
+          "about": [
+            "aggression",
+            "hitting",
+            "intensity",
+            "injury"
+          ],
+          "answer": "Open hand to arm, no marks, each under 10 seconds."
+        },
+        {
+          "about": [
+            "warning",
+            "parents",
+            "change",
+            "bip"
+          ],
+          "answer": "I will call mom Tuesday about adding the warning, then update the BIP."
+        }
+      ],
+      "expect": {
+        "mentions": [
+          "1 min",
+          "warning",
+          "parents",
+          "100%"
+        ],
+        "forbid": [
+          "was reinforced",
+          "The Behavior Analyst",
+          "warning was added",
+          "warning was implemented"
+        ],
+        "picks": {
+          "sessionChecks": [
+            "Performance Feedback (PF)"
+          ]
+        },
+        "tasksOnly": [
+          "followup"
+        ]
+      }
+    },
+    {
+      "id": "sup-thin-input",
+      "page": "/notes/sup/",
+      "toggles": {
+        "BT / RBT Present": "Yes"
+      },
+      "fields": {
+        "Session Notes": "observed DTT block on colors and shapes. client did ok, some prompting needed. short session, client sick.",
+        "Staff Feedback": "BT ok"
+      },
+      "truth": [
+        {
+          "about": [
+            "prompt",
+            "colors",
+            "shapes",
+            "data"
+          ],
+          "answer": "Colors mostly at gesture, shapes needed full physical on half."
+        },
+        {
+          "about": [
+            "sick",
+            "short",
+            "cut"
+          ],
+          "answer": "Runny nose and coughing, mom ended at 45 min."
+        },
+        {
+          "about": [
+            "feedback",
+            "bt",
+            "performance",
+            "fidelity"
+          ],
+          "answer": "Told BT to fade to gesture on colors next session, no fidelity check today."
+        }
+      ],
+      "expect": {
+        "mentions": [
+          "colors",
+          "shapes"
+        ],
+        "forbid": [
+          "was reinforced",
+          "The Behavior Analyst",
+          "IOA was",
+          "fidelity was"
+        ],
+        "notPicks": {
+          "sessionChecks": [
+            "IOA check",
+            "Reviewed last week's notes"
+          ]
+        },
+        "single": {
+          "reviewedNotes": "No"
+        },
+        "tasksOnly": [
+          "followup"
+        ]
+      }
+    }
+  ]
+}

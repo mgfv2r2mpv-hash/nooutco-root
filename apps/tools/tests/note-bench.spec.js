@@ -105,3 +105,30 @@ test.describe('answer matching', () => {
     expect(drive.answerFor('What was the weather?', truth)).toBeNull();
   });
 });
+
+/* Every case can be typed into its real page: a field label that matches no
+   box, or a toggle with no such button, fails here for nothing instead of in a
+   live run that costs drafts. */
+test.describe('every bench case fits its page', () => {
+  const files = ['parent', 'sup', 'bt', 'assess', 'sap']
+    .map((t) => path.join(ROOT, `scripts/bench/cases/${t}.json`))
+    .filter((f) => { try { readFileSync(f); return true; } catch { return false; } });
+  for (const file of files) {
+    const { tool, cases } = JSON.parse(readFileSync(file, 'utf8'));
+    for (const c of cases) {
+      test(`${tool}/${c.id}`, async ({ page }) => {
+        await page.goto(c.page);
+        await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), token());
+        await page.goto(c.page);
+        await drive.fillCase(page, c);
+        for (const [label, text] of Object.entries(c.fields || {})) {
+          await expect(page.getByRole('textbox', { name: new RegExp(label, 'i') })).toHaveValue(text);
+        }
+        for (const [label, value] of Object.entries(c.toggles || {})) {
+          const row = page.locator('p', { hasText: label }).first().locator('xpath=following-sibling::div[1]');
+          await expect(row.getByRole('button', { name: value, exact: true })).toHaveAttribute('aria-pressed', 'true');
+        }
+      });
+    }
+  }
+});

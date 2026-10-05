@@ -5080,6 +5080,10 @@ function App() {
             {f.options.map((opt) => (
               <button
                 key={String(opt.value)}
+                type="button"
+                // Which option is on was shown by colour alone; a screen reader
+                // (and the note bench) reads it from aria-pressed.
+                aria-pressed={S.values[f.id] === opt.value ? "true" : "false"}
                 onClick={() => setValue(f.id, opt.value)}
                 style={{
                   padding: "8px 18px", borderRadius: 8,
