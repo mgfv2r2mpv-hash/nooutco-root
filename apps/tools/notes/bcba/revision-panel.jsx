@@ -696,6 +696,46 @@ function EarlierRounds({ rounds }) {
   );
 }
 
+/* ONE OF THE EXPERT'S QUESTIONS, asked where the answer is typed (his ruling of
+   2026-10-04, expert-questions.js). The question is the row and its reason is
+   behind a word, as he ruled for the expert's rows on 2026-09-02. A claim on a
+   tool that routes it answers with the same one-click buttons it always had;
+   everything else is a box, sent with the rest by the block's one Send. */
+function ExpertQuestionRow({ q, answer, onAnswer, claimAnswer, onClaimAnswer, busy }) {
+  const [showWhy, setShowWhy] = React.useState(false);
+  const oneClick = q.kind === "claim" && onClaimAnswer && window.ClaimQuestion;
+  return (
+    <div className="expert-question" data-panel-expert={q.key} data-expert-kind={q.kind}>
+      <Bubble role="assistant">
+        {q.heading ? <strong>{q.heading}: </strong> : null}
+        {q.question}
+        {q.why ? (
+          <button type="button" className="expert-why" onClick={() => setShowWhy(!showWhy)}>
+            {showWhy ? "less" : "why"}
+          </button>
+        ) : null}
+        {showWhy && q.why ? <span className="expert-why-text">{q.why}</span> : null}
+        {/* Folded, never retired (his ruling of 2026-09-02): the section was
+            edited after the expert read it, and only he knows whether the edit
+            answered this. */}
+        {q.stale ? <span className="expert-stale" data-expert-stale="1">Section edited after expert review.</span> : null}
+      </Bubble>
+      {oneClick ? (
+        <window.ClaimQuestion quote={q.quoteForModel} answer={claimAnswer} onAnswer={onClaimAnswer} busy={busy} />
+      ) : (
+        <textarea
+          className="expert-answer"
+          rows={2}
+          value={answer || ""}
+          placeholder="Answer"
+          aria-label={"Answer: " + q.question}
+          onChange={(e) => onAnswer(q.key, e.target.value)}
+        />
+      )}
+    </div>
+  );
+}
+
 function RevisionPanel({
   open, onToggle, thread, annotation, onClearAnnotation,
   draft, onDraft, onSend, onAskAdvice, canAsk, onExportPairs, pairCount, loading, questions, answeredRounds, sendLockSeconds, inPlaceChars, skipHeld, unread, quality, suggestionDisposition, onApproveSuggestion, placedQuestions, pendingAnswers,
@@ -708,6 +748,7 @@ function RevisionPanel({
   pointMode, onPointMode, pointScope,
   changes, onApproveChange, onRevertChange, onEditChange, onGoToSection,
   asks, onSendAsks, onGoToAsk, onAskChange,
+  expertQuestions, expertAnswers, onExpertAnswer, onSendExpertAnswers, claimAnswers, onClaimAnswer,
 }) {
   const scrollRef = React.useRef(null);
   const inputRef = React.useRef(null);
@@ -1144,6 +1185,35 @@ function RevisionPanel({
             </div>
           </div>
         ))}
+        {/* The expert's questions (his ruling of 2026-10-04). Send shows once
+            something is typed, and sends every typed answer in one revision. */}
+        {Array.isArray(expertQuestions) && expertQuestions.length > 0 && (
+          <div className="expert-questions" data-testid="panel-expert-questions">
+            <p className="expert-questions-head">Questions from the expert</p>
+            {expertQuestions.map((q) => (
+              <ExpertQuestionRow
+                key={q.key}
+                q={q}
+                answer={(expertAnswers || {})[q.key]}
+                onAnswer={onExpertAnswer}
+                claimAnswer={(claimAnswers || {})[q.quoteForModel]}
+                onClaimAnswer={onClaimAnswer}
+                busy={loading}
+              />
+            ))}
+            {expertQuestions.some((q) => String((expertAnswers || {})[q.key] || "").trim()) && (
+              <button
+                type="button"
+                className="expert-send"
+                data-testid="panel-expert-send"
+                disabled={loading}
+                onClick={onSendExpertAnswers}
+              >
+                Send answers
+              </button>
+            )}
+          </div>
+        )}
         {/* Drawn whether or not this round's questions sit on the page, since
             the earlier rounds are only ever here. */}
         {awaitingQuestions && Array.isArray(answeredRounds) && answeredRounds.length > 0 && (

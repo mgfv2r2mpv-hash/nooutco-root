@@ -894,116 +894,6 @@ function NoteHints({ hints, catalog }) {
 }
 
 
-/* ── Drawing what the expert found ────────────────────────────────────────
- *
- * The expert's hints carry the same three `kind` values the catalog's do, so
- * they reuse HINT_TONE rather than inventing a second colour language for the
- * same three ideas. What they do NOT share is where the words come from: a
- * catalog hint is a code looked up in a fixed list of eight, and an expert hint
- * is a sentence the model wrote about this note. So the row is drawn
- * differently on purpose - a left rule and a label - because a technician
- * reading two channels in one column has to be able to tell which one is
- * talking without reading either.
- */
-const EXPERT_LABEL = "expert";
-
-function ExpertRow({ finding, testid }) {
-  /* THE ASK IS THE ROW. THE JUSTIFICATION IS BEHIND A WORD.
-     His verdict on 2026-09-02, looking at his own tool: the expert blocks are
-     "aggressive and large". Measured on the screenshots he sent, the ask ran
-     two lines and the why ran five, so four fifths of every block was the model
-     arguing for a finding the technician had already read. The why is still
-     here, because a finding nobody can check is a finding nobody can refuse.
-     It is one click away rather than in the way. */
-  const [showWhy, setShowWhy] = React.useState(false);
-  const tone = HINT_TONE[finding.kind] || HINT_TONE.thin;
-  const ask = String(finding.ask || "").trim();
-  const why = String(finding.why || "").trim();
-  if (!ask) return null;
-  return (
-    <div
-      data-testid={testid}
-      data-expert-kind={finding.kind || "thin"}
-      data-expert-rank={finding.rank === null || finding.rank === undefined ? undefined : String(finding.rank)}
-      style={{ fontSize: 12.5, color: tone.fg, background: tone.bg, border: `1px solid ${tone.edge}`, borderLeft: `3px solid ${tone.fg}`, borderRadius: 7, padding: "6px 10px", marginBottom: 4, lineHeight: 1.5 }}
-    >
-      <span style={{ fontSize: 10, letterSpacing: ".08em", textTransform: "uppercase", fontWeight: 700, opacity: 0.72, marginRight: 6 }}>
-        {EXPERT_LABEL}
-      </span>
-      {tone.mark} {ask}
-      {why ? (
-        <button
-          type="button"
-          data-testid="expert-why-toggle"
-          onClick={(e) => { e.stopPropagation(); setShowWhy(!showWhy); }}
-          style={{ marginLeft: 6, fontSize: 11.5, color: "inherit", opacity: 0.6, background: "none", border: "none", padding: 0, cursor: "pointer", textDecoration: "underline" }}
-        >
-          {showWhy ? "less" : "why"}
-        </button>
-      ) : null}
-      {showWhy && why ? <div data-testid="expert-why" style={{ opacity: 0.82, marginTop: 3 }}>{why}</div> : null}
-    </div>
-  );
-}
-
-/* The same cap and the same disclosure the catalog channel uses, for the same
-   reason: nobody reads to the bottom of nine identical boxes at the end of a
-   shift. Ranked by the model's own rank, and the Worker has already sorted the
-   array, so array order IS rank order and this deliberately does not re-sort. */
-function ExpertList({ findings, testid }) {
-  const [open, setOpen] = React.useState(false);
-  const shown = (findings || []).filter((f) => String(f.ask || "").trim());
-  if (!shown.length) return null;
-  const top = shown.slice(0, HINT_CAP);
-  const rest = shown.slice(HINT_CAP);
-  return (
-    <div style={{ marginTop: 8 }} data-testid={testid}>
-      {top.map((f, i) => <ExpertRow key={`t${i}`} finding={f} />)}
-      {open && rest.map((f, i) => <ExpertRow key={`r${i}`} finding={f} />)}
-      {rest.length > 0 && (
-        <button
-          type="button"
-          data-testid={`${testid}-disclosure`}
-          onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
-          style={{ fontSize: 11.5, color: "#5d6a4d", background: "none", border: "none", padding: "2px 2px 0", cursor: "pointer", textDecoration: "underline" }}
-        >
-          {open ? "Show fewer" : `${rest.length} more from the expert`}
-        </button>
-      )}
-    </div>
-  );
-}
-
-/* One line where a reading has been overtaken, and the findings behind it. See
-   markSectionRevised for why this folds rather than retires. */
-function ExpertStale({ findings, testid }) {
-  const [open, setOpen] = React.useState(false);
-  const n = findings.length;
-  return (
-    <div style={{ marginTop: 8 }} data-testid={`${testid}-stale`} data-stale-open={open ? "1" : "0"}>
-      <button
-        type="button"
-        data-testid={`${testid}-stale-toggle`}
-        onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
-        style={{ fontSize: 11.5, color: "#7a9460", background: "none", border: "none", padding: 0, cursor: "pointer", textDecoration: "underline", textAlign: "left" }}
-      >
-        Section edited after expert review.<br />
-        {n} earlier finding{n === 1 ? "" : "s"}{open ? " - hide" : " - show"}
-      </button>
-      {open && <ExpertList findings={findings} testid={testid} />}
-    </div>
-  );
-}
-
-function ExpertNotes({ expert, section }) {
-  if (!expert || expert.status !== "done") return null;
-  const id = sectionId(section);
-  const mine = (expert.hints || []).filter((f) => f.section === id);
-  if (!mine.length) return null;
-  if ((expert.revised || []).includes(id)) return <ExpertStale findings={mine} testid={`expert-${id}`} />;
-  return <ExpertList findings={mine} testid={`expert-${id}`} />;
-}
-
 /* THE REGISTER FINDINGS ARE THE POINT, and they are the thing the catalog has
    no code for. Each one quotes the clinician's own sentence back and says what
    it claims that nobody watched happen, then offers the replacement. That is
@@ -1125,6 +1015,8 @@ function ClaimQuestion({ quote, answer, onAnswer, busy }) {
     </div>
   );
 }
+// The panel asks a claim with these same one-click answers (expert-questions.js).
+window.ClaimQuestion = ClaimQuestion;
 
 function RegisterFinding({ finding, answer, onAnswer, busy }) {
   const [showWhy, setShowWhy] = React.useState(false);
@@ -1296,8 +1188,9 @@ function ExpertReading({ expert, claimAnswers, onClaimAnswer, busy }) {
     );
   }
 
-  const whole = window.NoteToolsUtil ? window.NoteToolsUtil.HINT_WHOLE_NOTE : "note";
-  const wholeHints = (expert.hints || []).filter((f) => f.section === whole);
+  // The expert's asks and its claim questions are asked in the NoMe panel
+  // (expert-questions.js, his ruling of 2026-10-04), so this block keeps what
+  // is not a question: the abbreviation readings and the phrases to reword.
   const register = registerShown(expert.register);
   const terms = expert.terms || [];
 
@@ -1310,7 +1203,7 @@ function ExpertReading({ expert, claimAnswers, onClaimAnswer, busy }) {
         </div>
       )}
       {register.length > 0 ? (
-        <RegisterStack findings={register} answers={claimAnswers} onAnswer={onClaimAnswer} busy={busy} />
+        <RegisterStack findings={register} answers={claimAnswers} onAnswer={null} busy={busy} />
       ) : (
         /* Finding nothing is a result, and the panel has to agree or a clean
            note reads as a broken call. */
@@ -1318,7 +1211,6 @@ function ExpertReading({ expert, claimAnswers, onClaimAnswer, busy }) {
           No unobserved claims found in the intake.
         </p>
       )}
-      <ExpertList findings={wholeHints} testid="expert-note" />
       {expert.hintsDropped ? (
         <p style={{ fontSize: 11.5, color: "#7a9460", marginTop: 6 }} data-testid="expert-dropped">
           {expert.hintsDropped} lower-ranked finding{expert.hintsDropped === 1 ? "" : "s"} not shown.
@@ -1450,6 +1342,11 @@ function freshSession(tool) {
     // expert's own quote. Held so the control can show the answer back instead
     // of asking twice, and cleared with the rest of the session.
     claimAnswers: {},      // {"<quote>": "after"|"before"|"both"|"other"}
+    /* The expert's questions in the panel (expert-questions.js): what is typed
+       under each, by the row's key, and which keys were already sent, so an
+       answered question leaves the panel. Cleared with the reading. */
+    expertAnswers: {},
+    expertSent: {},
     panelDraft: "",
     // One answer per question, keyed by its index, for the questions drawn on
     // the page beside the box they ask about. The panel's single draft is still
@@ -2909,7 +2806,7 @@ function App() {
            expert's quote, so carrying them across would show a question as
            already answered on a reading that has just asked it again, which is
            the one case where a technician has something new to say. */
-        patchS({ expert: { status: "running", runId }, claimAnswers: {} });
+        patchS({ expert: { status: "running", runId }, claimAnswers: {}, expertAnswers: {}, expertSent: {} });
         const expertIntake = intakeBody(scrubbedValues) +
           (extra && extra.trim() ? "\n\n[ANSWERED FOLLOW-UP QUESTIONS]\n" + extra.trim() : "");
         NotesGate.expertPass({ tool: tool.id, intake: expertIntake, sections: expertSections })
@@ -3228,7 +3125,7 @@ function App() {
     forgetNote();
     patchS({
       answerDrafts: {}, suggestState: {}, triageAnswers: "", triageRound: 0, answeredRounds: [],
-      routingAsks: null, design: null, conflicts: null, bcbaOffer: "", claimAnswers: {},
+      routingAsks: null, design: null, conflicts: null, bcbaOffer: "", claimAnswers: {}, expertAnswers: {}, expertSent: {},
     });
     setLoading(true);
     setPanelOpen(true);
@@ -3893,10 +3790,17 @@ function App() {
     );
   };
 
-  const sendRevision = async (instruction, annOverride) => {
-    const review = await scrubGate(instruction, { carryOver: true });
-    if (!review) return;
-    const scrubbedInstruction = NotesScrub.applyMap(instruction, review.map);
+  /* `opts.scrubbed`: the caller already put the words the clinician TYPED
+     through scrubGate and mapped the rest, so the gate does not run again. The
+     expert's answers need it: their questions and headings are app text, and a
+     second pass reads "What" and "Whole" as names (sendExpertAnswers). */
+  const sendRevision = async (instruction, annOverride, opts = {}) => {
+    let scrubbedInstruction = instruction;
+    if (!opts.scrubbed) {
+      const review = await scrubGate(instruction, { carryOver: true });
+      if (!review) return;
+      scrubbedInstruction = NotesScrub.applyMap(instruction, review.map);
+    }
     const ann = annOverride === undefined ? S.annotation : annOverride;
     const section = ann ? tool.formSections.find((s) => sectionId(s) === ann.id) : null;
 
@@ -4218,6 +4122,60 @@ function App() {
     [FunctionClaim.AFTER_SECTION, FunctionClaim.BEFORE_SECTION].every((id) =>
       tool.formSections.some((x) => sectionId(x) === id),
     );
+
+  /* THE EXPERT'S QUESTIONS, ASKED IN THE PANEL (Kaleb, 2026-10-04: "WHERE ARE
+     THE EXPERT QUESTION CHIPS IN THE NOME PANEL?"; his ruling, "Claims + asks").
+     The rows come from expert-questions.js; a row already sent is gone. A claim
+     on a tool that can route it keeps its one-click answers (ClaimQuestion), so
+     only the typed answers ride in sendExpertAnswers. */
+  const expertQuestions = (window.ExpertQuestions && S.expert && S.expert.status === "done")
+    ? ExpertQuestions.list(S.expert, {
+        whole: window.NoteToolsUtil ? window.NoteToolsUtil.HINT_WHOLE_NOTE : "note",
+        headingFor: (id) => {
+          const sec = tool.formSections.find((x) => sectionId(x) === id);
+          return sec ? sec.heading : null;
+        },
+        claimFor: (quote) => (window.FunctionClaim ? FunctionClaim.read(quote) : null),
+      }).filter((q) => !(S.expertSent || {})[q.key])
+    : [];
+  const typedExpertRows = expertQuestions.filter((q) => q.kind === "ask" || !claimAnswerable);
+
+  const answerExpert = (key, text) => {
+    patchS((st) => ({ expertAnswers: { ...(st.expertAnswers || {}), [key]: text } }));
+  };
+
+  /* One revision for every typed answer, each under its question.
+     ONLY WHAT WAS TYPED PASSES THE GATE. The answers are new free text, so they
+     go through scrubGate like any composer message. The questions are the
+     expert's own sentences and the headings are the form's, so a second
+     detection over them read "What" and "Whole" as names and sent tokens in
+     their place; they are put back through the note's map instead, which turns
+     a name already masked into its token and touches nothing else.
+     The rows leave the panel once sent; a failed send is a status line like any
+     other revision, and the words stay in the thread. */
+  const sendExpertAnswers = async () => {
+    if (loading || S.proposal || !window.ExpertQuestions) return;
+    const answers = S.expertAnswers || {};
+    const sent = typedExpertRows.filter((q) => String(answers[q.key] || "").trim());
+    if (!sent.length) return;
+    const typed = sent.map((q) => String(answers[q.key]).trim());
+    if (!(await scrubGate(typed.join("\n"), { carryOver: true }))) return;
+    const map = scrubMapRef.current || [];
+    const wire = (s) => NotesScrub.applyMap(String(s || ""), map);
+    const rows = sent.map((q) => ({ ...q, question: wire(q.question) }));
+    const scrubbed = {};
+    sent.forEach((q, i) => { scrubbed[q.key] = wire(typed[i]); });
+    const instruction = ExpertQuestions.instruction(rows, scrubbed);
+    if (!instruction) return;
+    audit("expert_questions_answered", { answered: sent.length, shown: expertQuestions.length });
+    pushThread("user", "answer", sent.map((q, i) => q.question + "\n" + typed[i]).join("\n\n"));
+    patchS((st) => {
+      const done = { ...(st.expertSent || {}) };
+      sent.forEach((q) => { done[q.key] = true; });
+      return { expertSent: done };
+    });
+    await sendRevision(instruction, null, { scrubbed: true });
+  };
 
   // One entry point for the panel's Send button: it either answers the pending
   /* The floor plan's answers, composed in the order the questions were asked
@@ -5517,6 +5475,14 @@ function App() {
            which is his ruling. Passed as a list so the panel can name where each
            one is and jump to it. */
         asks={Object.keys(S.askQueue || {}).map((k) => S.askQueue[k])}
+        /* The expert's questions, asked here (his ruling of 2026-10-04). A claim
+           on a tool that routes it keeps its one-click answers. */
+        expertQuestions={expertQuestions}
+        expertAnswers={S.expertAnswers}
+        onExpertAnswer={answerExpert}
+        onSendExpertAnswers={sendExpertAnswers}
+        claimAnswers={S.claimAnswers}
+        onClaimAnswer={claimAnswerable ? answerFunctionClaim : null}
         onSendAsks={sendAsks}
         onAskChange={queueAsk}
         onGoToAsk={goToOrigin}
@@ -5952,7 +5918,6 @@ function App() {
                       onAnotherWay={revisable ? askAnotherWay : null}
                       busy={loading || !!S.proposal}
                     />
-                    <ExpertNotes expert={S.expert} section={sec} />
                   </div>
                   </React.Fragment>
                 );

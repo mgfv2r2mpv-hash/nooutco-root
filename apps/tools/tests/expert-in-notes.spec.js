@@ -163,19 +163,34 @@ test.describe('the expert reads the same intake the draft was written from', () 
   });
 });
 
+/* The expert's asks are asked in the NoMe panel since 2026-10-04 (his ruling,
+   "Claims + asks"; expert-questions.js). This opens it and returns the block. */
+async function asked(page) {
+  const block = page.getByTestId('panel-expert-questions');
+  if (!(await block.isVisible({ timeout: 800 }).catch(() => false))) {
+    const fab = page.locator('.revision-fab').first();
+    if (await fab.isVisible({ timeout: 3000 }).catch(() => false)) await fab.click();
+  }
+  await expect(block).toBeVisible({ timeout: 10000 });
+  return block;
+}
+
 test.describe('both channels speak on the same note', () => {
   test('the expert findings land in the section they name, beside the catalog', async ({ page }) => {
     await draft(page, { note: { ...NOTE, hints: [{ section: 'behaviorPlanNarrative', code: 'no_rate_comparison', detail: '', rank: 1, kind: 'thin' }] } });
-    // The expert's section finding.
-    await expect(page.getByTestId('expert-behaviorPlanNarrative')).toBeVisible();
-    await expect(page.getByTestId('expert-behaviorPlanNarrative')).toContainText('How long did each elopement last?');
+    // The expert's section finding, asked in the panel under the section's name.
+    const row = (await asked(page)).locator('[data-panel-expert^="ask:behaviorPlanNarrative"]');
+    await expect(row).toContainText('How long did each elopement last?');
+    await expect(row).toContainText('Behavior');
     // And the catalog's, on the same section, still there.
     await expect(page.getByTestId('hints-behaviorPlanNarrative')).toBeVisible();
   });
 
   test('a whole-note finding sits above the grid rather than under the nearest heading', async ({ page }) => {
     await draft(page);
-    await expect(page.getByTestId('expert-note')).toContainText('What was the prompt level');
+    const row = (await asked(page)).locator('[data-panel-expert^="ask:note"]');
+    await expect(row).toContainText('Whole note');
+    await expect(row).toContainText('What was the prompt level');
   });
 
   test('the register findings quote the clinician back, which is what the catalog cannot do', async ({ page }) => {
@@ -268,11 +283,11 @@ test.describe('the reading is compact, and its argument is behind a word', () =>
 
   test('an expert ask carries its justification behind a word rather than under it', async ({ page }) => {
     await draft(page);
-    const ask = page.getByTestId('expert-note').locator('[data-expert-kind]').first();
+    const ask = (await asked(page)).locator('[data-panel-expert^="ask:note"]');
     await expect(ask).toContainText('What was the prompt level');
-    await expect(page.getByTestId('expert-why')).toHaveCount(0);
-    await ask.getByTestId('expert-why-toggle').click();
-    await expect(ask.getByTestId('expert-why')).toContainText('A payer reads a trial count');
+    await expect(ask.locator('.expert-why-text')).toHaveCount(0);
+    await ask.locator('.expert-why').click();
+    await expect(ask.locator('.expert-why-text')).toContainText('A payer reads a trial count');
   });
 
   /* WHAT HE READ ON 2026-09-02, in his words: "that expert block has 'Client at
@@ -325,21 +340,17 @@ test.describe('the reading is compact, and its argument is behind a word', () =>
      learns it existed. */
   test('a finding for a section the clinician has since edited folds, and is still readable', async ({ page }) => {
     await draft(page);
-    // Before the edit it is an ordinary finding on the section.
-    await expect(page.getByTestId('expert-behaviorPlanNarrative')).toContainText('How long did each elopement last?');
-    await expect(page.getByTestId('expert-behaviorPlanNarrative-stale')).toHaveCount(0);
+    // Before the edit it is an ordinary question about the section.
+    const row = (await asked(page)).locator('[data-panel-expert^="ask:behaviorPlanNarrative"]');
+    await expect(row).toContainText('How long did each elopement last?');
+    await expect(row.locator('[data-expert-stale]')).toHaveCount(0);
 
     await page.locator('textarea[data-section-id="behaviorPlanNarrative"]')
       .fill('Elopement occurred on two occasions, each lasting under ten seconds, and the technician blocked the door.');
 
-    const stale = page.getByTestId('expert-behaviorPlanNarrative-stale');
-    await expect(stale).toBeVisible();
-    await expect(stale).toContainText('Section edited after expert review');
-    await expect(stale).toContainText('1 earlier finding');
-    // Folded, not deleted.
-    await expect(stale).not.toContainText('How long did each elopement last?');
-    await page.getByTestId('expert-behaviorPlanNarrative-stale-toggle').click();
-    await expect(stale).toContainText('How long did each elopement last?');
+    // Marked, not deleted: the question is still there to answer or leave.
+    await expect(row.locator('[data-expert-stale]')).toContainText('Section edited after expert review');
+    await expect(row).toContainText('How long did each elopement last?');
   });
 
   test('editing one section leaves the findings on every other section alone', async ({ page }) => {
@@ -347,8 +358,9 @@ test.describe('the reading is compact, and its argument is behind a word', () =>
     await page.locator('textarea[data-section-id="behaviorPlanNarrative"]').fill('Rewritten.');
     // The whole-note finding is about the note rather than that section, and it
     // is untouched. A blanket "you edited something" would have taken it.
-    await expect(page.getByTestId('expert-note')).toContainText('What was the prompt level');
-    await expect(page.getByTestId('expert-note-stale')).toHaveCount(0);
+    const row = (await asked(page)).locator('[data-panel-expert^="ask:note"]');
+    await expect(row).toContainText('What was the prompt level');
+    await expect(row.locator('[data-expert-stale]')).toHaveCount(0);
   });
 
   /* His instruction, in full: references to "the handout" should be removed,
@@ -376,9 +388,9 @@ test.describe('a second opinion never costs anyone a note', () => {
     // draft() already waited for "Generated Note", so the note landed without
     // the pass. This is the assertion that fails if anyone ever awaits it.
     await expect(page.getByTestId('expert-running')).toBeVisible();
-    await expect(page.getByTestId('expert-note')).toHaveCount(0);
+    await expect(page.locator('[data-panel-expert]')).toHaveCount(0);
     release();
-    await expect(page.getByTestId('expert-note')).toContainText('What was the prompt level');
+    await expect((await asked(page)).locator('[data-panel-expert^="ask:note"]')).toContainText('What was the prompt level');
     expect(sent.length).toBe(1);
   });
 

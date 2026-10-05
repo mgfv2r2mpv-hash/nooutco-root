@@ -116,6 +116,14 @@ async function draft(page, { expert = EXPERT, revised = null } = {}) {
 
   await page.getByTestId('expert-register-toggle').click();
   await expect(page.getByTestId('expert-register-row').first()).toBeVisible();
+  // The question is asked in the NoMe panel now (Kaleb, 2026-10-04,
+  // expert-questions.js), so the panel is opened to answer it.
+  const asked = page.getByTestId('panel-expert-questions');
+  if (!(await asked.isVisible({ timeout: 800 }).catch(() => false))) {
+    const fab = page.locator('.revision-fab').first();
+    if (await fab.isVisible({ timeout: 3000 }).catch(() => false)) await fab.click();
+  }
+  await expect(asked).toBeVisible();
   return { llm, revisionBody: () => llm.filter((b) => !isTriageCall(b)).slice(-1)[0] };
 }
 
@@ -126,12 +134,17 @@ test.describe('the finding asks, and one click answers it', () => {
     await draft(page);
     const rows = page.getByTestId('expert-register-row');
     await expect(rows).toHaveCount(2);
-    // One control on the page, on the row carrying the claim.
+    // One control on the page, asked in the NoMe panel for the claim alone; the
+    // rows above the note keep the phrases to reword and ask nothing.
     await expect(page.getByTestId('claim-question')).toHaveCount(1);
-    await expect(rows.nth(0)).toContainText('he wanted attention');
-    await expect(rows.nth(0).getByTestId('claim-question')).toBeVisible();
+    const panel = page.getByTestId('panel-expert-questions');
+    const claim = panel.locator('[data-expert-kind="claim"]');
+    await expect(claim).toHaveCount(1);
+    await expect(claim).toContainText('he wanted attention');
+    await expect(claim.getByTestId('claim-question')).toBeVisible();
+    await expect(rows.nth(0).getByTestId('claim-question')).toHaveCount(0);
     await expect(rows.nth(1)).toContainText('Client eloped twice');
-    await expect(rows.nth(1).getByTestId('claim-question')).toHaveCount(0);
+    await expect(panel).not.toContainText('Client eloped twice');
   });
 
   test('the four answers are the ones he named', async ({ page }) => {

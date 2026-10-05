@@ -349,6 +349,20 @@ async function withExpert(page) {
   return { asked };
 }
 
+/* What the clinician reads of the expert: the reading above the note and, since
+   2026-10-04, its questions in the NoMe panel (expert-questions.js). */
+async function expertSeen(page) {
+  const toggle = page.getByTestId('expert-register-toggle');
+  if (await toggle.isVisible({ timeout: 2000 }).catch(() => false)) await toggle.click();
+  const asked = page.getByTestId('panel-expert-questions');
+  if (!(await asked.isVisible({ timeout: 800 }).catch(() => false))) {
+    const fab = page.locator('.revision-fab').first();
+    if (await fab.isVisible({ timeout: 3000 }).catch(() => false)) await fab.click();
+  }
+  await asked.waitFor({ timeout: 10000 });
+  return (await page.getByTestId('expert-reading').innerText()) + '\n' + (await asked.innerText());
+}
+
 test.describe('path 3, an expert quote', () => {
   test('the expert was handed tokens, so what it quotes back is a token', async ({ page }) => {
     const { asked } = await withExpert(page);
@@ -358,9 +372,7 @@ test.describe('path 3, an expert quote', () => {
 
   test('no reshaped token survives into the reading the clinician sees', async ({ page }) => {
     await withExpert(page);
-    const toggle = page.getByTestId('expert-register-toggle');
-    if (await toggle.isVisible({ timeout: 2000 }).catch(() => false)) await toggle.click();
-    expect(await page.getByTestId('expert-reading').innerText()).not.toMatch(tokenFamily());
+    expect(await expertSeen(page)).not.toMatch(tokenFamily());
   });
 
   test('the quote says the clinician own word instead', async ({ page }) => {
@@ -368,9 +380,7 @@ test.describe('path 3, an expert quote', () => {
     const words = await ledger(page);
     const expected = words[asked[0][0]];
     expect(expected, 'the ledger holds no word for the number the expert was given').toBeTruthy();
-    const toggle = page.getByTestId('expert-register-toggle');
-    if (await toggle.isVisible({ timeout: 2000 }).catch(() => false)) await toggle.click();
-    const reading = await page.getByTestId('expert-reading').innerText();
+    const reading = await expertSeen(page);
     expect(reading, `the expert quoted a token where "${expected}" belonged`).toContain(expected);
   });
 });
