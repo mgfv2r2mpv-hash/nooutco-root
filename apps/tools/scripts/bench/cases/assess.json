@@ -205,6 +205,59 @@
           ]
         }
       }
+    },
+    {
+      "id": "assess-records-review-answer-overturns",
+      "page": "/notes/assess/",
+      "fields": {
+        "Summary Notes": "BCBA reviewed FBA data from the current authorization across the reduction targets \"Hugging/Jumping on People,\" \"Aggression,\" \"Tantrum\" and \"Climbing.\" Climbing was recorded after peer play ended in 3 of 4 instances. Aggression rose during summer camp in July and has stayed at zero since the regular school year began. BCBA updated the background, medical history and service history sections and looked at session conditions across the authorization. Behavior levels look higher in sessions with BCBA present, maybe from extra staff attention, or the BT splitting attention between the client and BCBA. Rates look lower in telehealth sessions."
+      },
+      "truth": [
+        {
+          "about": [
+            "bcba present",
+            "higher",
+            "with bcba",
+            "supervision",
+            "rates"
+          ],
+          "answer": "Checked the ABC data: hugging/jumping on people was 3 instances in 3 sessions with BCBA present and 11 in 5 sessions without, so it is actually lower with BCBA."
+        },
+        {
+          "about": [
+            "aggression",
+            "camp",
+            "summer",
+            "average"
+          ],
+          "answer": "Aggression averaged 2 per session during camp, zero since school started."
+        }
+      ],
+      "expect": {
+        "mentions": [
+          "Hugging",
+          "Climbing",
+          "camp"
+        ],
+        "forbid": [
+          "The Behavior Analyst",
+          "unsupervised",
+          "staffing structure",
+          "following resumption",
+          "extra staff attention"
+        ],
+        "picks": {
+          "reporting": [
+            "Analysis of past data"
+          ]
+        },
+        "notPicks": {
+          "activities": [
+            "Review results with parent",
+            "Client Observation"
+          ]
+        }
+      }
     }
   ]
 }

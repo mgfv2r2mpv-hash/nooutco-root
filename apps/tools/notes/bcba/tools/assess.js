@@ -119,15 +119,23 @@ THE TWO NARRATIVES ARE SEPARATE FIELDS ON THE FORM AND THE SPLIT IS STRICT.\n\
 RESULTS OF ASSESSMENT CARRIES THE NUMBERS. It is the one narrative here that reports scores, and it reports them in the instrument's own units: a VB-MAPP level and milestone point total, an EESA-R score per group, percent correct, a preference assessment's rank order. Where the intake gives a score it belongs here. Where the intake names an instrument and gives no score, say it was administered and its scoring is pending, and emit the unscored_instrument hint. Never invent a score.\n\
 - Report strengths and deficits BY DOMAIN and carry the boundary, because the boundary is the finding. \"Imitation showed generalized instances but not across functional tasks or vocal instruction to imitate\" is a finding. \"Imitation was a relative weakness\" is not.\n\
 - Where a function was assessed, report it condition by condition before naming it: what the behavior looked like, what occasioned it, what was delivered in each condition, and which conditions did and did not resolve it. Then the reinforcer that pattern supports and the intervention it indicates.\n\
-- Hedge the inference to the evidence behind it. \"suggesting\", \"indicating\", \"consistent with\". A handful of trials does not license a flat assertion of function.\n\
+- Hedge the inference to the evidence behind it. Write the hedge as \"which suggests\" or \"consistent with\", inside the sentence, never as a trailing \", indicating...\" clause. A handful of trials does not license a flat assertion of function.\n\
 - A behavior that was looked for and did not occur is a finding, and it belongs here. \"No aggression, flopping or tears accompanied the crying\" narrows the record. That sentence is about the client rather than about the documentation, which is the line the absence rule already draws, so it is not an exception to it. Report an absence only where the intake states it.\n\n\
 THE BEHAVIOR ANALYST IS ENTITLED TO THE ANALYSIS. Assigning a function, naming an establishing operation and identifying an intervention target is what an assessment is for, and it is this author's own work. Do not recast it into a bare observation. The restraint that keeps analysis out of a note governs a technician writing a session note, not a Behavior Analyst writing an assessment.\n\
 - So do not cut a causal claim or a clinical hypothesis out of this note. Naming why a behavior occurs is the assessment's finding, not an overreach, provided it is hedged to the evidence that supports it.\n\n\
 RULES\n\
 - Stick strictly to what is reported. Do not embellish or invent instruments, scores, or outcomes.\n\
 - Plain, precise clinical language. Sparse notes → brief honest sentences.\n\
+- KEEP THE AUTHOR'S SENTENCES. Where the notes already read as a finished clinical sentence (\"BCBA reviewed...\", \"BCBA noted...\"), keep its subject, its verb and its order: tighten it, never rebuild it.\n\
+- Verbs, not nouns made from them: \"after supervision resumed\", never \"following resumption of supervision\"; \"aggression decreased\", never \"a decrease in aggression was demonstrated\".\n\
+- Never end a sentence on a trailing clause that opens with an -ing word (\", averaging 2.6 per session\", \", resolving to zero\", \", correlating with...\"). Give the number its own clause or its own sentence.\n\
+- The numbers go in Results of Assessment only. Brief Summary of Activities Completed says what was reviewed, run or updated, and stops.\n\
+- Write a comparison in the notes' own words (\"with BCBA present\", \"without BCBA\"); never relabel it (\"unsupervised baseline\").\n\
+- Where an answer to a follow-up question corrects the notes, write the answer's version and drop what it corrected, along with anything the notes built on it.\n\
 - Scope to assessment activities, their findings, protocol review, and follow-up items only.\n\n\
-CHECKBOX INFERENCE: For \"activities\" and \"reporting\" return ONLY verbatim values from the allowed lists. Empty array if unsupported.\n\n\
+CHECKBOX INFERENCE: For \"activities\" and \"reporting\" return ONLY verbatim values from the allowed lists. Empty array if unsupported.\n\
+- \"Client Observation\" only when BCBA observed the client during this service. Reviewing observation data recorded earlier is \"Analysis of past data\", not an observation.\n\
+- \"Review results with parent\" only when the notes say the results were gone over with a parent or caregiver during this service.\n\n\
 TERMINOLOGY (non-negotiable)\n\
 - Reinforcement is contingent on behavior. Never \"[person] was reinforced.\"\n\
 - Precise verbs: administered [instrument], conducted a preference assessment, conducted FBA/FA, ran probes, established baseline, observed, interviewed, scored, identified function.\n\
@@ -152,14 +160,27 @@ TERMINOLOGY (non-negotiable)\n\
     ].join("\n");
   }
 
-  function normalizeOutput(raw) {
+  /* REVIEW RESULTS WITH PARENT, HELD BY CODE. Kaleb's Assessment note,
+     2026-10-04: a records-and-data session with no caregiver in it came back
+     with this ticked. Notes that name no parent or caregiver anywhere cannot
+     carry it. Only on a real draft, where the engine passes the intake. */
+  var CAREGIVER_WORD = /\b(?:parents?|caregivers?|guardians?|mom|dad|mother|father|grand(?:ma|pa|mother|father|parents?)|family|families)\b/i;
+  var PARENT_REVIEW = "Review results with parent";
+
+  function normalizeOutput(raw, ctx) {
     var o = raw && typeof raw === "object" ? raw : {};
+    var picked = (Array.isArray(o.activities) ? o.activities : []).filter(function (v) { return ACTIVITIES.indexOf(v) !== -1; });
+    var held = [];
+    if (ctx && typeof ctx.intake === "string" && picked.indexOf(PARENT_REVIEW) !== -1 && !CAREGIVER_WORD.test(ctx.intake)) {
+      picked = picked.filter(function (v) { return v !== PARENT_REVIEW; });
+      held.push({ section: "activities", code: "other", detail: "Unticked Review results with parent: the notes name no parent or caregiver." });
+    }
     var out = {
-      activities: (Array.isArray(o.activities) ? o.activities : []).filter(function (v) { return ACTIVITIES.indexOf(v) !== -1; }),
+      activities: picked,
       reporting: (Array.isArray(o.reporting) ? o.reporting : []).filter(function (v) { return REPORTING.indexOf(v) !== -1; }),
       narrative: typeof o.narrative === "string" ? o.narrative : "",
       results: typeof o.results === "string" ? o.results : "",
-      hints: normalizeHints(o.hints, HINT_CATALOG, SECTION_IDS),
+      hints: normalizeHints((Array.isArray(o.hints) ? o.hints : []).concat(held), HINT_CATALOG, SECTION_IDS),
     };
     // The three revision keys the engine reads back. Kept separate from the
     // note's own fields because they never reach the EHR: an answer is shown

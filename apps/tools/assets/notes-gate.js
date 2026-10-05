@@ -1012,7 +1012,13 @@
    // masked: Brown, White, Black, Green, Gray, Tan, Orange. Pink, Teal and
    // Lavender stay off as doubtful. Crystal, Amber, Jade and Ruby are first
    // names, and the first-names list keeps masking them on its own.
-   "Yellow Blue Red Purple Turquoise Beige Maroon Navy")
+   "Yellow Blue Red Purple Turquoise Beige Maroon Navy " +
+   // Added 2026-10-04 from Kaleb's Assessment note: the reduction target
+   // "Hugging/Jumping on People" left as three tokens, and the draft wrote
+   // "jumping on People" with Hugging gone. The behaviour-target words a note
+   // names the same way, same test as above.
+   "Hugging Jumping People Running Spitting Licking Mouthing Grabbing Pushing " +
+   "Pulling Yelling Whining Disrobing Stereotypy Self-Injury Property Destruction")
     .split(/\s+/).forEach(function (w) { if (w) PROGRAM_WORDS[w.toLowerCase()] = true; });
 
   /* GOAL AND SECTION HEADERS AFTER A ROLE WORD. "Client Goals:" and "Parent

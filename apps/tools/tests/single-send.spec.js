@@ -60,11 +60,13 @@ const REVISIONS = {
    the same two questions, row 0:1 picked and the own-words row of question 1
    filled, "Use these and generate" put exactly this block at the end of the one
    user message of the note request, on chromium and on webkit alike. */
-/* CHANGED ON PURPOSE 2026-10-02: each answer now goes out under the question
+/* CHANGED ON PURPOSE 2026-10-04: the header ends with the rule that an answer
+   correcting the notes wins (Kaleb's Assessment note; window.ANSWERS_HEADER).
+   CHANGED ON PURPOSE 2026-10-02: each answer now goes out under the question
    it answers (answers-keep-questions.spec.js). The block is otherwise what the
    old button recorded: the same two answers, in the same order. */
 const OLD_BUTTON_BLOCK =
-  '\n\nTHE TECHNICIAN ADDED, ANSWERING FOLLOW-UP QUESTIONS (each A: answers the Q: above it, so write it where that question points; treat as part of the notes above):\n' +
+  '\n\nTHE TECHNICIAN ADDED, ANSWERING FOLLOW-UP QUESTIONS (each A: answers the Q: above it, so write it where that question points; treat as part of the notes above; where an answer corrects the notes, the answer wins and what it corrected goes):\n' +
   'Q: You wrote that you moved to the floor. Was that in the plan?\n' +
   'A: The first-then board worked better once we were down there.\n\n' +
   'Q: How did the two elopements end?\n' +

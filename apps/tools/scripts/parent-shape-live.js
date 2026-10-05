@@ -230,7 +230,9 @@
   if (!tool) throw new Error('Open the BCBA notes page with Parent Training loaded first.');
   if (!window.NotesGate || !window.NotesGate.isLoggedIn()) throw new Error('Log in first.');
   const gate = window.NotesGate;
-  const HEADER = '\n\nTHE TECHNICIAN ADDED, ANSWERING FOLLOW-UP QUESTIONS (each A: answers the Q: above it, so write it where that question points; treat as part of the notes above):\n';
+  // The page's own header (engine.jsx ANSWERS_HEADER), with its words as the
+  // fallback for a site deployed before it was exposed.
+  const HEADER = window.ANSWERS_HEADER || '\n\nTHE TECHNICIAN ADDED, ANSWERING FOLLOW-UP QUESTIONS (each A: answers the Q: above it, so write it where that question points; treat as part of the notes above; where an answer corrects the notes, the answer wins and what it corrected goes):\n';
   const keys = tool.formSections.filter((s) => s.kind !== 'facts').map((s) => s.key || s.group);
   const narrative = tool.formSections.filter((s) => s.kind === 'narrative').map((s) => s.key || s.group);
   const card = gate.styleCard ? await gate.styleCard.get().catch(() => null) : null;
