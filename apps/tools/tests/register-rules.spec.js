@@ -626,6 +626,10 @@ test.describe('the analysis rules reach the technician tool and no other', () =>
     '- Hedge the inference to the evidence behind it.',
     'YOUR JOB: put what the BCBA entered into the permitted format while preserving clinical intent - NOT to capture everything a session could contain.',
     'EXACTLY one of the allowed strings, inferred conservatively from the progress data across goals.',
+    // parent's Progress Status rule, read 2026-10-04 (Kaleb's Progress Status
+    // ruling, A). "because" gives the reason for a checkbox pick, and bans
+    // nothing: the BCBA's own analysis stays in the note.
+    'A client goal at 0 of 3 beside caregiver goals at 85 to 100 percent is Moderate progress: not Minimal, because the caregiver goals carry it, and not Substantial, because a client goal with no trial correct holds it back.',
   ]);
 
   for (const id of ['parent', 'assess', 'sup']) {
