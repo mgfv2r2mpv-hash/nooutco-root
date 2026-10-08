@@ -678,7 +678,7 @@
       function show() {
         if (isAdmin()) {
           loginCard.classList.add("hidden"); adminUI.classList.remove("hidden"); logoutBtn.classList.remove("hidden");
-          load(); loadPii(); loadNonPii(); loadTermQueues(); loadAlgStatus(); loadReview();
+          load(); loadPii(); loadNonPii(); loadTermQueues(); loadAlgStatus(); loadKnowledgeCount();
         } else {
           loginCard.classList.remove("hidden"); adminUI.classList.add("hidden"); logoutBtn.classList.add("hidden");
           ensureLoginGate();
@@ -766,32 +766,38 @@
       });
 
       /* ── To review: what is waiting, and where to act on it ──
-         Counts only. Each queue is still decided in its own tab, so this reads
-         the endpoints those tabs read and changes nothing. A queue that cannot
-         be read shows a dash, never a zero, because zero says "nothing waiting". */
-      var REVIEW_QUEUES = {
-        pii: function () { return adminFetch("/api/admin/term-queue").then(function (d) { return (d.piiPending || []).length; }); },
-        nonpii: function () { return adminFetch("/api/admin/term-queue").then(function (d) { return (d.nonPiiPending || []).length; }); },
-        suggestions: function () { return adminFetch("/api/admin/scrub-suggestions").then(function (d) { return (d.suggestions || []).length; }); },
-        knowledge: function () { return kn("proposals", "GET", null, { state: "staged" }).then(function (d) { return (d.proposals || []).length; }); }
-      };
+         Counts only. Each queue is still decided in its own tab, and the count
+         comes from the read that tab already makes: loadTermQueues fills PII and
+         Non-PII, loadSuggestions fills scrub suggestions, and the staged-proposals
+         read fills knowledge. Nothing is fetched twice to count it, and a
+         decision that reloads its queue updates the count with it. A queue that
+         cannot be read shows a dash, never a zero, because zero says "nothing
+         waiting". */
       var reviewTarget = { pii: "pii", nonpii: "nonpii", suggestions: "alglab", knowledge: "knowledge" };
+      var reviewCounts = {};
 
-      function loadReview() {
-        var total = 0;
-        var pending = Object.keys(REVIEW_QUEUES).map(function (key) {
-          var cell = document.querySelector('[data-review-count="' + key + '"]');
-          return REVIEW_QUEUES[key]().then(function (n) {
-            cell.textContent = n;
-            total += n;
-          }).catch(function () { cell.textContent = "-"; });
-        });
-        Promise.all(pending).then(function () {
-          var badge = document.getElementById("reviewBadge");
-          badge.textContent = total;
-          badge.style.display = total ? "inline-block" : "none";
-        });
+      // n is a count, or null when the queue could not be read.
+      function setReviewCount(key, n) {
+        var next = {};
+        Object.keys(reviewCounts).forEach(function (k) { next[k] = reviewCounts[k]; });
+        next[key] = n;
+        reviewCounts = next;
+        document.querySelector('[data-review-count="' + key + '"]').textContent = n === null ? "-" : n;
+        var total = Object.keys(reviewCounts).reduce(function (sum, k) { return sum + (reviewCounts[k] || 0); }, 0);
+        var badge = document.getElementById("reviewBadge");
+        badge.textContent = total;
+        badge.style.display = total ? "inline-block" : "none";
       }
+
+      // The knowledge store is a second Worker, read lazily everywhere else.
+      // This one read is the price of its count, and only staged proposals.
+      function loadKnowledgeCount() {
+        kn("proposals", "GET", null, { state: "staged" })
+          .then(function (d) { setReviewCount("knowledge", (d.proposals || []).length); })
+          .catch(function () { setReviewCount("knowledge", null); });
+      }
+
+      function loadReview() { loadTermQueues(); loadSuggestions(); loadKnowledgeCount(); }
       document.querySelectorAll("[data-review]").forEach(function (row) {
         row.addEventListener("click", function () { openTab(reviewTarget[row.dataset.review]); });
       });
@@ -972,7 +978,9 @@
         adminFetch("/api/admin/term-queue").then(function (d) {
           renderPending("pii", d.piiPending || []);
           renderPending("nonpii", d.nonPiiPending || []);
-        }).catch(function () {});
+          setReviewCount("pii", (d.piiPending || []).length);
+          setReviewCount("nonpii", (d.nonPiiPending || []).length);
+        }).catch(function () { setReviewCount("pii", null); setReviewCount("nonpii", null); });
       }
 
       function renderPending(kind, rows) {
@@ -1134,7 +1142,8 @@
             rows.appendChild(row);
           });
           renderSugBar();
-        }).catch(function () {});
+          setReviewCount("suggestions", list.length);
+        }).catch(function () { setReviewCount("suggestions", null); });
       }
 
       /* One request per ticked row, in order, then one reload. A failure is
@@ -2096,6 +2105,7 @@
 
         kn("proposals", "GET", null, { state: "staged" }).then(function (d) {
           var rows = d.proposals || [];
+          setReviewCount("knowledge", rows.length);
           if (!rows.length) {
             proposals.innerHTML = '<span class="muted" style="font-size: 13px;">Nothing staged.</span>';
             return;
@@ -2108,7 +2118,7 @@
               (r.targetId ? '<span class="muted" style="font-size: 12px; align-self: center;">replaces ' + escapeHtml(r.targetId) + "</span>" : "") +
               "</div>");
           }).join("");
-        }).catch(oops(proposals));
+        }).catch(function (ex) { setReviewCount("knowledge", null); oops(proposals)(ex); });
 
         kn("candidates", "GET").then(function (d) {
           var rows = d.candidates || [];

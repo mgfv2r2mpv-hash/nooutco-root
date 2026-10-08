@@ -124,7 +124,10 @@ test.describe('the browser names an operation, never a path', () => {
   test('every call the tab makes goes through the allowlist', async ({ page }) => {
     const seen = await openConsole(page);
     await expect(page.locator('#knProposals')).toContainText('Count the instances');
-    expect(seen.map((s) => s.op).sort()).toEqual(['candidates', 'list', 'proposals']);
+    // The allowlist is which operations, not how often. The To review count
+    // reads staged proposals at login through the same kn() call, so a second
+    // "proposals" is the count, not a new way in.
+    expect([...new Set(seen.map((s) => s.op))].sort()).toEqual(['candidates', 'list', 'proposals']);
     // No upstream path appears anywhere in what the browser asked for.
     expect(seen.every((s) => !s.url.includes('/knowledge/'))).toBe(true);
   });
