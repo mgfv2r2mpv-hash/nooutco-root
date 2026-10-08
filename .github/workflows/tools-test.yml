@@ -48,7 +48,7 @@ on:
     inputs:
       projects:
         description: 'JSON array of {project, shards} to run'
-        default: '[{"project":"webkit","shards":5}]'
+        default: '[{"project":"webkit","shards":8}]'
   push:
     branches: [main, dev]
     paths:
@@ -126,11 +126,23 @@ jobs:
              every shard near the line. Firefox and webkit go to five, so a
              shard lands near 13-16 minutes, and chromium (11-19) goes to
              four. When the run step warns that a shard went past
-             SHARD_WARN_MINUTES, add a shard here, never raise the cap. */
+             SHARD_WARN_MINUTES, add a shard here, never raise the cap.
+
+             The warning fired the same afternoon. #258 took the suite from
+             1,895 to 2,136 tests a browser, and on runs 37828137708 and
+             37828752602 firefox 1/5 ran 23.5 minutes and webkit 5/5 23.3, with
+             six shards past the warning. Firefox's five shards summed to
+             about 93 minutes, webkit's to 86 and chromium's four to 59. The
+             split is uneven, since the slowest shard in a browser runs about
+             1.3 times the browser's average. So firefox and webkit go to
+             eight (about 12 minutes average, 15 at the slowest) and chromium
+             to five (about 12, 15 at the slowest). That is 22 jobs, two over
+             the 20 a free plan runs at once, so two shards may queue a few
+             minutes. The queue does not count against the job cap. */
           const ALL = [
-            { project: 'chromium', shards: 4 },
-            { project: 'firefox',  shards: 5 },
-            { project: 'webkit',   shards: 5 },
+            { project: 'chromium', shards: 5 },
+            { project: 'firefox',  shards: 8 },
+            { project: 'webkit',   shards: 8 },
             { project: 'touch',    shards: 1 },
           ];
 
