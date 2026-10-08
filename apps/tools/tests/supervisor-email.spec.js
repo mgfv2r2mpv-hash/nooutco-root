@@ -161,6 +161,9 @@ test.describe('the admin page can actually set one', () => {
   const signInAsAdmin = async (page) => {
     await page.addInitScript((t) => localStorage.setItem('notes_auth_token', t), tokenFor('admin'));
     await page.goto('/admin/index.html');
+    // The page lands on To review (his ruling, 2026-10-04), so the form is one
+    // click away. Open it the way he would rather than assume where it opens.
+    await page.getByRole('button', { name: 'Passwords', exact: true }).click();
   };
 
   test('the add form offers a supervisor box, and what it sends comes back in the row', async ({ page }) => {
