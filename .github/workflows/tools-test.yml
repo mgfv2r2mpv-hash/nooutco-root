@@ -48,7 +48,7 @@ on:
     inputs:
       projects:
         description: 'JSON array of {project, browser, shards} to run'
-        default: '[{"project":"webkit","browser":"webkit","shards":3}]'
+        default: '[{"project":"webkit","browser":"webkit","shards":5}]'
   push:
     branches: [main, dev]
     paths:
@@ -102,11 +102,23 @@ jobs:
              projects skip that file. It costs seconds, not the 17 to 25 minutes
              the others take. Leaving it out would ship a spec file that never
              ran anywhere, which is the failure this whole workflow exists to
-             stop. */
+             stop.
+
+             SHARD COUNTS FOLLOW THE SUITE, NOT THE OTHER WAY ROUND. Three
+             shards a browser was sized on 2026-09-26, when webkit's slowest
+             shard took 21 minutes. The suite grew to 1,895 tests a browser by
+             8 Oct, and every firefox and webkit shard then ran 20-27 minutes
+             against a 30-minute job cap, so ordinary run-to-run spread was
+             enough to cancel one (run 37810325557, webkit 3/3, 631 tests,
+             nothing failed). Nothing was slow on its own: equal test counts,
+             every shard near the line. Firefox and webkit go to five, so a
+             shard lands near 13-16 minutes, and chromium (11-19) goes to
+             four. When the run step warns that a shard went past
+             SHARD_WARN_MINUTES, add a shard here, never raise the cap. */
           const ALL = [
-            { project: 'chromium', browser: 'chromium', shards: 3 },
-            { project: 'firefox',  browser: 'firefox',  shards: 3 },
-            { project: 'webkit',   browser: 'webkit',   shards: 3 },
+            { project: 'chromium', browser: 'chromium', shards: 4 },
+            { project: 'firefox',  browser: 'firefox',  shards: 5 },
+            { project: 'webkit',   browser: 'webkit',   shards: 5 },
             { project: 'touch',    browser: 'webkit',   shards: 1 },
           ];
 
@@ -161,9 +173,22 @@ jobs:
     # the first test. The slowest job measured with one job per shard was
     # webkit 3/3 at 21 minutes end to end (run 36291689338), so 30 is about
     # nine minutes of margin on a job, not on a shard's tests alone. If a shard is ever cancelled at
-    # exactly 30:00 with nothing red, that is this cap and not the code - split
-    # to four shards before raising it, since the suite grows most weeks.
+    # exactly 30:00 with nothing red, that is this cap and not the code - add
+    # shards in the plan job before raising it, since the suite grows most weeks.
+    #
+    # It happened anyway on 2026-10-08, because nothing said the margin was
+    # going: each week's growth was quiet until a run crossed the line. Two
+    # guards now stand in front of the cap. playwright.config.js gives a CI
+    # run a global timeout of PW_GLOBAL_TIMEOUT_MINUTES, under this cap, so a
+    # shard that runs long ends itself, names the tests it interrupted and
+    # still uploads its report, where a cancel at 30:00 left a log with no
+    # test names in it. And the run step warns on any shard that went past
+    # SHARD_WARN_MINUTES, which is the cue to add a shard while there is
+    # still room.
     timeout-minutes: 30
+    env:
+      SHARD_WARN_MINUTES: 18
+      PW_GLOBAL_TIMEOUT_MINUTES: 25
     strategy:
       # One shard failing must not cancel the others - knowing whether a failure
       # is browser-specific, or confined to one shard, is most of the diagnosis.
@@ -227,8 +252,12 @@ jobs:
         # clean machine. The peak should be at or below that same 1831 MB with
         # more headroom, and the sampler above is what will say so.
         #
-        # Shards split by FILE and are deterministic, so a failure names the
-        # same shard on a re-run. touch is one file, hence shards: 1.
+        # playwright.config.js sets fullyParallel, so shards split by TEST, not
+        # by file: each shard gets an equal count in a fixed order, and a
+        # failure names the same shard on a re-run. Equal counts are not equal
+        # time, since the slower specs sit together, which is why one shard in
+        # a browser runs longer than the rest. touch is one file, hence
+        # shards: 1.
         #
         # No port override is needed: playwright.config.js already sets
         # `reuseExistingServer: !process.env.CI`, so a CI run always starts its
@@ -237,9 +266,19 @@ jobs:
           PLAYWRIGHT_HTML_REPORT: playwright-report
           PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report
         run: |
+          started=$(date +%s)
+          set +e
           npx playwright test \
             --project=${{ matrix.project }} \
             --shard=${{ matrix.shard }}/${{ matrix.shards }}
+          status=$?
+          set -e
+          minutes=$(( ($(date +%s) - started) / 60 ))
+          echo "shard ran ${minutes} min (warn at ${SHARD_WARN_MINUTES}, global timeout ${PW_GLOBAL_TIMEOUT_MINUTES}, job cap 30)"
+          if [ "$minutes" -ge "$SHARD_WARN_MINUTES" ]; then
+            echo "::warning title=Tools E2E shard near its cap::${{ matrix.project }} ${{ matrix.shard }}/${{ matrix.shards }} ran ${minutes} min. Add a shard for ${{ matrix.project }} in the plan job of tools-test.yml before the 30-minute cap cancels one."
+          fi
+          exit "$status"
 
       # Kernel messages name an OOM kill; the sampler shows the run-up to it.
       - name: Collect server death evidence

@@ -30,7 +30,20 @@ export default defineConfig({
   // but every page still compiles JSX in the browser and that is CPU the dev
   // server and the browsers share. The cap stays for deterministic runs.
   workers: 2,
-  reporter: 'html',
+  /* CI: a line per test as well as the HTML report. With 'html' alone the log
+     held only the start and end counts, so when the 30-minute job cap
+     cancelled webkit 3/3 on 2026-10-08 nothing said which test it was on or
+     which specs were slow. The list lines carry each test's duration, and
+     reportSlowTests names the slowest files at the end of a shard. */
+  reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'html',
+  reportSlowTests: { max: 10, threshold: 60000 },
+  /* CI: the shard ends itself under the job cap (tools-test.yml sets
+     PW_GLOBAL_TIMEOUT_MINUTES below its timeout-minutes), so a long shard
+     names the tests it interrupted and still uploads its report, instead of
+     being cancelled by the runner with nothing written. 0 means no limit. */
+  globalTimeout: process.env.CI
+    ? (Number(process.env.PW_GLOBAL_TIMEOUT_MINUTES) || 0) * 60000
+    : 0,
   // In-browser JSX compilation on every page load; give it headroom so a busy
   // machine does not read as a failure.
   timeout: 90000,
