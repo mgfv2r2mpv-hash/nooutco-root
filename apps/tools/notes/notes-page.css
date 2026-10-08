@@ -86,6 +86,10 @@ body {
   opacity: 1;
 }
 .info-tip.open .info-bubble { pointer-events: auto; }
+/* Hidden, the bubble is fixed so it never widens the page: Firefox and WebKit
+   count a visibility:hidden absolute box toward the scroll width, and its
+   offset can be stale while hidden. InfoTooltip re-clamps it as it shows. */
+.info-tip:not(:hover):not(:focus-within):not(.open) .info-bubble { position: fixed; }
 
 /* ── Floating note-freshness countdown ───────────────────────────────────── */
 

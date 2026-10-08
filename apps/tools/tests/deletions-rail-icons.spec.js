@@ -236,6 +236,24 @@ test.describe('deletions rail at phone width', () => {
       expect(box.height).toBeGreaterThanOrEqual(30);
     }
   });
+
+  // The dismiss moves the info icons with no resize, so a bubble clamped
+  // before it is stale; it has to be clamped again as it shows on hover.
+  test('after a dismiss, each info bubble shows inside the screen', async ({ page }) => {
+    await generate(page);
+    await act(page, 0, 'dismiss').click();
+    const tips = page.locator('.info-tip');
+    const n = await tips.count();
+    expect(n).toBeGreaterThan(0);
+    for (let i = 0; i < n; i++) {
+      await tips.nth(i).locator('.info-icon').hover();
+      const bubble = tips.nth(i).locator('.info-bubble');
+      await expect(bubble).toBeVisible();
+      const box = await bubble.boundingBox();
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(375);
+    }
+  });
 });
 
 test.describe('quiet mode', () => {

@@ -322,23 +322,20 @@ function InfoTooltip({ text }) {
     bubble.style.setProperty("--arrow-left", (iconRect.left + iconRect.width / 2 - vpLeft) + "px");
   }, []);
 
-  // Keep the bubble clamped to the viewport at all times - even while hidden -
-  // so a right-side icon's (position:absolute) bubble never expands the page's
-  // horizontal scroll area. Reposition on resize/orientation change, on open,
-  // and when the page reflows under it: a row added above or beside the icon
-  // (the deletions strip on a dismiss) moves the icon with no resize, and the
-  // stale offset left a hidden bubble 76px past a 375px screen in Firefox,
-  // which counts a visibility:hidden box toward the scroll width.
+  // Clamp the bubble to the viewport whenever it can show: on mount, on
+  // resize/orientation change, on open, and on hover or focus. An offset goes
+  // stale when the icon moves with no resize (the deletions strip on a dismiss
+  // moves it), so it is worked out again as the bubble appears. While hidden
+  // the bubble is position:fixed (notes-page.css), which keeps it out of the
+  // page's scroll width: a stale hidden bubble sat 76px past a 375px screen,
+  // and Firefox and WebKit both count a visibility:hidden absolute box. A
+  // ResizeObserver on the body did not cover it, because the strip moves the
+  // icon without resizing the body and WebKit fired nothing after the dismiss.
   React.useLayoutEffect(() => {
     position();
     const onResize = () => position();
     window.addEventListener("resize", onResize);
-    const reflow = typeof ResizeObserver === "function" ? new ResizeObserver(onResize) : null;
-    if (reflow) reflow.observe(document.body);
-    return () => {
-      window.removeEventListener("resize", onResize);
-      if (reflow) reflow.disconnect();
-    };
+    return () => window.removeEventListener("resize", onResize);
   }, [position]);
 
   React.useLayoutEffect(() => { if (open) position(); }, [open, position]);
@@ -356,7 +353,7 @@ function InfoTooltip({ text }) {
   }, [open]);
 
   return (
-    <span ref={ref} className={"info-tip" + (open ? " open" : "")}>
+    <span ref={ref} className={"info-tip" + (open ? " open" : "")} onPointerEnter={position} onFocus={position}>
       <span
         ref={iconRef}
         className="info-icon"
