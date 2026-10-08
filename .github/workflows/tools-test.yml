@@ -47,8 +47,8 @@ on:
   workflow_dispatch:
     inputs:
       projects:
-        description: 'JSON array of {project, browser, shards} to run'
-        default: '[{"project":"webkit","browser":"webkit","shards":5}]'
+        description: 'JSON array of {project, shards} to run'
+        default: '[{"project":"webkit","shards":5}]'
   push:
     branches: [main, dev]
     paths:
@@ -83,7 +83,24 @@ jobs:
     outputs:
       matrix: ${{ steps.build.outputs.matrix }}
       webkit: ${{ steps.build.outputs.webkit }}
+      playwright: ${{ steps.pw.outputs.version }}
     steps:
+      # The e2e jobs run in Playwright's own image, and that image's tag has to
+      # match the @playwright/test version the lockfile installs, or every shard
+      # dies with "Executable doesn't exist". Reading the version here means a
+      # dependency bump moves the image with it instead of breaking ten jobs.
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: apps/tools/package-lock.json
+          sparse-checkout-cone-mode: false
+      - id: pw
+        run: |
+          v=$(node -p "require('./apps/tools/package-lock.json').packages['node_modules/@playwright/test'].version")
+          case "$v" in
+            [0-9]*.[0-9]*.[0-9]*) echo "version=$v" >> "$GITHUB_OUTPUT"; echo "playwright $v" ;;
+            *) echo "::error::Could not read @playwright/test from apps/tools/package-lock.json (got '$v')"; exit 1 ;;
+          esac
+
       - id: build
         env:
           # A manual run names its own list. Otherwise the event decides.
@@ -92,12 +109,7 @@ jobs:
           node <<'JS' >> "$GITHUB_OUTPUT"
           const requested = process.env.REQUESTED;
 
-          /* `browser` is carried alongside `project` because the two stopped
-             being the same word. `touch` is the iPhone 13 profile, which
-             Playwright drives with webkit, and `playwright install touch` is not
-             a thing.
-
-             touch is a shard rather than a browser: playwright.config.js gives
+          /* touch is a shard rather than a browser: playwright.config.js gives
              it testMatch, so it runs the one touch spec and the three desktop
              projects skip that file. It costs seconds, not the 17 to 25 minutes
              the others take. Leaving it out would ship a spec file that never
@@ -116,15 +128,15 @@ jobs:
              four. When the run step warns that a shard went past
              SHARD_WARN_MINUTES, add a shard here, never raise the cap. */
           const ALL = [
-            { project: 'chromium', browser: 'chromium', shards: 4 },
-            { project: 'firefox',  browser: 'firefox',  shards: 5 },
-            { project: 'webkit',   browser: 'webkit',   shards: 5 },
-            { project: 'touch',    browser: 'webkit',   shards: 1 },
+            { project: 'chromium', shards: 4 },
+            { project: 'firefox',  shards: 5 },
+            { project: 'webkit',   shards: 5 },
+            { project: 'touch',    shards: 1 },
           ];
 
           /* A dispatch input is outside text, and its fields reach `run:`
              lines through ${{ matrix.* }}. So only a known project is taken,
-             always with its own browser, and shards are clamped to 1..8. An
+             and shards are clamped to 1..8. An
              unknown name is dropped rather than fanned out into jobs that run
              nothing. An input that leaves nothing gives an empty matrix, and
              `suite` then fails because e2e did not succeed. */
@@ -185,16 +197,40 @@ jobs:
     # test names in it. And the run step warns on any shard that went past
     # SHARD_WARN_MINUTES, which is the cue to add a shard while there is
     # still room.
+    #
+    # The same day it happened from the other end. On run 37824034395 firefox
+    # 4/5 spent 9 minutes in `playwright install --with-deps`, all of it apt
+    # crawling a slow Ubuntu mirror for fonts and codecs, then 21 minutes on
+    # tests, and was cancelled 2 tests from the end. A fixed 25-minute budget
+    # counted from the first test could not see the 9 minutes before it. So:
+    # the job runs in Playwright's image, where the browsers and their system
+    # packages are already installed and nothing touches apt, and the run step
+    # gives Playwright whatever is left of JOB_CAP_MINUTES, counted from the
+    # job's first step, less RESERVE_MINUTES. The reserve covers what that
+    # clock cannot see: pulling the image before the first step, and the
+    # uploads after the tests. JOB_CAP_MINUTES must equal timeout-minutes,
+    # which cannot read env.
     timeout-minutes: 30
+    container:
+      image: mcr.microsoft.com/playwright:v${{ needs.plan.outputs.playwright }}-noble
+      # The hosted runner's own uid, so the checkout and npm's cache stay
+      # writable, and Firefox does not refuse to run as root.
+      options: --user 1001
     env:
       SHARD_WARN_MINUTES: 18
-      PW_GLOBAL_TIMEOUT_MINUTES: 25
+      JOB_CAP_MINUTES: 30
+      RESERVE_MINUTES: 4
     strategy:
       # One shard failing must not cancel the others - knowing whether a failure
       # is browser-specific, or confined to one shard, is most of the diagnosis.
       fail-fast: false
       matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     steps:
+      # The clock the run step's Playwright budget counts from.
+      - name: Note when the job started
+        run: echo "JOB_STARTED=$(date +%s)" >> "$GITHUB_ENV"
+        working-directory: .
+
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
@@ -214,10 +250,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Only the browser this shard actually needs. See the plan job for why
-      # this is `browser` and not `project`.
-      - name: Install Playwright browser
-        run: npx playwright install --with-deps ${{ matrix.browser }}
+      # No browser install: the image carries every browser and its system
+      # packages for this exact version. This only proves the two agree, so a
+      # mismatch fails here in seconds and says why.
+      - name: Check the image matches @playwright/test
+        run: |
+          have=$(npx playwright --version | awk '{print $2}')
+          want='${{ needs.plan.outputs.playwright }}'
+          echo "image v$want, @playwright/test $have"
+          [ "$have" = "$want" ] || { echo "::error::@playwright/test is $have but the image is v$want"; exit 1; }
 
       # This is what turned "every spec after minute 21 failed" into a named
       # cause, and it stays even though one shard per job makes the climb much
@@ -267,6 +308,11 @@ jobs:
           PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report
         run: |
           started=$(date +%s)
+          used=$(( (started - JOB_STARTED) / 60 ))
+          budget=$(( JOB_CAP_MINUTES - RESERVE_MINUTES - used ))
+          [ "$budget" -lt 5 ] && budget=5
+          export PW_GLOBAL_TIMEOUT_MINUTES=$budget
+          echo "setup took ${used} min, so Playwright gets ${budget} min"
           set +e
           npx playwright test \
             --project=${{ matrix.project }} \
@@ -274,7 +320,7 @@ jobs:
           status=$?
           set -e
           minutes=$(( ($(date +%s) - started) / 60 ))
-          echo "shard ran ${minutes} min (warn at ${SHARD_WARN_MINUTES}, global timeout ${PW_GLOBAL_TIMEOUT_MINUTES}, job cap 30)"
+          echo "shard ran ${minutes} min (warn at ${SHARD_WARN_MINUTES}, Playwright budget ${budget}, job cap ${JOB_CAP_MINUTES})"
           if [ "$minutes" -ge "$SHARD_WARN_MINUTES" ]; then
             echo "::warning title=Tools E2E shard near its cap::${{ matrix.project }} ${{ matrix.shard }}/${{ matrix.shards }} ran ${minutes} min. Add a shard for ${{ matrix.project }} in the plan job of tools-test.yml before the 30-minute cap cancels one."
           fi
