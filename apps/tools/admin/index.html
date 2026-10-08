@@ -104,7 +104,13 @@
        run to 773.7px and wrap to two rows. Firefox and webkit failed on main for
        exactly that reason while chromium passed, because chromium measures this
        nav about 38px narrower than the other two engines do.
-       At 12px/13px the widest font measured leaves 37.4px of margin. */
+       At 12px/13px the widest font measured leaves 37.4px of margin.
+       To review made it eight tabs, and at 12px the eight measured 726px in
+       Verdana inside the 700px nav. The side padding went to 8px and nothing
+       else moved: same 13px type, same labels, same nav width. That leaves
+       38px in Verdana and 117px in San Francisco. With the To review badge
+       showing a two-digit count, Verdana fits with 0px spare and San
+       Francisco with 82px. */
     /* Pending Suggestions: tick rows, decide them together from a bar that
        stays in view. No select-all on purpose (Kaleb, 2026-10-04): every
        suppression is ticked by hand, so approving many is deliberate. */
@@ -117,7 +123,7 @@
     .sug-clear { background: none; border: none; color: var(--muted); text-decoration: underline; cursor: pointer; font: inherit; font-size: 13px; padding: 4px 2px; }
     .sug-bar-note { flex-basis: 100%; font-size: 13px; color: #9a3412; }
     .sug-bar-note:empty { display: none; }
-    .tab-btn { background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -2px; padding: 9px 12px; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; border-radius: 0; white-space: nowrap; }
+    .tab-btn { background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -2px; padding: 9px 8px; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; border-radius: 0; white-space: nowrap; }
     .tab-btn.active { color: var(--sage); border-bottom-color: var(--sage); }
     .tab-btn:hover:not(.active) { color: var(--text); }
     .tab-panel { display: none; }
@@ -202,8 +208,8 @@
         <button class="tab-btn" data-tab="alglab">Algorithm Lab</button>
         <!-- "Expert", not "Expert Pass". The longer word added ~35px to a nav
              that had no room for it. The tab sizing above is what actually buys
-             the headroom now; this label stays short because six tabs is already
-             the most this 700px nav should carry. -->
+             the headroom now; this label stays short because eight tabs is the
+             most this 700px nav carries at that sizing. -->
         <button class="tab-btn" data-tab="expert">Expert</button>
         <button class="tab-btn" data-tab="knowledge">Knowledge</button>
       </nav>
