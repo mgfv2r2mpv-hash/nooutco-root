@@ -70,5 +70,15 @@ test('each row opens the tab that owns the queue, and counts load on login and o
   expect(page).toContain('function loadReview()');
   expect(page).toContain('function openTab(');
   expect(page).toContain('btn.dataset.tab === "review") loadReview()');
-  expect(page).toContain('loadTermQueues(); loadAlgStatus(); loadReview();');
+  expect(page).toContain('loadTermQueues(); loadAlgStatus(); loadKnowledgeCount();');
+});
+
+// The counts ride on the reads the tabs already make. The first cut fetched the
+// term queue three times and the suggestions twice on every login to count them.
+test('counting a queue never fetches it a second time', () => {
+  expect(page.split('adminFetch("/api/admin/term-queue")')).toHaveLength(2);
+  expect(page.split('adminFetch("/api/admin/scrub-suggestions")')).toHaveLength(2);
+  for (const queue of ['pii', 'nonpii', 'suggestions', 'knowledge']) {
+    expect(page).toContain(`setReviewCount("${queue}", null)`);
+  }
 });
