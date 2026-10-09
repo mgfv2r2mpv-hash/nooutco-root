@@ -39,6 +39,7 @@ node run_pipeline.mjs                      # all 4 models  (add m1 m3 … for a 
 node qa.mjs                                # QA gate + composites
 node --test harness/frame.test.mjs         # frame-formula unit test
 node build_index.mjs                       # re-house the game HTML (rarely needed)
+node build_cursors.mjs                     # per-tool 32x32 drag cursors from the shelf icons (issue #40)
 ```
 
 Masters live at `~/Desktop/MakeoverGame_Resources` (`person:<key><suffix>.png`;
