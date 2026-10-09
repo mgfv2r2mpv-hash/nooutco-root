@@ -414,8 +414,10 @@ CREATE INDEX IF NOT EXISTS handoff_account_id ON handoff (account_id);
 -- pass waits on its row. superseded_at is set when a fresh, unspent code
 -- re-proves the same Mac while this pass is unreported (a Mac that lost its
 -- record, option c): the pass stops holding the Mac back, and reported_at and
--- the counts stay null, since nobody reported them. Nullable, so the deploy's
--- column step adds it to a table made before it.
+-- the counts stay null, since nobody reported them. Nullable, so on an
+-- offline_pass table made before it, the deploy's column step
+-- (bin/deploy-columns.mjs) adds superseded_at with ALTER TABLE ... ADD COLUMN
+-- before the Worker deploys.
 CREATE TABLE IF NOT EXISTS offline_pass (
   jti          TEXT    PRIMARY KEY,
   account_id   TEXT    NOT NULL,
