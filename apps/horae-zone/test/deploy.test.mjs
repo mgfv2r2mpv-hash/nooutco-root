@@ -38,6 +38,7 @@ const ANSWERS = {
   // Obviously fake production-shaped keys: 0x, then letters no widget has.
   HZ_TURNSTILE_SITEKEY: '0xFAKEsitekeyFORtests00',
   HZ_TURNSTILE_SECRET: '0xFAKEturnstileSECRETforTESTS0000000',
+  HZ_MAIL_PER_DAY: '',
   HZ_CODES_PER_DAY: '',
 };
 // A fixed ticket key, made here with WebCrypto (not by the script), so a run
@@ -1485,4 +1486,22 @@ test('the daily-limit prompt is optional, a plain var, and names the Worker defa
   assert.match(entry.label, new RegExp(`blank keeps the default ${SIGNUP_LIMITS.codesPerDay}\\)`));
   assert.ok(entry.check('3000'), 'a paid plan can still raise it');
   assert.ok(!entry.check('0') && !entry.check(''), 'blank is the default, never a typed zero');
+});
+
+// PR #324, Pollux's review: one daily budget across every sender
+// (src/mail-budget.js). Its prompt sits beside the sign-up cap's, optional,
+// a plain var, and names the Worker's own default, so blank keeps exactly 100.
+test('the shared mail budget prompt is optional, a plain var, and names the Worker default (100)', async () => {
+  const { MAIL_PER_DAY } = await import('../src/mail-budget.js');
+  const entry = CATALOG.find((s) => s.name === 'HZ_MAIL_PER_DAY');
+  assert.ok(entry, 'the deploy asks for it');
+  assert.equal(entry.optional, true);
+  assert.equal(entry.store, 'var');
+  assert.equal(entry.sensitive, false);
+  assert.equal(MAIL_PER_DAY, 100);
+  assert.match(entry.label, new RegExp(`blank keeps the default ${MAIL_PER_DAY}\\)`));
+  assert.ok(entry.check('3000'), 'a paid plan can raise it');
+  assert.ok(!entry.check('0') && !entry.check('') && !entry.check('1.5'), 'blank is the default, never a typed zero');
+  const names = CATALOG.map((s) => s.name);
+  assert.equal(names.indexOf('HZ_MAIL_PER_DAY') + 1, names.indexOf('HZ_CODES_PER_DAY'), 'asked just before the sign-up cap');
 });
