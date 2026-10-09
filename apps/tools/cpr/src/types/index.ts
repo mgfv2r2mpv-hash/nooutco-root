@@ -130,6 +130,14 @@ export interface Assessment {
    * Shown as an advisory to the user and pre-populates Override Assessment Duration.
    */
   importedDurationSeconds?: number;
+  /**
+   * Lag-1 settings, set on the analysis screen and saved here so that the
+   * Review counts, the analysis screen, the PDF and the Excel export all read
+   * the same one. Absent on records saved before 8 Oct 2026: read as on, which
+   * is what the analysis screen always opened with. Use lagSettingsOf().
+   */
+  lag1Antecedent?:  boolean;
+  lag1Consequence?: boolean;
   createdAt: string;
   updatedAt: string;
 }

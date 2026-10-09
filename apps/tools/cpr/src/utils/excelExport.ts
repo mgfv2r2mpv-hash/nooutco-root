@@ -4,9 +4,11 @@
  * Sheet structure:
  *   Data - Attention / Escape / Tangible / Sensory  (one per separate session)
  *   Data - Synthesized (one sheet per synthesized run, suffixed with run number if >1)
- *   Conditional Probability  (LAG-1 toggles + COUNTIFS formulas + CV/ACV)
+ *   Conditional Probability  (the lag-1 setting used, then counts, P, CV and ACV)
  *
- * Lag-1 formulas use hidden helper columns so COUNTIFS remain readable.
+ * Every number on the Conditional Probability and Graphs sheets is computed
+ * here and written as a value, not an Excel formula, with the assessment's
+ * saved lag-1 setting: the one the analysis screen and Review show.
  *
  * FUTURE API NOTE: exportAssessmentToExcel receives a plain Assessment object.
  * When connected to a backend, fetch the assessment first then pass it here.
@@ -14,9 +16,26 @@
 import ExcelJS from 'exceljs';
 import type { Assessment, Session, ConditionType, Interval, ContingencyTable } from '../types';
 import { ALL_CONDITIONS, CONDITION_META } from '../types';
-import { analyzeAssessment } from './conditionalProbability';
+import { analyzeAssessment, isThin, lagSettingsOf, THIN_COLUMN, type LagSettings } from './conditionalProbability';
 import { sessionProgress } from './assessmentHelpers';
 import { drawBarChartToCanvas, canvasToPngBase64 } from './chartCanvas';
+import { splitStartEnd } from './timeRange';
+
+/** What an empty column's probability or CV says, here and on screen: a blank cell reads as zero. */
+const NONE = 'none';
+
+/** Long enough for the browser to start the download before the blob URL goes. */
+const REVOKE_DELAY_MS = 1000;
+
+function download(buffer: BlobPart, filename: string): void {
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), REVOKE_DELAY_MS);
+}
 
 function fmtSecExcel(totalSeconds: number): string {
   const h = Math.floor(totalSeconds / 3600);
@@ -86,20 +105,17 @@ export async function exportBlankTemplate(): Promise<void> {
     const session = blank.separateSessions[cond]!;
     addDataSheet(wb, blank, session, cond, null);
   }
-  addConditionalProbabilitySheet(wb, blank);
+  addConditionalProbabilitySheet(wb, blank, lagSettingsOf(blank));
   addGraphInstructionsSheet(wb, blank);
 
-  const buffer = await wb.xlsx.writeBuffer();
-  const blob   = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-  const url    = URL.createObjectURL(blob);
-  const a      = document.createElement('a');
-  a.href       = url;
-  a.download   = 'CPR_Template_Blank.xlsx';
-  a.click();
-  URL.revokeObjectURL(url);
+  download(await wb.xlsx.writeBuffer(), 'CPR_Template_Blank.xlsx');
 }
 
-export async function exportAssessmentToExcel(assessment: Assessment, scope: ExportScope = 'both'): Promise<void> {
+export async function exportAssessmentToExcel(
+  assessment: Assessment,
+  scope:      ExportScope = 'both',
+  lag:        LagSettings = lagSettingsOf(assessment),
+): Promise<void> {
   const wb = new ExcelJS.Workbook();
   wb.creator  = 'SDA CPR Tool';
   wb.modified = new Date();
@@ -120,11 +136,11 @@ export async function exportAssessmentToExcel(assessment: Assessment, scope: Exp
   }
 
   // Conditional Probability sheet
-  addConditionalProbabilitySheet(wb, assessment);
+  addConditionalProbabilitySheet(wb, assessment, lag);
 
   // Graph helper sheets (instructions + PNG-embedded charts)
   addGraphInstructionsSheet(wb, assessment);
-  const fullAnalysis = analyzeAssessment(assessment, true, true);
+  const fullAnalysis = analyzeAssessment(assessment, lag.antecedent, lag.consequence);
   const scopedAnalysis = {
     ...fullAnalysis,
     separateConditionAnalyses: scope === 'synthesized' ? [] : fullAnalysis.separateConditionAnalyses,
@@ -132,15 +148,7 @@ export async function exportAssessmentToExcel(assessment: Assessment, scope: Exp
   };
   addGraphsSheet(wb, assessment, scopedAnalysis);
 
-  // Trigger browser download
-  const buffer = await wb.xlsx.writeBuffer();
-  const blob   = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-  const url    = URL.createObjectURL(blob);
-  const a      = document.createElement('a');
-  a.href       = url;
-  a.download   = `CPR_${assessment.clientName.replace(/\s+/g, '_')}_${assessment.date}.xlsx`;
-  a.click();
-  URL.revokeObjectURL(url);
+  download(await wb.xlsx.writeBuffer(), `CPR_${assessment.clientName.replace(/\s+/g, '_')}_${assessment.date}.xlsx`);
 }
 
 // ─── Data sheet (single condition) ───────────────────────────────────────────
@@ -319,7 +327,11 @@ function addSynthesizedSheet(
 
 // ─── Conditional Probability sheet ───────────────────────────────────────────
 
-function addConditionalProbabilitySheet(wb: ExcelJS.Workbook, assessment: Assessment): void {
+function lagCell(applied: boolean): string {
+  return applied ? 'Y (applied)' : 'N (not applied)';
+}
+
+function addConditionalProbabilitySheet(wb: ExcelJS.Workbook, assessment: Assessment, lag: LagSettings): void {
   const ws = wb.addWorksheet('Conditional Probability');
 
   ws.getColumn(1).width = 36;
@@ -332,8 +344,8 @@ function addConditionalProbabilitySheet(wb: ExcelJS.Workbook, assessment: Assess
   ws.getColumn(8).width = 16;
   ws.getColumn(9).width = 14;
 
-  // Compute analysis with both lag-1 flags ON (default, matching app UI default)
-  const analysis = analyzeAssessment(assessment, true, true);
+  // The assessment's saved lag setting, the one the analysis screen shows.
+  const analysis = analyzeAssessment(assessment, lag.antecedent, lag.consequence);
 
   // Title
   const titleRow = ws.addRow(['CONDITIONAL PROBABILITY CALCULATOR']);
@@ -343,16 +355,16 @@ function addConditionalProbabilitySheet(wb: ExcelJS.Workbook, assessment: Assess
 
   ws.addRow([]);
 
-  // LAG-1 settings (informational - values are pre-computed with both lag-1 flags ON)
+  // LAG-1 settings (informational - the values below were computed with these)
   const lagHeaderRow = ws.addRow(['LAG-1 SETTINGS (applied during export)', '', '', '',
-    '', 'Both antecedent lag-1 and consequence lag-1 are applied. Adjust in the app to re-export.']);
+    '', 'The setting on the analysis screen when this file was exported. Change it there and export again.']);
   lagHeaderRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
   lagHeaderRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A5F' } };
   ws.mergeCells(`A${lagHeaderRow.number}:D${lagHeaderRow.number}`);
   ws.mergeCells(`F${lagHeaderRow.number}:I${lagHeaderRow.number}`);
 
   const antInfoRow = ws.addRow([
-    'Antecedent lag-1\n(current + preceding interval)', 'Y (applied)', '', '',
+    'Antecedent lag-1\n(current + preceding interval)', lagCell(lag.antecedent), '', '',
     '', 'EO in interval n OR n−1 credited to behavior in n',
   ]);
   antInfoRow.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } };
@@ -360,7 +372,7 @@ function addConditionalProbabilitySheet(wb: ExcelJS.Workbook, assessment: Assess
   antInfoRow.getCell(2).alignment = { horizontal: 'center' };
 
   const consInfoRow = ws.addRow([
-    'Consequence lag-1\n(current + following interval)', 'Y (applied)', '', '',
+    'Consequence lag-1\n(current + following interval)', lagCell(lag.consequence), '', '',
     '', 'Consequence in interval n OR n+1 credited to behavior in n',
   ]);
   consInfoRow.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } };
@@ -413,7 +425,7 @@ function addConditionalProbabilitySheet(wb: ExcelJS.Workbook, assessment: Assess
     ws.mergeCells(`A${rHdr.number}:I${rHdr.number}`);
 
     const hasTimes = rateRows.some(r => r.sec > 0);
-    const rColHdr = ws.addRow(['Condition', 'Intervals', 'Scored', 'CS', 'Bx Count', 'Bx Rate', ...(hasTimes ? ['Obs. Time', 'Bx/min'] : [])]);
+    const rColHdr = ws.addRow(['Condition', 'Intervals', 'Scored', 'CS', 'Bx Count', 'Bx Rate', ...(hasTimes ? ['Obs. Time', 'Bx intervals/min'] : [])]);
     rColHdr.font = { bold: true };
     rColHdr.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE5E7EB' } };
 
@@ -453,7 +465,10 @@ function addConditionBlock(
 ): void {
   const meta = CONDITION_META[condition];
 
-  const pct = (v: number | null) => v !== null ? v : null; // null → blank cell
+  // An empty column has no probability: say none, as the screen does, since a
+  // blank cell reads as zero or as a box nobody filled.
+  const pct = (v: number | null): number | string => v !== null ? v : NONE;
+  const isNum = (v: number | string): boolean => typeof v === 'number';
 
   // Section header
   const sectionRow = ws.addRow([`▶ ${meta.label.toUpperCase()}`]);
@@ -504,22 +519,23 @@ function addConditionBlock(
 
   const pRow1 = ws.addRow(['P(Bx | C+)', pBxCp, 'Probability of Bx given consequence delivered', '', '',
     'P(Bx | A+)', pBxAp, 'Probability of Bx given EO present', '']);
-  if (pBxCp !== null) pRow1.getCell(2).numFmt = '0.0%';
-  if (pBxAp !== null) pRow1.getCell(7).numFmt = '0.0%';
+  if (isNum(pBxCp)) pRow1.getCell(2).numFmt = '0.0%';
+  if (isNum(pBxAp)) pRow1.getCell(7).numFmt = '0.0%';
   pRow1.getCell(3).alignment = { wrapText: true };
   pRow1.getCell(8).alignment = { wrapText: true };
 
   const pRow2 = ws.addRow(['P(Bx | C−)', '', pBxCm, 'Probability of Bx given consequence absent', '',
     'P(Bx | A−)', '', pBxAm, 'Probability of Bx given EO absent']);
-  if (pBxCm !== null) pRow2.getCell(3).numFmt = '0.0%';
-  if (pBxAm !== null) pRow2.getCell(8).numFmt = '0.0%';
+  if (isNum(pBxCm)) pRow2.getCell(3).numFmt = '0.0%';
+  if (isNum(pBxAm)) pRow2.getCell(8).numFmt = '0.0%';
   pRow2.getCell(4).alignment = { wrapText: true };
   pRow2.getCell(9).alignment = { wrapText: true };
 
-  const cvRow = ws.addRow(['CV', cv, '', 'P(Bx|C+) − P(Bx|C−)', '',
-    'ACV', acv, '', 'P(Bx|A+) − P(Bx|A−)']);
-  if (cv  !== null) cvRow.getCell(2).numFmt = '0.0%';
-  if (acv !== null) cvRow.getCell(7).numFmt = '0.0%';
+  const thinMark = (t: ContingencyTable) => isThin(t) ? `  (thin: a column under ${THIN_COLUMN} intervals)` : '';
+  const cvRow = ws.addRow(['CV', cv, '', `P(Bx|C+) − P(Bx|C−)${thinMark(ct)}`, '',
+    'ACV', acv, '', `P(Bx|A+) − P(Bx|A−)${thinMark(at)}`]);
+  if (isNum(cv)) cvRow.getCell(2).numFmt = '0.0%';
+  if (isNum(acv)) cvRow.getCell(7).numFmt = '0.0%';
   cvRow.font = { bold: true };
   [1,2,3,4,6,7,8,9].forEach(c => { cvRow.getCell(c).fill = condLightFill; });
 }
@@ -609,7 +625,7 @@ function addGraphInstructionsSheet(wb: ExcelJS.Workbook, _assessment: Assessment
   addInstrHeading(ws, 'LAG-1 CORRECTION');
   addInstrBullet(ws, 'Antecedent lag-1: EO present in interval n−1 is credited to interval n. Reduces false negatives when EO immediately precedes behavior.');
   addInstrBullet(ws, 'Consequence lag-1: consequence in interval n+1 is credited to interval n. Accounts for natural delay in consequence delivery.');
-  addInstrBody(ws, 'Both are ON by default. Consider turning off for intervals longer than 15 s, where adjacent-interval credit covers too wide a time window.');
+  addInstrBody(ws, 'Both are ON unless switched off on the analysis screen; the Conditional Probability sheet says which this file used. Consider turning off for intervals longer than 15 s, where adjacent-interval credit covers too wide a time window.');
   ws.addRow([]);
 
   addInstrHeading(ws, 'COULD NOT SCORE (C)');
@@ -796,10 +812,7 @@ function writeSheetHeader(
   ws.mergeCells(`A1:${lastCol}1`);
 
   // Split combined startEndTime
-  const rawTime   = assessment.startEndTime || '';
-  const sepMatch  = rawTime.match(/^(.*?)\s*[ -  - \-]\s*(.*)$/);
-  const startTime = sepMatch ? sepMatch[1].trim() : rawTime;
-  const endTime   = sepMatch ? sepMatch[2].trim() : '';
+  const { start: startTime, end: endTime } = splitStartEnd(assessment.startEndTime);
 
   const metaItems: [string, string][] = [
     ['Client:', assessment.clientName],

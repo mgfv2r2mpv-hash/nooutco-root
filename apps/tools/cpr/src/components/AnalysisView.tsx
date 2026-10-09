@@ -2,15 +2,24 @@ import React, { useState, useEffect, useLayoutEffect, useRef, useMemo } from 're
 import { createPortal } from 'react-dom';
 import type { Assessment, ConditionAnalysis, ContingencyTable, ConditionType, Session } from '../types';
 import { CONDITION_META, ALL_CONDITIONS } from '../types';
-import { analyzeAssessment } from '../utils/conditionalProbability';
+import { analyzeAssessment, isThin, lagSettingsOf, THIN_COLUMN, type LagSettings } from '../utils/conditionalProbability';
 import { sessionProgress } from '../utils/assessmentHelpers';
+import { summariseGroup, type GroupFinding } from '../utils/findings';
 import { exportAssessmentToExcel, type ExportScope } from '../utils/excelExport';
 
-interface Props { assessment: Assessment; onBack?: () => void; }
+interface Props {
+  assessment:  Assessment;
+  onBack?:     () => void;
+  /** Saves the lag setting on the assessment, where Review and the exports read it too. */
+  onLagChange: (lag: LagSettings) => void;
+}
 
-export function AnalysisView({ assessment, onBack }: Props) {
-  const [lag1Ant,          setLag1Ant]          = useState(true);
-  const [lag1Cons,         setLag1Cons]         = useState(true);
+export function AnalysisView({ assessment, onBack, onLagChange }: Props) {
+  const lag      = lagSettingsOf(assessment);
+  const lag1Ant  = lag.antecedent;
+  const lag1Cons = lag.consequence;
+  const setLag1Ant  = (v: boolean) => onLagChange({ ...lag, antecedent: v });
+  const setLag1Cons = (v: boolean) => onLagChange({ ...lag, consequence: v });
   const [exportScope,      setExportScope]      = useState<ExportScope>('both');
   const [showRateTable,    setShowRateTable]    = useState(true);
   const [durationOverride, setDurationOverride] = useState(false);
@@ -49,8 +58,13 @@ export function AnalysisView({ assessment, onBack }: Props) {
   const hasSeparate    = separateAnalyses.length > 0;
   const hasSynthesized = synthesizedAnalyses.length > 0;
 
+  const scoredIn = (sessions: Session[]) => sessions.reduce((n, s) => n + sessionProgress(s).scored, 0);
+  const separateFinding = summariseGroup(separateAnalyses, scoredIn(separateSessions));
+  const synthFindings   = synthesizedAnalyses.map((run, i) =>
+    summariseGroup(run, scoredIn(synthSessions[i] ? [synthSessions[i]] : []), { mergedEO: true }));
+
   async function handleExport() {
-    try { await exportAssessmentToExcel(assessment, exportScope); }
+    try { await exportAssessmentToExcel(assessment, exportScope, lag); }
     catch (err) { alert(`Export failed: ${err instanceof Error ? err.message : String(err)}`); }
   }
 
@@ -78,6 +92,7 @@ export function AnalysisView({ assessment, onBack }: Props) {
                 <p>An EO recorded in interval <em>n</em> <strong>or n−1</strong> counts as present for behavior in interval n. Reduces false negatives when the EO immediately precedes the interval in which behavior occurs.</p>
                 <p className="font-semibold mt-1">Consequence Lag-1:</p>
                 <p>A consequence in interval <em>n</em> <strong>or n+1</strong> counts for behavior in interval n. Accounts for natural delays in consequence delivery (e.g., a therapist provides attention one interval after the behavior).</p>
+                <p className="mt-1">The setting is saved with this assessment. The Review counts, this screen, the PDF and the Excel export all use it.</p>
                 <p className="text-gray-500 dark:text-gray-400 italic mt-1">Recommendation: Keep both ON for standard 6-10s intervals. Consider turning OFF for longer intervals (15s+), where each interval already spans a wider window and the lag correction may over-credit adjacent events. Turn OFF when your protocol requires strict same-interval co-occurrence.</p>
               </div>
             } />
@@ -207,6 +222,7 @@ export function AnalysisView({ assessment, onBack }: Props) {
           <h2 className="text-base font-bold text-gray-800 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">
             Separate Conditions
           </h2>
+          <FindingsPanel finding={separateFinding} />
           <div className="print-conditions-grid space-y-4">
             {separateAnalyses.map(ca => (
               <ConditionSection key={ca.condition} ca={ca} />
@@ -225,6 +241,7 @@ export function AnalysisView({ assessment, onBack }: Props) {
           {synthesizedAnalyses.map((runAnalyses, i) => (
             <div key={i} className="space-y-3">
               <p className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">Run {i + 1}</p>
+              <FindingsPanel finding={synthFindings[i]} />
               <div className="print-conditions-grid space-y-3">
                 {runAnalyses.map(ca => (
                   <ConditionSection key={ca.condition} ca={ca} />
@@ -250,6 +267,19 @@ export function AnalysisView({ assessment, onBack }: Props) {
           <div style={{ minHeight: '22cm' }} />
         </div>
       ))}
+    </div>
+  );
+}
+
+// ─── Plain-language findings ──────────────────────────────────────────────────
+
+function FindingsPanel({ finding }: { finding: GroupFinding }) {
+  return (
+    <div data-findings className="rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/20 px-3 py-2 space-y-1 text-sm">
+      <p className="font-semibold text-gray-800 dark:text-gray-100">{finding.headline}</p>
+      {finding.agreement && <p className="text-gray-700 dark:text-gray-200">{finding.agreement}</p>}
+      {finding.thinNote && <p className="text-xs text-amber-800 dark:text-amber-300">{finding.thinNote}</p>}
+      <p className="text-xs italic text-gray-500 dark:text-gray-400">{finding.caution}</p>
     </div>
   );
 }
@@ -419,15 +449,15 @@ function ConditionSection({ ca }: { ca: ConditionAnalysis }) {
   }, [ca]);
 
   return (
-    <section className="space-y-2">
+    <section className="space-y-2" data-condition={ca.condition}>
       <h3 className={`text-sm font-bold uppercase tracking-wide ${hClass}`}>▶ {meta.label}</h3>
       <div ref={gridRef} className="condition-tables grid grid-cols-1 gap-3 lg:grid-cols-2 [&>*]:min-w-0">
-        <TableBlock title="CONSEQUENCE ANALYSIS" subtitle="P(Bx | C±)"
+        <TableBlock kind="consequence" title="CONSEQUENCE ANALYSIS" subtitle="P(Bx | C±)"
           colPlusLabel="C+ (Cons. Delivered)" colMinusLabel="C− (Cons. Absent)"
           table={ca.consequenceTable} color={meta.color}
           cvLabel="CV" cvFormula="P(Bx|C+)−P(Bx|C−)"
           tooltipContent={CONS_TOOLTIP} />
-        <TableBlock title="ANTECEDENT ANALYSIS" subtitle="P(Bx | A±)"
+        <TableBlock kind="antecedent" title="ANTECEDENT ANALYSIS" subtitle="P(Bx | A±)"
           colPlusLabel="A+ (EO Present)" colMinusLabel="A− (EO Absent)"
           table={ca.antecedentTable} color={meta.color}
           cvLabel="ACV" cvFormula="P(Bx|A+)−P(Bx|A−)"
@@ -439,14 +469,19 @@ function ConditionSection({ ca }: { ca: ConditionAnalysis }) {
 
 // ─── Contingency table block ──────────────────────────────────────────────────
 
-function TableBlock({ title, subtitle, colPlusLabel, colMinusLabel, table, color, cvLabel, cvFormula, tooltipContent }: {
+type Color = 'blue'|'green'|'orange'|'purple';
+
+function TableBlock({ kind, title, subtitle, colPlusLabel, colMinusLabel, table, color, cvLabel, cvFormula, tooltipContent }: {
+  kind: 'consequence' | 'antecedent';
   title: string; subtitle: string; colPlusLabel: string; colMinusLabel: string;
-  table: ContingencyTable; color: 'blue'|'green'|'orange'|'purple'; cvLabel: string; cvFormula: React.ReactNode;
+  table: ContingencyTable; color: Color; cvLabel: string; cvFormula: React.ReactNode;
   tooltipContent?: React.ReactNode;
 }) {
   const hBg = { blue:'bg-blue-700', green:'bg-green-700', orange:'bg-orange-600', purple:'bg-purple-700' }[color];
+  const plusThin  = table.colTotalCPlus  < THIN_COLUMN;
+  const minusThin = table.colTotalCMinus < THIN_COLUMN;
   return (
-    <div className="relative" data-table-block>
+    <div className="relative" data-table-block data-cpr-table={kind}>
       {tooltipContent && (
         <div className="absolute top-0 right-0 z-20 p-1.5">
           <InfoTooltip buttonClassName="border-white/60 text-white hover:bg-white/20" content={tooltipContent} />
@@ -468,38 +503,57 @@ function TableBlock({ title, subtitle, colPlusLabel, colMinusLabel, table, color
         <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
           <tr data-table-row="bx-plus" className="bg-white dark:bg-gray-900">
             <td className="px-3 py-1.5 font-medium text-gray-700 dark:text-gray-200">Bx Occurred (Bx+)</td>
-            <td className="px-3 py-1.5 text-center">{table.bxPlusCPlus}</td>
-            <td className="px-3 py-1.5 text-center">{table.bxPlusCMinus}</td>
+            <td className="px-3 py-1.5 text-center" data-cell="bx+plus">{table.bxPlusCPlus}</td>
+            <td className="px-3 py-1.5 text-center" data-cell="bx+minus">{table.bxPlusCMinus}</td>
             <td className="px-3 py-1.5 text-center font-semibold">{table.rowTotalBxPlus}</td>
           </tr>
           <tr data-table-row="bx-minus" className="bg-white dark:bg-gray-900">
             <td className="px-3 py-1.5 font-medium text-gray-700 dark:text-gray-200">Bx Did NOT Occur (Bx−)</td>
-            <td className="px-3 py-1.5 text-center">{table.bxMinusCPlus}</td>
-            <td className="px-3 py-1.5 text-center">{table.bxMinusCMinus}</td>
+            <td className="px-3 py-1.5 text-center" data-cell="bx-plus">{table.bxMinusCPlus}</td>
+            <td className="px-3 py-1.5 text-center" data-cell="bx-minus">{table.bxMinusCMinus}</td>
             <td className="px-3 py-1.5 text-center font-semibold">{table.rowTotalBxMinus}</td>
           </tr>
           <tr data-table-row="col-total" className="bg-gray-50 dark:bg-gray-800">
             <td className="px-3 py-1.5 font-semibold text-gray-700 dark:text-gray-200">Column Total</td>
-            <td className="px-3 py-1.5 text-center font-semibold">{table.colTotalCPlus}</td>
-            <td className="px-3 py-1.5 text-center font-semibold">{table.colTotalCMinus}</td>
+            <td className="px-3 py-1.5 text-center font-semibold">{table.colTotalCPlus}{plusThin && <ThinFlag />}</td>
+            <td className="px-3 py-1.5 text-center font-semibold">{table.colTotalCMinus}{minusThin && <ThinFlag />}</td>
             <td className="px-3 py-1.5 text-center font-bold">{table.grandTotal}</td>
           </tr>
         </tbody>
       </table>
       <div className="divide-y divide-gray-100 dark:divide-gray-800 border-t border-gray-200 dark:border-gray-700">
         <ProbRow rowKey="prob-plus" label={`P(Bx | ${colPlusLabel.split(' ')[0]})`} value={table.pBxGivenCPlus}
-          desc={`Probability of Bx given ${colPlusLabel}`} color={color} />
+          desc={`Probability of Bx given ${colPlusLabel}`} color={color} thin={plusThin} />
         <ProbRow rowKey="prob-minus" label={`P(Bx | ${colMinusLabel.split(' ')[0]})`} value={table.pBxGivenCMinus}
-          desc={`Probability of Bx given ${colMinusLabel}`} color={color} />
-        <CVRow rowKey="prob-cv" label={cvLabel} value={table.cv} formula={cvFormula} color={color} />
+          desc={`Probability of Bx given ${colMinusLabel}`} color={color} thin={minusThin} />
+        <CVRow rowKey="prob-cv" label={cvLabel} value={table.cv} formula={cvFormula} color={color} thin={isThin(table)} />
       </div>
     </div>
     </div>
   );
 }
 
-function ProbRow({ rowKey, label, value, desc, color }: {
-  rowKey:string; label:string; value:number|null; desc:string; color:'blue'|'green'|'orange'|'purple';
+const THIN_TITLE = `Fewer than ${THIN_COLUMN} intervals in this column. One interval moves the percentage a long way, so read it as a direction, not a rate.`;
+const NONE_TITLE = 'No intervals in this column, so there is nothing to divide by. This is not zero.';
+
+/** A small-column warning beside the number it qualifies. */
+function ThinFlag() {
+  return (
+    <span data-thin title={THIN_TITLE}
+      className="ml-1.5 rounded px-1 py-px text-[10px] font-semibold uppercase tracking-wide bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300">
+      thin
+    </span>
+  );
+}
+
+/** A probability or CV, or "none" when a column is empty: a blank cell reads as zero or as unfilled. */
+function ValueText({ value }: { value: number | null }) {
+  if (value === null) return <span title={NONE_TITLE} className="font-normal italic text-gray-400 dark:text-gray-500">none</span>;
+  return <>{pct(value)}</>;
+}
+
+function ProbRow({ rowKey, label, value, desc, color, thin }: {
+  rowKey:string; label:string; value:number|null; desc:string; color:Color; thin:boolean;
 }) {
   const tc = { blue:'text-blue-700 dark:text-blue-300', green:'text-green-700 dark:text-green-300',
     orange:'text-orange-600 dark:text-orange-400', purple:'text-purple-700 dark:text-purple-300' }[color];
@@ -507,15 +561,16 @@ function ProbRow({ rowKey, label, value, desc, color }: {
     <div data-table-row={rowKey} className="flex items-center px-3 py-1.5 bg-white dark:bg-gray-900">
       <span className={`font-bold text-sm w-28 shrink-0 ${tc}`}>{label}</span>
       <span className="font-bold text-gray-800 dark:text-gray-100 w-16 text-right shrink-0">
-        {value !== null ? pct(value) : ''}
+        <ValueText value={value} />
       </span>
+      {thin && value !== null && <ThinFlag />}
       <span className="print:hidden text-xs text-gray-400 dark:text-gray-500 ml-3">{desc}</span>
     </div>
   );
 }
 
-function CVRow({ rowKey, label, value, formula, color }: {
-  rowKey:string; label:string; value:number|null; formula:React.ReactNode; color:'blue'|'green'|'orange'|'purple';
+function CVRow({ rowKey, label, value, formula, color, thin }: {
+  rowKey:string; label:string; value:number|null; formula:React.ReactNode; color:Color; thin:boolean;
 }) {
   const bg = { blue:'bg-blue-50 dark:bg-blue-950/20', green:'bg-green-50 dark:bg-green-950/20',
     orange:'bg-orange-50 dark:bg-orange-950/20', purple:'bg-purple-50 dark:bg-purple-950/20' }[color];
@@ -525,8 +580,9 @@ function CVRow({ rowKey, label, value, formula, color }: {
     <div data-table-row={rowKey} className={`flex items-center px-3 py-1.5 ${bg}`}>
       <span className="font-bold text-sm w-28 shrink-0 text-gray-700 dark:text-gray-200">{label}</span>
       <span className={`font-bold w-16 text-right shrink-0 ${vc}`}>
-        {value !== null ? pct(value) : ''}
+        <ValueText value={value} />
       </span>
+      {thin && value !== null && <ThinFlag />}
       <span className="print:hidden text-xs text-gray-400 dark:text-gray-500 italic ml-3">{formula}</span>
     </div>
   );
@@ -566,12 +622,12 @@ function GraphSection({ analyses, title, className }: { analyses: ConditionAnaly
               return (
                 <tr key={ca.condition} className="bg-white dark:bg-gray-900">
                   <td className={`px-3 py-1.5 font-semibold ${lc}`}>{meta.label}</td>
-                  <td className="px-3 py-1.5 text-center text-gray-700 dark:text-gray-200">{nullPct(ca.consequenceTable.pBxGivenCPlus)}</td>
-                  <td className="px-3 py-1.5 text-center text-gray-700 dark:text-gray-200">{nullPct(ca.consequenceTable.pBxGivenCMinus)}</td>
-                  <td className={`px-3 py-1.5 text-center font-bold ${cvCls(ca.consequenceTable.cv)}`}>{nullPct(ca.consequenceTable.cv)}</td>
-                  <td className="px-3 py-1.5 text-center text-gray-700 dark:text-gray-200">{nullPct(ca.antecedentTable.pBxGivenCPlus)}</td>
-                  <td className="px-3 py-1.5 text-center text-gray-700 dark:text-gray-200">{nullPct(ca.antecedentTable.pBxGivenCMinus)}</td>
-                  <td className={`px-3 py-1.5 text-center font-bold ${cvCls(ca.antecedentTable.cv)}`}>{nullPct(ca.antecedentTable.cv)}</td>
+                  <td className="px-3 py-1.5 text-center text-gray-700 dark:text-gray-200"><ValueText value={ca.consequenceTable.pBxGivenCPlus} /></td>
+                  <td className="px-3 py-1.5 text-center text-gray-700 dark:text-gray-200"><ValueText value={ca.consequenceTable.pBxGivenCMinus} /></td>
+                  <td className={`px-3 py-1.5 text-center font-bold ${cvCls(ca.consequenceTable.cv)}`}><ValueText value={ca.consequenceTable.cv} />{ca.consequenceTable.cv !== null && isThin(ca.consequenceTable) && <ThinFlag />}</td>
+                  <td className="px-3 py-1.5 text-center text-gray-700 dark:text-gray-200"><ValueText value={ca.antecedentTable.pBxGivenCPlus} /></td>
+                  <td className="px-3 py-1.5 text-center text-gray-700 dark:text-gray-200"><ValueText value={ca.antecedentTable.pBxGivenCMinus} /></td>
+                  <td className={`px-3 py-1.5 text-center font-bold ${cvCls(ca.antecedentTable.cv)}`}><ValueText value={ca.antecedentTable.cv} />{ca.antecedentTable.cv !== null && isThin(ca.antecedentTable) && <ThinFlag />}</td>
                 </tr>
               );
             })}
@@ -668,6 +724,10 @@ interface RateRow {
   timerBased: boolean; // true if from live timer (vs. computed estimate)
 }
 
+const BX_INTERVALS_PER_MIN_TITLE =
+  'Intervals with behavior per minute of observation. Partial-interval recording counts an interval once ' +
+  'however many times the behavior happened in it, so this is not a response rate.';
+
 /** Returns observed time in seconds: live timer if recorded, otherwise intervalCount × duration (default 10s). */
 function sessionObsTimeSecs(s: Session): number {
   if (s.elapsedSeconds && s.elapsedSeconds > 0) return s.elapsedSeconds;
@@ -706,6 +766,8 @@ function BehaviorRateTable({ assessment, exportScope }: { assessment: Assessment
   const totSec     = rows.reduce((a, r) => a + r.obsTimeSec, 0);
   const anyTimer   = rows.some(r => r.timerBased);
 
+  // Intervals with behavior per minute, not responses: partial-interval
+  // recording counts an interval once however many responses fell in it.
   function perMin(bx: number, sec: number) {
     if (sec <= 0) return '';
     return (bx / (sec / 60)).toFixed(2);
@@ -731,7 +793,8 @@ function BehaviorRateTable({ assessment, exportScope }: { assessment: Assessment
               <th className="px-3 py-1.5 text-center font-medium text-gray-600 dark:text-gray-300">Excluded</th>
               <th className="px-3 py-1.5 text-center font-medium text-gray-600 dark:text-gray-300">Bx Count</th>
               <th className="px-3 py-1.5 text-center font-medium text-gray-600 dark:text-gray-300">Obs. Time</th>
-              <th className="px-3 py-1.5 text-center font-medium text-gray-600 dark:text-gray-300">Bx/min</th>
+              <th className="px-3 py-1.5 text-center font-medium text-gray-600 dark:text-gray-300"
+                title={BX_INTERVALS_PER_MIN_TITLE}>Bx intervals/min</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -779,6 +842,7 @@ function LagToggle({ label, value, onChange, hint }: {
   return (
     <label className="flex items-center gap-2 cursor-pointer">
       <button type="button" onClick={() => onChange(!value)}
+        role="switch" aria-checked={value} aria-label={`${label} lag-1`}
         className={`w-8 h-4 rounded-full transition-colors relative ${value?'bg-yellow-500':'bg-gray-300 dark:bg-gray-600'}`}>
         <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all shadow ${value ? 'left-[18px]' : 'left-0.5'}`} />
       </button>
@@ -791,7 +855,6 @@ function LagToggle({ label, value, onChange, hint }: {
 }
 
 function pct(v:number):string { return `${(v*100).toFixed(1)}%`; }
-function nullPct(v:number|null):string { return v!==null?pct(v):''; }
 function cvCls(v:number|null):string {
   if(v===null)return'text-gray-400';
   if(v>0)return'text-emerald-700 dark:text-emerald-400';

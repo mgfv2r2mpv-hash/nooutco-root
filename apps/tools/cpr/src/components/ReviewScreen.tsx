@@ -11,8 +11,9 @@
  *   - Three action buttons: Continue | Next condition | Proceed to analysis
  */
 import React, { useState } from 'react';
-import type { Assessment, Session, ConditionType } from '../types';
+import type { Assessment, Session, ConditionType, ConditionAnalysis, ContingencyTable } from '../types';
 import { ALL_CONDITIONS, CONDITION_META } from '../types';
+import { analyzeSession, lagSettingsOf } from '../utils/conditionalProbability';
 
 interface Props {
   assessment:          Assessment;
@@ -22,11 +23,17 @@ interface Props {
   onProceedToAnalysis: () => void;
 }
 
-export function ReviewScreen({ assessment: _assessment, session, onContinue, onGoToDashboard, onProceedToAnalysis }: Props) {
+export function ReviewScreen({ assessment, session, onContinue, onGoToDashboard, onProceedToAnalysis }: Props) {
   const activeConditions: ConditionType[] =
     session.sessionType === 'synthesized'
       ? ALL_CONDITIONS
       : session.condition ? [session.condition] : [];
+
+  // Counted with the assessment's own lag setting, the one the analysis
+  // screen and the Excel export use, so the three show the same table.
+  const lag = lagSettingsOf(assessment);
+  const analyses = analyzeSession(session, lag.antecedent, lag.consequence);
+  const onOff = (v: boolean) => (v ? 'on' : 'off');
 
   // A row is CS if Bx=C, OR any active EO=C, OR any active consequence=C
   const csIntervals = session.intervals.filter(iv =>
@@ -64,8 +71,12 @@ export function ReviewScreen({ assessment: _assessment, session, onContinue, onG
           </p>
           <InfoBubble content={CELL_COUNT_TOOLTIP} />
         </div>
-        {activeConditions.map(c => (
-          <CellCountTable key={c} session={session} condition={c} />
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          Lag-1: antecedent {onOff(lag.antecedent)}, consequence {onOff(lag.consequence)}. Set on the
+          analysis screen; the analysis and the Excel export count with the same setting.
+        </p>
+        {analyses.map(ca => (
+          <CellCountTable key={ca.condition} ca={ca} total={session.intervals.length} />
         ))}
       </section>
 
@@ -178,35 +189,10 @@ function InfoBubble({ content }: { content: React.ReactNode }) {
 
 // ─── Cell count table (counts ONLY - no probabilities) ───────────────────────
 
-function CellCountTable({ session, condition }: { session: Session; condition: ConditionType }) {
-  const meta = CONDITION_META[condition];
-
-  // Build counts - exclude CS on both axes independently
-  let bxPlusEOPlus = 0, bxPlusEOMinus = 0, bxMinusEOPlus = 0, bxMinusEOMinus = 0;
-  let bxPlusCPlus  = 0, bxPlusCMinus  = 0, bxMinusCPlus  = 0, bxMinusCMinus  = 0;
-  let eoCSCount    = 0, cCSCount      = 0, bxCSCount      = 0;
-
-  for (const iv of session.intervals) {
-    const bx   = iv.behavior;
-    const eo   = iv.eo[condition] ?? 'could_not_score';
-    const cons = iv.consequences[condition];
-
-    if (bx === 'could_not_score') { bxCSCount++; continue; }
-
-    if (eo !== 'could_not_score') {
-      if (bx === 'yes' && eo === 'yes')  bxPlusEOPlus++;
-      if (bx === 'yes' && eo === 'no')   bxPlusEOMinus++;
-      if (bx === 'no'  && eo === 'yes')  bxMinusEOPlus++;
-      if (bx === 'no'  && eo === 'no')   bxMinusEOMinus++;
-    } else { eoCSCount++; }
-
-    if (cons !== 'could_not_score') {
-      if (bx === 'yes' && cons === 'yes')  bxPlusCPlus++;
-      if (bx === 'yes' && cons === 'no')   bxPlusCMinus++;
-      if (bx === 'no'  && cons === 'yes')  bxMinusCPlus++;
-      if (bx === 'no'  && cons === 'no')   bxMinusCMinus++;
-    } else { cCSCount++; }
-  }
+function CellCountTable({ ca, total }: { ca: ConditionAnalysis; total: number }) {
+  const meta = CONDITION_META[ca.condition];
+  const at = ca.antecedentTable;
+  const ct = ca.consequenceTable;
 
   const headingClass = {
     blue:   'text-blue-700 dark:text-blue-300',
@@ -216,45 +202,33 @@ function CellCountTable({ session, condition }: { session: Session; condition: C
   }[meta.color];
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+    <div data-review-condition={ca.condition}
+      className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
       <div className="px-3 py-1.5 border-b border-gray-100 dark:border-gray-800">
         <p className={`text-xs font-bold uppercase tracking-wide ${headingClass}`}>{meta.label}</p>
       </div>
       <div className="grid grid-cols-2 divide-x divide-gray-100 dark:divide-gray-800">
         {/* Antecedent counts */}
-        <div className="px-3 py-2 space-y-1.5">
+        <div className="px-3 py-2 space-y-1.5" data-cpr-table="antecedent">
           <p className="text-xs font-semibold text-gray-600 dark:text-gray-300">
             Antecedent: {meta.eoLabel}
           </p>
-          <CountGrid
-            plusLabel="EO+" minusLabel="EO−"
-            bxPlusPlus={bxPlusEOPlus} bxPlusMinus={bxPlusEOMinus}
-            bxMinusPlus={bxMinusEOPlus} bxMinusMinus={bxMinusEOMinus}
-            csCount={eoCSCount} bxCSCount={bxCSCount}
-          />
+          <CountGrid plusLabel="EO+" minusLabel="EO−" table={at} excluded={total - at.grandTotal} />
         </div>
         {/* Consequence counts */}
-        <div className="px-3 py-2 space-y-1.5">
+        <div className="px-3 py-2 space-y-1.5" data-cpr-table="consequence">
           <p className="text-xs font-semibold text-gray-600 dark:text-gray-300">
             Consequence: {meta.cLabel}
           </p>
-          <CountGrid
-            plusLabel="C+" minusLabel="C−"
-            bxPlusPlus={bxPlusCPlus} bxPlusMinus={bxPlusCMinus}
-            bxMinusPlus={bxMinusCPlus} bxMinusMinus={bxMinusCMinus}
-            csCount={cCSCount} bxCSCount={bxCSCount}
-          />
+          <CountGrid plusLabel="C+" minusLabel="C−" table={ct} excluded={total - ct.grandTotal} />
         </div>
       </div>
     </div>
   );
 }
 
-function CountGrid({ plusLabel, minusLabel, bxPlusPlus, bxPlusMinus, bxMinusPlus, bxMinusMinus, csCount, bxCSCount }: {
-  plusLabel: string; minusLabel: string;
-  bxPlusPlus: number; bxPlusMinus: number;
-  bxMinusPlus: number; bxMinusMinus: number;
-  csCount: number; bxCSCount: number;
+function CountGrid({ plusLabel, minusLabel, table, excluded }: {
+  plusLabel: string; minusLabel: string; table: ContingencyTable; excluded: number;
 }) {
   return (
     <div className="space-y-1 text-xs">
@@ -263,22 +237,22 @@ function CountGrid({ plusLabel, minusLabel, bxPlusPlus, bxPlusMinus, bxMinusPlus
         <div className="font-semibold text-gray-500 dark:text-gray-400">{plusLabel}</div>
         <div className="font-semibold text-gray-500 dark:text-gray-400">{minusLabel}</div>
         <div className="font-semibold text-gray-600 dark:text-gray-300 text-left">Bx+</div>
-        <CountCell n={bxPlusPlus}  />
-        <CountCell n={bxPlusMinus} />
+        <CountCell n={table.bxPlusCPlus}  cell="bx+plus" />
+        <CountCell n={table.bxPlusCMinus} cell="bx+minus" />
         <div className="font-semibold text-gray-600 dark:text-gray-300 text-left">Bx−</div>
-        <CountCell n={bxMinusPlus}  />
-        <CountCell n={bxMinusMinus} />
+        <CountCell n={table.bxMinusCPlus}  cell="bx-plus" />
+        <CountCell n={table.bxMinusCMinus} cell="bx-minus" />
       </div>
       <p className="text-gray-400 dark:text-gray-500 text-xs">
-        {csCount + bxCSCount} excluded from table
+        {excluded} excluded from table
       </p>
     </div>
   );
 }
 
-function CountCell({ n }: { n: number }) {
+function CountCell({ n, cell }: { n: number; cell: string }) {
   return (
-    <div className={`rounded px-1 py-0.5 text-center font-mono font-semibold
+    <div data-cell={cell} className={`rounded px-1 py-0.5 text-center font-mono font-semibold
       ${n === 0 ? 'text-gray-300 dark:text-gray-600 bg-gray-50 dark:bg-gray-800' : 'text-gray-800 dark:text-gray-100 bg-gray-100 dark:bg-gray-700'}`}>
       {n}
     </div>

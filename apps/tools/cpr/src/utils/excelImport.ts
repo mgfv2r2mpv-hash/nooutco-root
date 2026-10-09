@@ -11,6 +11,7 @@ import ExcelJS from 'exceljs';
 import { v4 as uuidv4 } from 'uuid';
 import type { Assessment, Session, Interval, ConditionType, ThreeWay, ConsequenceRecord } from '../types';
 import { ALL_CONDITIONS, CONDITION_META } from '../types';
+import { parseStartEndSeconds } from './timeRange';
 
 // ─── Public entry point ───────────────────────────────────────────────────────
 
@@ -57,7 +58,7 @@ export async function importAssessmentFromExcel(file: File): Promise<Assessment>
         targetBehaviorDefinition = header.targetBehaviorDefinition;
       }
       // Collect start/end pair for broadest-window computation
-      const pair = parseStartEndAbsoluteSecs(header.startEndTime);
+      const pair = parseStartEndSeconds(header.startEndTime);
       if (pair) allStartEndPairs.push(pair);
 
       const intervals = parseSingleConditionIntervals(ws, matchedCond);
@@ -81,7 +82,7 @@ export async function importAssessmentFromExcel(file: File): Promise<Assessment>
         targetBehaviorName       = header.targetBehaviorName;
         targetBehaviorDefinition = header.targetBehaviorDefinition;
       }
-      const pair = parseStartEndAbsoluteSecs(header.startEndTime);
+      const pair = parseStartEndSeconds(header.startEndTime);
       if (pair) allStartEndPairs.push(pair);
 
       const intervals = parseSynthesizedIntervals(ws);
@@ -271,45 +272,6 @@ function buildSession(
     createdAt:               now,
     updatedAt:               now,
   };
-}
-
-/**
- * Parse a "HH:MM AM - HH:MM AM" or "HH:MM - HH:MM" string (24h or 12h) and return
- * absolute seconds-from-midnight for start and end.  Returns null if the string
- * cannot be reliably parsed.
- */
-function parseStartEndAbsoluteSecs(s: string): { startSec: number; endSec: number } | null {
-  if (!s) return null;
-  // Split on common separators: en-dash, em-dash, hyphen surrounded by spaces
-  const parts = s.split(/\s*[ -  - ]\s*|\s+-\s+/).map(p => p.trim()).filter(Boolean);
-  if (parts.length < 2) return null;
-
-  function parseSingleTime(t: string): number | null {
-    // Normalise: remove extra spaces around colon, collapse whitespace
-    t = t.replace(/\s*:\s*/g, ':').trim();
-    // Check for AM/PM
-    const amPm = /([AaPp][Mm])$/.exec(t);
-    const suffix = amPm ? amPm[1].toUpperCase() : null;
-    const timePart = suffix ? t.slice(0, t.length - suffix.length).trim() : t;
-    const colonParts = timePart.split(':').map(Number);
-    if (colonParts.some(isNaN) || colonParts.length < 1) return null;
-    let h = colonParts[0];
-    const m = colonParts[1] ?? 0;
-    const sec = colonParts[2] ?? 0;
-    if (suffix) {
-      if (suffix === 'PM' && h !== 12) h += 12;
-      if (suffix === 'AM' && h === 12) h = 0;
-    }
-    if (h < 0 || h > 23 || m < 0 || m > 59 || sec < 0 || sec > 59) return null;
-    return h * 3600 + m * 60 + sec;
-  }
-
-  const startSec = parseSingleTime(parts[0]);
-  const endSec   = parseSingleTime(parts[1]);
-  if (startSec === null || endSec === null) return null;
-  // Handle midnight crossing: if end < start assume end is next day
-  const adjustedEnd = endSec < startSec ? endSec + 86400 : endSec;
-  return { startSec, endSec: adjustedEnd };
 }
 
 /**
