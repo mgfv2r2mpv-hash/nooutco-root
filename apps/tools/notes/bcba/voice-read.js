@@ -29,6 +29,7 @@
     "",
     "TECHNICIAN VOICE, MEASURED (read from the notes this technician edited by hand)",
     "These describe how this person writes. Match them where they do not conflict with anything above. Where they conflict, the rules above win: they are clinical and documentation requirements, and these are only style.",
+    "They change phrasing, sentence length and word choice only. Never add, drop or change a fact, number, count, percentage, target, date or any other session data because of this section.",
     "Never mention this section or the fact that the writing is being matched.",
   ];
 
