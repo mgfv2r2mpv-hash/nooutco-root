@@ -2,6 +2,7 @@
 // `npm run sync:shared`). Bundled into this worker by wrangler at deploy time.
 import { jsonRes, sha256Hex } from "./shared/helpers.js";
 import { handleSuggest } from "./shared/suggest.js";
+import { recordError, listErrors, errorFingerprint } from "./worker/error-record.js";
 
 // Notes tools that can be scoped to a managed password.
 const NOTES_TOOLS = ["bt", "sup", "parent", "assess", "sap", "graphva"];
@@ -208,6 +209,12 @@ export default {
       return handleProfileAdmin(request, env, url);
     }
 
+    // Admin-only: the durable record of production errors (issue #152), newest
+    // first, counts per day per fingerprint, no message text.
+    if (url.pathname === "/api/admin/errors" && request.method === "GET") {
+      return handleErrorRecord(request, env, url);
+    }
+
     // Admin-only: review queue for tech-submitted PII/non-PII candidate terms
     if (url.pathname === "/api/admin/term-queue") {
       return handleTermQueue(request, env);
@@ -283,9 +290,13 @@ const ERROR_ESCALATE_AT = [5, 25, 100];
 // Never throws.
 async function notifyError(env, tool, message, meta, diagnostics) {
   try {
-    if (!env.RESEND_API_KEY) return;
     const msg = (message || "").toString().slice(0, 2000);
     if (!msg) return;
+    // Counted on every occurrence, before the email throttle and whether or
+    // not email is configured, so the morning review sees the real number
+    // (issue #152). The record keeps no message text: see worker/error-record.js.
+    await recordError(env.SUGGEST_DUPES, sha256Hex, { tool, message: msg, meta, diagnostics });
+    if (!env.RESEND_API_KEY) return;
 
     let occurrence = 1;
     if (env.SUGGEST_DUPES) {
@@ -311,6 +322,7 @@ async function notifyError(env, tool, message, meta, diagnostics) {
       `Tool: ${tool || "(unknown)"}`,
       `Time: ${new Date().toISOString()}`,
       occurrence > 1 ? `Occurrences: ${occurrence} in the past hour` : `Occurrences: 1 (first this hour)`,
+      `Fingerprint: ${await errorFingerprint(sha256Hex, tool, msg)} (the admin error record counts it by this)`,
       meta ? `Context: ${meta}` : null,
       ``,
       `Error:`,
@@ -332,6 +344,17 @@ async function notifyError(env, tool, message, meta, diagnostics) {
     // Reporting must never break the request path.
     console.error("notifyError failed:", e && e.message ? e.message : "unknown");
   }
+}
+
+// GET /api/admin/errors?days=7. Admin token only. The record holds no message
+// text, so it is safe to show in the admin console as is.
+async function handleErrorRecord(request, env, url) {
+  const secret = (env.ADMIN_SECRET ?? "").trim();
+  const token = (request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
+  const payload = secret ? await readToken(token, secret) : null;
+  if (!payload || payload.role !== "admin") return jsonRes(401, { error: "Admin access required." });
+  if (!env.SUGGEST_DUPES) return jsonRes(503, { error: "Storage not configured." });
+  return jsonRes(200, await listErrors(env.SUGGEST_DUPES, { days: url.searchParams.get("days") }));
 }
 
 // Client-reported error. A valid session token is optional: authenticated reports
