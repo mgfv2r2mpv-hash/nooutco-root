@@ -197,6 +197,14 @@ only the derived numbers, so no clinical work product enters git history.
    collapsing toward the formulaic pole, which is what the 11-vs-48 fixture
    separation shows, but that is a different claim from "our notes will score
    low," and the file should not be read as supporting the second one.
+   **The drift gate now exists (issue #86):** `scripts/style-gate.mjs`, run by
+   `.github/workflows/tools-style-gate.yml`. It scores every `.txt` in
+   `tests/fixtures/notes/` against `style-baseline.json` and fails on a move of
+   more than 8 points either way (the spread of the five QuillBot-scored human
+   plans), or on a draft over 40 (above the highest human document measured,
+   38, and below the pole fixtures at 48 and 52). It has no model call, so it
+   bites when drafts are recaptured into the fixtures after a prompt change, or
+   when the scorer is retuned. It is still not a detector proxy.
 4. **Find a signal that does track.** Detector-visible register (named actor,
    stated conditions) is the property the measured evidence actually implicates,
    and the current scorer does not measure it at all. Anything that replaces
