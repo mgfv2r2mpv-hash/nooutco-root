@@ -40,6 +40,7 @@ The script first prints the wrangler version it found (`wrangler --version`) and
 7. The PIN reset link base (`HZ_RESET_BASE`): the page on the device that reads the emailed reset code after `#`, mailed when a device asks to reset a forgotten app PIN. Checked the same way: https, no `?` and no `#`.
 8. The mail plan's daily send limit (`HZ_CODES_PER_DAY`, blank keeps 3000).
 9. Whether the rate rule is in place. The script prints the exact clicks for it before the route goes live, so you can add it in the dashboard while it waits.
+10. Which account is yours, only when Step 6 finds accounts and no administrator yet (below). It lists them oldest first by creation time and device count; type the number, or leave it blank to set none.
 
 A bad answer is asked again, up to 3 times. All answers are asked before anything is created.
 
@@ -49,7 +50,7 @@ A bad answer is asked again, up to 3 times. All answers are asked before anythin
 2. Writes `wrangler.deploy.toml` next to `wrangler.toml`: the real database id, the route `horae-zone.nooutco.me` as a Custom domain (always proxied, so `cf-connecting-ip` comes from the Cloudflare edge), `workers_dev = false`, and the daily limit when you gave one. It holds no secret and is gitignored. The committed `wrangler.toml` keeps its zero id and no route (`test/config.test.mjs`).
 3. Applies `schema.sql` to the remote database. Every statement is `IF NOT EXISTS`, so a rerun changes nothing.
 4. Reads the Worker's secret list (names only), then deploys the Worker and puts each secret with `wrangler secret put`, the value on stdin: `HZ_ACCOUNT_KEY`, `HZ_SEED_KEY`, `HZ_TICKET_KEY`, `RESEND_KEY`, `HZ_MAIL_FROM`, `HZ_ALERT_TO`, `HZ_LINK_BASE`, `HZ_REOPEN_BASE`, `HZ_RESET_BASE`. A key already set is kept (below). A list the script cannot read stops the run before the deploy, with the Worker and its secrets untouched ("could not read the secret list; the Worker and its secrets were not changed"); only wrangler's answer that the Worker is not found, on a first deploy, reads as no secrets yet.
-5. Skips the owner's admin role (A5c is not built yet) and says so.
+5. Sets your account as the first administrator (A5c), once. When an administrator is already set it changes nothing and asks nothing. When no account exists yet (the first deploy, before you sign up in the app) it shows SKIPPED and names `node bin/deploy.mjs --owner-admin` to run after sign-up. Otherwise it asks which account is yours (item 10 above) and runs one write that adds the role only while no account holds it.
 6. Checks everything and prints the checklist.
 
 The script makes three keys itself, puts each through stdin and never prints one:
@@ -71,7 +72,7 @@ CHECKLIST
   PASS    Cloudflare account                 <name> (confirmed by you)
   PASS    Database present                   created
   PASS    Worker deployed                    horae-zone, route horae-zone.nooutco.me (Custom domain)
-  SKIPPED Owner as administrator             A5c not built (see step 6)
+  SKIPPED Owner as administrator             no account yet: sign up, then node bin/deploy.mjs --owner-admin
   PASS    Schema applied                     21 tables present
   PASS    Secret HZ_ACCOUNT_KEY              set (name only)
   ...
@@ -86,9 +87,20 @@ Any FAIL line names what is wrong. A fresh Custom domain can take a minute to an
 
 The script never prints a secret value, never puts one on a command line or in a file, and fails a check whose output carries one (`test/deploy.test.mjs`, "NEGATIVE CONTROL: a planted token in a check's output is caught"). The mask also covers each value's JSON-escaped and URL-encoded forms, so an address like `"Horae Zone" <mail@...>` echoed back as `\"Horae Zone\"` or `%22Horae%20Zone%22` is masked too.
 
+## Set yourself as administrator (after sign-up)
+
+The admin routes (`/admin/status`, `/admin/unlock-pins`, `/admin/unlock-account`) answer only a device whose account holds the admin role. You sign up in the app like anyone else, so the first deploy has no account to make administrator. Once you have signed up, from the repo root, in Mac Terminal, on a Mac where `node bin/deploy.mjs` has run:
+
+```
+cd apps/horae-zone
+node bin/deploy.mjs --owner-admin
+```
+
+It runs Step 6 alone: no deploy, no secret, no other write. It picks the Cloudflare account the way `--check-only` does, reads the role and account tables, lists the accounts oldest first by creation time and device count (the database keeps no address in the clear, so pick yours by when you signed up), and asks for the number of yours. The one write adds the admin role to that account only while no account holds it, so it sets the first administrator once and never a second. An administrator already set is reported as PASS with nothing changed.
+
 ## Break glass: unlock an account the offline block locked
 
-Until A5c ships `/admin/unlock-account`, nothing in the product unlocks an account that a device locked through `/pin/blocked` (ten wrong PINs offline, then the device's report). Every device route of that account answers `account-locked` (423), and the owner was mailed "Horae Zone: account locked". This runbook is the one way out, and it writes to the live database, so run it only for an owner who asked, after the owner has shown the inbox is theirs (for example by forwarding that note). Whether `/pin/blocked` stays routed before A5c is Kaleb's ruling (`docs/horae-zone/DESIGN-REVIEW.md`, A5b, Decisions for Kaleb row 24, MEDIUM-1).
+An administrator unlocks an account that a device locked through `/pin/blocked` (ten wrong PINs offline, then the device's report) with `/admin/unlock-account` (A5c), from a device of another account. Every device route of the locked account answers `account-locked` (423), the admin routes included, so when the locked account is the only administrator's own, or no administrator is set yet, nothing in the product unlocks it. This runbook is the way out then, and it writes to the live database, so run it only for an owner who asked, after the owner has shown the inbox is theirs (for example by forwarding the "Horae Zone: account locked" note). Kaleb's ruling on `/pin/blocked` is `docs/horae-zone/DESIGN-REVIEW.md`, A5b, Decisions for Kaleb row 24, MEDIUM-1.
 
 The database keeps no address in the clear, so the lock is found by its time. From the repo root, in Mac Terminal, on a Mac where `node bin/deploy.mjs` has run (it writes the gitignored `wrangler.deploy.toml` with the real database id):
 

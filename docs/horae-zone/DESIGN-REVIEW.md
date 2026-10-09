@@ -1108,3 +1108,57 @@ Split the list at the last `.`; check the signature over `horae-zone-device-list
 
 - Sass's `sharedPeerKey`, its pinned key check and its fallback (Sass PR #159).
 - Any deploy, real secret or call to the live service.
+
+## A5c: admin (`apps/horae-zone`)
+
+Plan §3.4 ("Admin"), §3.6 (`/admin/*`, admin role only), §4 (the deploy sets the owner as administrator) and slice 7 ("A5c, admin"). Based on `dev` at `8bd155d0`. Commits: `ab222a4a` (RED: 19 of 399 tests failing, in `test/admin.test.mjs` 9, `test/deploy.test.mjs` 7, `test/checks.test.mjs` 2, `test/pin-block.test.mjs` 1), then the GREEN commit with these notes. After both: Horae Zone 399/399 (382 on `dev`).
+
+**Plan tests**, each by its plan name:
+
+| # | Test | File |
+|---|---|---|
+| 1 | "admin routes refuse a non-admin" | `test/admin.test.mjs` |
+| 2 | "unlocking PINs clears the rows and its response names no PIN" | `test/admin.test.mjs` |
+
+### What is in it
+
+| File | Does |
+|---|---|
+| `src/admin.js` | `/admin/status {email}` answers `{locked, lockedAt, codeClosed, pinClosed, devices}`, each device `{device, owner, pending, createdAt, confirmedAt, removedAt, reverifiedAt}`. `/admin/unlock-pins {email}` deletes every `pin_lock` row of the account, unread, and answers `{ok: true}`. `/admin/unlock-account {email}` calls `unlockAccount` and answers `{unlocked: true\|false}`. An address with no account answers `no-account` (404) |
+| `src/routes.js` | The three admin routes, each with checks `admin`, none `pendingOk` or `lockedOk` |
+| `src/index.js` | A handler may name its outcome word for the request's one audit row in place of `ok` |
+| `src/lockout.js` | `pathClosed(db, accountId, path)` reads either path; `code` stays the default |
+| `bin/deploy-admin.mjs`, `bin/deploy.mjs` | Step 6, and `node bin/deploy.mjs --owner-admin` to run it alone after sign-up |
+| `DEPLOY.md` | Step 6, "Set yourself as administrator (after sign-up)", and the break-glass runbook kept for the case no admin can reach |
+
+**New refusal word:** `no-account` (404). `shape`, `unavailable`, `not-admin`, `no-device` and `account-locked` are reused. **New audit words:** `unlocked` and `not-locked`, on `/admin/unlock-account` only.
+
+### Decisions
+
+1. **Who is an admin.** The `role` table from A2 holds `(account_id, 'admin')`. The `admin` check (A2) already asks for a signed request from a confirmed device of an account holding that row. A pending device answers `no-device`, and a device of a locked account answers `account-locked`, the admin routes included (A5b Kaleb row 2).
+2. **Which account an admin acts on.** Each admin route takes exactly `{email}`. The service matches it the way sign-up files it (lower case, the domain's DNS form) through the keyed address key, so the address is never stored, bound, echoed or audited, and no request can name an account by id.
+3. **Unlocking PINs is double blind** (§3.4). One `DELETE` of the account's `pin_lock` rows, with no `RETURNING` and no read, and the same `{ok: true}` whether any PIN was locked. The answer holds no number at all. It clears only the reuse locks: PIN entry or code entry closed by the online lockout keep their emailed reopen links.
+4. **Unlocking the account** is A5b's `unlockAccount`, unchanged. The answer says whether the account was locked, and the audit row says `unlocked` or `not-locked`, so the log shows that an admin lifted a lock without naming the account.
+5. **The status** is what §3.4 says the admin screen shows: access (the offline-block lock and its time, and whether code or PIN entry is closed), reverification (each device's last answered `/reverify`) and revocations (each device's `removed_at`). It shows times, since §3.3 keeps timing for the admin screens. It never shows the PIN, its verifier, its locks or its review.
+6. **Step 6 picks the owner by creation time.** After the first deploy `HZ_ACCOUNT_KEY` lives only in Cloudflare, so the script cannot turn the owner's address into an address key. Step 6 reads the role and account tables. An admin already set is PASS with nothing asked or changed. No account yet is SKIPPED, naming `node bin/deploy.mjs --owner-admin` for after sign-up. Otherwise it lists up to 10 accounts, oldest first, by creation time and device count, and the owner types the number of theirs.
+7. **Set once, in the statement.** The one write is `INSERT INTO role ... SELECT id, 'admin' FROM account WHERE id = '<id>' AND NOT EXISTS (SELECT 1 FROM role WHERE role = 'admin') RETURNING account_id`. It adds the role only to an account that exists and only while no account holds it, so a rerun or a race never makes a second admin. An id goes into the statement only when it has the shape `crypto.randomUUID()` gives; a row of any other shape is never shown or offered.
+
+### Decisions for Kaleb
+
+| # | Point | Default now | Where |
+|---|---|---|---|
+| 1 | An admin names the account by its address (`{email}`), never by id, and there is no list of every account: a list would have to show addresses, which the service never answers, or bare ids nobody can read | By address | `src/admin.js` |
+| 2 | `/admin/status` is a route the plan's table does not name; it is what §3.4's admin screen reads. It shows times (lock, removal, reverification), since §3.3 keeps timing for admin screens | Built, with times | `src/admin.js` |
+| 3 | Removing a device from the admin screen (§3.5) is not built: it sits on the device-removal logic the removal-proof work is changing now (A4 Kaleb row 5) | Not built; a follow-up after the removal proof lands | `src/devices.js` |
+| 4 | Audit rows stay shape-only (route, outcome word, time), so they show that an admin acted but not which admin or which account. Naming both would mean two id columns in `audit`, which the plan's "never a value" rules out today | Shape-only | `schema.sql` `audit`, `src/index.js` |
+| 5 | The account gets no mail when an admin unlocks its PINs or its account | No mail | `src/admin.js` |
+| 6 | Step 6 asks the owner to pick their account from a list by creation time and device count. The other way: a deploy prompt for the owner's address and a Worker secret holding it, matched by the Worker | Pick from the list | `bin/deploy-admin.mjs` |
+| 7 | The first admin is set once. No route or command adds a second admin or removes one; today that is a D1 command | Set once only | `bin/deploy-admin.mjs` |
+| 8 | Unlocking PINs clears only the reuse locks, not PIN entry or code entry closed by the online lockout (each has its emailed reopen link) | Reuse locks only | `src/admin.js` |
+| 9 | A5b row 24 (MEDIUM-1): with `/admin/unlock-account` built, option A now has a product unlock, from another admin's device. When the only admin's own account is locked, the break-glass runbook in `DEPLOY.md` is still the way out | Runbook kept | `DEPLOY.md` |
+| 10 | The admin web screen (§3.4, "a Pages route in nooutco-root") is not built. Every admin route needs a signed device request, so that page needs a device key of its own in the browser first | Not built | |
+
+### Out of scope for A5c
+
+- The admin Pages screen (Kaleb row 10) and admin device removal (Kaleb row 3).
+- Any deploy, real secret or call to the live service.

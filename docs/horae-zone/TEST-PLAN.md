@@ -451,3 +451,33 @@ As in A3: `node --test test/*.test.mjs` in `apps/horae-zone`.
 
 - Sass's side: `sharedPeerKey` reading the list, the pinned key check and the fingerprint fallback (Sass PR #159).
 - A device label or name: the device table has none, and `test/config.test.mjs` forbids a column name holding `name`.
+
+## A5c: admin (`apps/horae-zone`)
+
+### Run
+
+As in A3: `node --test` in `apps/horae-zone`.
+
+- **Expected result now:** Horae Zone 399 tests, 399 pass. `dev` at `8bd155d0` has 382; A5c adds 17 (9 in `test/admin.test.mjs`, 8 in `test/deploy.test.mjs`).
+- **RED evidence:** `ab222a4a` committed the tests alone: 19 of 399 failed (`admin.test.mjs` 9, `deploy.test.mjs` 7, `checks.test.mjs` 2, `pin-block.test.mjs` 1). One RED assertion was wrong and was corrected in the GREEN commit: in `pin-block.test.mjs`, a device of the locked account that holds no role answers `not-admin` (the role check comes before the lock check), not `account-locked`.
+- **Test values are fake,** as in A5b: `example.test` addresses, fixed PINs with no run of three, fake account ids, the mocked wrangler of `test/deploy.test.mjs`. No test calls a deployed service.
+
+### What each file proves
+
+| File | Proves | Negative controls |
+|---|---|---|
+| `test/admin.test.mjs` (added) | **"admin routes refuse a non-admin"** (plan test 1): every admin route answers `not-admin` to a device of an account with no role or another role, and `no-device` unsigned or from a pending device of an admin account; nothing changes. **"unlocking PINs clears the rows and its response names no PIN"** (plan test 2): every `pin_lock` row of the account goes, another account's stay, the answer is exactly `{ok: true}` with no PIN, verifier, salt or number, and a replaced PIN may be chosen again. Unlocking PINs answers the same with no locks and reads no lock row. The account unlock answers whether it was locked. An admin of a locked account answers `account-locked` until another admin unlocks it. The status shows the lock and its time, closed code entry, each device's owner and pending flags, created, confirmed, removed and reverified times, and nothing of the PIN locks. The address picks the account (case aside); a bad body answers `shape`, an unknown address `no-account`, and no account key `unavailable`. Each admin request writes one audit row with its outcome word and no address anywhere | The same unlock from an admin's device is answered; before the unlock, the first PIN is refused as locked for reuse |
+| `test/deploy.test.mjs` (8 added) | Step 6 sets the account the owner picks, once, with the set-once guard in the statement, after the secrets are put. An admin already set: PASS, nothing asked. No account: SKIPPED, naming `--owner-admin`. A blank or out-of-range pick sets nothing. A row whose id has another shape is never shown or put in a command. A grant with no row back fails, and an unreadable table fails the item while the checks still run. `--owner-admin` runs Step 6 alone, with one prompt and one write. The dry run names Step 6's reads and write | The planted id never reaches a command |
+| `test/checks.test.mjs`, `test/pin-block.test.mjs` | Updated: `/admin/status` is in the route table; an admin past the role check gets `shape` for a body naming no account; the A5b plan test unlocks through `/admin/unlock-account` | |
+
+### Manual checks for the reviewer
+
+1. **Double blind:** `grep -n "pin_lock" apps/horae-zone/src/admin.js` shows one `DELETE` with no `RETURNING` and no `SELECT`.
+2. **No address kept:** `grep -n "email" apps/horae-zone/src/admin.js` shows it read only to derive the address key.
+3. **Local smoke test:** `curl -s -X POST -H 'content-type: application/json' -d '{}' localhost:8787/admin/status` answers `{"error":"no-device"}`.
+4. **The deploy, dry:** `node bin/deploy.mjs --dry-run` prints Step 6's two reads and its one guarded write.
+
+### Not in A5c (do not add here)
+
+- The admin Pages screen and admin device removal (DESIGN-REVIEW, A5c, Decisions for Kaleb rows 10 and 3).
+- Recovery and the vault switch (A6), the gatekeeper (A7).

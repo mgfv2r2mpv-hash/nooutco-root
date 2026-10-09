@@ -57,7 +57,8 @@ test('ten wrong PINs offline block the device until the service answers, and the
   h.clock.ms -= 365 * DAY_MS;
 
   // A device of the account cannot unlock it; an administrator can (A5c).
-  assert.deepEqual(await pinCall(h, other, '/admin/unlock-account', { email: ADDRESS }), LOCKED, 'the locked account\'s own device');
+  assert.deepEqual(await pinCall(h, other, '/admin/unlock-account', { email: ADDRESS }), { status: 403, json: { error: 'not-admin' } },
+    'the locked account\'s own device');
   const admin = await addDevice(h.db, { id: 'admin-dev', account: 'admin-acct' });
   makeAdmin(h.db, 'admin-acct');
   assert.deepEqual(await answerOf(await h.call(await signed(h.call, admin, '/admin/unlock-account', { email: ADDRESS }))),

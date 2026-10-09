@@ -30,6 +30,7 @@ import { reportBlock } from "./account-lock.js";
 import { resetPin } from "./pin-reset.js";
 import { reviewPin } from "./pin-review.js";
 import { reverify } from "./reverify.js";
+import { adminStatus, unlockPins, adminUnlockAccount } from "./admin.js";
 
 export const ROUTES = Object.freeze({
   "/account": { checks: "open", handler: startSignup },
@@ -60,7 +61,9 @@ export const ROUTES = Object.freeze({
   "/pair/take": { checks: "signed" },
   "/recover": { checks: "open" },
   "/vault/switch": { checks: "signed" },
-  "/admin/unlock-pins": { checks: "admin" },
-  // A5c: its handler calls unlockAccount (src/account-lock.js).
-  "/admin/unlock-account": { checks: "admin" },
+  // A5c (src/admin.js): each takes exactly {email}, the account acted on.
+  "/admin/status": { checks: "admin", handler: adminStatus },
+  "/admin/unlock-pins": { checks: "admin", handler: unlockPins },
+  // Calls unlockAccount (src/account-lock.js).
+  "/admin/unlock-account": { checks: "admin", handler: adminUnlockAccount },
 });

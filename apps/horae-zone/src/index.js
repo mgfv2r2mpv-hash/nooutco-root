@@ -97,7 +97,9 @@ async function run(request, env, ctx, { routes, now, mailer, pinRules }) {
     }
     if (!route.handler) throw new Refusal("not-built", 501);
     const out = await route.handler({ db, device, body, now, env, request, mailer: mailer ?? mailerFrom(env), pinRules });
-    await audit(db, now, name, "ok");
+    // A handler may name its outcome word in place of "ok" (A5c: an admin
+    // unlock says whether it unlocked); always a fixed word, never a value.
+    await audit(db, now, name, out.audit ?? "ok");
     await later(db, now, name, ctx, out.after);
     return answer(out.status, out.json);
   } catch (err) {
