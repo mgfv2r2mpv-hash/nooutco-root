@@ -145,8 +145,10 @@ test.describe('the BT usage card', () => {
 
   test('the card shows no text but labels, ids, tool names and numbers', async ({ page }) => {
     await openProfiles(page);
+    await expect(page.locator('#usageRows [data-usage-kid]')).toHaveCount(3);
     const text = await page.locator('#usageRows').innerText();
-    const words = text.replace(/[0-9%()·]/g, ' ').split(/\s+/).filter(Boolean);
+    // Split on space and punctuation only, so an id like a1b2c3 stays whole.
+    const words = text.split(/[\s()·]+/).filter((w) => w && !/^\d+%?$/.test(w));
     const allowed = new Set(['All', 'BTs', 'BT', 'Direct', 'Session', 'questions', 'Sends', 'Send', 'Accepted', 'as', 'is',
       'Edited', 'Own', 'words', 'Left', 'unrefined', 'a1b2c3', 'd4e5f6']);
     for (const w of words) expect(allowed.has(w), `unexpected word in the report: ${w}`).toBe(true);
