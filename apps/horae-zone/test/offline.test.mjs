@@ -213,12 +213,13 @@ test('the account is mailed a plain note on every pass, with no time and no coun
 
 // ---- the report gate ----
 
-test('no new pass while the last one is unreported, and the report clears the way', async () => {
+test('no new pass on a code no newer than the unreported pass, and the report clears the way', async () => {
   const h = harness();
   const dev = await confirmedDevice(h, ADDRESS);
+  // A code proved before the pass was issued: valid and unspent, but not fresh.
+  const ticket = await ticketFor(h, dev);
   const first = newJti();
   assert.equal((await grant(h, dev, { ticket: await ticketFor(h, dev), hours: 10, jti: first })).status, 200);
-  const ticket = await ticketFor(h, dev);
   const atBefore = proved(h, dev.id);
   assert.deepEqual(await grant(h, dev, { ticket, hours: 10, jti: newJti() }), { status: 409, json: { error: 'report-due' } });
   assert.equal(proved(h, dev.id), atBefore, 'a report-due refusal spends no code');
@@ -235,6 +236,127 @@ test('the gate is per Mac: another device of the account is not held back by thi
   await ticketFor(h, second);
   assert.equal((await grant(h, dev, { ticket: await ticketFor(h, dev), hours: 10, jti: newJti() })).status, 200);
   assert.equal((await grant(h, second, { ticket: await ticketFor(h, second), hours: 10, jti: newJti() })).status, 200);
+});
+
+// ---- a Mac that lost its record (option c) ----
+// sass #309's transferAccept clears the Mac's offline record but keeps its
+// Horae identity, and the Mac reports only from a record. A fresh code, proved
+// after the unreported pass was issued and not yet spent, lets that same Mac
+// supersede it: the old row is marked superseded (never reported), the
+// request's audit row says so, the account is mailed, and the new pass is issued.
+
+const SUPERSEDED_TEXT = "An offline pass on one of this account's Macs was replaced before it reported its offline opens.";
+const superseded = (h) => passRows(h).filter((r) => r.superseded_at !== null);
+
+test('a Mac that lost its record: a fresh code supersedes its own unreported pass, audits it, mails the note and issues the new pass', async () => {
+  const h = harness();
+  const dev = await confirmedDevice(h, ADDRESS);
+  const lost = newJti();
+  assert.equal((await grant(h, dev, { ticket: await ticketFor(h, dev), hours: 10, jti: lost })).status, 200);
+  // The vault transfer clears the record; the Mac never reports `lost`.
+  h.clock.ms += HOUR_MS;
+  const early = await ticketFor(h, dev);
+  const ticket = await ticketFor(h, dev);
+  const codeAt = (await opened(ticket, UNLOCK_TICKET_LABEL_TEXT)).at;
+  const before = h.mail.length;
+  const next = newJti();
+  const out = await grant(h, dev, { ticket, hours: 10, jti: next });
+  assert.equal(out.status, 200, 'the re-proved Mac gets a pass');
+  assert.equal((await opened(out.json.pass, PASS_LABEL)).jti, next);
+  assert.equal(proved(h, dev.id), codeAt, 'the code is spent');
+  const [old, fresh] = passRows(h);
+  assert.equal(old.jti, lost);
+  assert.equal(old.superseded_at, h.clock.ms, 'the old row is marked superseded when the new pass is issued');
+  assert.equal(old.reported_at, null, 'a superseded row never counts as reported');
+  assert.equal(old.opens, null, 'no count is made up for opens nobody reported');
+  assert.equal(old.wrong_tries, null);
+  assert.equal(fresh.jti, next);
+  assert.equal(fresh.superseded_at, null);
+  assert.equal(fresh.reported_at, null);
+  assert.deepEqual(auditRows(h.db).at(-1), { route: '/offline/grant', reason: 'superseded' });
+  const notes = h.mail.slice(before);
+  assert.equal(notes.length, 2, 'the replacement note and the issued note');
+  assert.ok(notes.every((n) => n.to === ADDRESS));
+  const note = notes.find((n) => n.text === SUPERSEDED_TEXT);
+  assert.ok(note, 'the fixed replacement note');
+  assert.doesNotMatch(`${note.subject} ${note.text}`, /[0-9]/, 'no time, date or count');
+  assert.ok(notes.some((n) => /offline pass was issued/i.test(n.subject)), 'the usual issued note');
+  // The new pass is the gate now: a code proved before it answers report-due.
+  assert.deepEqual(await grant(h, dev, { ticket: early, hours: 10, jti: newJti() }), { status: 409, json: { error: 'report-due' } });
+  assert.equal(superseded(h).length, 1, 'NEGATIVE CONTROL: a code older than the new pass supersedes nothing');
+});
+
+test('NEGATIVE CONTROL: without a fresh ticket it is still report-due, nothing is superseded and no code is spent', async () => {
+  const h = harness();
+  const dev = await confirmedDevice(h, ADDRESS);
+  // Proved before the pass was issued: valid, unspent, not fresh.
+  const early = await ticketFor(h, dev);
+  assert.equal((await grant(h, dev, { ticket: await ticketFor(h, dev), hours: 10, jti: newJti() })).status, 200);
+  const atBefore = proved(h, dev.id);
+  assert.deepEqual(await grant(h, dev, { ticket: early, hours: 10, jti: newJti() }), { status: 409, json: { error: 'report-due' } });
+  assert.equal(proved(h, dev.id), atBefore, 'the refusal spends no code');
+  // Proved after the pass, but already spent elsewhere (the first PIN set).
+  h.clock.ms += HOUR_MS;
+  const spent = await ticketFor(h, dev);
+  assert.equal((await pinCall(h, dev, '/pin/set', { pin: '274951', ticket: spent })).status, 200);
+  const mailBeforeGrant = h.mail.length;
+  assert.deepEqual(await grant(h, dev, { ticket: spent, hours: 10, jti: newJti() }), { status: 409, json: { error: 'report-due' } }, 'a spent code is not spent twice');
+  assert.equal(superseded(h).length, 0);
+  assert.equal(passRows(h).length, 1);
+  assert.equal(h.mail.length, mailBeforeGrant, 'no note for a refusal');
+  assert.deepEqual(auditRows(h.db).at(-1), { route: '/offline/grant', reason: 'report-due' });
+  // The fresh, unspent code is what supersedes.
+  assert.equal((await grant(h, dev, { ticket: await ticketFor(h, dev), hours: 10, jti: newJti() })).status, 200, 'NEGATIVE CONTROL: a fresh unspent code supersedes');
+  assert.equal(superseded(h).length, 1);
+});
+
+test('NEGATIVE CONTROL: another device\'s unreported pass is never superseded, and still blocks that device', async () => {
+  const h = harness();
+  const dev = await confirmedDevice(h, ADDRESS);
+  const second = { ...(await registeredDevice(h, ADDRESS, { fresh: false })), seed: dev.seed };
+  await ticketFor(h, second);
+  const secondEarly = await ticketFor(h, second);
+  const theirs = newJti();
+  assert.equal((await grant(h, second, { ticket: await ticketFor(h, second), hours: 10, jti: theirs })).status, 200);
+  const mine = newJti();
+  assert.equal((await grant(h, dev, { ticket: await ticketFor(h, dev), hours: 10, jti: mine })).status, 200);
+  h.clock.ms += HOUR_MS;
+  const before = h.mail.length;
+  assert.equal((await grant(h, dev, { ticket: await ticketFor(h, dev), hours: 10, jti: newJti() })).status, 200);
+  const rows = Object.fromEntries(passRows(h).map((r) => [r.jti, r]));
+  assert.notEqual(rows[mine].superseded_at, null, 'this Mac\'s own pass is superseded');
+  assert.equal(rows[theirs].superseded_at, null, 'the other Mac\'s pass is untouched');
+  assert.equal(rows[theirs].reported_at, null);
+  assert.equal(h.mail.slice(before).filter((n) => n.text === SUPERSEDED_TEXT).length, 1, 'one note, for the one pass replaced');
+  assert.deepEqual(await grant(h, second, { ticket: secondEarly, hours: 10, jti: newJti() }), { status: 409, json: { error: 'report-due' } }, 'the other Mac is still held by its own pass');
+});
+
+test('NEGATIVE CONTROL: a blocked account refuses the grant and supersedes nothing, by /pin/blocked or by ten wrong PINs offline', async () => {
+  // Locked by /pin/blocked.
+  const h = harness();
+  const dev = await confirmedDevice(h, ADDRESS);
+  assert.equal((await grant(h, dev, { ticket: await ticketFor(h, dev), hours: 10, jti: newJti() })).status, 200);
+  h.clock.ms += HOUR_MS;
+  const ticket = await ticketFor(h, dev);
+  const atBefore = proved(h, dev.id);
+  assert.deepEqual(await pinCall(h, dev, '/pin/blocked', {}), { status: 423, json: { error: 'account-locked' } });
+  assert.deepEqual(await grant(h, dev, { ticket, hours: 10, jti: newJti() }), { status: 423, json: { error: 'account-locked' } });
+  assert.equal(superseded(h).length, 0);
+  assert.equal(passRows(h).length, 1);
+  assert.equal(proved(h, dev.id), atBefore, 'no code spent');
+  // Locked by another Mac's report of ten wrong PINs.
+  const h2 = harness();
+  const a = await confirmedDevice(h2, ADDRESS);
+  const b = { ...(await registeredDevice(h2, ADDRESS, { fresh: false })), seed: a.seed };
+  await ticketFor(h2, b);
+  assert.equal((await grant(h2, a, { ticket: await ticketFor(h2, a), hours: 10, jti: newJti() })).status, 200);
+  const bJti = newJti();
+  assert.equal((await grant(h2, b, { ticket: await ticketFor(h2, b), hours: 10, jti: bJti })).status, 200);
+  h2.clock.ms += HOUR_MS;
+  const aTicket = await ticketFor(h2, a);
+  assert.equal((await report(h2, b, bJti, [], 10)).status, 200);
+  assert.deepEqual(await grant(h2, a, { ticket: aTicket, hours: 10, jti: newJti() }), { status: 423, json: { error: 'account-locked' } });
+  assert.equal(superseded(h2).length, 0, 'a blocked account supersedes nothing');
 });
 
 test('a jti already used is refused', async () => {
