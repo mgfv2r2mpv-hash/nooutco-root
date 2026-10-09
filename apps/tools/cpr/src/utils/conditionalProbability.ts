@@ -10,6 +10,38 @@ import type {
 } from '../types';
 import { ALL_CONDITIONS } from '../types';
 
+// ─── Lag-1 setting ────────────────────────────────────────────────────────────
+
+/**
+ * One lag setting per assessment. Review, the analysis screen, the PDF and the
+ * Excel export all take it from here, because on 8 Oct 2026 they used three
+ * different ones: Review counted with no lag, the screen opened with both on,
+ * and the export applied both whatever the screen said.
+ */
+export interface LagSettings { antecedent: boolean; consequence: boolean; }
+
+export const DEFAULT_LAG: LagSettings = { antecedent: true, consequence: true };
+
+export function lagSettingsOf(assessment: Pick<Assessment, 'lag1Antecedent' | 'lag1Consequence'>): LagSettings {
+  return {
+    antecedent:  assessment.lag1Antecedent  ?? DEFAULT_LAG.antecedent,
+    consequence: assessment.lag1Consequence ?? DEFAULT_LAG.consequence,
+  };
+}
+
+// ─── Thin columns ─────────────────────────────────────────────────────────────
+
+/**
+ * Under this many intervals in a column, a probability swings a long way on one
+ * interval. The Review tooltip has said "fewer than about 5" all along; the
+ * flag puts it beside the number instead.
+ */
+export const THIN_COLUMN = 5;
+
+export function isThin(table: ContingencyTable): boolean {
+  return table.colTotalCPlus < THIN_COLUMN || table.colTotalCMinus < THIN_COLUMN;
+}
+
 // ─── Lag-1 helpers ────────────────────────────────────────────────────────────
 
 function applyAntecedentLag1(values: (ThreeWay | undefined)[]): (ThreeWay | undefined)[] {

@@ -264,7 +264,15 @@ export default function App() {
         )}
 
         {view === 'analysis' && activeAssessment && (
-          <AnalysisView assessment={activeAssessment} onBack={() => setView('assessment-detail')} />
+          <AnalysisView
+            assessment={activeAssessment}
+            onBack={() => setView('assessment-detail')}
+            onLagChange={(lag) => saveAssessment({
+              ...activeAssessment,
+              lag1Antecedent:  lag.antecedent,
+              lag1Consequence: lag.consequence,
+            })}
+          />
         )}
       </main>
 

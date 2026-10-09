@@ -121,7 +121,7 @@ function QuickStartTab() {
       </p>
 
       <Section n="1" title="Create a new assessment">
-        <p>Click <strong>+ New assessment</strong> on the home screen. Fill in the assessment header: observer name, setting, date, and the target behavior name and operational definition. None of these fields are required to proceed, but they appear on all output files.</p>
+        <p>Click <strong>+ New assessment</strong> on the home screen. Fill in the assessment header: client, observer, setting, date, start and end time, and the target behavior name and operational definition. Client, date, behavior name and definition are required; the rest are optional. All of them appear on the output files.</p>
         <p>Click <strong>Save &amp; continue</strong> to go to the assessment dashboard.</p>
       </Section>
 
@@ -142,7 +142,7 @@ function QuickStartTab() {
         <ul className="list-disc pl-5 space-y-1">
           <li>Tap the <strong>green play button</strong> to start the pace timer. A yellow badge shows the current target interval based on elapsed time ÷ interval duration, scrolling automatically.</li>
           <li>For each interval: mark <strong>Bx</strong> (behavior occurred?), <strong>EO</strong> (motivating condition present?), and each <strong>consequence</strong> type observed.</li>
-          <li>Use <strong>Y / N / C</strong> to cycle toggles (Y = yes, N = no, C = Could Not Score).</li>
+          <li>Each toggle has three buttons: tap <strong>Y</strong>, <strong>N</strong> or <strong>C</strong> to set it (Y = yes, N = no, C = Could Not Score). Every toggle starts at C.</li>
           <li>Tap the pencil icon on any row to add an interval note.</li>
           <li>The progress bar fills blue for scored intervals; gray for Could Not Score intervals.</li>
           <li><strong>Saved ✓</strong> marks each interval stored in this browser.</li>
@@ -156,17 +156,18 @@ function QuickStartTab() {
       <Section n="4" title="Review your data">
         <p>Click <strong>Review</strong> to open the review screen. This shows raw cell counts (no probabilities) so you can verify data quality before analysis:</p>
         <ul className="list-disc pl-5 space-y-1">
-          <li>Intervals where behavior, EO, <em>and</em> all consequences are Could Not Score are flagged; these contribute nothing to the analysis and may indicate a scoring interruption.</li>
+          <li>Any interval with a C anywhere in its row (behavior, EO or a consequence) is flagged amber. Each table leaves out only the intervals with a C on its own two axes, so a flagged row can still count in another table.</li>
+          <li>The counts use the lag-1 setting saved with the assessment (set on the analysis screen), so they match the analysis tables and the Excel export.</li>
           <li>Counts only; no probabilities before analysis.</li>
         </ul>
-        <p>Click <strong>Proceed to analysis</strong> when satisfied, or <strong>Back</strong> to continue scoring.</p>
+        <p>Click <strong>Proceed to analysis</strong> when satisfied, or <strong>Continue data collection</strong> to keep scoring.</p>
       </Section>
 
       <Section n="5" title="Analyze results">
-        <p>The analysis screen shows contingency tables and conditional probabilities for each condition. Toggle LAG-1 for antecedent and/or consequence scoring (see Conceptual Background). Use the export buttons to download your results.</p>
+        <p>The analysis screen shows contingency tables and conditional probabilities for each condition. Toggle LAG-1 for antecedent and/or consequence scoring (see Conceptual Background). The setting is saved with the assessment and used by Review, the PDF and the Excel export too. Use the export buttons to download your results.</p>
         <ul className="list-disc pl-5 space-y-1">
           <li><strong>Export PDF</strong>: prints the full analysis with a summary page. Use your browser&apos;s print-to-PDF. Check &quot;Print backgrounds&quot; for best formatting.</li>
-          <li><strong>Export Excel</strong>: downloads a workbook with raw data sheets, a probability calculator sheet with COUNTIFS formulas, and embedded bar charts.</li>
+          <li><strong>Export Excel</strong>: downloads a workbook with raw data sheets, a Conditional Probability sheet with the counts, probabilities, CV and ACV already worked out (values, not formulas) under the lag-1 setting on screen, and embedded bar charts.</li>
           <li>Use the scope dropdown to filter output to Separate only or Synthesized only.</li>
         </ul>
       </Section>
@@ -242,9 +243,9 @@ function ConceptsTab() {
           C_effective[n] = C[n] OR C[n+1]
         </code>
         <p>This accounts for natural delays in consequence delivery (e.g., a teacher notices and provides attention one interval after the behavior occurred).</p>
-        <p>Antecedent and consequence Lag-1 toggle independently on the analysis screen and apply to the Excel export.</p>
+        <p>Antecedent and consequence Lag-1 toggle independently on the analysis screen. The setting is saved with the assessment, and the Review counts, the analysis tables, the PDF and the Excel export all use it.</p>
         <p className="text-xs text-gray-500 dark:text-gray-400">
-          Based on procedures from: Camp, E. M., Iwata, B. A., Hammond, J. L., &amp; Bloom, S. E. (2009). Antecedent versus consequent events as predictors of problem behavior. <em>Journal of Applied Behavior Analysis, 42</em>, 601-616.
+          Based on procedures from: Camp, E. M., Iwata, B. A., Hammond, J. L., &amp; Bloom, S. E. (2009). Antecedent versus consequent events as predictors of problem behavior. <em>Journal of Applied Behavior Analysis, 42</em>(2), 469-483. https://doi.org/10.1901/jaba.2009.42-469
         </p>
       </Section>
 
@@ -265,7 +266,7 @@ function ConceptsTab() {
 
       <Section title="Observation time and accountability">
         <p>The timer in the data entry screen tracks active observation time per session. This is summed across all conditions on the analysis screen and included in output files when available.</p>
-        <p>Observation time matters for two reasons: (1) it anchors behavior rate (responses per minute), giving a meaningful metric for comparing conditions; and (2) it provides accountability. An assessment with only 5 minutes of observation across conditions yields conditional probability estimates with very wide margins of uncertainty compared to a 30-minute assessment. More intervals and longer observation windows produce more reliable estimates.</p>
+        <p>Observation time matters for two reasons: (1) it gives the <strong>Bx intervals/min</strong> column, the number of intervals with behavior per minute of observation. Partial interval recording counts an interval once however many times the behavior happened in it, so this compares conditions but is not a response rate (responses per minute); and (2) it provides accountability. An assessment with only 5 minutes of observation across conditions yields conditional probability estimates with very wide margins of uncertainty compared to a 30-minute assessment. More intervals and longer observation windows produce more reliable estimates.</p>
       </Section>
     </div>
   );
@@ -277,10 +278,10 @@ function KeyboardTab() {
   return (
     <div className="space-y-5">
       <p className="text-gray-500 dark:text-gray-400 italic">
-        Keyboard shortcuts speed up live scoring, especially important when observing behavior in real time.
+        The tool has no shortcut keys of its own. Every toggle is made of ordinary buttons, so the browser&apos;s own keys work on them.
       </p>
 
-      <Section title="Toggle shortcuts (when a toggle button is focused)">
+      <Section title="Keys that work">
         <table className="w-full text-xs border-collapse">
           <thead>
             <tr className="bg-gray-100 dark:bg-gray-800 text-left">
@@ -290,12 +291,10 @@ function KeyboardTab() {
           </thead>
           <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
             {[
-              ['Y / 1', 'Set toggle to Yes'],
-              ['N / 2', 'Set toggle to No'],
-              ['C / 3', 'Set toggle to Could Not Score'],
-              ['Space / Enter', 'Cycle to next value (CS → Yes → No → CS)'],
-              ['Tab', 'Move focus to the next toggle in the row'],
-              ['Shift+Tab', 'Move focus to the previous toggle'],
+              ['Tab', 'Move to the next button or field. In a row that is time, then Bx Y, N, C, then each EO and consequence Y, N, C, then the note button'],
+              ['Shift+Tab', 'Move back one button or field'],
+              ['Enter / Space', 'Press the focused button: on a toggle, sets it to that button’s Y, N or C'],
+              ['Escape', 'Close this help window'],
             ].map(([k, v]) => (
               <tr key={k}>
                 <td className="p-2 font-mono text-indigo-600 dark:text-indigo-400">{k}</td>
@@ -305,38 +304,16 @@ function KeyboardTab() {
           </tbody>
         </table>
         <Callout>
-          Tab order within each interval row follows the visual layout: Bx → EO(s) → indicated consequences → non-indicated consequences → note button.
+          Typing Y, N, C or a number does nothing, and Space does not cycle a toggle. Tap or press the button you mean.
         </Callout>
-      </Section>
-
-      <Section title="Navigation shortcuts">
-        <table className="w-full text-xs border-collapse">
-          <thead>
-            <tr className="bg-gray-100 dark:bg-gray-800 text-left">
-              <th className="p-2 font-semibold">Key</th>
-              <th className="p-2 font-semibold">Action</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-            {[
-              ['Escape', 'Close any open modal or tooltip'],
-              ['Tab (from last toggle in row)', 'Moves to first toggle in next row'],
-            ].map(([k, v]) => (
-              <tr key={k}>
-                <td className="p-2 font-mono text-indigo-600 dark:text-indigo-400">{k}</td>
-                <td className="p-2 text-gray-700 dark:text-gray-300">{v}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
       </Section>
 
       <Section title="Live scoring tips">
         <ul className="list-disc pl-5 space-y-2">
           <li>Start the timer <em>before</em> the first interval.<br />The pace indicator marks the current interval.</li>
           <li>If you miss an interval, leave it as Could Not Score (default) and keep pace; do not go back and fill it in retrospectively.</li>
-          <li>For faster scoring, pre-assign indicated functions during session setup; they appear on the left, closest to your thumb on a touchscreen or to Tab-stop order on a keyboard.</li>
-          <li>Use the note button (pencil icon) sparingly during live scoring. Mark the interval and add context notes afterward during the Review screen.</li>
+          <li>For faster scoring, pre-assign indicated functions during session setup; they appear on the left, closest to your thumb on a touchscreen and first in Tab order on a keyboard.</li>
+          <li>Use the note button (pencil icon) sparingly during live scoring. Mark the interval and add context notes afterward.</li>
           <li>If you need to pause, stop the timer. The accumulated time persists when you resume.</li>
           <li>&quot;Saved ✓&quot; confirms each change is saved in this browser.<br />No manual save needed.</li>
         </ul>
