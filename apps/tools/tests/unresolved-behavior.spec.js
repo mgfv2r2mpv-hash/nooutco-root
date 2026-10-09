@@ -68,13 +68,14 @@ test.describe('the draft says it continued', () => {
   });
 
   test('"did not resolve" becomes "continued", and the rest of the sentence is untouched', async ({ page }) => {
-    const out = await U(page, (N) => [
-      N.recast('The vocalizations did not resolve.').text,
-      N.recast("Crying didn't resolve when attention was delivered.").text,
-      N.recast('The vocalizations failed to resolve until the iPad was delivered.').text,
-      N.recast('Whining remained unresolved across both trials.').text,
-      N.recast('The crying was not resolved.').text,
-    ]);
+    const said = ['vocalizations', 'crying', 'whining'];
+    const out = await U(page, (N, b) => [
+      N.recast('The vocalizations did not resolve.', b).text,
+      N.recast("Crying didn't resolve when attention was delivered.", b).text,
+      N.recast('The vocalizations failed to resolve until the iPad was delivered.', b).text,
+      N.recast('Whining remained unresolved across both trials.', b).text,
+      N.recast('The crying was not resolved.', b).text,
+    ], said);
     expect(out).toEqual([
       'The vocalizations continued.',
       'Crying continued when attention was delivered.',
@@ -90,7 +91,7 @@ test.describe('the draft says it continued', () => {
       'The vocalizations did not fully resolve.',
       'BCBA resolved the scheduling conflict.',
     ];
-    const out = await U(page, (N, xs) => xs.map((x) => N.recast(x)), said);
+    const out = await U(page, (N, xs) => xs.map((x) => N.recast(x, ['crying', 'vocalizations', 'bcba'])), said);
     expect(out.map((o) => o.text)).toEqual(said);
     expect(out.map((o) => o.n)).toEqual([0, 0, 0]);
   });
@@ -203,5 +204,219 @@ test.describe('on the page, with a reply that carries the error', () => {
     await expect(page.locator('textarea[data-section-id="results"]')).toHaveValue(/In the tangible condition the vocalizations continued\./);
     await expect(page.locator('textarea[data-section-id="results"]')).not.toHaveValue(/did not resolve/);
     await expect(page.getByTestId('hints-results')).toContainText('vocalizations');
+  });
+});
+
+/* POLLUX'S HOLD ON #328 (9 Oct). This is clinical text for a BCBA, and a wrong
+ * automatic rewrite is worse than no rewrite. Every sentence below is one
+ * Pollux ran through the real module and quoted back, so each test starts
+ * from his exact example. */
+
+test.describe('Pollux 1: a correct sentence is never recast', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto(BCBA);
+    await page.waitForFunction(() => !!window.NoteUnresolved);
+  });
+
+  // Every subject Pollux used is named here as a behavior that did not
+  // resolve, so the guards on the words after the phrase are what is tested.
+  const NAMED =
+    'Crying did not resolve. Elopement did not stop. The behavior did not resolve. Vocalizations did not resolve.';
+  const POLLUX_1 = [
+    'Crying did not resolve completely.',
+    'The behavior did not resolve fully.',
+    'Attention did not resolve crying.',
+    'Differential reinforcement failed to resolve elopement.',
+    "Prompting did not resolve Mom's concern.",
+    'The disagreement was not resolved by the team.',
+  ];
+
+  test('each of his six sentences comes out unchanged, against notes naming the behavior', async ({ page }) => {
+    const out = await U(page, (N, [xs, intake]) => xs.map((x) => N.passNote({ results: x }, ['results'], intake)), [POLLUX_1, NAMED]);
+    expect(out.map((o) => o.output.results)).toEqual(POLLUX_1);
+    expect(out.map((o) => o.recast)).toEqual(POLLUX_1.map(() => 0));
+  });
+
+  test('the words after the phrase hold even when every subject is named as a behavior', async ({ page }) => {
+    const said = ['crying', 'behavior', 'attention', 'reinforcement', 'prompting', 'disagreement'];
+    const more = POLLUX_1.concat([
+      'Crying did not resolve entirely.',
+      'Crying did not resolve partly because of the noise.',
+      'Crying did not resolve immediately.',
+      'Crying did not resolve within 2 minutes.',
+      'Crying did not resolve on its own.',
+      'Crying was not resolved by the BCBA.',
+    ]);
+    const out = await U(page, (N, [xs, b]) => xs.map((x) => N.recast(x, b).text), [more, said]);
+    expect(out).toEqual(more);
+  });
+
+  test('only a subject the notes say did not resolve is recast', async ({ page }) => {
+    const out = await U(page, (N) => [
+      N.passNote({ results: 'The scheduling conflict did not resolve.' }, ['results'], 'Vocalizations did not resolve.').output.results,
+      N.passNote({ results: 'The vocalizations did not resolve.' }, ['results'], '').output.results,
+      N.passNote({ results: 'The vocalizations did not resolve.' }, ['results'], 'Vocalizations did not resolve.').output.results,
+    ]);
+    expect(out).toEqual([
+      'The scheduling conflict did not resolve.',
+      'The vocalizations did not resolve.',
+      'The vocalizations continued.',
+    ]);
+  });
+
+  test('a recast tells the clinician, on that section, what was changed', async ({ page }) => {
+    const out = await U(page, (N, intake) => N.recastHints({
+      narrative: 'BCBA ran an attention condition.',
+      results: 'In the tangible condition the vocalizations did not resolve.',
+    }, intake, ['narrative', 'results']), INTAKE);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ section: 'results', code: 'other', kind: 'register' });
+    expect(out[0].detail).toBe('Changed "did not resolve" to "continued" to match the notes.');
+  });
+});
+
+test.describe('Pollux 2: a sentence that already says continued is not flagged', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto(BCBA);
+    await page.waitForFunction(() => !!window.NoteUnresolved);
+  });
+
+  const INTAKE_2 = 'Crying did not stop during demands. Vocalizations did not resolve.';
+  const POLLUX_2 = [
+    'Crying continued after the BT told him to stop.',
+    'Crying continued after the demand ended.',
+    'Crying continued even when the activity ended.',
+    'Vocalizations continued after the BT stopped the task.',
+    'Crying did not appear to have stopped by the end of session.',
+  ];
+
+  test('each of his five sentences is left unflagged', async ({ page }) => {
+    const out = await U(page, (N, [xs, intake]) => xs.map((x) => N.hints({ results: x }, intake, ['results'])), [POLLUX_2, INTAKE_2]);
+    expect(out).toEqual(POLLUX_2.map(() => []));
+  });
+
+  test('a real stopped claim against the same notes is still flagged', async ({ page }) => {
+    const out = await U(page, (N, intake) => N.hints({ results: 'Crying stopped when the BT removed the demand.' }, intake, ['results']), INTAKE_2);
+    expect(out).toHaveLength(1);
+  });
+
+  test('"did not stop, but stopped" is two conditions, and the post-check stays silent', async ({ page }) => {
+    const intake = 'Crying did not stop during demands, but stopped within a minute of the break.';
+    const out = await U(page, (N, i) => [
+      N.behaviors(i),
+      N.hints({ results: 'Crying stopped within a minute of the break.' }, i, ['results']),
+    ], intake);
+    expect(out).toEqual([[], []]);
+  });
+});
+
+test.describe('Pollux 3: a real finding cannot hide behind the check mark', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto(BCBA);
+    await page.waitForFunction(() => !!window.NoteUnresolved && !!window.ExpertPraise);
+  });
+
+  test('the ask "stop or continue" is the right question and is kept', async ({ page }) => {
+    const out = await U(page, (N) => {
+      const found = {
+        terms: [],
+        register: [],
+        hints: [
+          { section: 'results', rank: 1, kind: 'thin', ask: 'Did the crying stop or continue by the end?', why: '' },
+          { section: 'results', rank: 2, kind: 'thin', ask: 'Did the crying persist, or stop after the break?', why: '' },
+          { section: 'results', rank: 3, kind: 'thin', ask: 'Say whether the crying stopped.', why: '' },
+        ],
+        hintsDropped: 0,
+      };
+      const kept = N.dropExpert(found, 'Crying did not stop during demands.');
+      return { asks: kept.hints.map((h) => h.ask), dropped: kept.unresolvedDropped, clear: window.ExpertPraise.nothingToChange(kept) };
+    });
+    expect(out.asks).toEqual([
+      'Did the crying stop or continue by the end?',
+      'Did the crying persist, or stop after the break?',
+      'Say whether the crying stopped.',
+    ]);
+    expect(out.dropped).toBe(0);
+    expect(out.clear).toBe(false);
+  });
+
+  test('a dropped ask holds the block open', async ({ page }) => {
+    const out = await U(page, (N) => {
+      const found = {
+        terms: [],
+        register: [],
+        hints: [{ section: 'results', rank: 1, kind: 'thin', ask: 'How long after attention did the vocalizations stop?', why: '' }],
+        hintsDropped: 0,
+      };
+      const kept = N.dropExpert(found, 'Vocalizations did not resolve.');
+      return { asks: kept.hints.length, dropped: kept.unresolvedDropped, clear: window.ExpertPraise.nothingToChange(kept) };
+    });
+    expect(out).toEqual({ asks: 0, dropped: 1, clear: false });
+  });
+});
+
+test.describe('Pollux 4: a skill is not a behavior that did not stop', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto(BCBA);
+    await page.waitForFunction(() => !!window.NoteUnresolved);
+  });
+
+  test('"kept eating" and "continued requesting" are skills, and are not read', async ({ page }) => {
+    const out = await U(page, (N) => [
+      N.behaviors('Client kept eating snacks.'),
+      N.behaviors('Client continued requesting items with a full sentence.'),
+      N.behaviors('The client continued to eat lunch.'),
+      N.hints({ results: 'Eating stopped when the bell rang.' }, 'Client kept eating snacks.', ['results']),
+    ]);
+    expect(out).toEqual([[], [], [], []]);
+  });
+
+  test('a problem behavior, or one the notes name as a target, still is', async ({ page }) => {
+    const out = await U(page, (N) => [
+      N.behaviors('Attention given; client kept hitting.'),
+      N.behaviors('Target behavior: humming. The client kept humming through the transition.'),
+    ]);
+    expect(out).toEqual([['hitting'], ['humming']]);
+  });
+});
+
+test.describe('on the page, Pollux 1 and 3', () => {
+  async function draft(page, expert) {
+    await page.route('**/api/llm-call**', async (route) => {
+      const b = JSON.parse(route.request().postData() || '{}');
+      if (isTriageCall(b)) return route.fulfill(reply({ sufficient: true, readiness: 95, questions: [] }));
+      return route.fulfill(reply(WRONG));
+    });
+    await page.route('**/api/expert-pass**', (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(expert) }));
+    await page.addInitScript(([k, t]) => localStorage.setItem(k, t), ['notes_auth_token', tokenFor(['assess'])]);
+    await page.goto(BCBA);
+    await page.getByRole('textbox', { name: /Summary Notes of Activities/i }).first().fill(INTAKE);
+    await page.getByRole('button', { name: 'Generate Note' }).click();
+    const ack = page.locator('#notes-ack-go');
+    if (await ack.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await page.locator('#notes-ack-cb').check();
+      await ack.click();
+    }
+    const rev = page.locator('#notes-scrub-go');
+    if (await rev.isVisible({ timeout: 1500 }).catch(() => false)) await rev.click();
+    await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 20000 });
+  }
+
+  test('the Results section says what the recast changed', async ({ page }) => {
+    await draft(page, { terms: [], register: [], hints: [], hintsDropped: 0 });
+    await expect(page.getByTestId('hints-results')).toContainText('Changed "did not resolve" to "continued" to match the notes.');
+  });
+
+  test('an expert ask dropped for assuming a stop shows a line, and no check mark', async ({ page }) => {
+    await draft(page, {
+      terms: [],
+      register: [],
+      hints: [{ section: 'results', rank: 1, kind: 'thin', ask: 'How long after attention did the vocalizations stop?', why: '' }],
+      hintsDropped: 0,
+    });
+    await expect(page.getByTestId('expert-unresolved-dropped')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId('expert-unresolved-dropped')).toContainText('notes say');
+    await expect(page.getByRole('img', { name: 'Expert: nothing to change' })).toHaveCount(0);
   });
 });

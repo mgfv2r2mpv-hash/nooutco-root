@@ -215,8 +215,11 @@ test.describe('nothing to change', () => {
       P.nothingToChange({ terms: [{ token: 'PCT', reading: '', status: 'unknown', why: '' }], register: [], hints: [] }),
       P.nothingToChange({ terms: [], register: [], hints: [], hintsDropped: 2 }),
       P.nothingToChange(null),
+      // Pollux's hold on #328, finding 3: an ask the #118 check dropped is a
+      // finding, so it holds the block open rather than hiding behind the mark.
+      P.nothingToChange({ terms: [], register: [], hints: [], hintsDropped: 0, unresolvedDropped: 1 }),
     ]);
-    expect(read).toEqual([false, false, false, false, false]);
+    expect(read).toEqual([false, false, false, false, false, false]);
   });
 });
 

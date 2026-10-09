@@ -112,7 +112,11 @@
      praise is dropped. Something to change is any ask, any phrase to reword
      that is not a keep, any abbreviation it could not read, or any finding
      the cap cut. A reading it did resolve is a reading aid rather than a fix,
-     so it does not hold the block open. */
+     so it does not hold the block open.
+
+     AN ASK THE #118 CHECK DROPPED HOLDS IT OPEN TOO (Pollux's hold on #328,
+     finding 3). The drop is a finding about the expert, and a dropped ask
+     that was the right question would otherwise vanish behind the mark. */
   function nothingToChange(found) {
     if (!found || typeof found !== "object") return false;
     var hints = Array.isArray(found.hints) ? found.hints : [];
@@ -123,7 +127,7 @@
       return r && text(r.quote).trim() && (r.action || "ask") !== "keep";
     });
     var unread = terms.filter(function (t) { return t && text(t.token).trim() && t.status !== "resolved"; });
-    return !asks.length && !rewrites.length && !unread.length && !found.hintsDropped;
+    return !asks.length && !rewrites.length && !unread.length && !found.hintsDropped && !found.unresolvedDropped;
   }
 
   window.ExpertPraise = {
