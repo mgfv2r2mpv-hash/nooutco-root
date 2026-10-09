@@ -34,7 +34,7 @@ The script first prints the wrangler version it found (`wrangler --version`) and
 1. The Cloudflare account it found (type `y`, or the account's number when you have more than one). It stops here and creates nothing if you say no. When that account already has a Worker named `horae-zone` (`wrangler deployments list --name horae-zone --json`), the script prints "Worker horae-zone already exists; this will replace its code" and goes on only on `y`; anything else, or a check that cannot tell, stops the run with nothing changed.
 2. The Resend API key (`RESEND_KEY`), on a hidden prompt (nothing shows as you type, arrow keys do nothing, and Ctrl-C or Ctrl-D cancels).
 3. The from-address for sign-up mail (`HZ_MAIL_FROM`), on the domain you verified in Resend (`Horae Zone <mail@your-domain>` works).
-4. The alert address (`HZ_ALERT_TO`), mailed once a day when sign-ups reach half the daily cap.
+4. The alert address (`HZ_ALERT_TO`), mailed once a day when the day's mail reaches half the sign-up stop (35 of the free plan's 100).
 5. The sign-up link base (`HZ_LINK_BASE`): the https page that reads the code after `#`.
 6. The reopen link base (`HZ_REOPEN_BASE`): the https page that reads the reopen token after `#`, mailed when a code path closes. The script checks it with the Worker's own check (`reopenBaseOk` in `src/unlock.js`): https, no `?` and no `#`.
 7. The PIN reset link base (`HZ_RESET_BASE`): the page on the device that reads the emailed reset code after `#`, mailed when a device asks to reset a forgotten app PIN. Checked the same way: https, no `?` and no `#`.
@@ -43,7 +43,9 @@ The script first prints the wrangler version it found (`wrangler --version`) and
    - the secret key (`HZ_TURNSTILE_SECRET`), on a hidden prompt, put as a Worker secret.
 
    Each must be a production key (it starts `0x`). Cloudflare's test keys (`1x`, `2x`, `3x`) are refused: the `1x` secret passes every token, so one set by mistake would switch the check off. Until both are set, `POST /account` and an unsigned `POST /signin` answer `not-configured` (503) and `GET /challenge` shows the same sentence; nothing fails open.
-9. The mail plan's daily send limit (`HZ_CODES_PER_DAY`, blank keeps 100, the Resend free plan's daily limit; type the plan's limit on a paid plan).
+9. Two daily limits, each blank for its default:
+   - the mail plan's daily send limit (`HZ_MAIL_PER_DAY`, blank keeps 100, the Resend free plan's daily limit; type the plan's limit on a paid plan). Every mail the Worker sends counts toward it once, whoever sends it: sign-up starts stop at 70 percent of it, recovery starts at 90 percent, and the security notices and the operator alert may use all of it, so a sign-up flood never stops a recovery link or a security notice. A notice refused at the limit is not sent and is audited `mail-budget` on its route; the action it tells about still happens;
+   - sign-up starts a day (`HZ_CODES_PER_DAY`, blank keeps 100), a cap of sign-up's own that also applies. Recovery starts have a cap of the same number.
 10. Whether the rate rule is in place. The script prints the exact clicks for it before the route goes live, so you can add it in the dashboard while it waits.
 11. Which account is yours, only when Step 6 finds accounts and no administrator yet (below). It lists them oldest first by creation time and device count; type the number, or leave it blank to set none. The script reads your pick back and sets it only on `y`, since the first administrator is set once.
 
@@ -52,7 +54,7 @@ A bad answer is asked again, up to 3 times. All answers are asked before anythin
 ## What it does
 
 1. Finds the D1 database `horae-zone`, or creates it (from an empty temp folder, so wrangler cannot edit `wrangler.toml`).
-2. Writes `wrangler.deploy.toml` next to `wrangler.toml`: the real database id, the route `horae-zone.nooutco.me` as a Custom domain (always proxied, so `cf-connecting-ip` comes from the Cloudflare edge), `workers_dev = false`, the Turnstile site key, and the daily limit when you gave one. It holds no secret and is gitignored. The committed `wrangler.toml` keeps its zero id and no route (`test/config.test.mjs`).
+2. Writes `wrangler.deploy.toml` next to `wrangler.toml`: the real database id, the route `horae-zone.nooutco.me` as a Custom domain (always proxied, so `cf-connecting-ip` comes from the Cloudflare edge), `workers_dev = false`, the Turnstile site key, and each daily limit you gave. It holds no secret and is gitignored. The committed `wrangler.toml` keeps its zero id and no route (`test/config.test.mjs`).
 3. Applies `schema.sql` to the remote database in two passes, with a column step between them. Every statement is `IF NOT EXISTS`, so a rerun changes nothing, and so a table already there keeps the columns it had: `CREATE TABLE IF NOT EXISTS` never adds a column. On 9 Oct 2026 that left production's `device` table without `confirmed_at` while the deployed code wrote it, and every unlock answered 500 until the column was added by hand. A `CREATE INDEX` on a column a table lacks would fail outright with `no such column`, so the order is:
    - First pass: only the `CREATE TABLE` statements of `schema.sql`, as one `wrangler d1 execute --command`. A new table is made here; a table already there is left as it is.
    - The column step: the script reads each table's columns on the remote database (`PRAGMA table_info`, one table at a time) and compares them with the columns `schema.sql` declares (`bin/deploy-columns.mjs` runs `schema.sql` on an empty in-memory SQLite database and reads the same `PRAGMA` there, so both sides are SQLite's own report).

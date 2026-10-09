@@ -17,6 +17,7 @@ import { SIGNIN_LIMITS } from "./signin.js";
 import { DAY_MS } from "../../../packages/account-engine/src/limits.mjs";
 import { WRONG_BUCKET_PREFIX } from "./pin-reset.js";
 import { RECOVER_DAY_BUCKET } from "./recover.js";
+import { MAIL_BUCKET } from "./mail-budget.js";
 
 export const RETENTION =Object.freeze({
   auditYears: 6,
@@ -54,7 +55,8 @@ function checkedYears(value) {
 // may be chosen again, so the row refuses nothing), forgotten-PIN reset codes
 // past their life (A5b: refused by then anyway), recovery links past their
 // life (A6; a spent one is kept until then, security review LOW-1, so a purge
-// never frees an address to mint early; the recovery day rows stay a day),
+// never frees an address to mint early; the recovery day rows and the shared
+// mail budget rows of src/mail-budget.js stay a day),
 // bring envelopes or asks past their life (A6; a vault tombstone is never
 // purged, since it is what tells a device that comes back after months to
 // shred its wrap), and audit rows older than the cutoff.
@@ -72,8 +74,8 @@ export async function purgeExpired(db, now, { auditYears = RETENTION.auditYears 
     db.prepare("DELETE FROM pin_reset WHERE expires_at <= ?").bind(now),
     db.prepare("DELETE FROM recovery WHERE expires_at <= ?").bind(now),
     db.prepare("DELETE FROM handoff WHERE expires_at <= ?").bind(now),
-    db.prepare("DELETE FROM throttle WHERE at <= ? AND ((bucket NOT IN (?, ?, ?) AND substr(bucket, 1, ?) <> ?) OR at <= ?)")
-      .bind(now - throttleWindow, DAILY_BUCKET, ALERT_BUCKET, RECOVER_DAY_BUCKET, WRONG_BUCKET_PREFIX.length, WRONG_BUCKET_PREFIX, now - SIGNUP_LIMITS.dayMs),
+    db.prepare("DELETE FROM throttle WHERE at <= ? AND ((bucket NOT IN (?, ?, ?, ?) AND substr(bucket, 1, ?) <> ?) OR at <= ?)")
+      .bind(now - throttleWindow, DAILY_BUCKET, ALERT_BUCKET, RECOVER_DAY_BUCKET, MAIL_BUCKET, WRONG_BUCKET_PREFIX.length, WRONG_BUCKET_PREFIX, now - SIGNUP_LIMITS.dayMs),
     db.prepare("DELETE FROM audit WHERE at < ?").bind(cutoff),
   ]);
 }

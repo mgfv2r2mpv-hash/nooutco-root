@@ -24,10 +24,12 @@
  * address at a time; a start while one is live mails it again, inside
  * RECOVER_LIMITS.resendsPerAddressHour. Every start counts toward a daily cap
  * of recovery's own (RECOVER_DAY_BUCKET, the same number as sign-up's, A6
- * security review LOW-2), so a flood of sign-up starts never holds back the
- * one way back into an account. The finish counts the try before the
- * compare, spends the link with the first right try, and only then checks
- * the password: a wrong one answers
+ * security review LOW-2), and takes a place in the shared mail budget
+ * (src/mail-budget.js) while it is under the recovery tier, 90 of the plan's
+ * 100, which sign-up starts (70) never reach, so a flood of sign-up starts
+ * never holds back the one way back into an account. The finish counts the
+ * try before the compare, spends the link with the first right try, and only
+ * then checks the password: a wrong one answers
  * bad-login and the link is spent (as the MEDIUM-1 relink). Shape comes first,
  * so a malformed request counts nothing.
  *
@@ -75,6 +77,7 @@ import { isPoint } from "./devices.js";
 import { admitThrottle } from "./throttle.js";
 import { accountLocked } from "./account-lock.js";
 import { mailAfter } from "./lockout.js";
+import { mailBucketFor, paidSend, sendReason } from "./mail-budget.js";
 
 // The recovery starts of the last day, across every address and requester.
 export const RECOVER_DAY_BUCKET = "recover-day";
@@ -156,14 +159,9 @@ async function resendLink(db, keys, addressKey, now) {
   }
 }
 
+// The start's admit already took the link's place in the shared mail budget.
 function mailLink(mailer, message) {
-  return async () => {
-    try {
-      return (await mailer(message)) ? null : "mail-failed";
-    } catch {
-      return "mail-failed";
-    }
-  };
+  return () => sendReason(paidSend(mailer), message);
 }
 
 async function startRecovery({ db, body, now, env, request, mailer, siteverify }) {
@@ -172,6 +170,7 @@ async function startRecovery({ db, body, now, env, request, mailer, siteverify }
   const keys = await keysOrUnavailable(env);
   if (!mailer) throw new Refusal("unavailable", 503);
   const codesPerDay = codesPerDayOf(env);
+  const mailDay = mailBucketFor(env, "recovery");
   linkOf(env, "x"); // a link base that cannot carry a link stops the start before any write
   const addressKey = await keys.addressKey(address);
   const requester = await keys.requesterKey(ip);
@@ -183,6 +182,7 @@ async function startRecovery({ db, body, now, env, request, mailer, siteverify }
   const counted = await admitThrottle(db, now, RECOVER_LIMITS.windowMs, [
     { bucket: `recover-start:${requester}`, limit: RECOVER_LIMITS.startsPerRequesterHour },
     { bucket: RECOVER_DAY_BUCKET, limit: codesPerDay, windowMs: SIGNUP_LIMITS.dayMs },
+    mailDay,
   ]);
   if (!counted) throw new Refusal("slow-down", 429);
   const minted = await mintLink(db, keys, addressKey, now);

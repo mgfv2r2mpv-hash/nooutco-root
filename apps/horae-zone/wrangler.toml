@@ -9,8 +9,11 @@
 # DEPLOY.md) sets them with `wrangler secret put`, each value on stdin:
 # HZ_ACCOUNT_KEY (generated; the PIN pepper, ticket key and sealing keys
 # derive from it), RESEND_KEY (hidden prompt), HZ_MAIL_FROM, HZ_ALERT_TO,
-# HZ_LINK_BASE, HZ_REOPEN_BASE, HZ_RESET_BASE and HZ_TURNSTILE_SECRET (hidden prompt). HZ_CODES_PER_DAY, the mail plan's daily limit, goes in the
-# deploy-only config when the plan's limit is not the default 100, and so does
+# HZ_LINK_BASE, HZ_REOPEN_BASE, HZ_RESET_BASE and HZ_TURNSTILE_SECRET (hidden prompt).
+# HZ_MAIL_PER_DAY, the mail plan's daily limit shared by every mail the Worker
+# sends (src/mail-budget.js), goes in the deploy-only config when the plan's
+# limit is not the default 100 (the Resend free plan), and so do
+# HZ_CODES_PER_DAY, sign-up starts a day when not the default 100, and
 # HZ_TURNSTILE_SITEKEY (public). Until both Turnstile keys are set, POST /account
 # and an unsigned POST /signin answer not-configured (src/turnstile.js).
 

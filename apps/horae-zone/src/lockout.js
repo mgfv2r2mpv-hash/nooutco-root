@@ -29,6 +29,7 @@ import {
 import { fragmentLink } from "../../../packages/account-engine/src/mailer.mjs";
 import { Refusal, b64url } from "./checks.js";
 import { admitThrottle } from "./throttle.js";
+import { sendReason } from "./mail-budget.js";
 
 // Another request writing between a read and a write costs one more read.
 // Each write is one request's, so this covers far more requests at once than
@@ -236,7 +237,10 @@ export function lockNotes(events, token, reopenBase) {
 }
 
 // After-work that mails `notes` to the account's address, opened from its
-// sealed box. A send that fails or throws is audited as mail-failed.
+// sealed box. Each note is one send and takes one place in the shared mail
+// budget (src/mail-budget.js). A send that fails or throws is audited as
+// mail-failed, one the budget refused as mail-budget; neither changes the
+// action the note tells about. Returns each reason once.
 export function mailAfter({ db, keys, mailer, accountId, notes }) {
   if (notes.length === 0) return undefined;
   return async () => {
@@ -244,9 +248,9 @@ export function mailAfter({ db, keys, mailer, accountId, notes }) {
       const account = await db.prepare("SELECT address_key, address_box FROM account WHERE id = ?").bind(accountId).first();
       if (!account) return "mail-failed";
       const to = await keys.openAddress(account.address_box, account.address_key);
-      let ok = true;
-      for (const note of notes) ok = (await mailer({ to, ...note })) && ok;
-      return ok ? null : "mail-failed";
+      const reasons = [];
+      for (const note of notes) reasons.push(await sendReason(mailer, { to, ...note }));
+      return [...new Set(reasons.filter(Boolean))];
     } catch {
       return "mail-failed";
     }
