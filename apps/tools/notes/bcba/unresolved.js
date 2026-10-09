@@ -96,7 +96,7 @@
        a timing         "did not resolve immediately / within 2 minutes"
        a cause          "did not resolve on its own / with redirection"
      So only the end of a clause, or a word that keeps "continued" true. */
-  var RECAST = /\b([a-z][a-z'-]*)\s+((?:did\s+not|didn't|failed\s+to)\s+resolve|(?:was|were)\s+not\s+resolved|remained\s+unresolved)(?=\s*(?:$|[.,;:!?)\n])|\s+(?:until|when|whenever|while|once|after|following|during|across|throughout|despite|in|for|and|but|or|so|although|though|even|as|because|since)\b)/gi;
+  var RECAST = /\b([a-z][a-z'-]*)\s+((?:did\s+not|didn't|failed\s+to)\s+resolve|(?:was|were)\s+not\s+resolved|remained\s+unresolved)(?=\s*(?:$|[.,;:!?)\n])|\s+(?:until|when|whenever|while|once|after|following|during|across|throughout|despite|for|and|but|or|although|though|even|because)\b)/gi;
   var OPEN_QUESTION = /\b(?:continu\w*|persist\w*|whether)\b/i;
   var RECAST_NOTE = 'Changed "did not resolve" to "continued" to match the notes.';
 
