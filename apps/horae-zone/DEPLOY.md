@@ -83,10 +83,10 @@ A new account key would make every stored account unreadable, a new seed key eve
 CHECKLIST
   PASS    Cloudflare account                 <name> (confirmed by you)
   PASS    Database present                   created
-  PASS    Columns match schema.sql           26 tables, every column as schema.sql declares it
+  PASS    Columns match schema.sql           27 tables, every column as schema.sql declares it
   PASS    Worker deployed                    horae-zone, route horae-zone.nooutco.me (Custom domain)
   SKIPPED Owner as administrator             no account yet: sign up, then node bin/deploy.mjs --owner-admin
-  PASS    Schema applied                     26 tables present
+  PASS    Schema applied                     27 tables present
   PASS    Secret HZ_ACCOUNT_KEY              set (name only)
   ...
   PASS    Turnstile site key HZ_TURNSTILE_SITEKEY  a Worker var in wrangler.deploy.toml
@@ -114,7 +114,7 @@ It runs Step 6 alone: no deploy, no secret, no other write. It picks the Cloudfl
 
 ## Break glass: unlock an account the offline block locked
 
-An administrator unlocks an account that a device locked through `/pin/blocked` (ten wrong PINs offline, then the device's report) with `/admin/unlock-account` (A5c), from a device of another account. Every device route of the locked account answers `account-locked` (423), the admin routes included, so when the locked account is the only administrator's own, or no administrator is set yet, nothing in the product unlocks it. This runbook is the way out then, and it writes to the live database, so run it only for an owner who asked, after the owner has shown the inbox is theirs (for example by forwarding the "Horae Zone: account locked" note). Kaleb's ruling on `/pin/blocked` is `docs/horae-zone/DESIGN-REVIEW.md`, A5b, Decisions for Kaleb row 24, MEDIUM-1.
+An administrator unlocks an account that a device locked through `/pin/blocked`, or through `/offline/report` with ten wrong offline PINs (ten wrong PINs offline, then the device's report), with `/admin/unlock-account` (A5c), from a device of another account. Every device route of the locked account answers `account-locked` (423), the admin routes included, so when the locked account is the only administrator's own, or no administrator is set yet, nothing in the product unlocks it. This runbook is the way out then, and it writes to the live database, so run it only for an owner who asked, after the owner has shown the inbox is theirs (for example by forwarding the "Horae Zone: account locked" note). Kaleb's ruling on `/pin/blocked` is `docs/horae-zone/DESIGN-REVIEW.md`, A5b, Decisions for Kaleb row 24, MEDIUM-1.
 
 The database keeps no address in the clear, so the lock is found by its time. From the repo root, in Mac Terminal, on a Mac where `node bin/deploy.mjs` has run (it writes the gitignored `wrangler.deploy.toml` with the real database id):
 
