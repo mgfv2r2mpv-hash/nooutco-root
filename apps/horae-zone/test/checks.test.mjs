@@ -14,7 +14,7 @@ async function reason(res) {
 test('the route table names the plan routes and every one declares its checks', () => {
   for (const p of ['/account', '/account/email/verify', '/signin', '/device/register', '/device/remove', '/otp/enrol',
     '/unlock/start', '/unlock/finish', '/unlock/reopen', '/pin/verify', '/pin/set', '/pin/reset', '/pin/review',
-    '/reverify', '/pair/offer', '/pair/take', '/recover', '/vault/switch', '/admin/unlock-pins', '/admin/unlock-account', '/nonce']) {
+    '/reverify', '/pair/offer', '/pair/take', '/recover', '/vault/switch', '/admin/unlock-pins', '/admin/unlock-account', '/admin/status', '/nonce']) {
     assert.ok(ROUTES[p], p);
   }
   for (const [p, r] of Object.entries(ROUTES)) assert.ok(['open', 'signable', 'device', 'signed', 'admin'].includes(r.checks), p);
@@ -81,7 +81,8 @@ test('admin routes refuse a device whose account is not an admin', async () => {
   const dev = await addDevice(h.db);
   assert.equal(await reason(await h.call(await signed(h.call, dev, '/admin/unlock-pins', {}))), 'not-admin');
   makeAdmin(h.db, dev.account);
-  assert.equal(await reason(await h.call(await signed(h.call, dev, '/admin/unlock-pins', {}))), 'not-built');
+  // Past the role check, the handler refuses a body that names no account.
+  assert.equal(await reason(await h.call(await signed(h.call, dev, '/admin/unlock-pins', {}))), 'shape');
 });
 
 test('open routes take a JSON object and answer not-built until their slice lands', async () => {
