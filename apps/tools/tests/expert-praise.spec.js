@@ -141,29 +141,33 @@ const reply = (obj) => ({
   body: JSON.stringify({ content: [{ type: 'text', text: JSON.stringify(obj) }], usage: { output_tokens: 100 }, stop_reason: 'end_turn' }),
 });
 
+async function drafted(page, expert) {
+  await page.route('**/api/llm-call**', async (route) => {
+    const b = JSON.parse(route.request().postData() || '{}');
+    if (isTriageCall(b)) return route.fulfill(reply({ sufficient: true, readiness: 95, questions: [] }));
+    return route.fulfill(reply(NOTE));
+  });
+  await page.route('**/api/expert-pass**', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(expert) }));
+  await page.addInitScript(([k, t]) => localStorage.setItem(k, t), ['notes_auth_token', tokenFor('admin', ['bt'])]);
+  await page.goto(PAGE);
+  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT money 3 item array, 8 of 10 gestural');
+  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('two minute warning before transitions');
+  await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement x2, blocked and redirected');
+  await page.getByRole('button', { name: 'Generate Note' }).click();
+  const ack = page.locator('#notes-ack-go');
+  if (await ack.isVisible({ timeout: 5000 }).catch(() => false)) {
+    await page.locator('#notes-ack-cb').check();
+    await ack.click();
+  }
+  const rev = page.locator('#notes-scrub-go');
+  if (await rev.isVisible({ timeout: 1500 }).catch(() => false)) await rev.click();
+  await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 20000 });
+}
+
 test.describe('on the page', () => {
   test('the praise-only ask never reaches the panel, and the ask beside it does', async ({ page }) => {
-    await page.route('**/api/llm-call**', async (route) => {
-      const b = JSON.parse(route.request().postData() || '{}');
-      if (isTriageCall(b)) return route.fulfill(reply({ sufficient: true, readiness: 95, questions: [] }));
-      return route.fulfill(reply(NOTE));
-    });
-    await page.route('**/api/expert-pass**', (route) =>
-      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(EXPERT) }));
-    await page.addInitScript(([k, t]) => localStorage.setItem(k, t), ['notes_auth_token', tokenFor('admin', ['bt'])]);
-    await page.goto(PAGE);
-    await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT money 3 item array, 8 of 10 gestural');
-    await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('two minute warning before transitions');
-    await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement x2, blocked and redirected');
-    await page.getByRole('button', { name: 'Generate Note' }).click();
-    const ack = page.locator('#notes-ack-go');
-    if (await ack.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await page.locator('#notes-ack-cb').check();
-      await ack.click();
-    }
-    const rev = page.locator('#notes-scrub-go');
-    if (await rev.isVisible({ timeout: 1500 }).catch(() => false)) await rev.click();
-    await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 20000 });
+    await drafted(page, EXPERT);
 
     const block = page.getByTestId('panel-expert-questions');
     if (!(await block.isVisible({ timeout: 800 }).catch(() => false))) {
@@ -174,5 +178,85 @@ test.describe('on the page', () => {
     await expect(block.locator('[data-panel-expert]')).toHaveCount(1);
     await expect(block).toContainText('How long did each elopement last?');
     await expect(block).not.toContainText('This is good.');
+  });
+});
+
+/* ISSUE #119, HIS RULING OF 2026-10-09 ON THE BOARD: when the expert has
+   nothing to fix, its output collapses to a small check mark. Dropping the
+   praise (above) emptied the list, and the block still drew a heading and
+   "No unobserved claims found in the intake." on every clean note, which is
+   the same "this is good" in the app's own words.
+
+   NOTHING TO CHANGE IS A RULE, not a field. The expert's schema has no
+   "nothing to report" flag (expertSchema in _worker.js), so the page decides
+   from what is left after the praise is dropped: no ask, no phrase to reword,
+   no abbreviation it could not read, and no finding cut by the cap. A reading
+   of an abbreviation it did resolve is a reading aid, not a fix, so it does
+   not hold the block open. */
+test.describe('nothing to change', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto(PAGE);
+    await page.waitForFunction(() => !!window.ExpertPraise);
+  });
+
+  test('an empty pass, a keep, and a resolved abbreviation are nothing to change', async ({ page }) => {
+    const read = await praise(page, (P) => [
+      P.nothingToChange({ terms: [], register: [], hints: [], hintsDropped: 0 }),
+      P.nothingToChange({ terms: [{ token: 'DTT', reading: 'Discrete Trial Training', status: 'resolved', why: '' }], register: [], hints: [] }),
+      P.nothingToChange({ terms: [], register: [{ quote: 'The client sat.', action: 'keep', why: 'Observable.', move: '' }], hints: [] }),
+    ]);
+    expect(read).toEqual([true, true, true]);
+  });
+
+  test('any real finding means there is something to change', async ({ page }) => {
+    const read = await praise(page, (P) => [
+      P.nothingToChange({ terms: [], register: [], hints: [{ section: 'note', rank: 1, kind: 'thin', ask: 'How long did it last?', why: '' }] }),
+      P.nothingToChange({ terms: [], register: [{ quote: 'he wanted attention', action: 'reframe', why: '', move: 'Say what happened.' }], hints: [] }),
+      P.nothingToChange({ terms: [{ token: 'PCT', reading: '', status: 'unknown', why: '' }], register: [], hints: [] }),
+      P.nothingToChange({ terms: [], register: [], hints: [], hintsDropped: 2 }),
+      P.nothingToChange(null),
+    ]);
+    expect(read).toEqual([false, false, false, false, false]);
+  });
+});
+
+test.describe('on the page, a clean reading is a check mark', () => {
+  const ONLY_PRAISE = {
+    terms: [{ token: 'DTT', reading: 'Discrete Trial Training', status: 'resolved', why: 'Named beside the trial count.' }],
+    register: [{ quote: 'The client completed programming.', action: 'keep', why: 'Observable and attributed.', move: '' }],
+    hints: [{ section: 'note', rank: 1, kind: 'thin', ask: 'This is good.', why: 'Observable and attributed.' }],
+    hintsDropped: 0,
+    usage: { input_tokens: 20, output_tokens: 30 },
+  };
+
+  test('nothing to fix draws one small check mark and no text block', async ({ page }) => {
+    await drafted(page, ONLY_PRAISE);
+    const reading = page.getByTestId('expert-reading');
+    const mark = reading.getByRole('img', { name: 'Expert: nothing to change' });
+    await expect(mark).toBeVisible({ timeout: 10000 });
+    await expect(reading).not.toContainText('Expert review of intake');
+    await expect(reading).not.toContainText('No unobserved claims');
+    await expect(reading).not.toContainText('Discrete Trial Training');
+    const box = await reading.boundingBox();
+    expect(box.height).toBeLessThanOrEqual(28);
+  });
+
+  test('a real finding still shows in full, with no check mark', async ({ page }) => {
+    await drafted(page, {
+      ...ONLY_PRAISE,
+      register: [{ quote: 'he wanted attention', action: 'reframe', why: 'A function claim.', move: 'Say what happened.' }],
+    });
+    await expect(page.getByTestId('expert-register-toggle')).toContainText('1 phrase to reword');
+    await expect(page.getByTestId('expert-reading')).toContainText('Discrete Trial Training');
+    await expect(page.getByRole('img', { name: 'Expert: nothing to change' })).toHaveCount(0);
+  });
+
+  test('asks in the panel and no claims: the empty-claims line is a check, not a sentence', async ({ page }) => {
+    await drafted(page, EXPERT);
+    const empty = page.getByTestId('expert-register-empty');
+    await expect(empty).toBeVisible({ timeout: 10000 });
+    await expect(empty).toHaveAccessibleName('Expert: no unobserved claims');
+    await expect(empty).not.toContainText('No unobserved claims found');
+    await expect(page.getByRole('img', { name: 'Expert: nothing to change' })).toHaveCount(0);
   });
 });
