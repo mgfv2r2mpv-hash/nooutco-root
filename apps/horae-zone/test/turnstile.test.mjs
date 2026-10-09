@@ -14,6 +14,7 @@ import {
 } from '../src/turnstile.js';
 import { PAGE_SCRIPT, PAGE_STYLE, FRAME_ORIGINS, TURNSTILE_SCRIPT } from '../src/challenge-page.js';
 import { DAILY_BUCKET } from '../src/signup.js';
+import { RECOVER_DAY_BUCKET } from '../src/recover.js';
 import { createHandler } from '../src/index.js';
 
 const ADDRESS = 'turnstile-user@example.test';
@@ -259,8 +260,119 @@ test('the token is never stored, audited or echoed', async () => {
   }
 });
 
+// The /recover start (issue #301). The finish is the emailed link plus the
+// account password, so only the start, which mails, pays the challenge.
+const recoverRows = (h) => h.db.sqlite.prepare("SELECT COUNT(*) AS n FROM throttle WHERE bucket LIKE 'recover%'").get().n;
+const recoverStartRaw = (h, email, turnstile, ip = IP) => h.call(post('/recover', { email, ...(turnstile === undefined ? {} : { turnstile }) }, { 'cf-connecting-ip': ip }));
+const recoveryMail = (h) => h.mail.filter((m) => m.subject === 'Horae Zone: account recovery link');
+
+test('/recover start with no token, a sign-up token or a sign-in token is refused before the recovery buckets', async () => {
+  const h = harness();
+  await signUp(h, ADDRESS);
+  const calls = h.siteverify.calls.length;
+  assert.deepEqual(await answer(await recoverStartRaw(h, ADDRESS)), { status: 400, json: { error: 'shape' } });
+  assert.equal(h.siteverify.calls.length, calls, 'no token: no siteverify call');
+  assert.deepEqual(await answer(await recoverStartRaw(h, ADDRESS, passToken('account'))), { status: 403, json: { error: 'challenge' } });
+  assert.deepEqual(await answer(await recoverStartRaw(h, ADDRESS, passToken('signin'))), { status: 403, json: { error: 'challenge' } });
+  assert.equal(recoverRows(h), 0, 'no recovery bucket row, the day\'s cap included');
+  assert.equal(throttleRows(h, RECOVER_DAY_BUCKET), 0);
+  assert.equal(recoveryMail(h).length, 0);
+  assert.deepEqual(auditRows(h.db).at(-1), { route: '/recover', reason: 'challenge' });
+});
+
+test('NEGATIVE CONTROL: /recover start with a passing recover token mails the link and spends one place in the recovery day', async () => {
+  const h = harness();
+  await signUp(h, ADDRESS);
+  assert.deepEqual(await answer(await recoverStartRaw(h, ADDRESS, passToken('recover'))), { status: 200, json: { ok: true } });
+  assert.equal(throttleRows(h, RECOVER_DAY_BUCKET), 1);
+  assert.equal(recoveryMail(h).length, 1);
+  const call = h.siteverify.calls.at(-1);
+  assert.equal(call.form.remoteip, IP, 'siteverify gets the connecting address');
+});
+
+test('a failed challenge on /recover spends no place in the recovery day and mails nothing', async () => {
+  const h = harness();
+  await signUp(h, ADDRESS);
+  h.env.HZ_TURNSTILE_SECRET = TURNSTILE_FAIL.secret;
+  for (let i = 0; i < 5; i += 1) {
+    assert.deepEqual(await answer(await recoverStartRaw(h, ADDRESS, passToken('recover'))), { status: 403, json: { error: 'challenge' } });
+  }
+  assert.equal(throttleRows(h, RECOVER_DAY_BUCKET), 0, 'no day place spent');
+  assert.equal(recoverRows(h), 0, 'no recovery bucket row at all');
+  assert.equal(recoveryMail(h).length, 0);
+  // A used token is refused the same way, and counts nothing either.
+  h.env.HZ_TURNSTILE_SECRET = TURNSTILE_PASS.secret;
+  const token = passToken('recover');
+  assert.equal((await recoverStartRaw(h, ADDRESS, token)).status, 200);
+  assert.deepEqual(await answer(await recoverStartRaw(h, ADDRESS, token, '192.0.2.71')), { status: 403, json: { error: 'challenge' } }, 'single use');
+  assert.equal(throttleRows(h, RECOVER_DAY_BUCKET), 1, 'only the passing start counted');
+});
+
+test('the /recover challenge runs the same, and refuses the same, whether or not the address has an account', async () => {
+  const h = harness();
+  await signUp(h, ADDRESS);
+  const run = async (email, turnstile, ip) => {
+    const from = h.db.bound.length;
+    const calls = h.siteverify.calls.length;
+    const res = await answer(await recoverStartRaw(h, email, turnstile, ip));
+    return { res, sql: h.db.bound.slice(from).map((s) => s.sql), siteverify: h.siteverify.calls.length - calls };
+  };
+  // Passing: one siteverify call each, the same answer and the same statements.
+  const withAccount = await run(ADDRESS, passToken('recover'), '192.0.2.72');
+  const without = await run('nobody@example.test', passToken('recover'), '192.0.2.73');
+  assert.deepEqual(withAccount.res, { status: 200, json: { ok: true } });
+  assert.deepEqual(without, withAccount);
+  assert.equal(withAccount.siteverify, 1);
+  // Failing: the same refusal, the same statements (the audit row only), and no account lookup.
+  h.env.HZ_TURNSTILE_SECRET = TURNSTILE_FAIL.secret;
+  const refusedWith = await run(ADDRESS, passToken('recover'), '192.0.2.74');
+  const refusedWithout = await run('nobody@example.test', passToken('recover'), '192.0.2.75');
+  assert.deepEqual(refusedWith.res, { status: 403, json: { error: 'challenge' } });
+  assert.deepEqual(refusedWithout, refusedWith);
+  assert.equal(refusedWith.sql.some((s) => /\baccount\b|recovery|throttle/.test(s)), false, 'a refused challenge reads no account and writes no bucket');
+});
+
+test('a stranger with many connecting addresses and no passing token cannot drain the recovery day', async () => {
+  // A recovery day of two places.
+  const h = harness({ env: { HZ_CODES_PER_DAY: '2' } });
+  await signUp(h, ADDRESS);
+  for (let i = 0; i < 40; i += 1) {
+    const ip = `198.51.100.${i + 10}`;
+    const email = `stranger${i}@example.test`;
+    // No token, a reused token, a sign-up token and a made-up token: every one refused.
+    const turnstile = [undefined, 'pass.recover.1', passToken('account'), 'not-a-real-token'][i % 4];
+    const res = await recoverStartRaw(h, email, turnstile, ip);
+    assert.ok([400, 403].includes(res.status), `try ${i} answered ${res.status}`);
+  }
+  assert.equal(throttleRows(h, RECOVER_DAY_BUCKET), 0, 'the stranger spent no place');
+  assert.equal(recoveryMail(h).length, 0);
+  // The owner's start with a passing token still gets the link, inside the day.
+  assert.deepEqual(await answer(await recoverStartRaw(h, ADDRESS, passToken('recover'), '192.0.2.76')), { status: 200, json: { ok: true } });
+  assert.equal(recoveryMail(h).filter((m) => m.to === ADDRESS).length, 1);
+});
+
+test('FAIL CLOSED: with the keys unset, a /recover start answers not-configured whatever the body carries, and counts nothing', async () => {
+  const h = harness();
+  await signUp(h, ADDRESS);
+  h.env.HZ_TURNSTILE_SECRET = undefined;
+  const calls = h.siteverify.calls.length;
+  for (const turnstile of [undefined, passToken('recover')]) {
+    assert.deepEqual(await answer(await recoverStartRaw(h, ADDRESS, turnstile)), { status: 503, json: { error: 'not-configured', message: NOT_CONFIGURED_SENTENCE } });
+  }
+  assert.equal(recoverRows(h), 0);
+  assert.equal(recoveryMail(h).length, 0);
+  assert.equal(h.siteverify.calls.length, calls, 'no siteverify call without a secret');
+});
+
+test('FAIL CLOSED: siteverify failing on a /recover start answers unavailable and spends no place', async () => {
+  const down = harness({ siteverify: stub(null, { error: new TypeError('fetch failed') }) });
+  assert.deepEqual(await answer(await recoverStartRaw(down, ADDRESS, passToken('recover'))), { status: 503, json: { error: 'unavailable' } });
+  assert.equal(throttleRows(down, RECOVER_DAY_BUCKET), 0);
+  assert.equal(recoveryMail(down).length, 0);
+});
+
 // GET /challenge.
-const get = (h, pathname) => h.call(new Request(`${ORIGIN}${pathname}`, { method: 'GET' }));
+const get =(h, pathname) => h.call(new Request(`${ORIGIN}${pathname}`, { method: 'GET' }));
 const sha256 = async (text) => {
   const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)));
   return btoa(String.fromCharCode(...digest));
@@ -298,7 +410,8 @@ test('the page script hands the token only to Sass\'s turnstile handler or the t
   assert.match(PAGE_SCRIPT, /window\.parent\.postMessage\(\{ turnstile: token \}, origin\)/);
   assert.doesNotMatch(PAGE_SCRIPT, /postMessage\([^)]*["']\*["']/, 'never to any origin');
   assert.match(PAGE_SCRIPT, /location\.hash\.slice\(1\)/);
-  assert.match(PAGE_SCRIPT, /action !== "account" && action !== "signin"/);
+  assert.match(PAGE_SCRIPT, /var actions = \["account", "signin", "recover"\];/);
+  assert.match(PAGE_SCRIPT, /actions\.indexOf\(action\) < 0/);
   assert.doesNotMatch(PAGE_SCRIPT, /location\.search|fetch\(|XMLHttpRequest|innerHTML/);
 });
 
