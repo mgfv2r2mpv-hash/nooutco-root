@@ -89,6 +89,12 @@ jobs:
       #
       # So treat that file as the written record and verify the real thing:
       # `npx wrangler pages download config <project>` shows what is live.
+      #
+      # The error record (issue #152) names the build an error came from. A
+      # direct-upload project has no runtime variable carrying the commit, so
+      # this job writes it into the bundle. The file in git keeps null.
+      - name: Stamp the deployed commit for the error record
+        run: printf 'export const BUILD_SHA = "%s";\n' "$GITHUB_SHA" > apps/tools/worker/build-info.js
       - uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}

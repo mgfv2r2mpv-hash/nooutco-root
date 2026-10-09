@@ -2,7 +2,7 @@
 // `npm run sync:shared`). Bundled into this worker by wrangler at deploy time.
 import { jsonRes, sha256Hex } from "./shared/helpers.js";
 import { handleSuggest } from "./shared/suggest.js";
-import { recordError, listErrors, errorFingerprint } from "./worker/error-record.js";
+import { recordError, listErrors, errorFingerprint, errorRecordFields } from "./worker/error-record.js";
 
 // Notes tools that can be scoped to a managed password.
 const NOTES_TOOLS = ["bt", "sup", "parent", "assess", "sap", "graphva"];
@@ -369,15 +369,18 @@ const ERROR_ESCALATE_AT = [5, 25, 100];
 // Email an operational error to the admin, so failures are seen even if no user
 // reports them. Bounded against flooding by (a) a per-message occurrence counter
 // that only mails at the escalation thresholds and (b) a global hourly budget.
-// Never throws.
-async function notifyError(env, tool, message, meta, diagnostics) {
+// `context` feeds the durable record only: { request, status, error, code,
+// noteTool }. Never throws.
+async function notifyError(env, tool, message, meta, diagnostics, context = {}) {
   try {
     const msg = (message || "").toString().slice(0, 2000);
     if (!msg) return;
     // Counted on every occurrence, before the email throttle and whether or
     // not email is configured, so the morning review sees the real number
-    // (issue #152). The record keeps no message text: see worker/error-record.js.
-    await recordError(env.SUGGEST_DUPES, sha256Hex, { tool, message: msg, meta, diagnostics });
+    // (issue #152). The record is structure only, never the message, the
+    // diagnostics bag or anything typed: see worker/error-record.js.
+    const fields = errorRecordFields({ tool, meta, diagnostics, context, env });
+    await recordError(env.SUGGEST_DUPES, sha256Hex, { fields });
     if (!env.RESEND_API_KEY) return;
 
     let occurrence = 1;
@@ -404,7 +407,7 @@ async function notifyError(env, tool, message, meta, diagnostics) {
       `Tool: ${tool || "(unknown)"}`,
       `Time: ${new Date().toISOString()}`,
       occurrence > 1 ? `Occurrences: ${occurrence} in the past hour` : `Occurrences: 1 (first this hour)`,
-      `Fingerprint: ${await errorFingerprint(sha256Hex, tool, msg)} (the admin error record counts it by this)`,
+      `Fingerprint: ${await errorFingerprint(sha256Hex, fields)} (the admin error record counts it by this)`,
       meta ? `Context: ${meta}` : null,
       ``,
       `Error:`,
@@ -460,7 +463,8 @@ async function handleErrorReport(request, env) {
     tool || "notes",
     message,
     authed ? "client (authenticated)" : "client (unauthenticated)",
-    sanitizeDiagnostics(diagnostics)
+    sanitizeDiagnostics(diagnostics),
+    { request }
   );
   return jsonRes(200, { ok: true });
 }
@@ -575,7 +579,11 @@ async function handleLogin(request, env) {
   const secret = (env.ADMIN_SECRET ?? "").trim();
   const password = (body.password ?? "").trim();
 
-  if (!secret) { await notifyError(env, "login", "Login is not configured (ADMIN_SECRET missing)."); return jsonRes(503, { error: "Login is not configured." }); }
+  if (!secret) {
+    await notifyError(env, "login", "Login is not configured (ADMIN_SECRET missing).", null, null,
+      { request, status: 503, code: "not_configured" });
+    return jsonRes(503, { error: "Login is not configured." });
+  }
   if (!password) return jsonRes(401, { error: "Incorrect password." });
 
   try {
@@ -614,7 +622,8 @@ async function handleLogin(request, env) {
   } catch (err) {
     // Unexpected failure (KV, crypto, Turnstile siteverify) - email the admin; a
     // wrong password returns 401 above and is intentionally NOT reported.
-    await notifyError(env, "login", err && err.message ? err.message : "Unknown login error.");
+    await notifyError(env, "login", err && err.message ? err.message : "Unknown login error.", null, null,
+      { request, status: 500, error: err, code: "unhandled" });
     return jsonRes(500, { error: "Login failed: server error.\nTry again." });
   }
 }
@@ -640,6 +649,9 @@ async function verifyTurnstile(secret, token, ip) {
 }
 
 async function handleLlmCall(request, env) {
+  // Read in the catch below, so the error record can name the note tool. The
+  // record checks it against the tool list; nothing else of the body is kept.
+  let noteTool = null;
   try {
     const secret = (env.ADMIN_SECRET ?? "").trim();
     const auth = request.headers.get("Authorization") || "";
@@ -652,6 +664,7 @@ async function handleLlmCall(request, env) {
 
     const body = await request.json();
     const { systemPrompt, userPrompt, system, messages, model, maxTokens, tool } = body;
+    noteTool = tool;
     // The schema comes from the browser, so it is shape-checked rather than
     // forwarded verbatim - this is a field we hand to the upstream API.
     const outputConfig = sanitizeOutputConfig(body.output_config);
@@ -671,7 +684,8 @@ async function handleLlmCall(request, env) {
       if (!base) {
         // Deliberately not a fallback. A note is worth more than a note written
         // to an unknown prompt, and the clinician is told nothing was sent.
-        await notifyError(env, "prompt-api", "no prompt available for key " + promptKey);
+        await notifyError(env, "prompt-api", "no prompt available for key " + promptKey, null, null,
+          { request, status: 503, code: "prompt_unavailable", noteTool: tool });
         return jsonRes(503, {
           error: "Prompt service unavailable.\nNote not drafted; nothing sent to the model.",
         });
@@ -738,7 +752,7 @@ async function handleLlmCall(request, env) {
     // way - log only the error message, never prompt content.
     const m = error && error.message ? error.message : "unknown";
     console.error("LLM call error:", m);
-    await notifyError(env, "llm-call", m);
+    await notifyError(env, "llm-call", m, null, null, { request, status: 500, error, code: "unhandled", noteTool });
     return jsonRes(500, { error: error.message || "Internal server error" });
   }
 }
@@ -1033,7 +1047,8 @@ async function handleExpertPass(request, env, ctx) {
        clinician can do nothing with. */
     const composed = await promptForExpert(env, parsed.tool);
     if (!composed) {
-      await notifyError(env, "prompt-api", "no prompt available for key expert");
+      await notifyError(env, "prompt-api", "no prompt available for key expert", null, null,
+        { request, status: 503, code: "prompt_unavailable", noteTool: parsed.tool });
       return jsonRes(503, {
         error: "Expert unavailable.\nNothing reviewed or sent.",
       });
@@ -1110,7 +1125,7 @@ async function handleExpertPass(request, env, ctx) {
     // /api/llm-call. Only the error message.
     const m = error && error.message ? error.message : "unknown";
     console.error("Expert pass error:", m);
-    await notifyError(env, "expert-pass", m);
+    await notifyError(env, "expert-pass", m, null, null, { request, status: 500, error, code: "unhandled" });
     return jsonRes(500, { error: error.message || "Internal server error" });
   }
 }
@@ -1496,7 +1511,8 @@ async function handleExpertChat(request, env) {
        unknown expert would calibrate nothing, and would look like calibration. */
     const composedChat = await promptForExpert(env, parsed.tool);
     if (!composedChat) {
-      await notifyError(env, "prompt-api", "no prompt available for key expert");
+      await notifyError(env, "prompt-api", "no prompt available for key expert", null, null,
+        { request, status: 503, code: "prompt_unavailable", noteTool: parsed.tool });
       return jsonRes(503, { error: "The expert is unavailable. Nothing was sent to the model." });
     }
     const stored = composedChat.system;
@@ -1575,7 +1591,7 @@ async function handleExpertChat(request, env) {
     // PRIVACY: no message text reaches a log line, exactly as on the pass.
     const m = error && error.message ? error.message : "unknown";
     console.error("Expert chat error:", m);
-    await notifyError(env, "expert-chat", m);
+    await notifyError(env, "expert-chat", m, null, null, { request, status: 500, error, code: "unhandled" });
     return jsonRes(500, { error: error.message || "Internal server error" });
   }
 }
@@ -1915,7 +1931,8 @@ async function handleCorrections(request, env) {
        guessing anywhere else in this file. */
     const composed = await promptForExpert(env, parsed.tool);
     if (!composed) {
-      await notifyError(env, "prompt-api", "no prompt available for key expert");
+      await notifyError(env, "prompt-api", "no prompt available for key expert", null, null,
+        { request, status: 503, code: "prompt_unavailable", noteTool: parsed.tool });
       return jsonRes(503, {
         error: "Corrections unavailable. Note unchanged.",
       });
@@ -1957,7 +1974,7 @@ async function handleCorrections(request, env) {
     // error message, exactly as on the pass.
     const m = error && error.message ? error.message : "unknown";
     console.error("Corrections pass error:", m);
-    await notifyError(env, "corrections-pass", m);
+    await notifyError(env, "corrections-pass", m, null, null, { request, status: 500, error, code: "unhandled" });
     return jsonRes(500, { error: error.message || "Internal server error" });
   }
 }
@@ -3037,7 +3054,7 @@ async function handleExpertResearch(request, env) {
   } catch (error) {
     const m = error && error.message ? error.message : "unknown";
     console.error("Expert research error:", m);
-    await notifyError(env, "expert-research", m);
+    await notifyError(env, "expert-research", m, null, null, { request, status: 500, error, code: "unhandled" });
     return jsonRes(500, { error: error.message || "Internal server error" });
   }
 }
