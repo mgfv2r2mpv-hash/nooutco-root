@@ -11,6 +11,7 @@ import assert from 'node:assert/strict';
 import { SIGNUP_LIMITS, OWNER_TICKET_TTL_MS } from '../src/signup.js';
 import {
   harness, post, deviceKeys, keyDigestOf, registerRequest, signInRequest, addDevice, signUp, PASSWORD, LINK_BASE, T0,
+  landsMidFlight, signIn,
 } from './helpers.mjs';
 
 const OWNER = 'owner@example.test';
@@ -238,4 +239,41 @@ test('MEDIUM-1 NEGATIVE CONTROL: an account with a registered owner device gets 
   assert.deepEqual(Object.keys(signinAfter.json).sort(), Object.keys(signinBefore.json).sort());
   assert.deepEqual(devices(h), [{ owner: 1, pending: 0 }], 'the owner device is unchanged');
   assert.equal(h.db.sqlite.prepare('SELECT id FROM account').get().id, account);
+});
+
+// The #248 LOW race, closed in A6. An owner ticket was spent by one statement
+// and its device written by the next, so a second owner ticket (a relink's,
+// voiding nothing the first had already spent) could register between the
+// two: both spends saw an account with no device, and the account ended with
+// two owner devices. The owner device's row is now written only while the
+// account still has no device, in the insert itself.
+const SPEND_TICKET = 'UPDATE ticket SET used = 1 WHERE digest';
+const ownerCount = (h) => h.db.sqlite.prepare('SELECT COUNT(*) AS n FROM device WHERE owner = 1').get().n;
+
+test('#248 LOW: an owner device that lands while another owner ticket is being spent leaves one owner device', async () => {
+  const h = harness();
+  const keys = await deviceKeys();
+  await start(h, OWNER);
+  const verified = await answer(await h.call(verifyRequest(OWNER, codeOf(mailTo(h, OWNER).at(-1)), await keyDigestOf(keys))));
+  assert.equal(verified.status, 200);
+  const account = h.db.sqlite.prepare('SELECT id FROM account').get().id;
+  landsMidFlight(h, SPEND_TICKET, (db) => {
+    db.sqlite.prepare('INSERT INTO device (id, account_id, sign_key, created_at, pending, owner, confirmed_at) VALUES (?, ?, ?, ?, 0, 1, ?)')
+      .run('dev-other-owner', account, 'AAAA', h.clock.ms, h.clock.ms);
+  });
+  assert.deepEqual(await answer(await h.call(registerRequest(verified.json.ticket, keys))), { status: 401, json: { error: 'bad-ticket' } });
+  assert.equal(ownerCount(h), 1, 'one owner device');
+});
+
+test('#248 LOW NEGATIVE CONTROL: a further device registers while another device lands', async () => {
+  const h = harness();
+  await signUp(h, OWNER);
+  const keys = await deviceKeys();
+  const ticket = await signIn(h, OWNER, { keys, ip: '192.0.2.41' });
+  const account = h.db.sqlite.prepare('SELECT id FROM account').get().id;
+  landsMidFlight(h, SPEND_TICKET, (db) => {
+    db.sqlite.prepare('INSERT INTO device (id, account_id, sign_key, created_at, pending, owner) VALUES (?, ?, ?, ?, 1, 0)').run('dev-landed', account, 'AAAA', h.clock.ms);
+  });
+  assert.equal((await h.call(registerRequest(ticket, keys))).status, 200);
+  assert.equal(ownerCount(h), 1);
 });

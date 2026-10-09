@@ -40,22 +40,22 @@ test('a request with no registered device signature is refused', async () => {
   const dev = await registeredDevice(h, ADDRESS);
   const stranger = await deviceKeys();
   // Unsigned, under the registered id.
-  assert.equal((await answer(await h.call(post('/pair/offer', {}, { 'x-hz-device': dev.id })))).json.error, 'stale-nonce');
+  assert.equal((await answer(await h.call(post('/pair/take', {}, { 'x-hz-device': dev.id })))).json.error, 'stale-nonce');
   // Signed by a key that was never registered, under the registered id.
-  const forged = await signed(h.call, { id: dev.id, key: stranger.key }, '/pair/offer', {});
+  const forged = await signed(h.call, { id: dev.id, key: stranger.key }, '/pair/take', {});
   assert.deepEqual(await answer(await h.call(forged)), { status: 401, json: { error: 'bad-signature' } });
   // An id that was never registered.
   assert.deepEqual(await answer(await h.call(post('/nonce', {}, { 'x-hz-device': 'never-registered' }))), { status: 401, json: { error: 'no-device' } });
   // A sign-in ticket is not a device signature.
   const ticket = await signIn(h, ADDRESS);
-  assert.equal((await answer(await h.call(post('/pair/offer', { ticket }, { 'x-hz-device': ticket })))).json.error, 'no-device');
+  assert.equal((await answer(await h.call(post('/pair/take', { ticket }, { 'x-hz-device': ticket })))).json.error, 'no-device');
 });
 
 test('NEGATIVE CONTROL: a request signed by the registered key passes the device checks', async () => {
   const h = harness();
   const dev = await registeredDevice(h, ADDRESS);
   for (const der of [false, true]) {
-    assert.deepEqual(await answer(await h.call(await signed(h.call, dev, '/pair/offer', {}, { der }))), { status: 501, json: { error: 'not-built' } });
+    assert.deepEqual(await answer(await h.call(await signed(h.call, dev, '/pair/take', {}, { der }))), { status: 409, json: { error: 'no-vault' } });
   }
 });
 
@@ -67,11 +67,11 @@ test('a removed device is refused at once', async () => {
   const ticket = await ticketFor(h, keep);
   const held = await nonceFor(h.call, lost); // a nonce the lost device already holds
   assert.deepEqual(await answer(await h.call(await signed(h.call, keep, '/device/remove', { device: lost.id, ticket }))), { status: 200, json: { ok: true } });
-  assert.deepEqual(await answer(await h.call(await signed(h.call, lost, '/pair/offer', {}, { nonce: held }))), { status: 401, json: { error: 'no-device' } });
+  assert.deepEqual(await answer(await h.call(await signed(h.call, lost, '/pair/take', {}, { nonce: held }))), { status: 401, json: { error: 'no-device' } });
   assert.deepEqual(await answer(await h.call(post('/nonce', {}, { 'x-hz-device': lost.id }))), { status: 401, json: { error: 'no-device' } });
   assert.equal(liveNonces(h.db, lost.id, h.clock.ms), 0, 'its live nonces are spent with it');
   // The device that removed it carries on.
-  assert.equal((await answer(await h.call(await signed(h.call, keep, '/pair/offer', {})))).json.error, 'not-built');
+  assert.equal((await answer(await h.call(await signed(h.call, keep, '/pair/take', {})))).json.error, 'no-vault');
 });
 
 // ---- /signin ----
@@ -522,7 +522,7 @@ test('a device cannot remove a device of another account, and the answer does no
   const theirs = await registeredDevice(h, OTHER);
   assert.deepEqual(await answer(await h.call(await removeRequest(h, mine, theirs.id))), { status: 200, json: { ok: true } });
   assert.deepEqual(await answer(await h.call(await removeRequest(h, mine, 'never-registered'))), { status: 200, json: { ok: true } });
-  assert.equal((await answer(await h.call(await signed(h.call, theirs, '/pair/offer', {})))).json.error, 'not-built', 'theirs still works');
+  assert.equal((await answer(await h.call(await signed(h.call, theirs, '/pair/take', {})))).json.error, 'no-vault', 'theirs still works');
   assert.equal(devices(h.db).find((d) => d.id === theirs.id).removed_at, null);
 });
 
@@ -592,7 +592,7 @@ test('L2: a device removed after its id was checked gets no nonce', async () => 
 test('L2: a nonce of a device stamped removed after its id was checked is not spent', async () => {
   const h = harness();
   const dev = await registeredDevice(h, ADDRESS);
-  const request = await signed(h.call, dev, '/pair/offer', {});
+  const request = await signed(h.call, dev, '/pair/take', {});
   removedMidFlight(h, dev.id, FIND_DEVICE, { nonces: false });
   assert.equal((await answer(await h.call(request))).status, 401);
   assert.equal(liveNonces(h.db, dev.id, h.clock.ms), 1, 'the nonce stayed unspent');
@@ -629,7 +629,7 @@ test('a spent or expired nonce frees its place under the cap', async () => {
   const dev = await addDevice(h.db);
   const held = [];
   for (let i = 0; i < LIVE_NONCES_PER_DEVICE; i += 1) held.push(await nonceFor(h.call, dev));
-  await h.call(await signed(h.call, dev, '/pair/offer', {}, { nonce: held[0] }));
+  await h.call(await signed(h.call, dev, '/pair/take', {}, { nonce: held[0] }));
   assert.equal((await h.call(post('/nonce', {}, { 'x-hz-device': dev.id }))).status, 200, 'a spent nonce frees a place');
   assert.equal((await h.call(post('/nonce', {}, { 'x-hz-device': dev.id }))).status, 429);
   h.clock.ms += NONCE_TTL_MS;
