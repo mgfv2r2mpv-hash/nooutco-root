@@ -78,7 +78,7 @@ CHECKLIST
   PASS    Database present                   created
   PASS    Worker deployed                    horae-zone, route horae-zone.nooutco.me (Custom domain)
   SKIPPED Owner as administrator             no account yet: sign up, then node bin/deploy.mjs --owner-admin
-  PASS    Schema applied                     25 tables present
+  PASS    Schema applied                     26 tables present
   PASS    Secret HZ_ACCOUNT_KEY              set (name only)
   ...
   PASS    Turnstile site key HZ_TURNSTILE_SITEKEY  a Worker var in wrangler.deploy.toml
@@ -131,7 +131,7 @@ The database keeps no address in the clear, so the lock is found by its time. Fr
 
 The script prints each of these with its exact clicks, so you can do them while it waits.
 
-1. The rate rule on POST `/account` and `/signin`, required at the first deploy (`docs/horae-zone/DESIGN-REVIEW.md` A3 item 13), live since 8 Oct 2026 at 2 requests per 10 seconds per IP. Turnstile (`src/turnstile.js`) is the check that bounds a stranger with many addresses; the rate rule stays as the backstop, stopping a one-address flood at the edge before the Worker spends a siteverify call. Step 4 prints it before the route goes live and asks whether it is in place.
+1. The rate rule on POST `/account`, `/signin` and `/recover`, required at the first deploy (`docs/horae-zone/DESIGN-REVIEW.md` A3 item 13; `/recover` joined it with A6, so the rule live since 8 Oct 2026 at 2 requests per 10 seconds per IP needs `"/recover"` added to its expression). Turnstile (`src/turnstile.js`) is the check that bounds a stranger with many addresses on `/account` and `/signin`; the rate rule stays as the backstop, stopping a one-address flood at the edge before the Worker spends a siteverify call. Step 4 prints it before the route goes live and asks whether it is in place.
    The Turnstile widget itself is made before Step 2's prompts; the script prints those clicks there (item 8 under What it asks).
 2. The hostname and DNS checks, printed in the checks step under "Check after the deploy". The Worker and its Custom domain exist only once the deploy has run, so Workers & Pages > horae-zone > Settings > Domains & Routes (the hostname) and DNS (shown as Proxied) are checked then, not before.
 3. The skip rule, required when the zone runs Super Bot Fight Mode. Its definitely automated setting (a managed challenge) answers GET `/account` with a 403 and `cf-mitigated: challenge` before the Worker sees the request, so the route check fails (D-22, seen on the first real deploy, 4 Oct 2026). The script reads that header (or a challenge page) and its FAIL line says "Cloudflare's bot protection is answering before the Worker", then prints the rule:

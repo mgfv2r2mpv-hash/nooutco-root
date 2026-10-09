@@ -64,6 +64,9 @@ export const VAULT_SWITCHED_NOTE = Object.freeze({
 });
 
 const enc = new TextEncoder();
+// The new id is neither a tombstone nor another account's current vault;
+// binds the id, the id, the account id.
+const UNCLAIMED = "NOT EXISTS (SELECT 1 FROM vault_tombstone WHERE vault_id = ?) AND NOT EXISTS (SELECT 1 FROM vault WHERE vault_id = ? AND account_id <> ?)";
 const isVaultId = (value) => typeof value === "string" && VAULT_ID.test(value);
 
 // The account's current vault id, or null.
@@ -114,14 +117,17 @@ export async function switchVault({ db, device, body, now, env, mailer }) {
   if (await usedElsewhere(db, device.account_id, vault)) throw new Refusal("vault-used", 409);
   await spendTicket(db, device, claims); // a spent jti answers bad-ticket
   // One batch: the old id tombstoned, the brings in flight dropped, the new
-  // id recorded, each only while the caller may still change the account.
+  // id recorded, each only while the caller may still change the account and
+  // the new id is still unclaimed (security review LOW-4: otherwise the old
+  // id was tombstoned while it stayed current).
   await db.batch([
     db.prepare(`INSERT INTO vault_tombstone (vault_id, account_id, at) SELECT vault_id, account_id, ? FROM vault WHERE account_id = ? AND ${ACCOUNT_CHANGER}
-      ON CONFLICT (vault_id) DO NOTHING`).bind(now, device.account_id, device.id),
-    db.prepare(`DELETE FROM handoff WHERE account_id = ? AND ${ACCOUNT_CHANGER}`).bind(device.account_id, device.id),
-    db.prepare(`INSERT INTO vault (account_id, vault_id, set_at) SELECT ?, ?, ? WHERE ${ACCOUNT_CHANGER}
-      AND NOT EXISTS (SELECT 1 FROM vault_tombstone WHERE vault_id = ?)
-      ON CONFLICT (account_id) DO UPDATE SET vault_id = excluded.vault_id, set_at = excluded.set_at`).bind(device.account_id, vault, now, device.id, vault),
+      AND ${UNCLAIMED} ON CONFLICT (vault_id) DO NOTHING`).bind(now, device.account_id, device.id, vault, vault, device.account_id),
+    db.prepare(`DELETE FROM handoff WHERE account_id = ? AND ${ACCOUNT_CHANGER} AND ${UNCLAIMED}`)
+      .bind(device.account_id, device.id, vault, vault, device.account_id),
+    db.prepare(`INSERT INTO vault (account_id, vault_id, set_at) SELECT ?, ?, ? WHERE ${ACCOUNT_CHANGER} AND ${UNCLAIMED}
+      ON CONFLICT (account_id) DO UPDATE SET vault_id = excluded.vault_id, set_at = excluded.set_at`)
+      .bind(device.account_id, vault, now, device.id, vault, vault, device.account_id),
   ]);
   if ((await currentVault(db, device.account_id)) !== vault) {
     await standingOrRefuse(db, device);
@@ -131,11 +137,18 @@ export async function switchVault({ db, device, body, now, env, mailer }) {
   return { status: 200, json: { ok: true }, after };
 }
 
-async function stateOf(db, accountId, vault) {
-  const current = await currentVault(db, accountId);
+// Gone: a tombstone of this account, or (security review MEDIUM-1) any id
+// that is not current asked by a device registered before the account's last
+// recovery, recorded or not, since R-6 shreds every vault from before it.
+async function stateOf(db, device, vault) {
+  const current = await currentVault(db, device.account_id);
   if (vault === null) return { state: "none", current };
   if (vault === current) return { state: "current", current };
-  const gone = await db.prepare("SELECT 1 AS gone FROM vault_tombstone WHERE vault_id = ? AND account_id = ?").bind(vault, accountId).first();
+  const gone = await db.prepare(
+    `SELECT 1 AS gone WHERE EXISTS (SELECT 1 FROM vault_tombstone WHERE vault_id = ? AND account_id = ?)
+     OR EXISTS (SELECT 1 FROM account_recovery AS r JOIN device AS d ON d.account_id = r.account_id
+       WHERE r.account_id = ? AND d.id = ? AND d.created_at < r.at)`,
+  ).bind(vault, device.account_id, device.account_id, device.id).first();
   return { state: gone ? "gone" : "unknown", current };
 }
 
@@ -143,7 +156,7 @@ export async function vaultState({ db, device, body, now, env }) {
   if (!hasOnly(body, ["vault"]) || (body.vault !== null && !isVaultId(body.vault))) throw new Refusal("shape", 400);
   const signKey = await ticketKey(env);
   if (!signKey) throw new Refusal("unavailable", 503);
-  const { state, current } = await stateOf(db, device.account_id, body.vault);
+  const { state, current } = await stateOf(db, device, body.vault);
   const claims = {
     v: 1, typ: VAULT_STATE_TYP, account: device.account_id, device: device.id, vault: body.vault, state, current,
     at: now, exp: now + VAULT_LIMITS.stateTtlMs, kid: signKey.kid,
