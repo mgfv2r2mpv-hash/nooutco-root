@@ -73,7 +73,7 @@ CHECKLIST
   PASS    Database present                   created
   PASS    Worker deployed                    horae-zone, route horae-zone.nooutco.me (Custom domain)
   SKIPPED Owner as administrator             no account yet: sign up, then node bin/deploy.mjs --owner-admin
-  PASS    Schema applied                     25 tables present
+  PASS    Schema applied                     26 tables present
   PASS    Secret HZ_ACCOUNT_KEY              set (name only)
   ...
   PASS    Cron trigger                       0 * * * * (hourly purge)
@@ -125,7 +125,7 @@ The database keeps no address in the clear, so the lock is found by its time. Fr
 
 The script prints each of these with its exact clicks, so you can do them while it waits.
 
-1. The rate rule on POST `/account` and `/signin`, required at the first deploy (`docs/horae-zone/DESIGN-REVIEW.md` A3 item 13). Step 4 prints it before the route goes live and asks whether it is in place.
+1. The rate rule on POST `/account`, `/signin` and `/recover`, required at the first deploy (`docs/horae-zone/DESIGN-REVIEW.md` A3 item 13; `/recover` joined it with A6, so a rule made before A6 needs `"/recover"` added to its expression). Step 4 prints it before the route goes live and asks whether it is in place.
 2. The hostname and DNS checks, printed in the checks step under "Check after the deploy". The Worker and its Custom domain exist only once the deploy has run, so Workers & Pages > horae-zone > Settings > Domains & Routes (the hostname) and DNS (shown as Proxied) are checked then, not before.
 3. The skip rule, required when the zone runs Super Bot Fight Mode. Its definitely automated setting (a managed challenge) answers GET `/account` with a 403 and `cf-mitigated: challenge` before the Worker sees the request, so the route check fails (D-22, seen on the first real deploy, 4 Oct 2026). The script reads that header (or a challenge page) and its FAIL line says "Cloudflare's bot protection is answering before the Worker", then prints the rule:
    1. dash.cloudflare.com > the nooutco.me zone > Security > Security rules > Create rule > Custom rule.

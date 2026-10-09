@@ -358,6 +358,15 @@ CREATE TABLE IF NOT EXISTS recovery (
   used         INTEGER NOT NULL DEFAULT 0
 );
 
+-- When the account was last recovered (A6 security review MEDIUM-1). A vault
+-- id that a device registered before that moment asks about, and that is not
+-- the current one, is gone even if it was never recorded: R-6, every vault
+-- from before a recovery is shredded. Kept while the account is.
+CREATE TABLE IF NOT EXISTS account_recovery (
+  account_id   TEXT    PRIMARY KEY,
+  at           INTEGER NOT NULL
+);
+
 -- The account's current vault id (plan §3.1: Horae Zone holds the current
 -- vault id, never a vault key). The id is 16 random bytes a device minted,
 -- base64url; one account, one current vault, and no two accounts share one.

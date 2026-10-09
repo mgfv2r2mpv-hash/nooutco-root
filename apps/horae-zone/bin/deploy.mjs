@@ -92,7 +92,7 @@ const EDGE_STEPS = [
   `     dash.cloudflare.com > the nooutco.me zone > Security > Security rules > Create rule > Rate limiting rule`,
   `     (older dashboards: Security > WAF > Rate limiting rules > Create rule).`,
   `     Rule name: horae-zone sign-up and sign-in. Click "Edit expression" and paste:`,
-  `       (http.host eq "${HOSTNAME}" and http.request.method eq "POST" and http.request.uri.path in {"/account" "/signin"})`,
+  `       (http.host eq "${HOSTNAME}" and http.request.method eq "POST" and http.request.uri.path in {"/account" "/signin" "/recover"})`,
   `     With the same characteristics: IP. When rate exceeds: 10 requests per 1 minute (or the shortest period`,
   `     the plan offers, with the count scaled down). Then take action: Block, for 10 minutes (or the plan's longest). Deploy.`,
   "     (Turnstile is not wired into the service, so the rate rule is the edge rule to add.)",

@@ -250,3 +250,14 @@ test('A6: a purge removes spent or expired recovery links and stale handoffs, ne
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM vault').get().n, 1);
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM vault_tombstone').get().n, 1);
 });
+
+test('A6 review LOW-2: a purge keeps the recovery day rows for a day and clears them after', async () => {
+  const h = harness();
+  const db = h.db.sqlite;
+  db.prepare("INSERT INTO throttle (bucket, at) VALUES ('recover-day', ?)").run(T0 - 2 * 60 * 60 * 1000);
+  db.prepare("INSERT INTO throttle (bucket, at) VALUES ('recover-start:x', ?)").run(T0 - 2 * 60 * 60 * 1000);
+  await purgeExpired(h.db, T0);
+  assert.deepEqual(db.prepare('SELECT bucket FROM throttle').all().map((r) => r.bucket), ['recover-day'], 'the day row stays; NEGATIVE CONTROL: the hourly row goes');
+  await purgeExpired(h.db, T0 + 24 * 60 * 60 * 1000);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM throttle').get().n, 0);
+});
