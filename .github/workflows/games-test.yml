@@ -31,10 +31,62 @@ defaults:
     working-directory: apps/games
 
 jobs:
+  # The e2e jobs run in Playwright's own image, and that image's tag has to
+  # match the @playwright/test version the lockfile installs, or every job dies
+  # with "Executable doesn't exist". Reading the version here means a
+  # dependency bump moves the image with it. Same approach as tools-test.yml
+  # (#272).
+  playwright:
+    runs-on: ubuntu-latest
+    # The workflow default is apps/games, and this job checks out only the
+    # lockfile, so run from the repo root.
+    defaults:
+      run:
+        working-directory: .
+    outputs:
+      version: ${{ steps.pw.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: apps/games/package-lock.json
+          sparse-checkout-cone-mode: false
+      - id: pw
+        run: |
+          v=$(node -p "require('./apps/games/package-lock.json').packages['node_modules/@playwright/test'].version")
+          case "$v" in
+            [0-9]*.[0-9]*.[0-9]*) echo "version=$v" >> "$GITHUB_OUTPUT"; echo "playwright $v" ;;
+            *) echo "::error::Could not read @playwright/test from apps/games/package-lock.json (got '$v')"; exit 1 ;;
+          esac
+
   e2e:
+    needs: playwright
     runs-on: ubuntu-latest
     name: E2E (${{ matrix.project }})
+    # On 2026-10-09 firefox on #312 spent 17.5 minutes in
+    # `playwright install --with-deps firefox` (11:29:34 to 11:47:08), then ran
+    # tests for 17 minutes and was cancelled at this 35-minute cap with nothing
+    # failed. The firefox jobs on #310 and #311 took 27m48s and 31m46s, so
+    # install time alone decided whether a run passed. tools-test.yml hit the
+    # same thing on 2026-10-08 (#272).
+    #
+    # So: the job runs in Playwright's image, where the browsers and their
+    # system packages are already installed and nothing touches apt, and the
+    # run step gives Playwright whatever is left of JOB_CAP_MINUTES, counted
+    # from the job's first step, less RESERVE_MINUTES. The reserve covers what
+    # that clock cannot see: pulling the image before the first step, and the
+    # upload after the tests. A long run then stops itself and names the tests
+    # it interrupted, instead of being cancelled blind. JOB_CAP_MINUTES must
+    # equal timeout-minutes, which cannot read env.
     timeout-minutes: 35
+    container:
+      image: mcr.microsoft.com/playwright:v${{ needs.playwright.outputs.version }}-noble
+      # The hosted runner's own uid, so the checkout and npm's cache stay
+      # writable, and Firefox does not refuse to run as root.
+      options: --user 1001
+    env:
+      SHARD_WARN_MINUTES: 25
+      JOB_CAP_MINUTES: 35
+      RESERVE_MINUTES: 4
     strategy:
       # One browser failing must not cancel the other two - knowing whether a
       # failure is browser-specific is most of the diagnosis.
@@ -42,6 +94,11 @@ jobs:
       matrix:
         project: [chromium, firefox, webkit]
     steps:
+      # The clock the run step's Playwright budget counts from.
+      - name: Note when the job started
+        run: echo "JOB_STARTED=$(date +%s)" >> "$GITHUB_ENV"
+        working-directory: .
+
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
@@ -53,9 +110,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Only the browser this shard actually needs.
-      - name: Install Playwright browser
-        run: npx playwright install --with-deps ${{ matrix.project }}
+      # No browser install: the image carries every browser and its system
+      # packages for this exact version. This only proves the two agree, so a
+      # mismatch fails here in seconds and says why.
+      - name: Check the image matches @playwright/test
+        run: |
+          have=$(npx playwright --version | awk '{print $2}')
+          want='${{ needs.playwright.outputs.version }}'
+          echo "image v$want, @playwright/test $have"
+          [ "$have" = "$want" ] || { echo "::error::@playwright/test is $have but the image is v$want"; exit 1; }
 
       - name: Run E2E tests
         # GAMES_TEST_PORT is what disables `reuseExistingServer`, so this job
@@ -64,7 +127,23 @@ jobs:
         # cannot actually collide, but that guard is worth keeping armed.
         env:
           GAMES_TEST_PORT: 8788
-        run: npx playwright test --project=${{ matrix.project }}
+        run: |
+          started=$(date +%s)
+          used=$(( (started - JOB_STARTED) / 60 ))
+          budget=$(( JOB_CAP_MINUTES - RESERVE_MINUTES - used ))
+          [ "$budget" -lt 5 ] && budget=5
+          export PW_GLOBAL_TIMEOUT_MINUTES=$budget
+          echo "setup took ${used} min, so Playwright gets ${budget} min"
+          set +e
+          npx playwright test --project=${{ matrix.project }}
+          status=$?
+          set -e
+          minutes=$(( ($(date +%s) - started) / 60 ))
+          echo "tests ran ${minutes} min (warn at ${SHARD_WARN_MINUTES}, Playwright budget ${budget}, job cap ${JOB_CAP_MINUTES})"
+          if [ "$minutes" -ge "$SHARD_WARN_MINUTES" ]; then
+            echo "::warning title=Games E2E near its cap::${{ matrix.project }} ran ${minutes} min of tests. Shard it in games-test.yml before the ${JOB_CAP_MINUTES}-minute cap cancels a run."
+          fi
+          exit "$status"
 
       - name: Upload test results
         if: always()
