@@ -32,6 +32,9 @@ const ANSWERS = {
   HZ_LINK_BASE: 'https://example.test/signup',
   HZ_REOPEN_BASE: 'https://example.test/reopen',
   HZ_RESET_BASE: 'https://example.test/pin-reset',
+  // Obviously fake production-shaped keys: 0x, then letters no widget has.
+  HZ_TURNSTILE_SITEKEY: '0xFAKEsitekeyFORtests00',
+  HZ_TURNSTILE_SECRET: '0xFAKEturnstileSECRETforTESTS0000000',
   HZ_CODES_PER_DAY: '',
 };
 // A fixed ticket key, made here with WebCrypto (not by the script), so a run
@@ -39,11 +42,11 @@ const ANSWERS = {
 const FIXED_TICKET_PAIR = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
 const FIXED_TICKET_JWK = await crypto.subtle.exportKey('jwk', FIXED_TICKET_PAIR.privateKey);
 const FIXED_TICKET_KEY = JSON.stringify({ kty: FIXED_TICKET_JWK.kty, crv: FIXED_TICKET_JWK.crv, x: FIXED_TICKET_JWK.x, y: FIXED_TICKET_JWK.y, d: FIXED_TICKET_JWK.d });
-const SECRET_VALUES = [GENERATED, GENERATED_SEED, ANSWERS.RESEND_KEY, ANSWERS.HZ_MAIL_FROM, ANSWERS.HZ_ALERT_TO, FIXED_TICKET_KEY, FIXED_TICKET_JWK.d];
+const SECRET_VALUES = [GENERATED, GENERATED_SEED, ANSWERS.RESEND_KEY, ANSWERS.HZ_MAIL_FROM, ANSWERS.HZ_ALERT_TO, ANSWERS.HZ_TURNSTILE_SECRET, FIXED_TICKET_KEY, FIXED_TICKET_JWK.d];
 // The tables schema.sql creates, read the way the script reads them, so a new
 // table never needs this file changed.
 const TABLES = schemaTables(SCHEMA);
-const SECRET_NAMES = ['HZ_ACCOUNT_KEY', 'HZ_SEED_KEY', 'HZ_TICKET_KEY', 'RESEND_KEY', 'HZ_MAIL_FROM', 'HZ_ALERT_TO', 'HZ_LINK_BASE', 'HZ_REOPEN_BASE', 'HZ_RESET_BASE'];
+const SECRET_NAMES = ['HZ_ACCOUNT_KEY', 'HZ_SEED_KEY', 'HZ_TICKET_KEY', 'RESEND_KEY', 'HZ_MAIL_FROM', 'HZ_ALERT_TO', 'HZ_LINK_BASE', 'HZ_REOPEN_BASE', 'HZ_RESET_BASE', 'HZ_TURNSTILE_SECRET'];
 
 // A wrangler stand-in. `state` decides what each command answers; every call
 // is recorded with its args, stdin, cwd and env.
@@ -437,12 +440,13 @@ test('a re-check still challenged asks again; a plain 403 offers no skip rule an
 // --check-only after a deploy: wrangler.deploy.toml is on disk (a stand-in
 // here) and the Worker has every secret. `readFile` serves the stand-in and
 // reads every other file for real; `missingConfig` makes the config absent.
-function checkOnly({ wrangler, missingConfig = false, ...rest } = {}) {
+function checkOnly({ wrangler, missingConfig = false, sitekey = ANSWERS.HZ_TURNSTILE_SITEKEY, ...rest } = {}) {
   const h = harness({ argv: ['--check-only'], wrangler: wrangler ?? mockWrangler({ dbPresent: true, existingSecrets: SECRET_NAMES }), ...rest });
   h.deps.readFile = (file) => {
     if (path.basename(file) !== 'wrangler.deploy.toml') return readFileSync(file, 'utf8');
     if (missingConfig) throw Object.assign(new Error(`ENOENT: no such file or directory, open '${file}'`), { code: 'ENOENT' });
-    return `name = "horae-zone"\n[[d1_databases]]\ndatabase_id = "${FAKE_DB_ID}"\n`;
+    const vars = sitekey === null ? '' : `\n[vars]\nHZ_TURNSTILE_SITEKEY = "${sitekey}"\n`;
+    return `name = "horae-zone"\n[[d1_databases]]\ndatabase_id = "${FAKE_DB_ID}"\n${vars}`;
   };
   return h;
 }
@@ -1251,4 +1255,59 @@ test('the terminal leaves raw mode when the process exits or gets SIGTERM mid-pr
   assert.equal(normal.proc.listenerCount('exit'), 0);
   assert.equal(normal.proc.listenerCount('SIGTERM'), 0);
   third.close();
+});
+
+// Turnstile (design of 8 Oct 2026, section 2). The widget's two keys are
+// asked in Step 2, after the clicks that make the widget; the site key is a
+// public Worker var, the secret key a hidden prompt put on stdin.
+test('Step 2 prints the widget clicks before the Turnstile prompts; the secret is hidden and put on stdin, the site key is a var', async () => {
+  const h = harness();
+  const result = await deploy(h.deps);
+  assert.equal(result.ok, true, h.output());
+  const two = stepText(h.output(), 2);
+  assert.match(two, /Add widget/);
+  assert.match(two, /Hostname: horae-zone\.nooutco\.me \(this one only\)\. Widget Mode: Managed\. Pre-clearance: No/);
+  assert.ok(h.asked.findIndex((a) => a.name === 'HZ_TURNSTILE_SITEKEY') >= 0);
+  assert.equal(h.asked.find((a) => a.name === 'HZ_TURNSTILE_SECRET').hidden, true);
+  assert.equal(h.asked.find((a) => a.name === 'HZ_TURNSTILE_SITEKEY').hidden, false);
+  assert.equal(h.wrangler.calls.find((c) => c.args[0] === 'secret' && c.args[2] === 'HZ_TURNSTILE_SECRET').input, ANSWERS.HZ_TURNSTILE_SECRET);
+  assert.equal(h.wrangler.calls.some((c) => c.args[0] === 'secret' && c.args[2] === 'HZ_TURNSTILE_SITEKEY'), false, 'the site key is not a secret');
+  const config = [...h.files.values()][0];
+  assert.match(config, new RegExp(`^HZ_TURNSTILE_SITEKEY = "${ANSWERS.HZ_TURNSTILE_SITEKEY}"$`, 'm'));
+  assert.equal(statusOf(result, 'Turnstile site key'), 'PASS');
+  assert.equal(statusOf(result, 'Secret HZ_TURNSTILE_SECRET'), 'PASS');
+  assertNoSecretAnywhere(h);
+});
+
+test('Cloudflare\'s Turnstile test keys are refused at the prompt, and three of them stop the run before any write', async () => {
+  for (const [name, testKey] of [['HZ_TURNSTILE_SECRET', '1x0000000000000000000000000000000AA'], ['HZ_TURNSTILE_SITEKEY', '1x00000000000000000000AA'], ['HZ_TURNSTILE_SECRET', '2x0000000000000000000000000000000AA'], ['HZ_TURNSTILE_SITEKEY', '3x00000000000000000000FF']]) {
+    const h = harness({ answers: { ...ANSWERS, [name]: testKey } });
+    const result = await deploy(h.deps);
+    assert.equal(result.ok, false, `${name} ${testKey}`);
+    assert.equal(h.asked.filter((a) => a.name === name).length, 3);
+    assert.match(h.output(), /Not accepted \(a production key from the Turnstile page \(starts 0x; Cloudflare's 1x, 2x and 3x test keys are refused\)\)/);
+    assert.equal(h.wrangler.calls.some((c) => c.args[1] === 'create' || c.args[0] === 'deploy' || c.args[0] === 'secret'), false);
+  }
+  assert.equal(CATALOG.find((s) => s.name === 'HZ_TURNSTILE_SECRET').check(ANSWERS.HZ_TURNSTILE_SECRET), true, 'NEGATIVE CONTROL: a production-shaped key passes');
+});
+
+test('--check-only fails the site key item when wrangler.deploy.toml has no HZ_TURNSTILE_SITEKEY, and passes it when it does', async () => {
+  const missing = checkOnly({ sitekey: null });
+  const r1 = await deploy(missing.deps);
+  assert.equal(statusOf(r1, 'Turnstile site key'), 'FAIL');
+  assert.match(r1.checklist.find((i) => i.item.startsWith('Turnstile site key')).detail, /not-configured/);
+  const testKey = checkOnly({ sitekey: '1x00000000000000000000AA' });
+  assert.equal(statusOf(await deploy(testKey.deps), 'Turnstile site key'), 'FAIL', 'a test site key is not a production one');
+  const present = checkOnly();
+  assert.equal(statusOf(await deploy(present.deps), 'Turnstile site key'), 'PASS', 'NEGATIVE CONTROL');
+});
+
+test('Step 4 says Turnstile is wired and the rate rule (2 per 10 seconds) is the backstop', async () => {
+  const h = harness();
+  await deploy(h.deps);
+  const four = stepText(h.output(), 4);
+  assert.match(four, /2 requests per 10 seconds/);
+  assert.match(four, /Turnstile is wired in/);
+  assert.match(four, /backstop/);
+  assert.doesNotMatch(four, /Turnstile is not wired/);
 });

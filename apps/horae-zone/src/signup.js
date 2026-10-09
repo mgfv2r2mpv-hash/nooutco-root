@@ -39,6 +39,7 @@ import { fragmentLink } from "../../../packages/account-engine/src/mailer.mjs";
 import { Refusal, b64url } from "./checks.js";
 import { accountKeys } from "./account-keys.js";
 import { admitThrottle } from "./throttle.js";
+import { verifyTurnstile } from "./turnstile.js";
 
 // SHA-256, base64url without padding: the digest of the two public keys a
 // ticket may register (src/devices.js deviceKeyDigest).
@@ -353,8 +354,13 @@ function afterAll(works) {
   };
 }
 
-export async function startSignup({ db, body, now, env, request, mailer }) {
-  if (!hasOnly(body, ["email"])) throw new Refusal("shape", 400);
+// A body of exactly `keys`, or `keys` and the Turnstile token. Whether the
+// token must be there is verifyTurnstile's to say: with the keys unset the
+// answer is not-configured whatever the body carries.
+export const hasOnlyOrToken = (body, keys) => hasOnly(body, keys) || hasOnly(body, [...keys, "turnstile"]);
+
+export async function startSignup({ db, body, now, env, request, mailer, siteverify }) {
+  if (!hasOnlyOrToken(body, ["email"])) throw new Refusal("shape", 400);
   const address = addressOf(body.email);
   const ip = requesterOf(request);
   const keys = await keysOrUnavailable(env);
@@ -365,6 +371,9 @@ export async function startSignup({ db, body, now, env, request, mailer }) {
   const requester = await keys.requesterKey(ip);
   const mailbox = taggedMailbox(address);
   const mailboxKey = mailbox ? await keys.addressKey(mailbox) : null;
+  // Turnstile before the buckets (design of 8 Oct 2026, 2.4): a failed or
+  // missing challenge never spends a place in the daily cap.
+  await verifyTurnstile(env, body.turnstile, { action: "account", ip, now, siteverify });
   // The requester's own cap and the daily cap refuse a start outright.
   const counted = await admitThrottle(db, now, SIGNUP_LIMITS.windowMs, [
     { bucket: `start-requester:${requester}`, limit: SIGNUP_LIMITS.startsPerRequesterHour },

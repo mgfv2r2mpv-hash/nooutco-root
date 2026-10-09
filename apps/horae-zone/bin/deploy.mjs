@@ -54,7 +54,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { OWNER_ADMIN_FLAG, ownerAdminStep, ownerAdminDryRun } from "./deploy-admin.mjs";
 import {
   CATALOG, SECRET_NAMES, DATABASE, HOSTNAME, DEPLOY_CONFIG, CRON, ACCOUNT_KEY_BYTES, SEED_KEY_BYTES,
-  LineReader, deployConfig, scrub, parseJson, findDatabaseId, schemaTables, renderChecklist, ticketKeyJwk, isChallenge,
+  LineReader, deployConfig, scrub, parseJson, findDatabaseId, schemaTables, renderChecklist, ticketKeyJwk, isChallenge, isTurnstileKey,
 } from "./deploy-parts.mjs";
 
 const ROUTE_TRIES = 6;
@@ -86,16 +86,26 @@ const labelOf = (args) => {
 };
 const show = (args) => `wrangler ${args.map((a) => (/[\s'*]/.test(a) ? `"${a}"` : a)).join(" ")}`;
 
+// Printed at the top of Step 2, before the two Turnstile prompts: the widget
+// has to exist for its keys to be typed in.
+export const TURNSTILE_WIDGET_STEPS = [
+  "Before the Turnstile prompts, make the widget (dashboard, account confirmed above; once per account):",
+  "  dash.cloudflare.com > Turnstile (type Turnstile in the dashboard search if the sidebar hides it) > Add widget.",
+  `  Widget name: horae-zone. Hostname: ${HOSTNAME} (this one only). Widget Mode: Managed. Pre-clearance: No. Create.`,
+  "  Keep that page open: the script asks for its Site Key, then its Secret Key (hidden).",
+];
+
 const EDGE_STEPS = [
   "Cloudflare step this script cannot do safely (dashboard, account confirmed above):",
-  "  1. Rate rule on sign-up and sign-in (required at the first deploy, DESIGN-REVIEW A3 item 13):",
+  "  1. Rate rule on sign-up and sign-in (required at the first deploy, DESIGN-REVIEW A3 item 13; live since 8 Oct 2026):",
   `     dash.cloudflare.com > the nooutco.me zone > Security > Security rules > Create rule > Rate limiting rule`,
   `     (older dashboards: Security > WAF > Rate limiting rules > Create rule).`,
   `     Rule name: horae-zone sign-up and sign-in. Click "Edit expression" and paste:`,
   `       (http.host eq "${HOSTNAME}" and http.request.method eq "POST" and http.request.uri.path in {"/account" "/signin"})`,
-  `     With the same characteristics: IP. When rate exceeds: 10 requests per 1 minute (or the shortest period`,
-  `     the plan offers, with the count scaled down). Then take action: Block, for 10 minutes (or the plan's longest). Deploy.`,
-  "     (Turnstile is not wired into the service, so the rate rule is the edge rule to add.)",
+  `     With the same characteristics: IP. When rate exceeds: 2 requests per 10 seconds (the rule already live).`,
+  `     Then take action: Block, for the plan's block period. Deploy.`,
+  "     Turnstile is wired in (src/turnstile.js): it bounds a stranger with many addresses, which a per-address rule",
+  "     cannot. The rate rule stays as the backstop: it stops a one-address flood at the edge, before any siteverify call.",
 ];
 
 // Printed in Step 7, once the Worker exists: before the deploy there is no
@@ -236,6 +246,7 @@ function randomKey(deps, n) {
 
 async function collectAnswers(ctx, deps) {
   ctx.say("Step 2. Values only you have (typed answers are kept in memory only)");
+  for (const line of TURNSTILE_WIDGET_STEPS) ctx.say(`  ${line}`);
   const values = {};
   for (const entry of CATALOG.filter((s) => s.source === "asked")) {
     let value = null;
@@ -284,11 +295,13 @@ async function prepareDatabase(ctx, deps, values) {
   ctx.say(`  ${found ? "Found" : "Created"} "${DATABASE}".`);
   const vars = Object.fromEntries(CATALOG.filter((s) => s.store === "var" && values[s.name]).map((s) => [s.name, values[s.name]]));
   const toml = deps.readFile(path.join(deps.root, "wrangler.toml"));
-  deps.writeFile(path.join(deps.root, DEPLOY_CONFIG), deployConfig(toml, { databaseId: id, vars }));
+  const configText = deployConfig(toml, { databaseId: id, vars });
+  deps.writeFile(path.join(deps.root, DEPLOY_CONFIG), configText);
   ctx.say(`  Wrote ${DEPLOY_CONFIG} (gitignored): database id, route ${HOSTNAME}, no secret.`);
   await ctx.wrangler(COMMANDS.applySchema);
   ctx.say("  Applied schema.sql (every statement is IF NOT EXISTS).");
   ctx.item("Database present", "PASS", found ? "found" : "created");
+  return configText;
 }
 
 async function edgeRule(ctx, deps) {
@@ -429,10 +442,22 @@ async function checkRoute(ctx, deps, checkOnly) {
   }
 }
 
-// After a deploy, deployOut and edgeConfirmed come from Steps 5 and 4. Under
-// --check-only there is no deploy output and no prompt, so the cron and the
-// rate rule are left to the dashboard and marked SKIPPED.
-async function runChecks(ctx, deps, { deployOut, edgeConfirmed, checkOnly = false }) {
+// The Turnstile site key is a Worker var, so the secret list cannot show it:
+// it is read from the deploy-only config that carries it (a public value).
+// Without it GET /challenge answers not-configured and nobody can sign up.
+const SITEKEY_LINE = /^HZ_TURNSTILE_SITEKEY = "([^"]*)"$/m;
+export function sitekeyItem(configText) {
+  const value = SITEKEY_LINE.exec(configText ?? "")?.[1];
+  return isTurnstileKey(value ?? "")
+    ? ["PASS", `a Worker var in ${DEPLOY_CONFIG}`]
+    : ["FAIL", `not in ${DEPLOY_CONFIG}: GET /challenge answers not-configured; run node bin/deploy.mjs with the widget's keys`];
+}
+
+// After a deploy, deployOut and edgeConfirmed come from Steps 5 and 4, and
+// configText is the deploy-only config Step 3 wrote (or --check-only read).
+// Under --check-only there is no deploy output and no prompt, so the cron
+// and the rate rule are left to the dashboard and marked SKIPPED.
+async function runChecks(ctx, deps, { deployOut, edgeConfirmed, configText, checkOnly = false }) {
   ctx.say("Step 7. Checks");
   for (const line of AFTER_DEPLOY_STEPS) ctx.say(`  ${line}`);
   const expected = schemaTables(deps.readFile(path.join(deps.root, "schema.sql")));
@@ -450,6 +475,7 @@ async function runChecks(ctx, deps, { deployOut, edgeConfirmed, checkOnly = fals
   } catch (err) {
     ctx.item("Secrets", "FAIL", err.message.split("\n")[0]);
   }
+  ctx.item("Turnstile site key HZ_TURNSTILE_SITEKEY", ...sitekeyItem(configText));
   if (checkOnly) {
     ctx.item("Cron trigger", "SKIPPED", `--check-only has no deploy output; check ${CRON} under Triggers in the dashboard`);
   } else {
@@ -472,6 +498,7 @@ function dryRun(deps) {
     `  ${show(COMMANDS.whoami)}   then: confirm the account name (prompt)`,
     `  ${show(COMMANDS.deployments)}   when Worker ${WORKER} already exists: prompt, y replaces its code, anything else stops`,
     "Step 2. Values only you have",
+    ...TURNSTILE_WIDGET_STEPS.map((l) => `  ${l}`),
     ...CATALOG.filter((s) => s.source === "asked").map((s) => `  prompt${s.hidden ? " (hidden)" : ""}: ${s.label} -> ${s.name}${s.store === "var" ? ` ([vars] in ${DEPLOY_CONFIG} when answered)` : ""}   checked: ${s.rule}`),
     `  generate: HZ_ACCOUNT_KEY = [masked] (${ACCOUNT_KEY_BYTES} random bytes, base64url)`,
     `  generate: HZ_SEED_KEY = [masked] (${SEED_KEY_BYTES} random bytes, base64url)`,
@@ -498,6 +525,7 @@ function dryRun(deps) {
     `    expect tables: ${schemaTables(deps.readFile(path.join(deps.root, "schema.sql"))).join(", ")}`,
     `  ${show(COMMANDS.secretList)}`,
     `    expect secrets (names only): ${SECRET_NAMES.join(", ")}`,
+    `  read ${DEPLOY_CONFIG}: expect HZ_TURNSTILE_SITEKEY under [vars] (a public value)`,
     `  cron: "schedule: ${CRON}" in the deploy output`,
     `  GET https://${HOSTNAME}/account   expect 405 method with a cf-ray header`,
     "    a Cloudflare challenge (cf-mitigated: challenge, or a challenge page): prints the skip rule, then prompt: re-check the route now? (y)",
@@ -521,11 +549,11 @@ export async function deploy(deps) {
     await confirmAccount(ctx, full);
     await confirmWorker(ctx, full);
     const values = await collectAnswers(ctx, full);
-    await prepareDatabase(ctx, full, values);
+    const configText = await prepareDatabase(ctx, full, values);
     const edgeConfirmed = await edgeRule(ctx, full);
     const deployOut = await deployWorker(ctx, full, values, { newAccountKey: argv.includes("--new-account-key"), newTicketKey: argv.includes("--new-ticket-key") });
     await ownerAdminStep(ctx, full);
-    await runChecks(ctx, full, { deployOut, edgeConfirmed });
+    await runChecks(ctx, full, { deployOut, edgeConfirmed, configText });
   });
 }
 
@@ -534,13 +562,14 @@ export async function deploy(deps) {
 // secret names), and it writes no file.
 async function checkOnly(ctx, deps) {
   await wranglerVersion(ctx);
+  let configText;
   try {
-    deps.readFile(path.join(deps.root, DEPLOY_CONFIG));
+    configText = deps.readFile(path.join(deps.root, DEPLOY_CONFIG));
   } catch {
     throw new Stop(`${DEPLOY_CONFIG} is not here: the deploy writes it (step 3), so run node bin/deploy.mjs first. Nothing was changed.`);
   }
   await pickAccountQuietly(ctx, deps);
-  await runChecks(ctx, deps, { checkOnly: true });
+  await runChecks(ctx, deps, { checkOnly: true, configText });
 }
 
 // --owner-admin: Step 6 alone, after a deploy and the owner's sign-up. It

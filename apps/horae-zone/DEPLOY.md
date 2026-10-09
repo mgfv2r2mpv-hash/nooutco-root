@@ -1,6 +1,6 @@
 # Horae Zone deploy
 
-You must be logged in to Cloudflare with wrangler (`wrangler login`) on the Mac you run this from, and you need the Resend API key at hand. The script deploys a live Worker at `horae-zone.nooutco.me`, so run it only when you mean to.
+You must be logged in to Cloudflare with wrangler (`wrangler login`) on the Mac you run this from, and you need the Resend API key at hand. The script also asks for the Turnstile widget's two keys; it prints the clicks to make the widget first (item 8 below). The script deploys a live Worker at `horae-zone.nooutco.me`, so run it only when you mean to.
 
 ## The one command
 
@@ -38,20 +38,25 @@ The script first prints the wrangler version it found (`wrangler --version`) and
 5. The sign-up link base (`HZ_LINK_BASE`): the https page that reads the code after `#`.
 6. The reopen link base (`HZ_REOPEN_BASE`): the https page that reads the reopen token after `#`, mailed when a code path closes. The script checks it with the Worker's own check (`reopenBaseOk` in `src/unlock.js`): https, no `?` and no `#`.
 7. The PIN reset link base (`HZ_RESET_BASE`): the page on the device that reads the emailed reset code after `#`, mailed when a device asks to reset a forgotten app PIN. Checked the same way: https, no `?` and no `#`.
-8. The mail plan's daily send limit (`HZ_CODES_PER_DAY`, blank keeps 3000).
-9. Whether the rate rule is in place. The script prints the exact clicks for it before the route goes live, so you can add it in the dashboard while it waits.
-10. Which account is yours, only when Step 6 finds accounts and no administrator yet (below). It lists them oldest first by creation time and device count; type the number, or leave it blank to set none. The script reads your pick back and sets it only on `y`, since the first administrator is set once.
+8. The Turnstile widget's keys, after the clicks to make the widget (dashboard > Turnstile > Add widget: name horae-zone, hostname `horae-zone.nooutco.me` only, mode Managed, pre-clearance No):
+   - the site key (`HZ_TURNSTILE_SITEKEY`), a public value the challenge page shows, kept as a Worker var in `wrangler.deploy.toml`;
+   - the secret key (`HZ_TURNSTILE_SECRET`), on a hidden prompt, put as a Worker secret.
+
+   Each must be a production key (it starts `0x`). Cloudflare's test keys (`1x`, `2x`, `3x`) are refused: the `1x` secret passes every token, so one set by mistake would switch the check off. Until both are set, `POST /account` and an unsigned `POST /signin` answer `not-configured` (503) and `GET /challenge` shows the same sentence; nothing fails open.
+9. The mail plan's daily send limit (`HZ_CODES_PER_DAY`, blank keeps 3000).
+10. Whether the rate rule is in place. The script prints the exact clicks for it before the route goes live, so you can add it in the dashboard while it waits.
+11. Which account is yours, only when Step 6 finds accounts and no administrator yet (below). It lists them oldest first by creation time and device count; type the number, or leave it blank to set none. The script reads your pick back and sets it only on `y`, since the first administrator is set once.
 
 A bad answer is asked again, up to 3 times. All answers are asked before anything is created.
 
 ## What it does
 
 1. Finds the D1 database `horae-zone`, or creates it (from an empty temp folder, so wrangler cannot edit `wrangler.toml`).
-2. Writes `wrangler.deploy.toml` next to `wrangler.toml`: the real database id, the route `horae-zone.nooutco.me` as a Custom domain (always proxied, so `cf-connecting-ip` comes from the Cloudflare edge), `workers_dev = false`, and the daily limit when you gave one. It holds no secret and is gitignored. The committed `wrangler.toml` keeps its zero id and no route (`test/config.test.mjs`).
+2. Writes `wrangler.deploy.toml` next to `wrangler.toml`: the real database id, the route `horae-zone.nooutco.me` as a Custom domain (always proxied, so `cf-connecting-ip` comes from the Cloudflare edge), `workers_dev = false`, the Turnstile site key, and the daily limit when you gave one. It holds no secret and is gitignored. The committed `wrangler.toml` keeps its zero id and no route (`test/config.test.mjs`).
 3. Applies `schema.sql` to the remote database. Every statement is `IF NOT EXISTS`, so a rerun changes nothing.
-4. Reads the Worker's secret list (names only), then deploys the Worker and puts each secret with `wrangler secret put`, the value on stdin: `HZ_ACCOUNT_KEY`, `HZ_SEED_KEY`, `HZ_TICKET_KEY`, `RESEND_KEY`, `HZ_MAIL_FROM`, `HZ_ALERT_TO`, `HZ_LINK_BASE`, `HZ_REOPEN_BASE`, `HZ_RESET_BASE`. A key already set is kept (below). A list the script cannot read stops the run before the deploy, with the Worker and its secrets untouched ("could not read the secret list; the Worker and its secrets were not changed"); only wrangler's answer that the Worker is not found, on a first deploy, reads as no secrets yet.
-5. Sets your account as the first administrator (A5c), once. When an administrator is already set it changes nothing and asks nothing. When no account exists yet (the first deploy, before you sign up in the app) it shows SKIPPED and names `node bin/deploy.mjs --owner-admin` to run after sign-up. Otherwise it asks which account is yours (item 10 above) and runs one write that adds the role only while no account holds it.
-6. Checks everything and prints the checklist.
+4. Reads the Worker's secret list (names only), then deploys the Worker and puts each secret with `wrangler secret put`, the value on stdin: `HZ_ACCOUNT_KEY`, `HZ_SEED_KEY`, `HZ_TICKET_KEY`, `RESEND_KEY`, `HZ_MAIL_FROM`, `HZ_ALERT_TO`, `HZ_LINK_BASE`, `HZ_REOPEN_BASE`, `HZ_RESET_BASE`, `HZ_TURNSTILE_SECRET`. A key already set is kept (below). A list the script cannot read stops the run before the deploy, with the Worker and its secrets untouched ("could not read the secret list; the Worker and its secrets were not changed"); only wrangler's answer that the Worker is not found, on a first deploy, reads as no secrets yet.
+5. Sets your account as the first administrator (A5c), once. When an administrator is already set it changes nothing and asks nothing. When no account exists yet (the first deploy, before you sign up in the app) it shows SKIPPED and names `node bin/deploy.mjs --owner-admin` to run after sign-up. Otherwise it asks which account is yours (item 11 above) and runs one write that adds the role only while no account holds it.
+6. Checks everything and prints the checklist. The Turnstile site key is a Worker var, so the secret list cannot show it: the checklist reads it from `wrangler.deploy.toml` instead.
 
 The script makes three keys itself, puts each through stdin and never prints one:
 
@@ -76,6 +81,7 @@ CHECKLIST
   PASS    Schema applied                     21 tables present
   PASS    Secret HZ_ACCOUNT_KEY              set (name only)
   ...
+  PASS    Turnstile site key HZ_TURNSTILE_SITEKEY  a Worker var in wrangler.deploy.toml
   PASS    Cron trigger                       0 * * * * (hourly purge)
   PASS    Route answers                      GET /account refused as method (405) through the Cloudflare edge
   PASS    Edge rule on /account and /signin  confirmed by you
@@ -125,7 +131,8 @@ The database keeps no address in the clear, so the lock is found by its time. Fr
 
 The script prints each of these with its exact clicks, so you can do them while it waits.
 
-1. The rate rule on POST `/account` and `/signin`, required at the first deploy (`docs/horae-zone/DESIGN-REVIEW.md` A3 item 13). Step 4 prints it before the route goes live and asks whether it is in place.
+1. The rate rule on POST `/account` and `/signin`, required at the first deploy (`docs/horae-zone/DESIGN-REVIEW.md` A3 item 13), live since 8 Oct 2026 at 2 requests per 10 seconds per IP. Turnstile (`src/turnstile.js`) is the check that bounds a stranger with many addresses; the rate rule stays as the backstop, stopping a one-address flood at the edge before the Worker spends a siteverify call. Step 4 prints it before the route goes live and asks whether it is in place.
+   The Turnstile widget itself is made before Step 2's prompts; the script prints those clicks there (item 8 under What it asks).
 2. The hostname and DNS checks, printed in the checks step under "Check after the deploy". The Worker and its Custom domain exist only once the deploy has run, so Workers & Pages > horae-zone > Settings > Domains & Routes (the hostname) and DNS (shown as Proxied) are checked then, not before.
 3. The skip rule, required when the zone runs Super Bot Fight Mode. Its definitely automated setting (a managed challenge) answers GET `/account` with a 403 and `cf-mitigated: challenge` before the Worker sees the request, so the route check fails (D-22, seen on the first real deploy, 4 Oct 2026). The script reads that header (or a challenge page) and its FAIL line says "Cloudflare's bot protection is answering before the Worker", then prints the rule:
    1. dash.cloudflare.com > the nooutco.me zone > Security > Security rules > Create rule > Custom rule.

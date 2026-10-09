@@ -18,6 +18,10 @@
  * leaves for after the answer (a mail) adds a second row only when it fails. There is no
  * console output: a log line is one more place a value could land.
  *
+ * GET /challenge (src/challenge-page.js) is the one exception to POST only:
+ * the fixed page where the Turnstile widget runs. POST /account and an
+ * unsigned POST /signin carry its token in the body (src/turnstile.js).
+ *
  * A request with a query string is refused as shape before anything else:
  * every value travels in a body (or a link fragment), never in a URL a proxy
  * or an access log keeps.
@@ -32,6 +36,7 @@ import { ROUTES } from "./routes.js";
 import { Refusal, readBody, findDevice, checkSignature, isAdmin } from "./checks.js";
 import { purgeExpired } from "./retention.js";
 import { accountLocked } from "./account-lock.js";
+import { challengePage } from "./challenge-page.js";
 
 const HEADERS = { "content-type": "application/json", "cache-control": "no-store" };
 
@@ -77,7 +82,7 @@ async function later(db, at, route, ctx, after) {
   else await work;
 }
 
-async function run(request, env, ctx, { routes, now, mailer, pinRules }) {
+async function run(request, env, ctx, { routes, now, mailer, pinRules, siteverify }) {
   const db = env.DB;
   const url = new URL(request.url);
   const route = Object.hasOwn(routes, url.pathname) ? routes[url.pathname] : null;
@@ -96,7 +101,7 @@ async function run(request, env, ctx, { routes, now, mailer, pinRules }) {
       if (!route.lockedOk && (await accountLocked(db, device.account_id))) throw new Refusal("account-locked", 423);
     }
     if (!route.handler) throw new Refusal("not-built", 501);
-    const out = await route.handler({ db, device, body, now, env, request, mailer: mailer ?? mailerFrom(env), pinRules });
+    const out = await route.handler({ db, device, body, now, env, request, mailer: mailer ?? mailerFrom(env), pinRules, siteverify });
     // A handler may name its outcome word in place of "ok" (A5c: an admin
     // unlock says whether it unlocked); always a fixed word, never a value.
     await audit(db, now, name, out.audit ?? "ok");
@@ -114,10 +119,18 @@ async function run(request, env, ctx, { routes, now, mailer, pinRules }) {
 // sends mail). `pinRules` is the engine's createPinRules over the private
 // blocklist (A5b); without it no PIN can be set (src/pin.js), and none is
 // built in here, since the list never enters this public repository.
-export function createHandler({ now = () => Date.now(), routes = ROUTES, mailer = null, pinRules = null } = {}) {
+// `siteverify` replaces fetch for Turnstile's siteverify call (tests inject a
+// fake, so no test reaches Cloudflare).
+export function createHandler({ now = () => Date.now(), routes = ROUTES, mailer = null, pinRules = null, siteverify = (url, init) => fetch(url, init) } = {}) {
   return async (request, env, ctx) => {
+    // The challenge page is the one GET (src/challenge-page.js); it needs no
+    // database and runs before run(), so every other route stays POST only.
+    if (request.method === "GET") {
+      const { pathname, search } = new URL(request.url);
+      if (pathname === "/challenge" && search === "") return challengePage(env);
+    }
     if (!env || !env.DB) return answer(503, { error: "unavailable" });
-    return run(request, env, ctx, { routes, now: now(), mailer, pinRules });
+    return run(request, env, ctx, { routes, now: now(), mailer, pinRules, siteverify });
   };
 }
 
