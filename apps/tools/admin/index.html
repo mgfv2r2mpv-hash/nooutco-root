@@ -523,6 +523,11 @@
             <button class="btn-secondary" type="button" data-review="knowledge">Staged knowledge rules<span class="count-pill" data-review-count="knowledge">-</span></button>
           </div>
         </div>
+        <div class="card">
+          <h2>Production errors, last 7 days</h2>
+          <p class="muted" style="margin: 0 0 12px;">Every occurrence is counted, including the ones the error email held back.<br>No message text is kept here. The fingerprint matches the line on the error email.</p>
+          <div id="errorRecord"><span class="muted" style="font-size: 13px;">Loading...</span></div>
+        </div>
       </div>
 
       <div id="tab-knowledge" class="tab-panel">
@@ -797,7 +802,25 @@
           .catch(function () { setReviewCount("knowledge", null); });
       }
 
-      function loadReview() { loadTermQueues(); loadSuggestions(); loadKnowledgeCount(); }
+      // The production error record (issue #152). A list to read, not a queue
+      // to decide, so it never feeds the To review badge.
+      function loadErrorRecord() {
+        var box = document.getElementById("errorRecord");
+        fetch("/api/admin/errors?days=7", { headers: authHeader() })
+          .then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || ("Error " + r.status)); return d; }); })
+          .then(function (d) {
+            var rows = d.records || [];
+            if (!rows.length) { box.innerHTML = '<span class="muted" style="font-size: 13px;">No errors recorded in the last 7 days.</span>'; return; }
+            box.innerHTML = '<table><thead><tr><th>Last seen</th><th>Tool</th><th>Count</th><th>Day</th><th>Source</th><th>Fingerprint</th></tr></thead><tbody>'
+              + rows.map(function (r) {
+                return "<tr><td>" + escapeHtml(fmtDateTime(r.last)) + "</td><td>" + escapeHtml(r.tool || "-") + "</td><td>" + escapeHtml(r.count || 0)
+                  + "</td><td>" + escapeHtml(r.day || "-") + "</td><td>" + escapeHtml(r.source || "-") + "</td><td><code>" + escapeHtml(r.fingerprint || "-") + "</code></td></tr>";
+              }).join("") + "</tbody></table>";
+          })
+          .catch(function (e) { box.innerHTML = '<span class="muted" style="font-size: 13px;">The error record could not be read: ' + escapeHtml(e.message || "unknown") + "</span>"; });
+      }
+
+      function loadReview() { loadTermQueues(); loadSuggestions(); loadKnowledgeCount(); loadErrorRecord(); }
       document.querySelectorAll("[data-review]").forEach(function (row) {
         row.addEventListener("click", function () { openTab(reviewTarget[row.dataset.review]); });
       });
