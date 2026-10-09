@@ -1452,6 +1452,13 @@ function ExpertReading({ expert, claimAnswers, onClaimAnswer, busy }) {
           {expert.hintsDropped} lower-ranked finding{expert.hintsDropped === 1 ? "" : "s"} not shown.
         </p>
       ) : null}
+      {/* Pollux's hold on #328, finding 3: what the #118 check dropped is
+          said, so a real finding cannot sit behind the check mark unseen. */}
+      {expert.unresolvedDropped ? (
+        <p style={{ fontSize: 11.5, color: "#7a9460", marginTop: 6 }} data-testid="expert-unresolved-dropped">
+          {expert.unresolvedDropped} finding{expert.unresolvedDropped === 1 ? "" : "s"} not shown: {expert.unresolvedDropped === 1 ? "it assumes" : "they assume"} a behavior stopped that the notes say did not.
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -2313,7 +2320,16 @@ function App() {
     const stoppedClaims = window.NoteUnresolved
       ? window.NoteUnresolved.hints(restored, draftIntakeRef.current, narrativeIds())
       : [];
-    const injected = misplaced.concat(effectGaps, repeats, stoppedClaims);
+    /* THE FIFTH, the recast's own notice (Pollux's hold on #328): a section
+       whose "did not resolve" is about to read "continued" says so, so the
+       clinician sees the change rather than only the audit counting it. It
+       goes in here to take the tool's validation with the rest; the recast
+       itself runs last, below, and a notice whose section it did not change
+       is taken back out there. */
+    const recastNotes = window.NoteUnresolved && window.NoteUnresolved.recastHints
+      ? window.NoteUnresolved.recastHints(restored, draftIntakeRef.current, narrativeIds())
+      : [];
+    const injected = misplaced.concat(effectGaps, repeats, stoppedClaims, recastNotes);
     const withHints = injected.length
       ? { ...restored, hints: (Array.isArray(restored.hints) ? restored.hints : []).concat(injected) }
       : restored;
@@ -2338,11 +2354,22 @@ function App() {
        the phrase. Last, for the reason the recast above runs after the strip:
        it writes a word no model wrote, so nothing before it reads that word. */
     const continued = window.NoteUnresolved
-      ? window.NoteUnresolved.passNote(filled.output, narrativeIds())
-      : { output: filled.output, recast: 0 };
+      ? window.NoteUnresolved.passNote(filled.output, narrativeIds(), draftIntakeRef.current)
+      : { output: filled.output, recast: 0, sections: [] };
+    /* A notice for a section the recast did not in the end change (the strip
+       cut the sentence, say) would describe an edit that never happened.
+       Filtering keeps normalizeHints' rank order. */
+    const notice = recastNotes.length ? recastNotes[0].detail : null;
+    const told = notice && Array.isArray(continued.output && continued.output.hints)
+      ? {
+          ...continued.output,
+          hints: continued.output.hints.filter((h) =>
+            !(h.code === "other" && h.detail === notice && !continued.sections.includes(h.section))),
+        }
+      : continued.output;
 
     return {
-      output: continued.output,
+      output: told,
       cut: stripped.cut,
       flagged: stripped.flagged,
       recast: filled.recast,
