@@ -23,6 +23,7 @@ import { sanitizeCorrections, sanitizeMetrics, cleanKid, cleanSlug } from "./val
 import { runWeekly, isSendHour } from "./weekly.js";
 import { accumulate, targetFor, renderShapeBlock } from "./shape.js";
 import { acceptVoice, voiceStatements } from "./voice-write.js";
+import { summariseTriageUsage } from "./triage-usage.js";
 
 /** Corrections considered when rebuilding a card. Bounds the query, and a
  *  technician's style two thousand edits ago is not evidence about today. */
@@ -90,6 +91,9 @@ export default {
       }
       if (url.pathname === "/suppress" && request.method === "POST") {
         return await handleSuppress(request, env);
+      }
+      if (url.pathname === "/triage-usage" && request.method === "GET") {
+        return await handleTriageUsage(url, env);
       }
       return json(404, { error: "No such route." });
     } catch (err) {
@@ -514,6 +518,36 @@ async function handleMetricsSummary(url, env) {
 // D1 returns undefined rather than [] on some paths; every caller here wants
 // an array it can iterate without a guard at each site.
 function results_or_empty(r) { return Array.isArray(r) ? r : []; }
+
+/* How each BT answers NoMe's questions, per technician and per tool: accepted
+ * as is, edited, own words, or left unrefined. Supervisor view, so it is
+ * reached only through the Pages worker's admin check (PROFILE_ADMIN_ROUTES).
+ *
+ * Counts and rates only. The rows hold four integers and a round, and
+ * summariseTriageUsage reads the four by name and nothing else.
+ *
+ * BOUNDED like /metrics-summary: a window of days and a row cap, and the reply
+ * says when the cap was reached so a busy month cannot read as a quiet one. */
+const TRIAGE_USAGE_ROW_CAP = 20000;
+
+async function handleTriageUsage(url, env) {
+  const days = Math.min(365, Math.max(1, Number(url.searchParams.get("days")) || METRICS_WINDOW_DAYS));
+  const since = Date.now() - days * 24 * 60 * 60 * 1000;
+  const { results } = await env.DB.prepare(
+    `SELECT kid, tool, data
+       FROM usage_metric
+      WHERE type = 'triage_answers' AND ts >= ?
+      ORDER BY ts DESC
+      LIMIT ?`,
+  ).bind(since, TRIAGE_USAGE_ROW_CAP).all();
+  const rows = results_or_empty(results);
+  return json(200, {
+    windowDays: days,
+    rowCap: TRIAGE_USAGE_ROW_CAP,
+    capped: rows.length >= TRIAGE_USAGE_ROW_CAP,
+    ...summariseTriageUsage(rows),
+  });
+}
 
 /* ───────────────────── supervisor views ─────────────────────
  *

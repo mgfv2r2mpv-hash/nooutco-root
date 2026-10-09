@@ -4252,6 +4252,9 @@ async function handleStyleInsights(request, env) {
  *   GET  /api/admin/profile/history?kid=  how that card moved, replayed
  *   POST /api/admin/profile/suppress      remove a rule, or put it back
  *   GET  /api/admin/profile/metrics?days= what the tool has been doing, as numbers
+ *   GET  /api/admin/profile/usage?days=   how each BT answered NoMe's questions,
+ *                                         per tool: accepted as is, edited, own
+ *                                         words, left unrefined. Counts and rates.
  *
  * Still content-free end to end. These read the same numeric columns as
  * everything else; there is no note text in the store to expose.
@@ -4262,6 +4265,7 @@ const PROFILE_ADMIN_ROUTES = {
   history:  { path: "/card-history", method: "GET" },
   suppress: { path: "/suppress",     method: "POST" },
   metrics:  { path: "/metrics-summary", method: "GET" },
+  usage:    { path: "/triage-usage", method: "GET" },
 };
 
 async function handleProfileAdmin(request, env, url) {
