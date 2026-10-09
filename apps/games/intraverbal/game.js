@@ -207,7 +207,51 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadSettings();
   bindEvents();
   await loadItems();
+  mountRoundSetup();
 });
+
+// ── Round setup (Frame 04, shared ../round-setup.js) ───────────────
+// The gated panel is a view over the settings-bar and Options controls, not a
+// second config: every edit in it goes through the same change handlers and
+// the same store, so a panel opened and left alone changes nothing. The
+// target picker and the voice-recording panel stay where they are.
+
+/** Re-render the whole game from the store, as a fresh load would. */
+function reloadFromStore() {
+  loadSettings();
+  state.targetDecks = {};
+  state.posDeck     = [];
+  pruneStaleTargetFilters();
+  populateCategoryDropdown();
+  renderTargetPanel();
+  updateTargetsCount();
+}
+
+function mountRoundSetup() {
+  if (!window.NooutcoRoundSetup) return;
+  window.NooutcoRoundSetup.mount({
+    store: settingsStore,
+    label: 'Intraverbal round setup',
+    reload: reloadFromStore,
+    core: [
+      '#sel-category',
+      '#inp-size',
+    ],
+    advanced: [
+      '#chk-represent-errors',
+      '#chk-errorless',
+      '#chk-no-error-anim',
+      '#chk-cross',
+      '#chk-persists',
+      '#chk-auto-prompt',
+      '#chk-prompt-delay',
+      { sel: '#sel-prompt-delay', label: 'Prompt delay (seconds)' },
+      '#sel-prompt-style',
+      '#chk-vocal-prompts',
+      '#chk-vocal-responses',
+    ],
+  });
+}
 
 // ── Settings (shared store) ────────────────────────────────────────
 
