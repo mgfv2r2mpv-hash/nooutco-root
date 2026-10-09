@@ -282,3 +282,41 @@ test('recovery tries are capped per connecting address', async () => {
   assert.equal(statuses.at(-1), 429);
   assert.ok(auditRows(h.db).some((r) => r.route === '/recover' && r.reason === 'slow-down'));
 });
+
+// ---- the A6 security review ----
+
+// MEDIUM-1: a vault a device made but never recorded was "unknown" after a
+// recovery, so it outlived the recovery on that device (R-6: the vault is
+// not recoverable). Every vault id a device registered before the recovery
+// holds, other than the one current now, is gone.
+test('review MEDIUM-1: after a recovery, a vault a device never recorded is gone for every device registered before it', async () => {
+  const h = harness();
+  const owner = await owned(h);
+  const account = accountOf(h, owner.id);
+  const unrecorded = vaultId(9);
+  const fresh = await recoveredDevice(h, ADDRESS);
+  const res = await pinCall(h, owner, '/vault/state', { vault: unrecorded });
+  assert.equal((await verifyVaultState(res.json.state, { account, device: owner.id, now: h.clock.ms })).state, 'gone');
+  // NEGATIVE CONTROL: the recovered device's own vault, made after the
+  // recovery and not yet recorded, is unknown, never gone.
+  const mine = await pinCall(h, fresh, '/vault/state', { vault: vaultId(8) });
+  assert.equal((await verifyVaultState(mine.json.state, { account, device: fresh.id, now: h.clock.ms })).state, 'unknown');
+  // Once it records one, that one is current for every device.
+  const enrolled = await enrolOn(h, fresh, ADDRESS);
+  await ticketFor(h, enrolled);
+  assert.equal((await switchVault(h, enrolled, vaultId(8))).status, 200);
+  const now = await pinCall(h, owner, '/vault/state', { vault: vaultId(8) });
+  assert.equal((await verifyVaultState(now.json.state, { account, device: owner.id, now: h.clock.ms })).state, 'current');
+});
+
+// LOW-2: recovery shared sign-up's daily mail cap, so a flood of sign-up
+// starts held back the one way back into an account. It has its own day.
+test('review LOW-2: a full sign-up day does not hold back a recovery start, which has a day cap of its own', async () => {
+  const h = harness({ env: { HZ_CODES_PER_DAY: '1' } });
+  await owned(h);
+  const filled = await h.call(post('/account', { email: 'flood@example.test' }, { 'cf-connecting-ip': '192.0.2.61' }));
+  assert.equal(filled.status, 200);
+  assert.equal((await h.call(post('/account', { email: 'flood2@example.test' }, { 'cf-connecting-ip': '192.0.2.62' }))).status, 429, 'the sign-up day is full');
+  assert.ok(await recoveryCode(h, ADDRESS), 'the recovery link still goes out');
+  assert.equal((await h.call(post('/recover', { email: ADDRESS }, { 'cf-connecting-ip': '192.0.2.63' }))).status, 429, 'the recovery day is capped too');
+});
