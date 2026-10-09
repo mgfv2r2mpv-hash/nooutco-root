@@ -57,11 +57,11 @@ const CORRECTIONS = [{
   reasons: [{ quote: 'because the client dislikes transitions', why: 'A causal claim about why.' }],
 }];
 
-async function stub(page) {
+async function stub(page, note = NOTE) {
   await page.route('**/api/llm-call**', async (route) => {
     const body = JSON.parse(route.request().postData() || '{}');
     if (isTriageCall(body)) return route.fulfill(reply({ sufficient: true, questions: [], readiness: 90 }));
-    return route.fulfill(reply(NOTE));
+    return route.fulfill(reply(note));
   });
   await page.route('**/api/expert-pass**', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ terms: [], register: [], hints: [] }) }));
@@ -84,8 +84,8 @@ async function acceptScrubGate(page) {
   if (await review.isVisible({ timeout: 1500 }).catch(() => false)) await review.click();
 }
 
-async function draft(page, { inRaw = false } = {}) {
-  await stub(page);
+async function draft(page, { inRaw = false, note = NOTE } = {}) {
+  await stub(page, note);
   await page.goto('/notes/bt/');
   await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT 3-item array, full physical faded to independent');
   await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first-then board before demands');
@@ -180,4 +180,77 @@ test('blocked storage still lets the toggle switch the view', async ({ page }) =
   await viewBtn(page, 'raw').click();
   await expect(raw(page)).toHaveValue(KEPT);
   expect(errors).toEqual([]);
+});
+
+/* The card's own list, 9 Oct 2026: the words typed in the put-back table show
+   in Raw text exactly as Copy takes them, a hand edit there holds the word and
+   stores the token, the toggle sends nothing, and the view fits a phone. */
+const NAME = 'Samwise';
+const WITH_TOKEN = { ...NOTE, followUpNarrative: 'Direct staff report no new questions about [CLIENT] for the BCBA.' };
+
+test.describe('raw text and the put-back table', () => {
+  test('a word typed in the put-back table shows in raw text, as Copy takes it', async ({ page }) => {
+    await draft(page, { note: WITH_TOKEN });
+    await page.getByTestId('put-back-input-[CLIENT]').fill(NAME);
+    await viewBtn(page, 'raw').click();
+    const box = raw(page, 'followUpNarrative');
+    await expect(box).toHaveValue(`Direct staff report no new questions about ${NAME} for the BCBA.`);
+    expect((await copyOf(page, 'followUpNarrative')).trim()).toBe(await box.inputValue());
+  });
+
+  test('an edit in raw text keeps the word on the page and in the copy, and switching back shows it', async ({ page }) => {
+    await draft(page, { note: WITH_TOKEN });
+    await page.getByTestId('put-back-input-[CLIENT]').fill(NAME);
+    await viewBtn(page, 'raw').click();
+    const typed = `${NAME} asked for a break twice and staff honored both.`;
+    await raw(page, 'followUpNarrative').fill(typed);
+    expect((await copyOf(page, 'followUpNarrative')).trim()).toBe(typed);
+
+    await viewBtn(page, 'preview').click();
+    await expect(page.locator('textarea[data-section-id="followUpNarrative"]')).toHaveValue(typed);
+
+    // A blank put-back field shows the token again, so the note itself kept the token.
+    await page.getByTestId('put-back-input-[CLIENT]').fill('');
+    await viewBtn(page, 'raw').click();
+    await expect(raw(page, 'followUpNarrative')).toHaveValue('[CLIENT] asked for a break twice and staff honored both.');
+  });
+});
+
+test('switching views sends nothing', async ({ page }) => {
+  await draft(page);
+  // networkidle never settles here (a connection stays open), so let the draft's
+  // own calls finish, then count only what the toggling starts.
+  await page.waitForTimeout(1000);
+  const sent = [];
+  page.on('request', (r) => { if (!r.url().startsWith('data:')) sent.push(r.method() + ' ' + r.url()); });
+  await viewBtn(page, 'raw').click();
+  await expect(raw(page)).toHaveValue(KEPT);
+  await viewBtn(page, 'preview').click();
+  await expect(marks(page)).toBeVisible();
+  await viewBtn(page, 'raw').click();
+  await page.waitForTimeout(500);
+  expect(sent).toEqual([]);
+});
+
+test('at phone width both views fit with no sideways scroll', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await draft(page);
+  const overflow = () => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(await overflow()).toBeLessThanOrEqual(0);
+  await viewBtn(page, 'raw').click();
+  await expect(raw(page)).toBeVisible();
+  expect(await overflow()).toBeLessThanOrEqual(0);
+  for (const view of ['preview', 'raw']) {
+    const b = await viewBtn(page, view).boundingBox();
+    expect(b.x).toBeGreaterThanOrEqual(0);
+    expect(b.x + b.width).toBeLessThanOrEqual(375);
+  }
+  const box = await raw(page).boundingBox();
+  expect(box.x + box.width).toBeLessThanOrEqual(375);
+
+  // Every raw box shows all of its text at this width: a short box that wraps
+  // would hide the end of a field he is about to copy.
+  const clipped = await page.locator('[data-raw-section]').evaluateAll((els) =>
+    els.filter((el) => el.scrollHeight > el.clientHeight + 1).map((el) => el.dataset.rawSection));
+  expect(clipped).toEqual([]);
 });
