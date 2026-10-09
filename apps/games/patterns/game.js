@@ -847,6 +847,38 @@ function restoreTrials() {
 }
 
 
+// ── Round setup (Frame 04, shared ../round-setup.js) ───────────────
+// The gated panel is a view over the controls above, not a second config:
+// every edit in it goes through the same change handlers and the same store,
+// so a panel opened and left alone changes nothing.
+
+function mountRoundSetup() {
+  if (!window.NooutcoRoundSetup) return;
+  window.NooutcoRoundSetup.mount({
+    store: settingsStore,
+    label: 'Pattern Pack Co. round setup',
+    reload: () => { loadSettings(); populateSetDropdown(); },
+    core: [
+      '#sel-set',
+      '#inp-pattern-length',
+      '#inp-reps',
+      '#inp-blanks',
+      '#inp-bank',
+    ],
+    advanced: [
+      '#chk-represent-errors',
+      '#chk-errorless',
+      '#chk-no-error-anim',
+      '#chk-persists',
+      '#chk-auto-prompt',
+      '#chk-prompt-delay',
+      { sel: '#sel-prompt-delay', label: 'Prompt delay (seconds)' },
+      '#sel-prompt-style',
+      '#chk-reduce-motion',
+    ],
+  });
+}
+
 // ── Init ───────────────────────────────────────────────────────────
 
 (async function init() {
@@ -855,5 +887,6 @@ function restoreTrials() {
   loadSettings();
   bindEvents();
   await loadSymbols();
+  mountRoundSetup();
   renderTimer();
 })();
