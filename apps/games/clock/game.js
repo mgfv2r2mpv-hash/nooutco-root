@@ -242,7 +242,54 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadSettings();
   bindEvents();
   await discoverTopics();
+  mountRoundSetup();
 });
+
+// ── Round setup (Frame 04, shared ../round-setup.js) ───────────────
+// The gated panel is a view over the controls below, not a second config:
+// every edit in it goes through the same change handlers and the same store,
+// so a panel opened and left alone changes nothing. The Targets picker stays
+// in the settings bar: it is a per-image checklist, not a round parameter.
+
+/** Re-render the whole game from the store after a saved set is applied. */
+async function reloadFromStore() {
+  loadSettings();
+  const dirs = state.topicFolders;
+  if (dirs.length) {
+    state.topic = dirs.includes(state.topic) ? state.topic : dirs[0];
+    el.selTopic.value = state.topic;
+  }
+  state.posDeck = [];
+  await refreshImages();
+  renderTargetPanel();
+  updateTargetsCount();
+}
+
+function mountRoundSetup() {
+  if (!window.NooutcoRoundSetup) return;
+  window.NooutcoRoundSetup.mount({
+    store: settingsStore,
+    label: 'Hickory Dickory Dock round setup',
+    reload: reloadFromStore,
+    core: [
+      '#sel-topic',
+      '#inp-size',
+    ],
+    advanced: [
+      '#chk-animations',
+      '#chk-represent-errors',
+      '#chk-errorless',
+      '#chk-no-error-anim',
+      '#chk-non-target-distractor',
+      '#chk-cross',
+      '#chk-persists',
+      '#chk-auto-prompt',
+      '#chk-prompt-delay',
+      { sel: '#sel-prompt-delay', label: 'Prompt delay (seconds)' },
+      '#sel-prompt-style',
+    ],
+  });
+}
 
 // ── Settings (the shared store) ────────────────────────────────────
 
