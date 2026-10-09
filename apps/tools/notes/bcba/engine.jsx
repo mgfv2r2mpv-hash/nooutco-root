@@ -6280,8 +6280,21 @@ function App() {
             them on a clinical surface was chrome the technician had to scroll
             past on every note. ADMIN_STYLE_RULES still drives the prompt. */}
 
-        {/* Inputs */}
-        <div style={card}>
+        {/* Inputs. data-find-scope is where find-replace.js looks for text
+            fields; the opener sits at the top of the card it searches. */}
+        <div style={card} data-find-scope="form">
+          {window.NoteFindReplace && (
+            <div className="find-open-row">
+              <button
+                type="button"
+                className="find-open"
+                onClick={() => NoteFindReplace.open()}
+                title={"Find and replace in these boxes\nCmd+Option+F (Mac) or Ctrl+Alt+F"}
+              >
+                Find and replace
+              </button>
+            </div>
+          )}
           {tool.inputs.map(renderInput)}
 
           {S.error && <p style={{ color: "#c0392b", fontSize: 13, marginBottom: 12, whiteSpace: "pre-line" }}>{S.error}</p>}

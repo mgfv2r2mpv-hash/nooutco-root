@@ -1789,3 +1789,89 @@ body.is-pointing, body.is-pointing * { cursor: crosshair !important; }
 
 /* Every control in the rail, its tell box and the queued asks, at all widths. */
 .cx-tell .cx-ck, .cx-tell .cx-chip, .cx-asks .cx-ck, .cx-dismissed .cx-ck { min-height: 30px; }
+
+/* ── Find and replace (find-replace.js) ──────────────────────────────────────
+   Pinned under the page chrome, over the form, so it stays in reach while Next
+   scrolls the page to a match further down. Same greens, chips and buttons as
+   the form below it. Above the section map (40) and the cache timer (60), under
+   the assistant panel (70). At phone width the boxes stack and the buttons wrap
+   inside the bar, which is never wider than the viewport less its gutters. */
+.find-bar {
+  position: fixed;
+  top: calc(var(--noaba-bar-height, 0px) + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(860px, calc(100vw - 32px));
+  z-index: 65;
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #f7fbf3;
+  border: 1px solid #c0d4a8;
+  border-radius: 12px;
+  box-shadow: 0 10px 28px rgba(45, 58, 31, 0.2);
+  font-family: inherit;
+}
+.find-bar[hidden] { display: none; }
+/* Next centres a match in the space under the bar rather than the whole
+   window, so on a phone the line it selected is not behind the bar. The
+   clearance is the bar's own height, set by find-replace.js while it is open. */
+[data-find-scope] textarea, [data-find-scope] input { scroll-margin-top: var(--find-bar-clearance, 0px); }
+.find-bar-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+.find-bar-readout { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; min-width: 0; font-size: 12.5px; color: #5a6b4a; }
+.find-bar-count { font-weight: 700; color: #2d3a1f; }
+.find-bar-status { color: #4a6b3a; }
+.find-bar-inputs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.find-bar-input {
+  width: 100%; min-width: 0; padding: 8px 12px; border-radius: 8px;
+  border: 1.5px solid #c0d4a8; background: #fafcf8; color: #2d3a1f;
+  font-family: inherit; font-size: 14px;
+}
+.find-bar-input:focus-visible { outline: 2px solid #374528; outline-offset: 1px; }
+.find-bar-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.find-bar-toggle {
+  padding: 6px 12px; border-radius: 20px; cursor: pointer;
+  border: 1.5px solid #c0d4a8; background: white; color: #5a7040;
+  font-family: inherit; font-size: 12px; font-weight: 600; white-space: nowrap;
+}
+.find-bar-toggle[aria-pressed="true"] { border-color: #374528; background: #374528; color: white; }
+.find-bar-btn {
+  padding: 6px 14px; border-radius: 8px; cursor: pointer;
+  border: 1.5px solid #374528; background: white; color: #374528;
+  font-family: inherit; font-size: 13px; font-weight: 600; white-space: nowrap;
+}
+.find-bar-btn:hover:not(:disabled) { background: #eef4e6; }
+.find-bar-primary { background: #374528; color: white; }
+.find-bar-primary:hover:not(:disabled) { background: #2d3a1f; }
+.find-bar-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.find-bar-btn[hidden] { display: none; }
+.find-bar-toggle:focus-visible, .find-bar-btn:focus-visible, .find-bar-close:focus-visible, .find-open:focus-visible {
+  outline: 2px solid #374528; outline-offset: 2px;
+}
+.find-bar-close {
+  flex: 0 0 auto; width: 30px; height: 30px; border-radius: 8px; cursor: pointer;
+  border: 1px solid #c0d4a8; background: white; color: #5a6b4a;
+  font-family: inherit; font-size: 18px; line-height: 1;
+}
+@media (max-width: 520px) {
+  .find-bar-inputs { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* The mark over the match the bar is on (find-highlight.js). The layer is the
+   field's own box and clips, so a match scrolled out of the field stays hidden.
+   It sits over the field and under the sticky chrome, and never takes a click. */
+.find-mark-layer { position: absolute; z-index: 1; overflow: hidden; pointer-events: none; }
+.find-mark {
+  position: absolute; border-radius: 3px;
+  background: rgba(200, 150, 42, 0.32); box-shadow: 0 0 0 2px #c8962a;
+}
+
+/* The opener, at the top of the form card. Styled as the fields' own
+   "Examples" chip, so it reads as part of the form rather than page chrome. */
+.find-open-row { display: flex; justify-content: flex-end; margin: -8px 0 10px; }
+.find-open {
+  padding: 4px 12px; border-radius: 20px; cursor: pointer;
+  border: 1.5px solid #c0d4a8; background: white; color: #5a7040;
+  font-family: inherit; font-size: 12px; font-weight: 600; white-space: nowrap;
+}
+.find-open:hover { background: #eef4e6; }
