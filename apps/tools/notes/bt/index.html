@@ -107,6 +107,10 @@
   <script src="/notes/bcba/intake-voice.js"></script>
   <script src="/notes/bcba/speech.js"></script>
   <script src="/notes/bcba/note-metrics.js"></script>
+  <!-- Find and replace across the form's text fields. Edits page text only;
+       sends nothing. Loaded before the engine, which draws its opener. -->
+  <script src="/notes/bcba/find-highlight.js"></script>
+  <script src="/notes/bcba/find-replace.js"></script>
 
   <!-- Assistant panel, then the engine that mounts it. Order matters: Babel
        standalone runs these in document order and the engine renders the panel. -->
