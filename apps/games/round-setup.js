@@ -474,6 +474,9 @@
         width: min(1200px, calc(100vw - 32px)); margin: 14px auto 6px;
         background: var(--surface-card, #fff); border: 1px solid var(--border-default, #e2e6d9);
         border-radius: 16px; box-shadow: 0 16px 42px rgba(44,51,31,0.16); overflow: hidden;
+        /* Five games lay the page out as a flex column locked to the viewport on
+           phones; without this the panel collapses to its header there. */
+        flex-shrink: 0;
         color: var(--text-primary, #1a1f14);
       }
       #round-panel .round-head { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 12px; padding: 12px 18px; }
@@ -552,6 +555,11 @@
         #round-panel .round-cols { grid-template-columns: minmax(0, 1fr); }
         #round-panel .round-col { padding: 0; }
         #round-panel .round-col + .round-col { border-left: none; border-top: 1px solid #eef0e9; }
+      }
+      /* Same breakpoints as those games' viewport lock: the panel keeps a share
+         of the screen and scrolls inside itself, like their Options panel. */
+      @media (max-width: 680px), (orientation: landscape) and (max-height: 520px) {
+        #round-panel { max-height: 70dvh; overflow-y: auto; }
       }
       @media print { #round-panel { display: none !important; } }
     `;
