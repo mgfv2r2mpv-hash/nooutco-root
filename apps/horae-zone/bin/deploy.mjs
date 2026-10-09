@@ -101,11 +101,11 @@ const EDGE_STEPS = [
   `     dash.cloudflare.com > the nooutco.me zone > Security > Security rules > Create rule > Rate limiting rule`,
   `     (older dashboards: Security > WAF > Rate limiting rules > Create rule).`,
   `     Rule name: horae-zone sign-up and sign-in. Click "Edit expression" and paste:`,
-  `       (http.host eq "${HOSTNAME}" and http.request.method eq "POST" and http.request.uri.path in {"/account" "/signin"})`,
-  `     With the same characteristics: IP. When rate exceeds: 2 requests per 10 seconds (the rule already live).`,
+  `       (http.host eq "${HOSTNAME}" and http.request.method eq "POST" and http.request.uri.path in {"/account" "/signin" "/recover"})`,
+  `     With the same characteristics: IP. When rate exceeds: 2 requests per 10 seconds (the rule already live; add "/recover" to it).`,
   `     Then take action: Block, for the plan's block period. Deploy.`,
-  "     Turnstile is wired in (src/turnstile.js): it bounds a stranger with many addresses, which a per-address rule",
-  "     cannot. The rate rule stays as the backstop: it stops a one-address flood at the edge, before any siteverify call.",
+  "     Turnstile is wired in (src/turnstile.js) on /account and /signin: it bounds a stranger with many addresses,",
+  "     which a per-address rule cannot. The rate rule stays as the backstop, and it is the only edge rule on /recover.",
 ];
 
 // Printed in Step 7, once the Worker exists: before the deploy there is no

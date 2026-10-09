@@ -312,11 +312,13 @@ test('review MEDIUM-1: after a recovery, a vault a device never recorded is gone
 // LOW-2: recovery shared sign-up's daily mail cap, so a flood of sign-up
 // starts held back the one way back into an account. It has its own day.
 test('review LOW-2: a full sign-up day does not hold back a recovery start, which has a day cap of its own', async () => {
-  const h = harness({ env: { HZ_CODES_PER_DAY: '1' } });
+  // A day of two: the owner's own sign-up took one place.
+  const h = harness({ env: { HZ_CODES_PER_DAY: '2' } });
   await owned(h);
   const filled = await h.call(post('/account', { email: 'flood@example.test' }, { 'cf-connecting-ip': '192.0.2.61' }));
   assert.equal(filled.status, 200);
   assert.equal((await h.call(post('/account', { email: 'flood2@example.test' }, { 'cf-connecting-ip': '192.0.2.62' }))).status, 429, 'the sign-up day is full');
   assert.ok(await recoveryCode(h, ADDRESS), 'the recovery link still goes out');
-  assert.equal((await h.call(post('/recover', { email: ADDRESS }, { 'cf-connecting-ip': '192.0.2.63' }))).status, 429, 'the recovery day is capped too');
+  assert.equal((await h.call(post('/recover', { email: ADDRESS }, { 'cf-connecting-ip': '192.0.2.63' }))).status, 200);
+  assert.equal((await h.call(post('/recover', { email: ADDRESS }, { 'cf-connecting-ip': '192.0.2.64' }))).status, 429, 'the recovery day is capped too');
 });

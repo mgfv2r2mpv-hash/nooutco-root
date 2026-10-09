@@ -12,10 +12,12 @@
  * either way (sign-up's M1): an address with no account gets a row born
  * spent, which never verifies and is never mailed. One link is live for an
  * address at a time; a start while one is live mails it again, inside
- * RECOVER_LIMITS.resendsPerAddressHour. Every start counts toward sign-up's
- * daily mail cap (DAILY_BUCKET), since both spend the one mail plan. The
- * finish counts the try before the compare, spends the link with the first
- * right try, and only then checks the password: a wrong one answers
+ * RECOVER_LIMITS.resendsPerAddressHour. Every start counts toward a daily cap
+ * of recovery's own (RECOVER_DAY_BUCKET, the same number as sign-up's, A6
+ * security review LOW-2), so a flood of sign-up starts never holds back the
+ * one way back into an account. The finish counts the try before the
+ * compare, spends the link with the first right try, and only then checks
+ * the password: a wrong one answers
  * bad-login and the link is spent (as the MEDIUM-1 relink). Shape comes first,
  * so a malformed request counts nothing.
  *
@@ -55,13 +57,16 @@
 import { sameHex } from "../../../packages/account-engine/src/limits.mjs";
 import { Refusal, b64url } from "./checks.js";
 import {
-  hasOnly, addressOf, requesterOf, keysOrUnavailable, codesPerDayOf, linkOf, SIGNUP_LIMITS, DAILY_BUCKET,
+  hasOnly, addressOf, requesterOf, keysOrUnavailable, codesPerDayOf, linkOf, SIGNUP_LIMITS,
 } from "./signup.js";
 import { passwordOf } from "./signin.js";
 import { isPoint } from "./devices.js";
 import { admitThrottle } from "./throttle.js";
 import { accountLocked } from "./account-lock.js";
 import { mailAfter } from "./lockout.js";
+
+// The recovery starts of the last day, across every address and requester.
+export const RECOVER_DAY_BUCKET = "recover-day";
 
 export const RECOVER_LIMITS = Object.freeze({
   codeTtlMs: SIGNUP_LIMITS.codeTtlMs,
@@ -161,7 +166,7 @@ async function startRecovery({ db, body, now, env, request, mailer }) {
   const requester = await keys.requesterKey(ip);
   const counted = await admitThrottle(db, now, RECOVER_LIMITS.windowMs, [
     { bucket: `recover-start:${requester}`, limit: RECOVER_LIMITS.startsPerRequesterHour },
-    { bucket: DAILY_BUCKET, limit: codesPerDay, windowMs: SIGNUP_LIMITS.dayMs },
+    { bucket: RECOVER_DAY_BUCKET, limit: codesPerDay, windowMs: SIGNUP_LIMITS.dayMs },
   ]);
   if (!counted) throw new Refusal("slow-down", 429);
   const minted = await mintLink(db, keys, addressKey, now);
@@ -204,6 +209,10 @@ function recoveryBatch(db, accountId, device, now) {
       .bind(now, accountId),
     db.prepare("DELETE FROM vault WHERE account_id = ?").bind(accountId),
     db.prepare("DELETE FROM handoff WHERE account_id = ?").bind(accountId),
+    // Security review MEDIUM-1: every vault a device registered before now
+    // holds is gone, recorded or not (src/vault.js stateOf).
+    db.prepare("INSERT INTO account_recovery (account_id, at) VALUES (?, ?) ON CONFLICT (account_id) DO UPDATE SET at = excluded.at")
+      .bind(accountId, now),
   ]);
 }
 
