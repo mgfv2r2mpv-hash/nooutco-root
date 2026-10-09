@@ -55,7 +55,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { OWNER_ADMIN_FLAG, ownerAdminStep, ownerAdminDryRun } from "./deploy-admin.mjs";
-import { COLUMN_COMMANDS, reconcileColumns } from "./deploy-columns.mjs";
+import { COLUMN_COMMANDS, reconcileColumns, tableStatements } from "./deploy-columns.mjs";
 import {
   CATALOG, SECRET_NAMES, DATABASE, HOSTNAME, DEPLOY_CONFIG, CRON, ACCOUNT_KEY_BYTES, SEED_KEY_BYTES,
   LineReader, deployConfig, scrub, parseJson, findDatabaseId, schemaTables, renderChecklist, ticketKeyJwk, isChallenge, isTurnstileKey,
@@ -302,13 +302,19 @@ async function prepareDatabase(ctx, deps, values) {
   const configText = deployConfig(toml, { databaseId: id, vars });
   deps.writeFile(path.join(deps.root, DEPLOY_CONFIG), configText);
   ctx.say(`  Wrote ${DEPLOY_CONFIG} (gitignored): database id, route ${HOSTNAME}, no secret.`);
-  await ctx.wrangler(COMMANDS.applySchema);
-  ctx.say("  Applied schema.sql (every statement is IF NOT EXISTS, so a table already there keeps its columns).");
   ctx.item("Database present", "PASS", found ? "found" : "created");
-  // IF NOT EXISTS never adds a column to a table already there (9 Oct 2026:
-  // device had no confirmed_at, and every unlock answered 500). A difference
-  // this cannot fix stops the run here, before the Worker deploys.
-  await reconcileColumns(ctx, deps.readFile(path.join(deps.root, "schema.sql")), Stop);
+  // schema.sql in two passes around the column step. IF NOT EXISTS never adds
+  // a column to a table already there (9 Oct 2026: device had no
+  // confirmed_at, and every unlock answered 500), and a CREATE INDEX on a
+  // column a table lacks fails, so the tables go first, then the columns,
+  // then the whole file for its indexes and triggers. A difference the
+  // column step cannot fix stops the run here, before the Worker deploys.
+  const schemaSql = deps.readFile(path.join(deps.root, "schema.sql"));
+  await ctx.wrangler(COLUMN_COMMANDS.applyTables(tableStatements(schemaSql)));
+  ctx.say("  Applied schema.sql's tables (CREATE TABLE IF NOT EXISTS, so a table already there keeps its columns).");
+  await reconcileColumns(ctx, schemaSql, Stop);
+  await ctx.wrangler(COMMANDS.applySchema);
+  ctx.say("  Applied schema.sql in full for its indexes and triggers (every statement is IF NOT EXISTS).");
   return configText;
 }
 
@@ -515,11 +521,12 @@ function dryRun(deps) {
     `  ${show(COMMANDS.d1List)}`,
     `  ${show(COMMANDS.d1Create)}   (only when missing, from an empty temp folder)`,
     `  write ${DEPLOY_CONFIG} (gitignored): wrangler.toml + database id + route ${HOSTNAME} as a Custom domain`,
-    `  ${show(COMMANDS.applySchema)}`,
+    `  ${show(COLUMN_COMMANDS.applyTables("<schema.sql's CREATE TABLE statements only>"))}`,
     `  ${show(COLUMN_COMMANDS.columns("<table>"))}   for each table schema.sql creates, compared with schema.sql's own columns`,
     `  ${show(COLUMN_COMMANDS.addColumn("<table>", "<column as schema.sql defines it>"))}   for each missing column that is nullable or has a constant DEFAULT; each one is a checklist line`,
     "  a missing NOT NULL column with no constant DEFAULT, a changed type, NOT NULL, DEFAULT or key, or a column schema.sql no longer declares: stops here, before the Worker deploys",
-    "  then each table altered is read again; one that still differs stops here too",
+    "  a failed ALTER stops here too, with wrangler's own reason; then each table altered is read again, and one that still differs stops here",
+    `  ${show(COMMANDS.applySchema)}   the whole file, for its indexes and triggers, once every column is there`,
     "Step 4. Edge rule, before the route goes live",
     ...EDGE_STEPS.map((l) => `  ${l}`),
     "  prompt: is the rate rule in place?",
