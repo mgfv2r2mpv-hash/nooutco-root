@@ -40,7 +40,7 @@ The script first prints the wrangler version it found (`wrangler --version`) and
 7. The PIN reset link base (`HZ_RESET_BASE`): the page on the device that reads the emailed reset code after `#`, mailed when a device asks to reset a forgotten app PIN. Checked the same way: https, no `?` and no `#`.
 8. The mail plan's daily send limit (`HZ_CODES_PER_DAY`, blank keeps 3000).
 9. Whether the rate rule is in place. The script prints the exact clicks for it before the route goes live, so you can add it in the dashboard while it waits.
-10. Which account is yours, only when Step 6 finds accounts and no administrator yet (below). It lists them oldest first by creation time and device count; type the number, or leave it blank to set none.
+10. Which account is yours, only when Step 6 finds accounts and no administrator yet (below). It lists them oldest first by creation time and device count; type the number, or leave it blank to set none. The script reads your pick back and sets it only on `y`, since the first administrator is set once.
 
 A bad answer is asked again, up to 3 times. All answers are asked before anything is created.
 
@@ -96,7 +96,7 @@ cd apps/horae-zone
 node bin/deploy.mjs --owner-admin
 ```
 
-It runs Step 6 alone: no deploy, no secret, no other write. It picks the Cloudflare account the way `--check-only` does, reads the role and account tables, lists the accounts oldest first by creation time and device count (the database keeps no address in the clear, so pick yours by when you signed up), and asks for the number of yours. The one write adds the admin role to that account only while no account holds it, so it sets the first administrator once and never a second. An administrator already set is reported as PASS with nothing changed.
+It runs Step 6 alone: no deploy, no secret, no other write. It picks the Cloudflare account the way `--check-only` does, reads the role and account tables, lists the accounts oldest first by creation time and device count (the database keeps no address in the clear, so pick yours by when you signed up), asks for the number of yours, and reads the pick back for a `y`. The one write adds the admin role to that account only while no account holds it, so it sets the first administrator once and never a second. An administrator already set is reported as PASS with nothing changed.
 
 ## Break glass: unlock an account the offline block locked
 

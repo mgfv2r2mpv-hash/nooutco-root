@@ -12,7 +12,8 @@
  *   - otherwise: lists the oldest accounts by creation time and device
  *     count (the database keeps no address in the clear, and HZ_ACCOUNT_KEY
  *     stays in Cloudflare, so the script cannot match an address), asks the
- *     owner which one is theirs, and runs one guarded INSERT.
+ *     owner which one is theirs, reads the pick back for a typed y, and
+ *     runs one guarded INSERT.
  *
  * The INSERT carries its own guards: it adds the role only for an account
  * that exists, and only while no account holds the admin role, so a second
@@ -73,7 +74,12 @@ async function pickAccount(ctx, deps, accounts, more) {
   if (more) ctx.say(`  (only the oldest ${ACCOUNTS_SHOWN} are shown)`);
   const pick = (await deps.ask({ name: "pick-owner-account", question: "  Number of your own account (blank sets no administrator): ", hidden: false })).trim();
   if (!/^[1-9]\d*$/.test(pick) || Number(pick) > accounts.length) return null;
-  return accounts[Number(pick) - 1];
+  const chosen = accounts[Number(pick) - 1];
+  // The grant cannot be undone by this script (set once), so the pick is
+  // read back and confirmed with a typed y.
+  ctx.say(`  You picked the account created ${when(chosen.created_at)}, ${plural(chosen.devices, "device")}. The first administrator is set once.`);
+  const yes = (await deps.ask({ name: "confirm-owner-account", question: "  Make it administrator? Type y to go on, anything else sets none: ", hidden: false })).trim().toLowerCase();
+  return yes === "y" || yes === "yes" ? chosen : null;
 }
 
 export async function ownerAdminStep(ctx, deps) {
@@ -117,6 +123,7 @@ export function ownerAdminDryRun(show) {
     `  ${show(ADMIN_COMMANDS.adminCount)}   an administrator already set: nothing is asked or changed (set once)`,
     `  ${show(ADMIN_COMMANDS.accounts)}   no account yet: says to sign up, then run node bin/deploy.mjs ${OWNER_ADMIN_FLAG}`,
     "  prompt: the number of your own account, listed by creation time and device count (blank sets no administrator)",
+    "  prompt: the pick read back; y to make it administrator, anything else sets none",
     `  ${show(ADMIN_COMMANDS.grant("ACCOUNT_ID"))}   only while no administrator is set`,
   ];
 }
