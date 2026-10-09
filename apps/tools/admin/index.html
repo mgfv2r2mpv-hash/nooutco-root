@@ -168,6 +168,30 @@
     .radio-opt { flex: 1; display: flex; align-items: center; gap: 8px; border: 1.5px solid var(--sage-light); border-radius: 8px; padding: 10px 12px; cursor: pointer; font-size: 14px; font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--text); margin: 0; }
     .radio-opt input { width: auto; padding: 0; }
     .radio-opt.sel { border-color: var(--sage); background: #f0f5e8; }
+    /* BT usage. One colour per answer kind, and every colour also has its word
+       beside it, so nobody has to learn the palette to read a row. */
+    .use-window { display: flex; gap: 6px; }
+    .use-window .active { background: var(--sage); color: #fff; border-color: var(--sage); }
+    .use-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+    .use-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+    .use-k-accepted_as_is { background: #d9a441; }
+    .use-k-edited { background: #a9c48a; }
+    .use-k-own_words { background: #374528; }
+    .use-k-not_refined { background: #c9cfc0; }
+    .use-bt { border-top: 1px solid #eef2e6; padding: 12px 0 4px; }
+    .use-bt:first-child { border-top: none; padding-top: 0; }
+    .use-bt.cohort { background: #f4f7ee; border-radius: 10px; padding: 12px 12px 4px; margin-bottom: 10px; border-top: none; }
+    .use-who { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-bottom: 8px; }
+    .use-who strong { font-size: 14px; }
+    .use-who code { font-size: 11px; color: var(--muted); }
+    .use-row { margin-bottom: 10px; }
+    .use-tool { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+    .use-tool .muted { font-weight: 400; font-size: 12px; }
+    .use-bar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: #eef2e6; }
+    .use-bar span { display: block; height: 100%; }
+    .use-nums { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; margin-top: 5px; font-size: 12px; color: var(--muted); }
+    .use-nums b { display: block; font-size: 13px; color: var(--text); }
+    @media (max-width: 480px) { .use-nums { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   </style>
 </head>
 <body>
@@ -325,6 +349,36 @@
             No notes generated.<br>Nothing learned.
           </p>
           <p id="profError" class="muted hidden" style="margin: 14px 4px 0; color: var(--red);"></p>
+        </div>
+
+        <!-- How each BT answers NoMe's questions. His words, 3 Oct 2026: "I do
+             want some reporting on BT note tool use so that I can guide their
+             performance. Can't do that blind." Counts and rates only: the rows
+             behind this hold four integers per Send and never a word. -->
+        <div class="card" id="usageCard">
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <h2 style="margin: 0;">BT usage</h2>
+            <div class="use-window" role="group" aria-label="Window">
+              <button class="btn-ghost" type="button" data-usage-days="7">7 days</button>
+              <button class="btn-ghost active" type="button" data-usage-days="30">30 days</button>
+              <button class="btn-ghost" type="button" data-usage-days="90">90 days</button>
+            </div>
+          </div>
+          <p class="muted" style="margin: 6px 0 12px;">
+            How each BT answered NoMe's questions, per tool.<br>
+            Rates are per question.
+          </p>
+          <div class="use-legend" aria-hidden="true">
+            <span><i class="use-k-accepted_as_is"></i>Accepted as is</span>
+            <span><i class="use-k-edited"></i>Edited</span>
+            <span><i class="use-k-own_words"></i>Own words</span>
+            <span><i class="use-k-not_refined"></i>Left unrefined</span>
+          </div>
+          <div id="usageRows"></div>
+          <p id="usageEmpty" class="muted hidden" style="margin: 14px 4px 0;">
+            No NoMe questions answered in this window.
+          </p>
+          <p id="usageError" class="muted hidden" style="margin: 14px 4px 0; color: var(--red);"></p>
         </div>
 
         <div class="card hidden" id="profDetailCard">
@@ -761,6 +815,7 @@
         // Style Profiles reads a separate Worker over a service binding, so
         // it loads when opened rather than on every admin page load.
         if (btn.dataset.tab === "profiles") loadRoster();
+        if (btn.dataset.tab === "profiles") loadUsage();
         // Same reasoning: the knowledge store is a second Worker over a
         // service binding, so it is read when the tab is opened.
         if (btn.dataset.tab === "knowledge") loadKnowledge();
@@ -1294,6 +1349,92 @@
           b.addEventListener("click", function () { openProfile(b.dataset.profOpen); });
         });
       }
+
+      /* ── BT usage ──
+         How each BT answered NoMe's questions, per tool, read from the
+         triage_answers events (#235, #240). Counts and rates only. A BT is
+         named by the label on their access password when the Passwords list
+         knows it, and by the login code id otherwise. */
+      var USAGE_KINDS = [
+        { key: "accepted_as_is", label: "Accepted as is" },
+        { key: "edited", label: "Edited" },
+        { key: "own_words", label: "Own words" },
+        { key: "not_refined", label: "Left unrefined" },
+      ];
+      var usageState = { days: 30, labels: {} };
+
+      function pct(rate) { return rate == null ? "-" : Math.round(rate * 100) + "%"; }
+
+      function usageLine(line) {
+        var segs = USAGE_KINDS.map(function (k) {
+          var rate = line.rates[k.key] || 0;
+          return rate > 0 ? '<span class="use-k-' + k.key + '" style="width:' + (rate * 100).toFixed(1) + '%"></span>' : "";
+        }).join("");
+        var said = USAGE_KINDS.map(function (k) { return k.label + " " + pct(line.rates[k.key]); }).join(", ");
+        var nums = USAGE_KINDS.map(function (k) {
+          return '<span data-kind="' + k.key + '"><b>' + pct(line.rates[k.key]) + "</b>" + k.label + " (" + line.counts[k.key] + ")</span>";
+        }).join("");
+        return '<div class="use-row" data-usage-tool="' + escapeHtml(line.tool) + '">'
+          + '<div class="use-tool"><span>' + escapeHtml(line.tool === "all" ? "All tools" : toolLabel(line.tool)) + "</span>"
+          + '<span class="muted">' + line.questions + " questions · " + line.sends + (line.sends === 1 ? " Send" : " Sends") + "</span></div>"
+          + '<div class="use-bar" role="img" aria-label="' + escapeHtml(said) + '">' + segs + "</div>"
+          + '<div class="use-nums">' + nums + "</div>"
+          + "</div>";
+      }
+
+      function renderUsage(d) {
+        var bts = d.technicians || [];
+        var tools = d.tools || [];
+        document.getElementById("usageEmpty").classList.toggle("hidden", bts.length > 0);
+        if (!bts.length) { document.getElementById("usageRows").innerHTML = ""; return; }
+        var cohort = '<div class="use-bt cohort" data-usage-kid="all">'
+          + '<div class="use-who"><strong>All BTs</strong><span class="muted">' + bts.length + (bts.length === 1 ? " BT" : " BTs") + "</span></div>"
+          + tools.map(usageLine).join("")
+          + "</div>";
+        var each = bts.map(function (t) {
+          var label = usageState.labels[t.kid];
+          return '<div class="use-bt" data-usage-kid="' + escapeHtml(t.kid) + '">'
+            + '<div class="use-who"><strong>' + escapeHtml(label || t.kid) + "</strong>"
+            + (label ? "<code>" + escapeHtml(t.kid) + "</code>" : "") + "</div>"
+            + t.tools.map(usageLine).join("")
+            + "</div>";
+        }).join("");
+        var capped = d.capped
+          ? '<p class="muted">Window holds more Sends than one read takes.<br>Shorten the window for an exact count.</p>'
+          : "";
+        document.getElementById("usageRows").innerHTML = cohort + each + capped;
+      }
+
+      function loadUsage() {
+        var err = document.getElementById("usageError");
+        err.classList.add("hidden");
+        document.querySelectorAll("[data-usage-days]").forEach(function (b) {
+          b.classList.toggle("active", Number(b.dataset.usageDays) === usageState.days);
+        });
+        // Labels are a nicety. A failed Passwords read still shows the report.
+        var labels = api("GET")
+          .then(function (d) {
+            var map = {};
+            (d.passwords || []).forEach(function (p) { if (p.label) map[p.id] = p.label; });
+            usageState.labels = map;
+          })
+          .catch(function () {});
+        var report = adminFetch("/api/admin/profile/usage?days=" + usageState.days);
+        Promise.all([report, labels])
+          .then(function (r) { renderUsage(r[0]); })
+          .catch(function (ex) {
+            document.getElementById("usageRows").innerHTML = "";
+            document.getElementById("usageEmpty").classList.add("hidden");
+            err.textContent = ex.message;
+            err.classList.remove("hidden");
+          });
+      }
+      document.querySelectorAll("[data-usage-days]").forEach(function (b) {
+        b.addEventListener("click", function () {
+          usageState.days = Number(b.dataset.usageDays) || 30;
+          loadUsage();
+        });
+      });
 
       function openProfile(kid) {
         profState.kid = kid;
