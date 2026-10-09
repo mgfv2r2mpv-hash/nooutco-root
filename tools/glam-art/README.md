@@ -37,14 +37,32 @@ are committed and shipped. Source of the contract: the Claude Design project
 cd tools/glam-art && npm install          # playwright (browsers already cached)
 node run_pipeline.mjs                      # all 4 models  (add m1 m3 … for a subset)
 node qa.mjs                                # QA gate + composites
-node --test harness/frame.test.mjs         # frame-formula unit test
+node --test harness/frame.test.mjs harness/brow_finish.test.mjs   # unit tests
 node build_index.mjs                       # re-house the game HTML (rarely needed)
 node build_cursors.mjs                     # per-tool 32x32 drag cursors from the shelf icons (issue #40)
+node finish_brow_removal.mjs               # finish the base renders' brow removal (issue #41)
 ```
 
 Masters live at `~/Desktop/MakeoverGame_Resources` (`person:<key><suffix>.png`;
 suffix = model: ""→m1, " 2"→m2, " 3"→m3, " 4"→m4). Re-point the `masters`
 symlink if they move.
+
+## The shipped base renders and the brow removal (issue #41)
+
+The game reads `assets/art/person/<model>/<style>/base.png` + `mask.png`
+(512x576, one per hair style). Those were built in the Claude Design project,
+not by `run_pipeline.mjs` (which writes the older 520x600 flat layers beside
+them). That build skin-filled the original brow inside the mask's eyes+brows
+key, and the brow half of that key is the brow shape clipped by a rectangle:
+straight vertical edges at both ends on every model. The brow runs past the
+rectangle's outer side, so a faint arc of its outline survived on the temple.
+
+`finish_brow_removal.mjs` (logic in `harness/brow_finish.mjs`, lossless PNG I/O
+in `harness/png.mjs`) removes that arc in place: on skin in a band around each
+brow key, a thin line darker than the median of the skin around it is pulled
+back to that median. Line art, hair, the hair's cast shadow, the eye key and
+alpha are left alone. Rerun it whenever base renders are regenerated from the
+design project, until the key there reaches the end of the brow.
 
 ## Scope
 
