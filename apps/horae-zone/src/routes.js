@@ -35,6 +35,7 @@ import { adminStatus, unlockPins, adminUnlockAccount } from "./admin.js";
 import { recover } from "./recover.js";
 import { switchVault, vaultState } from "./vault.js";
 import { offerVault, takeVault } from "./pair.js";
+import { grantPass, reportPass } from "./offline.js";
 
 export const ROUTES = Object.freeze({
   "/account": { checks: "open", handler: startSignup },
@@ -61,6 +62,10 @@ export const ROUTES = Object.freeze({
   "/pin/reset": { checks: "signed", handler: resetPin },
   "/pin/review": { checks: "signed", handler: reviewPin },
   "/reverify": { checks: "signed", handler: reverify },
+  // Offline unlock (src/offline.js): a pass after a fresh code, and the
+  // report of its offline opens, which a blocked Mac must still be able to send.
+  "/offline/grant": { checks: "signed", handler: grantPass },
+  "/offline/report": { checks: "signed", handler: reportPass, lockedOk: true },
   // A6 (src/pair.js): bringing the vault to a new device, between two
   // confirmed devices of one account.
   "/pair/offer": { checks: "signed", handler: offerVault },
