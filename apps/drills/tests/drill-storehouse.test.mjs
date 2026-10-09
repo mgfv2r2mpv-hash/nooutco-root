@@ -141,3 +141,20 @@ test("the punishment take names the chapter by its 3rd edition title", () => {
   const p = PASSAGES.find((x) => x.id === "p-punish");
   assert.match(p.source, /ch\. Positive Punishment$/);
 });
+
+// Checked against PubMed 2026-10-08: Hanley, Jin, Vanselow & Hanratty (2014),
+// JABA 47(1), 16-36, doi 10.1002/jaba.106; Rincover (1978), Journal of
+// Abnormal Child Psychology 6(3), 299-310, doi 10.1007/BF00924733.
+test("the Hanley 2014 and Rincover 1978 passages carry their published titles", () => {
+  const title = (id) => PASSAGES_MORE.find((x) => x.id === id).title;
+  assert.equal(title("p-hanley14"), "Producing meaningful improvements in problem behavior of children with autism via synthesized analyses and treatments");
+  assert.equal(title("p-rincover"), "Sensory extinction: a procedure for eliminating self-stimulatory behavior in developmentally disabled children");
+});
+
+test("the Rincover passage and its variant never credit the 1978 study with the present-day stereotypy debate", () => {
+  const texts = [PASSAGES_MORE.find((x) => x.id === "p-rincover").text, ...VARIANTS_MORE["p-rincover"]];
+  for (const t of texts) {
+    assert.doesNotMatch(t, /carried a caution|raised a caution/, "the 1978 paper offers sensory extinction as a treatment and does not argue against targeting stereotypy");
+    assert.match(t, /the study (itself )?did not/, "says the question is today's, not the study's");
+  }
+});
