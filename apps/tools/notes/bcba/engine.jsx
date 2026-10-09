@@ -5883,6 +5883,14 @@ function App() {
      time, and a box of free text would have no field to go back into. A change
      waiting to be accepted is drawn as it is in Preview, because it is a
      decision rather than text. */
+  /* A raw box is as tall as its text. The row count above only counts line
+     breaks, so on a phone a field that wraps was cut short and hid the end of
+     what Copy takes. The ref runs on every render, so the box follows each edit. */
+  const fitRawBox = (el) => {
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = (el.scrollHeight + el.offsetHeight - el.clientHeight) + "px";
+  };
   const renderRawSection = (sec) => {
     const id = sectionId(sec);
     const pending = pendingChangeFor(id);
@@ -5897,6 +5905,7 @@ function App() {
           data-raw-readonly="true"
           value={shown}
           title="Set in Preview."
+          ref={fitRawBox}
           rows={Math.max(2, shown.split("\n").length)}
           style={{ ...rawBox, background: "#f7fbf3", color: "#5a6b4a" }}
         />
@@ -5916,6 +5925,7 @@ function App() {
           markSectionRevised(id);
         }}
         placeholder={sec.emptyNote || ""}
+        ref={fitRawBox}
         rows={Math.max(3, Math.ceil(shown.length / 95) + 1)}
         style={{ ...rawBox, minHeight: sec.minHeight || 84, background: "white" }}
       />
