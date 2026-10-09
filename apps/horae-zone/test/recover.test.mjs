@@ -22,7 +22,7 @@ import { RECOVERED_NOTE, RECOVER_LIMITS } from '../src/recover.js';
 import {
   harness, post, signed, pinCall, pinnedDevice, provedDevice, switchVault, vaultId, deviceKeys, everyRow, auditRows,
   recoveryCode, recoverRequest, recoveredDevice, signUpOwner, enrolRequest, enrolTicket, tryCode, codeAt, ticketFor,
-  verifyVaultState, signIn, PASSWORD, RECOVER_IP, RECOVER_LINK_SUBJECT_TEXT, passToken} from './helpers.mjs';
+  verifyVaultState, signIn, PASSWORD, RECOVER_IP, RECOVER_LINK_SUBJECT_TEXT, passToken, recoverStart } from './helpers.mjs';
 
 // Fixed, fake values: reserved-domain addresses, a PIN off the public list
 // and an envelope that is only a marker.
@@ -216,7 +216,7 @@ test('a recovery start answers the same and runs the same statements whether or 
   await owned(h);
   const run = async (email, ip) => {
     const from = h.db.bound.length;
-    const res = await answer(await h.call(post('/recover', { email }, { 'cf-connecting-ip': ip })));
+    const res = await answer(await h.call(recoverStart(email, { ip })));
     return { res, sql: h.db.bound.slice(from).map((s) => s.sql) };
   };
   const withAccount = await run(ADDRESS, '192.0.2.50');
@@ -231,7 +231,7 @@ test('a recovery start answers the same and runs the same statements whether or 
 test('a recovery start keeps one live link at a time and re-sends it inside the cap', async () => {
   const h = harness();
   await owned(h);
-  for (let i = 0; i < 6; i += 1) await h.call(post('/recover', { email: ADDRESS }, { 'cf-connecting-ip': `198.51.100.${i}` }));
+  for (let i = 0; i < 6; i += 1) await h.call(recoverStart(ADDRESS, { ip: `198.51.100.${i}` }));
   const codes = recoveryLinks(h, ADDRESS).map((m) => new URL(m.text.match(/https:\/\/\S+/)[0]).hash.slice(1));
   assert.equal(codes.length, 1 + RECOVER_LIMITS.resendsPerAddressHour);
   assert.equal(new Set(codes).size, 1, 'every mail carries the one live link');
@@ -267,7 +267,10 @@ test('a recovery request is refused as shape before anything is counted', async 
     assert.deepEqual(await answer(await h.call(post('/recover', body, { 'cf-connecting-ip': RECOVER_IP }))), { status: 400, json: { error: 'shape' } }, JSON.stringify(Object.keys(body)));
   }
   assert.equal(h.db.sqlite.prepare("SELECT COUNT(*) AS n FROM throttle WHERE bucket LIKE 'recover%'").get().n, 0);
-  assert.deepEqual(await answer(await h.call(post('/recover', { email: ADDRESS }))), { status: 400, json: { error: 'shape' } }, 'no connecting address');
+  assert.deepEqual(await answer(await h.call(post('/recover', { email: ADDRESS, turnstile: passToken('recover') }))), { status: 400, json: { error: 'shape' } }, 'no connecting address');
+  // The finish is the emailed link plus the password: it takes no token.
+  assert.deepEqual(await answer(await h.call(post('/recover', { ...good, turnstile: passToken('recover') }, { 'cf-connecting-ip': RECOVER_IP }))), { status: 400, json: { error: 'shape' } }, 'the finish takes no token');
+  assert.equal(h.db.sqlite.prepare("SELECT COUNT(*) AS n FROM throttle WHERE bucket LIKE 'recover%'").get().n, 0, 'still nothing counted');
 });
 
 test('recovery tries are capped per connecting address', async () => {
@@ -318,6 +321,6 @@ test('review LOW-2: a full sign-up day does not hold back a recovery start, whic
   assert.equal(filled.status, 200);
   assert.equal((await h.call(post('/account', { email: 'flood2@example.test', turnstile: passToken('account') }, { 'cf-connecting-ip': '192.0.2.62' }))).status, 429, 'the sign-up day is full');
   assert.ok(await recoveryCode(h, ADDRESS), 'the recovery link still goes out');
-  assert.equal((await h.call(post('/recover', { email: ADDRESS }, { 'cf-connecting-ip': '192.0.2.63' }))).status, 200);
-  assert.equal((await h.call(post('/recover', { email: ADDRESS }, { 'cf-connecting-ip': '192.0.2.64' }))).status, 429, 'the recovery day is capped too');
+  assert.equal((await h.call(recoverStart(ADDRESS, { ip: '192.0.2.63' }))).status, 200);
+  assert.equal((await h.call(recoverStart(ADDRESS, { ip: '192.0.2.64' }))).status, 429, 'the recovery day is capped too');
 });

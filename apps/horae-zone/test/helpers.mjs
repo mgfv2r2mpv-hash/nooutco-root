@@ -66,7 +66,7 @@ export function fakeSiteverify(clock, { hostname = TURNSTILE_HOST } = {}) {
     calls.push({ url, form });
     if (form.secret === TURNSTILE_FAIL.secret) return reply({ success: false, 'error-codes': ['invalid-input-response'] });
     if (form.secret !== TURNSTILE_PASS.secret) return reply({ success: false, 'error-codes': ['invalid-input-secret'] });
-    const minted = /^pass\.(account|signin)\.\d+$/.exec(form.response ?? '');
+    const minted = /^pass\.(account|signin|recover)\.\d+$/.exec(form.response ?? '');
     if (!minted) return reply({ success: false, 'error-codes': ['invalid-input-response'] });
     if (used.has(form.response)) return reply({ success: false, 'error-codes': ['timeout-or-duplicate'] });
     used.add(form.response);
@@ -508,10 +508,16 @@ export const VAULT_STATE_TYP_TEXT = 'horae-zone-vault-state';
 // makes a fixed, fake one per test.
 export const vaultId = (n) => b64url(new Uint8Array(16).fill(n));
 
+// A recovery start as the app sends it: the address and a passing token for
+// the "recover" challenge (src/turnstile.js, issue #301).
+export function recoverStart(email, { ip = RECOVER_IP, turnstile = passToken('recover') } = {}) {
+  return post('/recover', { email, turnstile }, { 'cf-connecting-ip': ip });
+}
+
 // Asks for a recovery link and reads the code from the newest recovery mail
 // to `email`, or null when none came.
 export async function recoveryCode(h, email, { ip = RECOVER_IP } = {}) {
-  const res = await h.call(post('/recover', { email }, { 'cf-connecting-ip': ip }));
+  const res = await h.call(recoverStart(email, { ip }));
   if (res.status !== 200) throw new Error(`the recovery start answered ${res.status}`);
   const message = h.mail.filter((m) => m.to === email && m.subject === RECOVER_LINK_SUBJECT_TEXT).at(-1);
   return message ? new URL(message.text.match(/https:\/\/\S+/)[0]).hash.slice(1) : null;
