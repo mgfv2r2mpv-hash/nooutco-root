@@ -101,7 +101,7 @@ function mockWrangler(state = {}) {
 
 // route: one answer for every fetch, or a list answered in order (the last
 // repeats). recheck: the answers to "re-check the route now?", in order.
-function harness({ wrangler = mockWrangler(), argv = [], answers = ANSWERS, confirm = 'y', edge = 'y', replaceKey, replaceTicketKey, replaceWorker = 'y', ticketKey = FIXED_TICKET_KEY, randomBytes, route = { status: 405, body: '{"error":"method"}', ray: true }, recheck, pick } = {}) {
+function harness({ wrangler = mockWrangler(), argv = [], answers = ANSWERS, confirm = 'y', edge = 'y', replaceKey, replaceTicketKey, replaceWorker = 'y', ticketKey = FIXED_TICKET_KEY, randomBytes, route = { status: 405, body: '{"error":"method"}', ray: true }, recheck, pick, confirmOwner = 'y' } = {}) {
   const lines = [];
   const draws = [FIXED_BYTES, FIXED_SEED_BYTES];
   const files = new Map();
@@ -118,6 +118,7 @@ function harness({ wrangler = mockWrangler(), argv = [], answers = ANSWERS, conf
     if (name === 'confirm-replace-ticket-key' && replaceTicketKey !== undefined) return replaceTicketKey;
     if (name === 'confirm-replace-worker') return replaceWorker;
     if (name === 'pick-owner-account' && pick !== undefined) return pick;
+    if (name === 'confirm-owner-account') return confirmOwner;
     if (name in answers) return answers[name];
     throw new Error(`unexpected prompt ${name}`);
   };
@@ -571,13 +572,21 @@ test('Step 6 with no account yet is SKIPPED, asks nothing, and names --owner-adm
   assert.deepEqual(grants(h), []);
 });
 
-test('a blank or out-of-range pick sets no role', async () => {
+test('a blank or out-of-range pick, or a pick not confirmed with y, sets no role', async () => {
   for (const pick of ['', '0', '3', 'x', '1.5']) {
     const h = harness({ wrangler: mockWrangler({ hzAccounts: [OWNER_ACCOUNT, LATER_ACCOUNT] }), pick });
     const result = await deploy(h.deps);
     assert.equal(statusOf(result, 'Owner as administrator'), 'SKIPPED', `pick ${JSON.stringify(pick)}`);
     assert.deepEqual(grants(h), [], `pick ${JSON.stringify(pick)}`);
+    assert.equal(h.asked.some((a) => a.name === 'confirm-owner-account'), false, 'no read-back for a pick that names no account');
     assert.equal(result.ok, true);
+  }
+  for (const confirmOwner of ['', 'n', 'no', '2']) {
+    const h = harness({ wrangler: mockWrangler({ hzAccounts: [OWNER_ACCOUNT, LATER_ACCOUNT] }), pick: '2', confirmOwner });
+    const result = await deploy(h.deps);
+    assert.match(stepText(h.output(), 6), /You picked the account created 2026-10-10 09:30 UTC, 1 device\./, 'the pick is read back');
+    assert.equal(statusOf(result, 'Owner as administrator'), 'SKIPPED', `confirm ${JSON.stringify(confirmOwner)}`);
+    assert.deepEqual(grants(h), [], `confirm ${JSON.stringify(confirmOwner)}`);
   }
 });
 
@@ -610,12 +619,12 @@ test('a grant that comes back with no row fails plainly, and an unreadable table
   assert.deepEqual(grants(h2), []);
 });
 
-test('--owner-admin runs Step 6 alone: no deploy, no secret, no other write, one prompt', async () => {
+test('--owner-admin runs Step 6 alone: no deploy, no secret, no other write, only the pick and its read-back', async () => {
   const h = ownerAdminRun({ pick: '1' });
   const result = await deploy(h.deps);
   const out = h.output();
   assert.equal(result.ok, true, out);
-  assert.deepEqual(h.asked.map((a) => a.name), ['pick-owner-account']);
+  assert.deepEqual(h.asked.map((a) => a.name), ['pick-owner-account', 'confirm-owner-account']);
   assert.equal(h.files.size, 0, 'no file written');
   for (const c of h.wrangler.calls) assert.equal(c.input ?? '', '', 'no stdin to any wrangler call');
   const writes = h.wrangler.calls.filter((c) => ['secret', 'deploy', 'deployments'].includes(c.args[0]) || c.args[1] === 'create' || c.args.includes('--file'));

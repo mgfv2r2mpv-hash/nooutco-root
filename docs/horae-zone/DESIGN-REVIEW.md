@@ -1140,7 +1140,7 @@ Plan §3.4 ("Admin"), §3.6 (`/admin/*`, admin role only), §4 (the deploy sets 
 3. **Unlocking PINs is double blind** (§3.4). One `DELETE` of the account's `pin_lock` rows, with no `RETURNING` and no read, and the same `{ok: true}` whether any PIN was locked. The answer holds no number at all. It clears only the reuse locks: PIN entry or code entry closed by the online lockout keep their emailed reopen links.
 4. **Unlocking the account** is A5b's `unlockAccount`, unchanged. The answer says whether the account was locked, and the audit row says `unlocked` or `not-locked`, so the log shows that an admin lifted a lock without naming the account.
 5. **The status** is what §3.4 says the admin screen shows: access (the offline-block lock and its time, and whether code or PIN entry is closed), reverification (each device's last answered `/reverify`) and revocations (each device's `removed_at`). It shows times, since §3.3 keeps timing for the admin screens. It never shows the PIN, its verifier, its locks or its review.
-6. **Step 6 picks the owner by creation time.** After the first deploy `HZ_ACCOUNT_KEY` lives only in Cloudflare, so the script cannot turn the owner's address into an address key. Step 6 reads the role and account tables. An admin already set is PASS with nothing asked or changed. No account yet is SKIPPED, naming `node bin/deploy.mjs --owner-admin` for after sign-up. Otherwise it lists up to 10 accounts, oldest first, by creation time and device count, and the owner types the number of theirs.
+6. **Step 6 picks the owner by creation time.** After the first deploy `HZ_ACCOUNT_KEY` lives only in Cloudflare, so the script cannot turn the owner's address into an address key. Step 6 reads the role and account tables. An admin already set is PASS with nothing asked or changed. No account yet is SKIPPED, naming `node bin/deploy.mjs --owner-admin` for after sign-up. Otherwise it lists up to 10 accounts, oldest first, by creation time and device count, and the owner types the number of theirs. The script reads the pick back and grants it only on a typed y (security review MEDIUM-2: a wrong pick is permanent, since the first admin is set once).
 7. **Set once, in the statement.** The one write is `INSERT INTO role ... SELECT id, 'admin' FROM account WHERE id = '<id>' AND NOT EXISTS (SELECT 1 FROM role WHERE role = 'admin') RETURNING account_id`. It adds the role only to an account that exists and only while no account holds it, so a rerun or a race never makes a second admin. An id goes into the statement only when it has the shape `crypto.randomUUID()` gives; a row of any other shape is never shown or offered.
 
 ### Decisions for Kaleb
@@ -1157,6 +1157,18 @@ Plan §3.4 ("Admin"), §3.6 (`/admin/*`, admin role only), §4 (the deploy sets 
 | 8 | Unlocking PINs clears only the reuse locks, not PIN entry or code entry closed by the online lockout (each has its emailed reopen link) | Reuse locks only | `src/admin.js` |
 | 9 | A5b row 24 (MEDIUM-1): with `/admin/unlock-account` built, option A now has a product unlock, from another admin's device. When the only admin's own account is locked, the break-glass runbook in `DEPLOY.md` is still the way out | Runbook kept | `DEPLOY.md` |
 | 10 | The admin web screen (§3.4, "a Pages route in nooutco-root") is not built. Every admin route needs a signed device request, so that page needs a device key of its own in the browser first | Not built | |
+| 11 | The admin routes have no throttle of their own (security review LOW-3). A stolen admin device can learn whether an address has an account, at the nonce-bound rate of every signed route | No throttle | `src/admin.js` |
+
+### Security review of A5c
+
+The review of the GREEN commit found nothing above MEDIUM, and `node --test` passed 399/399.
+
+| Finding | What changed |
+|---|---|
+| MEDIUM-1: when the only admin's own account is locked, no admin remains to unlock it | No code change. The break-glass runbook in `DEPLOY.md` covers this case, and Kaleb row 9 records it |
+| MEDIUM-2: the Step 6 grant cannot be undone, and a wrong pick, or an account a stranger made before the owner's, gets it | Fixed. Step 6 now reads the pick back (creation time, device count) and grants it only on a typed y. Tests: a pick not confirmed with y sets nothing |
+| LOW-3: the admin routes have no throttle of their own, so `no-account` against 200 tells a stolen admin device whether an address has an account | No change. Each request spends a single-use nonce from an admin device, which bounds the rate as on every signed route. Kaleb row 11 |
+| LOW-4: a failed Step 6 read or write prints the first line of wrangler's output | No change. That output already passes through `scrub()` with every known secret, and these statements carry only ids and times |
 
 ### Out of scope for A5c
 

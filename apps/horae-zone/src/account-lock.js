@@ -14,8 +14,8 @@
  * A pending device cannot report (src/routes.js), so a password alone cannot
  * lock an account. The report takes no body: the service keeps no count.
  *
- * THE ADMIN HOOK. /admin/unlock-account is A5c's and answers not-built until
- * then; its handler calls unlockAccount below.
+ * THE ADMIN HOOK. /admin/unlock-account (A5c, src/admin.js) calls
+ * unlockAccount below.
  *
  * MAIL. The account's address gets one plain note when the account locks,
  * at most one an hour per account (counted in the throttle table). A report
