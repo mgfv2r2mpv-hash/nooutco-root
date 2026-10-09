@@ -1740,34 +1740,67 @@ const BROW_TINT = { floor:0.60, span:0.55 };
                    edges, so the repair never introduces an edge of its own. */
 const BROW_CLEAN = { in:0.18, out:0.50, tall:1.10, hair:0.10, key:0.12, lips:0.12,
                      dark:0.86, depth:0.45, feather:0.16 };
-/* ══ Per-tool cursor art - STUB, art deferred to issue #40 ══
+/* ══ Per-tool cursor art (issue #40) ══
    Reported: "the drag animation style is boring because the cursor doesn't look
    different. It would look best if the cursor looked like the tool being used."
-   That needs a small generated sprite per tool, which does not exist yet, so
-   what lands here is the SEAM and nothing else.
 
-   The table is deliberately EMPTY. `_toolCursor` therefore returns the keyword
-   fallback for every tool in the catalogue, which is character-for-character what
-   the build rendered before this seam existed - `grab` over a paint target,
-   `pointer` over a tap target and over the spot rings. A stub that changes what
-   the child sees is not a stub, so `tests/glam-tool-cursor.spec.js` asserts the
-   rendered cursor is unchanged for every armable tool.
+   Each tool now puts its own art under the pointer while it is armed: the paint
+   box, the tap box and the spot rings all read `_toolCursor`. The sprites are the
+   shelf icons cut down to 32x32 by `tools/glam-art/build_cursors.mjs`, with a dark
+   and a white ring so they read on every skin tone and on the sandy counter. A
+   tool with a working tip (pencil, wand, brush, tube) is tilted so the tip leads
+   up-left and the hotspot is ON the tip; a bottle, compact, patch or earring takes
+   its hotspot at its centre. Rerun the script and paste `out/cursors.json` here.
 
-   To fill it (issue #40): one entry per tool id, `{url, x, y}`, where x/y are the
-   hotspot in CSS px from the sprite's top-left. Order matters in the CSS value - the keyword after the comma is the fallback the UA uses when the sprite cannot
-   be fetched, so it must stay. Browsers cap cursor images at 128×128; a larger
-   sprite makes the whole declaration a no-op.
+   Keyed by ART, not by tool id: `toolCursorKey` maps a tool to its art the same
+   way the shelf buttons pick their icon (ICON_KEY, then a shade prefix, then the
+   earring design). Shade tools carry the NEUTRAL sprite and are tinted per shade
+   at run time through `_tintIcon`, exactly like their shelf buttons. A tool with
+   no entry (hair colour, the pet and hero routines) keeps the keyword it always
+   had - `grab` over a paint target, `pointer` over a tap target.
 
-   THE URL MUST NOT CONTAIN A SEMICOLON, and that rules out the obvious choice.
-   Every style in this build is authored as a STRING and handed to the runtime,
-   which turns it into a React style object with `cssToObj` (vendor/support.js) - `css.split(";")`, with no awareness of quoting. A `data:image/png;base64,…`
-   URI is therefore torn in half at the `;` inside its own media type, and what
-   reaches React is the invalid fragment `url("data:image/png`; the browser drops
-   the declaration and the target renders with NO cursor at all. Measured: the
-   base64 form computes to `auto`, a same-origin path and a URL-encoded
-   `data:image/svg+xml,…` (no `;base64`) both compute to the sprite with the
-   keyword still behind it. Use one of those two. */
-const TOOL_CURSOR_ART = {};
+   The keyword stays after the comma behind every sprite: it is what the UA shows
+   when the sprite cannot be fetched. Browsers cap cursor images at 128x128 and
+   Chromium drops one larger than 32x32 near its own UI, hence 32.
+
+   THE URL MUST NOT CONTAIN A SEMICOLON. Every style in this build is authored as a
+   STRING and handed to the runtime, which turns it into a React style object with
+   `cssToObj` (vendor/support.js) - `css.split(";")`, with no awareness of quoting.
+   A `data:image/png;base64,…` URI is torn in half at its own `;`, the browser drops
+   the declaration and the target renders with NO cursor at all. Same-origin paths
+   (below) and `blob:` URLs (the tinted shades) carry no `;`. */
+const TOOL_CURSOR_ART = {
+  wash:{url:'assets/art/cursors/wash.png',x:16,y:16},
+  moist:{url:'assets/art/cursors/moist.png',x:16,y:16},
+  treat:{url:'assets/art/cursors/treat.png',x:16,y:16},
+  conceal:{url:'assets/art/cursors/conceal.png',x:8,y:3},
+  brows:{url:'assets/art/cursors/brows.png',x:10,y:4},
+  browpencil:{url:'assets/art/cursors/browpencil.png',x:7,y:4},
+  contour:{url:'assets/art/cursors/contour.png',x:12,y:5},
+  blush:{url:'assets/art/cursors/blush.png',x:16,y:16},
+  highlight:{url:'assets/art/cursors/highlight.png',x:16,y:16},
+  eyeshadow:{url:'assets/art/cursors/eyeshadow.png',x:16,y:16},
+  eyeliner:{url:'assets/art/cursors/eyeliner.png',x:7,y:3},
+  mascara:{url:'assets/art/cursors/mascara.png',x:6,y:4},
+  lipliner:{url:'assets/art/cursors/lipliner.png',x:15,y:7},
+  lipstick:{url:'assets/art/cursors/lipstick.png',x:7,y:3},
+  contacts:{url:'assets/art/cursors/contacts.png',x:16,y:16},
+  stud:{url:'assets/art/cursors/stud.png',x:16,y:16},
+  ring:{url:'assets/art/cursors/ring.png',x:16,y:16},
+  sapphire:{url:'assets/art/cursors/sapphire.png',x:16,y:16},
+};
+/* Tool id -> its shelf art. Shared by the shelf buttons and the cursor, so a tool
+   cannot show one picture on its button and another under the pointer. */
+const ICON_KEY={ wash:'wash',moist:'moist',patch:'treat',conceal:'conceal',brows:'brows',
+  contour:'contour',hl:'highlight',liner:'eyeliner',mascara:'mascara',lipliner:'lipliner',pencil:'browpencil',
+  sh_buzz:'hairstyle',sh_tousled:'hairstyle',sh_long:'hairstyle',sh_bob:'hairstyle',sh_spiky:'hairstyle',sh_crop:'hairstyle',sh_pixie:'hairstyle' };
+/* A shade's art is the neutral base tinted to that shade, so the stock can grow
+   without new art. Keyed by ID PREFIX rather than a per-shade row, so adding a
+   swatch to the stations needs no edit here. */
+const ICON_TINT_PREFIX=[['bl','blush'],['es','eyeshadow'],['lp','lipstick'],['of','shirt'],['ct','contacts']];
+const tintBaseOf=(id)=>{ const hit=ICON_TINT_PREFIX.find(([p])=>id.length>p.length&&id.slice(0,p.length)===p&&/^\d+$/.test(id.slice(p.length))); return hit?hit[1]:''; };
+const toolCursorKey=(opt)=>{ if(!opt||!opt.id) return '';
+  return ICON_KEY[opt.id] || tintBaseOf(opt.id) || (opt.slot==='ear'&&opt.value?String(opt.value):''); };
 const EARCFG  = { m2:{lx:0.20,rx:0.80,y:1.35}, m3:{lx:0.235,rx:0.765,y:1.72}, m4:{lx:0.225,rx:0.775,y:1.35} };
 const EARCFG_D = {lx:0.185,rx:0.815,y:1.35};
 /* T4b. Where the IRIS actually is inside the eye sprite frame, so a coloured
@@ -2274,17 +2307,18 @@ class Component extends DCLogic {
     if(opt.apply==='recolor') return ed.col[slot]===(val!=null?val:opt.color) && !!ed.done[slot];
     if(opt.apply==='place') return ed.gl[slot]===(val!=null?val:opt.glyph) && (!opt.color||ed.col[slot]===opt.color) && !!ed.done[slot];
     return (ed.cov[slot]||0)>=1 && (!opt.color||ed.col[slot]===opt.color) && !!ed.done[slot]; }
-  /* The cursor the ARMED tool puts over its own target. Issue #40 (per-tool
-     cursor art) fills `TOOL_CURSOR_ART`; until it does, every tool resolves to
-     the keyword this build already used, so nothing about the pointer changes.
-     The keyword stays after the comma even once art lands - it is the fallback
-     the UA falls back to when the sprite cannot be fetched. */
+  /* The cursor the ARMED tool puts over its own target (issue #40): the tool's
+     own sprite with its hotspot, then the keyword this build always used as the
+     UA fallback. A shade tool's sprite is tinted to the shade; until the neutral
+     sprite has decoded, the neutral one shows and the load repaints. */
   _toolCursor(opt){ const fb=(opt&&opt.mech==='paint')?'grab':'pointer';
-    const art=opt&&TOOL_CURSOR_ART[opt.id];
-    return art ? ('url("'+art.url+'") '+(art.x|0)+' '+(art.y|0)+', '+fb) : fb; }
-  /* Reachable from the instance ONLY so the seam above can be exercised without
-     shipping art (issue #40). Nothing in the build ever writes to this table. */
+    const art=opt&&TOOL_CURSOR_ART[toolCursorKey(opt)];
+    if(!art) return fb;
+    const tinted=(opt.color&&tintBaseOf(opt.id))?this._tintIcon(art.url,opt.color):'';
+    return 'url("'+(tinted||art.url)+'") '+(art.x|0)+' '+(art.y|0)+', '+fb; }
+  /* The cursor table, reachable from the instance so tests can read and seed it. */
   _cursorArt(){ return TOOL_CURSOR_ART; }
+  _cursorKey(opt){ return toolCursorKey(opt); }
   _grpSettled(live){ return this.state.staged!=='free' && live.length>0 && live.every(o=>this._optWorkDone(o)); }
   /* `wasOpen` is what the child can SEE right now (the render already resolved
      default-vs-override), so the header always does the opposite of what is on
@@ -3535,14 +3569,6 @@ class Component extends DCLogic {
     // neutral bases (blush/eyeshadow/lipstick/shirt/contacts) get tinted per shade so a
     // new color costs no new art; hairstyle reuses one comb+shears icon with a number.
     const GICONS=(this.gen().icons)||{}, GEAR=(this.gen().earrings)||{};
-    const ICON_KEY={ wash:'wash',moist:'moist',patch:'treat',conceal:'conceal',brows:'brows',
-      contour:'contour',hl:'highlight',liner:'eyeliner',mascara:'mascara',lipliner:'lipliner',pencil:'browpencil',
-      sh_buzz:'hairstyle',sh_tousled:'hairstyle',sh_long:'hairstyle',sh_bob:'hairstyle',sh_spiky:'hairstyle',sh_crop:'hairstyle',sh_pixie:'hairstyle' };
-    /* A shade's button face is the neutral base icon tinted to that shade, so the
-       stock can grow without new art. Keyed by ID PREFIX rather than a per-shade
-       row, so adding a swatch to the stations above needs no edit here. */
-    const ICON_TINT_PREFIX=[['bl','blush'],['es','eyeshadow'],['lp','lipstick'],['of','shirt'],['ct','contacts']];
-    const tintBaseOf=(id)=>{ const hit=ICON_TINT_PREFIX.find(([p])=>id.length>p.length&&id.slice(0,p.length)===p&&/^\d+$/.test(id.slice(p.length))); return hit?hit[1]:''; };
     const HAIR_NUM={ sh_buzz:1,sh_tousled:2,sh_long:3,sh_bob:4,sh_spiky:5,sh_crop:6,sh_pixie:7 };
     const iconUrlOf=(b)=> b ? (typeof b==='string'?b:b.src) : '';
     const openGrp=s.openGrp||{};
@@ -3665,9 +3691,7 @@ class Component extends DCLogic {
     const t=s.armed;
     if(t&&canAct){ const lab='font-size:11px;font-weight:800;color:var(--sage-700);background:#fff;border-radius:6px;padding:2px 8px;white-space:nowrap;box-shadow:var(--shadow-sm)';
       /* One resolver answers for every surface the armed tool puts under the
-         pointer - the drag box, the tap box and the spot rings - so issue #40
-         has a single place to land. Empty art table ⇒ the keyword this build
-         already rendered. */
+         pointer - the drag box, the tap box and the spot rings (issue #40). */
       const cur=this._toolCursor(t);
       if(t.mech==='patch'||t.mech==='conceal'){ const ge=this.genEntry(); const positions=(base==='person'&&ge)?this._spotPct(ge):[{l:41,t:28},{l:31,t:47},{l:48,t:56}];
         const ring=(clr,bg)=>'position:absolute;transform:translate(-50%,-50%);width:12%;height:12%;border-radius:50%;border:2.5px solid '+clr+';background:'+bg+';cursor:'+cur+';z-index:60;animation:gtm-pim 1.2s var(--ease-standard) infinite'; const pim=[]; let lockMsg='';

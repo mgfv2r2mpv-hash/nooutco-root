@@ -86,7 +86,9 @@ async function useTool(page, name) {
   const zone = target(page);
   if (!(await zone.count()) || !(await zone.isVisible())) return;   // `choose` applies on the trolley
   const box = await zone.boundingBox();
-  const isDrag = await zone.evaluate((el) => el.style.cursor === 'grab');
+  // A paint target's cursor is the tool sprite with `grab` as its fallback
+  // keyword (issue #40), so the keyword is read off the END of the value.
+  const isDrag = await zone.evaluate((el) => /(^|,\s*)grab$/.test(el.style.cursor));
   if (!isDrag) { await zone.click(); return; }
   await page.mouse.move(box.x + 10, box.y + box.height / 2);
   await page.mouse.down();
