@@ -3409,7 +3409,13 @@ function App() {
                cannot see. Same restore as the draft. Role tokens are left alone
                by restoreOutput here as everywhere - expertForReader is what puts
                them back, in the register quote alone and for display alone. */
-            const found = raw ? expertForReader(NotesScrub.restoreOutput(raw, scrubMapRef.current), scrubMapRef.current) : raw;
+            /* Praise goes before anything reads it (issue #119, expert-praise.js):
+               "what is the use in the expert saying 'this is good' to me? It
+               just wastes space." Dropped here, once, so the panel's questions,
+               the phrases to reword and the alert budget all read the same
+               list. A finding that praises and also asks for something stays. */
+            const read = raw ? expertForReader(NotesScrub.restoreOutput(raw, scrubMapRef.current), scrubMapRef.current) : raw;
+            const found = read && window.ExpertPraise ? ExpertPraise.drop(read) : read;
             patchS((s) => {
               if (!s.expert || s.expert.runId !== runId) return {};
               return { expert: found ? { status: "done", runId, ...found } : { status: "failed", runId } };
@@ -3423,6 +3429,7 @@ function App() {
                 register: (found.register || []).length,
                 terms: (found.terms || []).length,
                 dropped: found.hintsDropped || 0,
+                praise: found.praiseDropped || 0,
                 inTokens: (found.usage && found.usage.input_tokens) || 0,
                 cachedTokens: (found.usage && found.usage.cache_read_input_tokens) || 0,
                 outTokens: (found.usage && found.usage.output_tokens) || 0,
