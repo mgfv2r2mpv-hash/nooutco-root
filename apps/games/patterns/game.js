@@ -874,7 +874,8 @@ function mountRoundSetup() {
       '#chk-prompt-delay',
       { sel: '#sel-prompt-delay', label: 'Prompt delay (seconds)' },
       '#sel-prompt-style',
-      '#chk-reduce-motion',
+      // Reduced motion serves the learner, not the round: Reset keeps it.
+      { sel: '#chk-reduce-motion', reset: false },
     ],
   });
 }
