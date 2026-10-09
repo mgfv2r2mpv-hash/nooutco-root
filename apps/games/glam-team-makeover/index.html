@@ -1725,6 +1725,12 @@ const BROW_TINT = { floor:0.60, span:0.55 };
    survives on the temple skin - on a bare face, with no brow tool taken and no
    recolour, which is why `BROW_TINT` was never a candidate and is untouched.
 
+   Issue #41 fixed it at source: the bound was the mask key's brow half, which is
+   the brow clipped by a rectangle, and `tools/glam-art/finish_brow_removal.mjs`
+   now removes the surviving arc from every shipped base render. This repair
+   therefore finds less ink than it did; it stays until a cleanup pass deletes
+   it, as the issue planned.
+
    `_browClean` finishes that removal at composite time. The numbers, all as
    fractions:
      in/out/tall - the band, in brow-sprite widths inboard/outboard of the tail
