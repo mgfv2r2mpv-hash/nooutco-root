@@ -2,9 +2,9 @@
 // checks the PIN on the device, and 10 wrong in a row block it there until
 // the service answers (client side, A8). The device then reports the block
 // on /pin/blocked, and the service locks the whole account until an
-// administrator unlocks it. The admin route is A5c's: /admin/unlock-account
-// stays not-built, and its handler will call unlockAccount
-// (src/account-lock.js), the hook these tests call in its place.
+// administrator unlocks it through /admin/unlock-account (A5c), whose
+// handler calls unlockAccount (src/account-lock.js). The plan test unlocks
+// through the route; the mail tests call the hook directly.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { unlockAccount } from '../src/account-lock.js';
@@ -56,13 +56,12 @@ test('ten wrong PINs offline block the device until the service answers, and the
   assert.deepEqual(await pinCall(h, other, '/pin/verify', { pin: PIN }), LOCKED, 'a year on, still locked');
   h.clock.ms -= 365 * DAY_MS;
 
-  // The admin route is A5c's; it passes its checks and answers not-built.
+  // A device of the account cannot unlock it; an administrator can (A5c).
+  assert.deepEqual(await pinCall(h, other, '/admin/unlock-account', { email: ADDRESS }), LOCKED, 'the locked account\'s own device');
   const admin = await addDevice(h.db, { id: 'admin-dev', account: 'admin-acct' });
   makeAdmin(h.db, 'admin-acct');
-  assert.deepEqual(await answerOf(await h.call(await signed(h.call, admin, '/admin/unlock-account', {}))),
-    { status: 501, json: { error: 'not-built' } });
-
-  await unlockAccount(h.db, dev.account);
+  assert.deepEqual(await answerOf(await h.call(await signed(h.call, admin, '/admin/unlock-account', { email: ADDRESS }))),
+    { status: 200, json: { unlocked: true } });
   assert.equal((await pinCall(h, dev, '/pin/verify', { pin: PIN })).status, 200, 'unlocked, the PIN opens again');
   assert.equal((await pinCall(h, other, '/pin/verify', { pin: PIN })).status, 200);
 });

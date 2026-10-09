@@ -54,6 +54,24 @@ function mockWrangler(state = {}) {
   // As wrangler 4 does: a Worker that was never deployed has no secret list.
   let deployed = state.workerExists ?? secretsSet.size > 0;
   const ok = (stdout = '') => ({ code: 0, stdout, stderr: '' });
+  // Step 6's Horae Zone tables: `hzAccounts` are account rows {id,
+  // created_at, devices}, `admins` the account ids holding the admin role.
+  // The grant follows its SQL's own guard: only an account in the list, and
+  // only while no admin is set; `grantNoRow` makes it answer no row anyway.
+  const admins = new Set(state.admins ?? []);
+  const hzAccounts = state.hzAccounts ?? [];
+  const rows = (results) => ok(JSON.stringify([{ results, success: true, meta: {} }]));
+  function roleCommand(sql) {
+    if (/^SELECT COUNT\(\*\) AS admins FROM role/.test(sql)) return rows([{ admins: admins.size }]);
+    if (/^SELECT a\.id, a\.created_at/.test(sql)) return rows(hzAccounts);
+    if (/^INSERT INTO role/.test(sql)) {
+      const id = sql.match(/WHERE id = '([^']*)'/)?.[1];
+      if (state.grantNoRow || admins.size > 0 || !hzAccounts.some((a) => a.id === id)) return rows([]);
+      admins.add(id);
+      return rows([{ account_id: id }]);
+    }
+    return { code: 1, stdout: '', stderr: `mock: unknown role command ${sql}` };
+  }
   async function run(args, opts = {}) {
     calls.push({ args, input: opts.input, cwd: opts.cwd, env: opts.env });
     const cmd = args.slice(0, 2).join(' ');
@@ -63,6 +81,7 @@ function mockWrangler(state = {}) {
     if (cmd === 'd1 list') return ok(JSON.stringify(db.present ? [{ uuid: FAKE_DB_ID, name: 'horae-zone' }, { uuid: 'x', name: 'other' }] : [{ uuid: 'x', name: 'other' }]));
     if (cmd === 'd1 create') { db.present = true; return ok(`database_id = "${FAKE_DB_ID}"`); }
     if (cmd === 'd1 execute' && args.includes('--file')) return ok('[{"success":true}]');
+    if (cmd === 'd1 execute' && !/sqlite_master/.test(args[args.indexOf('--command') + 1] ?? '')) return roleCommand(args[args.indexOf('--command') + 1]);
     if (cmd === 'd1 execute') return ok(JSON.stringify([{ results: (state.tables ?? TABLES).map((name) => ({ name })), success: true }]));
     if (cmd === 'deploy --config') deployed = true;
     if (cmd === 'deploy --config') return ok(state.deployOut ?? `Uploaded horae-zone\nDeployed horae-zone triggers\n  ${HOSTNAME} (custom domain)\n  schedule: 0 * * * *\nCurrent Version ID: v1`);
@@ -77,12 +96,12 @@ function mockWrangler(state = {}) {
     if (cmd === 'secret list') return ok(state.secretListOut ?? JSON.stringify([...secretsSet].filter((n) => n !== state.dropSecret).map((name) => ({ name, type: 'secret_text' }))));
     return { code: 1, stdout: '', stderr: `mock: unknown command ${args.join(' ')}` };
   }
-  return { run, calls };
+  return { run, calls, admins };
 }
 
 // route: one answer for every fetch, or a list answered in order (the last
 // repeats). recheck: the answers to "re-check the route now?", in order.
-function harness({ wrangler = mockWrangler(), argv = [], answers = ANSWERS, confirm = 'y', edge = 'y', replaceKey, replaceTicketKey, replaceWorker = 'y', ticketKey = FIXED_TICKET_KEY, randomBytes, route = { status: 405, body: '{"error":"method"}', ray: true }, recheck } = {}) {
+function harness({ wrangler = mockWrangler(), argv = [], answers = ANSWERS, confirm = 'y', edge = 'y', replaceKey, replaceTicketKey, replaceWorker = 'y', ticketKey = FIXED_TICKET_KEY, randomBytes, route = { status: 405, body: '{"error":"method"}', ray: true }, recheck, pick } = {}) {
   const lines = [];
   const draws = [FIXED_BYTES, FIXED_SEED_BYTES];
   const files = new Map();
@@ -98,6 +117,7 @@ function harness({ wrangler = mockWrangler(), argv = [], answers = ANSWERS, conf
     if (name === 'confirm-replace-key' && replaceKey !== undefined) return replaceKey;
     if (name === 'confirm-replace-ticket-key' && replaceTicketKey !== undefined) return replaceTicketKey;
     if (name === 'confirm-replace-worker') return replaceWorker;
+    if (name === 'pick-owner-account' && pick !== undefined) return pick;
     if (name in answers) return answers[name];
     throw new Error(`unexpected prompt ${name}`);
   };
@@ -490,6 +510,140 @@ test('--check-only picks the account without asking, and stops plainly when it c
   assert.equal(r3.ok, false);
   assert.match(missing.output(), /wrangler\.deploy\.toml is not here/);
   assert.deepEqual(missing.wrangler.calls.map((c) => c.args.join(' ')), ['--version'], 'stops before any account call');
+});
+
+// ---- Step 6, the owner as administrator (A5c) ----
+
+// Account ids are randomUUID values (src/signup.js); times are fixed.
+const OWNER_ACCOUNT = { id: '6f1c2a0e-1111-4c4c-8a8a-0000000000a1', created_at: Date.UTC(2026, 9, 9, 14, 2), devices: 2 };
+const LATER_ACCOUNT = { id: '6f1c2a0e-2222-4c4c-8a8a-0000000000b2', created_at: Date.UTC(2026, 9, 10, 9, 30), devices: 1 };
+const sqlOf = (c) => c.args[c.args.indexOf('--command') + 1] ?? '';
+const grants = (h) => h.wrangler.calls.filter((c) => /^INSERT INTO role/.test(sqlOf(c)));
+
+// --owner-admin after a deploy: wrangler.deploy.toml is on disk (a stand-in).
+function ownerAdminRun({ wrangler, ...rest } = {}) {
+  const h = harness({ argv: ['--owner-admin'], wrangler: wrangler ?? mockWrangler({ dbPresent: true, existingSecrets: SECRET_NAMES, hzAccounts: [OWNER_ACCOUNT] }), ...rest });
+  h.deps.readFile = (file) => {
+    if (path.basename(file) !== 'wrangler.deploy.toml') return readFileSync(file, 'utf8');
+    return `name = "horae-zone"\n[[d1_databases]]\ndatabase_id = "${FAKE_DB_ID}"\n`;
+  };
+  return h;
+}
+
+test('Step 6 sets the account the owner picks as administrator, once, guarded in the statement itself', async () => {
+  const h = harness({ wrangler: mockWrangler({ hzAccounts: [OWNER_ACCOUNT, LATER_ACCOUNT] }), pick: '1' });
+  const result = await deploy(h.deps);
+  assert.equal(result.ok, true, h.output());
+  assert.equal(statusOf(result, 'Owner as administrator'), 'PASS');
+  const six = stepText(h.output(), 6);
+  assert.match(six, /1\) created 2026-10-09 14:02 UTC, 2 devices/);
+  assert.match(six, /2\) created 2026-10-10 09:30 UTC, 1 device\b/);
+  assert.equal(h.asked.find((a) => a.name === 'pick-owner-account').hidden, false);
+  const [grant] = grants(h);
+  assert.ok(grant, 'one grant was run');
+  assert.equal(grants(h).length, 1);
+  assert.match(sqlOf(grant), new RegExp(`WHERE id = '${OWNER_ACCOUNT.id}'`));
+  assert.match(sqlOf(grant), /NOT EXISTS \(SELECT 1 FROM role WHERE role = 'admin'\)/, 'set once: the statement refuses when an admin exists');
+  assert.ok(grant.args.includes('--remote'));
+  assert.deepEqual([...h.wrangler.admins], [OWNER_ACCOUNT.id]);
+  const order = h.wrangler.calls.map((c) => c.args.slice(0, 2).join(' '));
+  assert.ok(order.lastIndexOf('secret put') < h.wrangler.calls.indexOf(grant), 'Step 6 runs after the secrets are put');
+  assertNoSecretAnywhere(h);
+});
+
+test('Step 6 changes nothing and asks nothing when an administrator is already set', async () => {
+  const h = harness({ wrangler: mockWrangler({ hzAccounts: [OWNER_ACCOUNT, LATER_ACCOUNT], admins: [LATER_ACCOUNT.id] }) });
+  const result = await deploy(h.deps);
+  assert.equal(result.ok, true, h.output());
+  assert.equal(statusOf(result, 'Owner as administrator'), 'PASS');
+  assert.match(result.checklist.find((i) => i.item === 'Owner as administrator').detail, /already set/);
+  assert.equal(h.asked.some((a) => a.name === 'pick-owner-account'), false);
+  assert.deepEqual(grants(h), []);
+});
+
+test('Step 6 with no account yet is SKIPPED, asks nothing, and names --owner-admin for after sign-up', async () => {
+  const h = harness();
+  const result = await deploy(h.deps);
+  assert.equal(result.ok, true, h.output());
+  assert.equal(statusOf(result, 'Owner as administrator'), 'SKIPPED');
+  assert.match(stepText(h.output(), 6), /node bin\/deploy\.mjs --owner-admin/);
+  assert.equal(h.asked.some((a) => a.name === 'pick-owner-account'), false);
+  assert.deepEqual(grants(h), []);
+});
+
+test('a blank or out-of-range pick sets no role', async () => {
+  for (const pick of ['', '0', '3', 'x', '1.5']) {
+    const h = harness({ wrangler: mockWrangler({ hzAccounts: [OWNER_ACCOUNT, LATER_ACCOUNT] }), pick });
+    const result = await deploy(h.deps);
+    assert.equal(statusOf(result, 'Owner as administrator'), 'SKIPPED', `pick ${JSON.stringify(pick)}`);
+    assert.deepEqual(grants(h), [], `pick ${JSON.stringify(pick)}`);
+    assert.equal(result.ok, true);
+  }
+});
+
+test('an account row of any other shape is never shown, picked or put into a command', async () => {
+  const planted = { id: "x' OR 1=1; DROP TABLE role; --", created_at: Date.UTC(2026, 9, 8), devices: 1 };
+  const h = harness({ wrangler: mockWrangler({ hzAccounts: [planted, OWNER_ACCOUNT] }), pick: '1' });
+  const result = await deploy(h.deps);
+  assert.equal(h.output().includes('DROP TABLE'), false);
+  assert.match(stepText(h.output(), 6), /1\) created 2026-10-09 14:02 UTC/, 'the one well-formed row is the first choice');
+  assert.equal(grants(h).length, 1);
+  assert.match(sqlOf(grants(h)[0]), new RegExp(`WHERE id = '${OWNER_ACCOUNT.id}'`));
+  assert.equal(h.wrangler.calls.some((c) => c.args.join(' ').includes('DROP TABLE')), false);
+  assert.equal(statusOf(result, 'Owner as administrator'), 'PASS');
+});
+
+test('a grant that comes back with no row fails plainly, and an unreadable table fails the item', async () => {
+  const h = harness({ wrangler: mockWrangler({ hzAccounts: [OWNER_ACCOUNT], grantNoRow: true }), pick: '1' });
+  const result = await deploy(h.deps);
+  assert.equal(statusOf(result, 'Owner as administrator'), 'FAIL');
+  assert.match(result.checklist.find((i) => i.item === 'Owner as administrator').detail, /no role was set/);
+  assert.equal(result.ok, false);
+
+  const broken = mockWrangler({ hzAccounts: [OWNER_ACCOUNT] });
+  const run = broken.run;
+  broken.run = async (args, opts) => (/COUNT\(\*\) AS admins/.test(args.join(' ')) ? { code: 1, stdout: '', stderr: 'no such table: role' } : run(args, opts));
+  const h2 = harness({ wrangler: broken });
+  const r2 = await deploy(h2.deps);
+  assert.equal(statusOf(r2, 'Owner as administrator'), 'FAIL');
+  assert.equal(statusOf(r2, 'Route answers'), 'PASS', 'the checks still run after it');
+  assert.deepEqual(grants(h2), []);
+});
+
+test('--owner-admin runs Step 6 alone: no deploy, no secret, no other write, one prompt', async () => {
+  const h = ownerAdminRun({ pick: '1' });
+  const result = await deploy(h.deps);
+  const out = h.output();
+  assert.equal(result.ok, true, out);
+  assert.deepEqual(h.asked.map((a) => a.name), ['pick-owner-account']);
+  assert.equal(h.files.size, 0, 'no file written');
+  for (const c of h.wrangler.calls) assert.equal(c.input ?? '', '', 'no stdin to any wrangler call');
+  const writes = h.wrangler.calls.filter((c) => ['secret', 'deploy', 'deployments'].includes(c.args[0]) || c.args[1] === 'create' || c.args.includes('--file'));
+  assert.deepEqual(writes, []);
+  assert.equal(grants(h).length, 1, 'the one write is the grant');
+  for (const n of [1, 2, 3, 4, 5, 7]) assert.equal(out.includes(`Step ${n}.`), false, `no Step ${n}`);
+  assert.match(out, /Step 6\. Owner as administrator/);
+  assert.equal(statusOf(result, 'Owner as administrator'), 'PASS');
+  for (const c of h.wrangler.calls.filter((c) => c.args[0] === 'd1')) assert.equal(c.env.CLOUDFLARE_ACCOUNT_ID, FAKE_ACCOUNT.id);
+  assertNoSecretAnywhere(h);
+});
+
+test('the dry run names Step 6, its reads and its one guarded write', async () => {
+  const forbidden = (what) => () => { throw new Error(`dry run called ${what}`); };
+  const lines = [];
+  await deploy({
+    argv: ['--dry-run'], root: ROOT, write: (t) => lines.push(t),
+    run: forbidden('wrangler'), ask: forbidden('a prompt'), fetchImpl: forbidden('fetch'),
+    writeFile: forbidden('writeFile'), makeTempDir: forbidden('makeTempDir'), removeDir: forbidden('removeDir'),
+    randomBytes: forbidden('randomBytes'), sleep: forbidden('sleep'),
+  });
+  const six = stepText(lines.join('\n'), 6);
+  assert.match(six, /SELECT COUNT\(\*\) AS admins FROM role/);
+  assert.match(six, /FROM account a/);
+  assert.match(six, /INSERT INTO role/);
+  assert.match(six, /prompt: the number of your own account/);
+  assert.match(six, /--owner-admin/);
+  assert.doesNotMatch(six, /SKIPPED/);
 });
 
 test('NEGATIVE CONTROL: a planted token in a check\'s output is caught', async () => {
