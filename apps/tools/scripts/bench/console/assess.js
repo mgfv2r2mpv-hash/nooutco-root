@@ -438,6 +438,64 @@
    * Built into scripts/bench/console/<tool>.js by scripts/bench/build-console.mjs,
    * which inlines the cases and lib/checks.mjs. This file must stay free of
    * imports: it is stringified into that script. */
+  
+  /* WHAT A USER TYPES WHEN THE PAGE HOLDS A ROUND THEY CANNOT ANSWER.
+   *
+   * Below the readiness bar the page refuses to draft until one question of the
+   * first round is answered (his ruling of 2026-08-31, held in engine.jsx
+   * gateHolds), and while it holds there is no Send at all, only the note that
+   * says what opens it. A case's truth answers only what that session knew, so
+   * a question it does not speak to used to leave the bench waiting on a Send
+   * that could not appear: v3 on 9 Oct 2026, "timed out waiting for Send to
+   * open". A user in that seat says there is nothing more and moves on, so the
+   * bench does the same and records the round in `held`, where the report shows
+   * it. Long enough (over 25 characters) to open the Send lock as typing does. */
+  const HELD_ROUND_ANSWER = 'Nothing more to add from this session.';
+  
+  /* THE NOTE CARD AS A CLINICIAN COPIES IT: picks per group, text per narrative.
+   *
+   * A narrative the corrections pass changed is drawn as marks in place of its
+   * textarea (engine.jsx renderSectionContent), and that box "holds exactly what
+   * Copy gives you" (corrections-view.jsx). Reading textareas alone missed every
+   * such section: on 9 Oct 2026 the live summaries of v1, v2 and v4 and the
+   * Follow Ups of v2 and v4 read as empty, so every goal was "not named". The
+   * box's controls are left out, and so is the rail of removed words under it,
+   * which the clipboard does not carry either.
+   *
+   * Exported for lib/drive.mjs, which runs this same function in the page, so
+   * the two benches cannot read a note two ways. Self-contained for that reason. */
+  function readNoteCard(card) {
+    const CONTROLS = 'button, input, textarea, [data-correction-pop], [data-correction-ask-box]';
+    const boxText = (box) => {
+      const copy = box.cloneNode(true);
+      copy.querySelectorAll(CONTROLS).forEach((n) => n.remove());
+      return copy.textContent;
+    };
+    const picks = {};
+    card.querySelectorAll('[data-section-id]').forEach((sec) => {
+      const on = [...sec.querySelectorAll('[data-option][data-on="1"]')].map((o) => o.getAttribute('data-option'));
+      if (sec.querySelector('[data-option]')) picks[sec.getAttribute('data-section-id')] = on;
+    });
+    const text = {};
+    card.querySelectorAll('[data-section-key]').forEach((sec) => {
+      const key = sec.getAttribute('data-section-key');
+      // A single-select shows only its chosen answer, marked for reading.
+      const single = sec.querySelector('[data-single-answer]');
+      if (single) { picks[key] = [single.getAttribute('data-single-answer')]; return; }
+      if (sec.querySelector('[data-section-id] [data-option]') || picks[key]) return;
+      const marked = sec.querySelector('[data-corrections-section]');
+      if (marked) { text[key] = boxText(marked); return; }
+      const ta = sec.querySelector('textarea');
+      if (ta) text[key] = ta.value;
+    });
+    // The goals table edits in inputs, which innerText does not carry. Removed
+    // words in a rail are not in the note, so they are taken back out.
+    const fields = [...card.querySelectorAll('textarea, input:not([type]), input[type="text"]')].map((t) => t.value);
+    const rails = [...card.querySelectorAll('[data-corrections-rail]')].map((r) => r.innerText).filter(Boolean);
+    const shownText = rails.reduce((all, r) => all.replace(r, ''), card.innerText);
+    return { picks, text, all: [shownText, ...fields].join('\n') };
+  }
+  
   async function benchInPage(CASES, checkNote, opts = {}) {
     const LIMIT = opts.timeoutMs || 180000;
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -546,26 +604,8 @@
       await until(() => shown($('.revision-input')), 'the panel to open', 5000);
     };
   
-    // Same reading as drive.mjs readNote: picks per group, text per narrative.
-    const readNote = () => {
-      const card = $('[data-testid="generated-note"]');
-      const picks = {};
-      card.querySelectorAll('[data-section-id]').forEach((sec) => {
-        const on = [...sec.querySelectorAll('[data-option][data-on="1"]')].map((o) => o.getAttribute('data-option'));
-        if (sec.querySelector('[data-option]')) picks[sec.getAttribute('data-section-id')] = on;
-      });
-      const text = {};
-      card.querySelectorAll('[data-section-key]').forEach((sec) => {
-        const key = sec.getAttribute('data-section-key');
-        const single = sec.querySelector('[data-single-answer]');
-        if (single) { picks[key] = [single.getAttribute('data-single-answer')]; return; }
-        if (sec.querySelector('[data-section-id] [data-option]') || picks[key]) return;
-        const ta = sec.querySelector('textarea');
-        if (ta) text[key] = ta.value;
-      });
-      const fields = [...card.querySelectorAll('textarea, input:not([type]), input[type="text"]')].map((t) => t.value);
-      return { picks, text, all: [card.innerText, ...fields].join('\n') };
-    };
+    const readNote = () => readNoteCard($('[data-testid="generated-note"]'));
+    const held = () => shown($('[data-skip-held]'));
   
     const runCase = async (c) => {
       const started = Date.now();
@@ -578,6 +618,7 @@
   
       const typed = { intake: Object.values(c.fields || {}).reduce((n, t) => n + words(t), 0), answers: 0 };
       const asked = [];
+      const heldRounds = [];
       const noteUp = () => shown($('[data-testid="generated-note"]'));
       await until(() => noteUp() || $('[data-panel-question]'), 'the first questions or the note');
   
@@ -586,26 +627,37 @@
         if (!$('[data-panel-question]')) break;
         await openPanel();
         const loose = [];
+        let answeredAny = false;
         for (const el of $$('[data-panel-question]')) {
           const i = el.getAttribute('data-panel-question');
           const question = el.innerText.split('\n')[0];
           const answer = answerFor(question, c.truth);
           asked.push({ round: round + 1, question, answered: !!answer });
           if (!answer) continue;
+          answeredAny = true;
           typed.answers += words(answer);
           const own = $(`[data-suggestion-own="${i}:own"]`);
           if (shown(own)) { type(own, answer); enter(own); } else loose.push(answer);
         }
+        // A held round with nothing answered: the user's "nothing more" (above).
+        if (!answeredAny && held()) {
+          heldRounds.push(round + 1);
+          typed.answers += words(HELD_ROUND_ANSWER);
+          loose.push(HELD_ROUND_ANSWER);
+        }
         if (loose.length) type($('.revision-input'), loose.join(' '));
-        // Send opens once enough is written, or when the page's minute runs out.
-        const send = await until(() => { const b = $('.revision-send'); return b && !b.disabled && b; }, 'Send to open');
+        // Send opens once enough is written, or when the page's lock runs out.
+        const send = await until(() => { const b = $('.revision-send'); return b && !b.disabled && b; }, 'Send to open')
+          .catch((err) => {
+            throw held() ? new Error(`${err.message}: the page held the round and nothing answered it`) : err;
+          });
         send.click();
         const last = asked.length ? asked[asked.length - 1].question : '';
         await until(() => noteUp() || ($('[data-panel-question]') && $('[data-panel-question]').innerText.split('\n')[0] !== last), 'the next round or the note').catch(() => {});
       }
       await until(noteUp, 'the note');
       await settle();
-      return { id: c.id, note: readNote(), asked, typed: { ...typed, total: typed.intake + typed.answers }, seconds: Math.round((Date.now() - started) / 1000) };
+      return { id: c.id, note: readNote(), asked, held: heldRounds, typed: { ...typed, total: typed.intake + typed.answers }, seconds: Math.round((Date.now() - started) / 1000) };
     };
   
     const results = [];
@@ -617,7 +669,7 @@
           const out = await runCase(c);
           const fails = checkNote(c, out.note);
           results.push({ ...out, fails });
-          log(`${n + 1} of ${CASES.length}: ${c.id}, ${fails.length ? 'FAIL' : 'pass'}, typed ${out.typed.total} words, ${new Set(out.asked.map((a) => a.round)).size} round(s), ${out.seconds}s`);
+          log(`${n + 1} of ${CASES.length}: ${c.id}, ${fails.length ? 'FAIL' : 'pass'}, typed ${out.typed.total} words, ${new Set(out.asked.map((a) => a.round)).size} round(s)${out.held.length ? `, held round ${out.held.join(' and ')} answered "${HELD_ROUND_ANSWER}"` : ''}, ${out.seconds}s`);
         } catch (err) {
           results.push({ id: c.id, fails: [`the run failed: ${err && err.message}`] });
           log(`${n + 1} of ${CASES.length}: ${c.id}, the run failed: ${err && err.message}`);
@@ -633,7 +685,10 @@
     throw new Error('Open ' + "/notes/assess/" + ' on tools.nooutco.me first, then paste this again.');
   }
   return benchInPage(CASES, checkNote).then((report) => {
-    console.table(report.results.map((r) => ({ case: r.id, pass: !r.fails.length, typed: r.typed ? r.typed.total : '-', seconds: r.seconds || '-', fails: r.fails.join(' | ') || '-' })));
+    console.table(report.results.map((r) => ({ case: r.id, pass: !r.fails.length, typed: r.typed ? r.typed.total : '-', seconds: r.seconds || '-', held: r.held && r.held.length ? r.held.join(', ') : '-', fails: r.fails.join(' | ') || '-' })));
+    /* The table cuts a long cell short (9 Oct 2026: "One-Step Instructi...oals"),
+       so each failure is also printed whole, one per line. */
+    report.results.filter((r) => r.fails.length).forEach((r) => console.log(r.id + ' fails:\n  ' + r.fails.join('\n  ')));
     window.benchReport = report;
     try {
       if (!copyNow) throw new Error('no console copy()');

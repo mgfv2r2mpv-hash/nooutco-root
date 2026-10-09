@@ -13,6 +13,10 @@
  * model stubbed (no cost, proves the mechanics), and by scripts/bench/run.mjs
  * against the live site with a bench login (costs drafts; Kaleb approves). */
 
+import { HELD_ROUND_ANSWER, readNoteCard } from './page-bench.mjs';
+
+export { HELD_ROUND_ANSWER };
+
 const words = (s) => String(s || '').trim().split(/\s+/).filter(Boolean).length;
 
 /* The gates are off by ruling (2026-09-01); this clears them if they return. */
@@ -70,29 +74,13 @@ async function questionsShown(page) {
     els.map((el) => ({ i: Number(el.getAttribute('data-panel-question')), text: el.innerText.split('\n')[0] })));
 }
 
-/* What the note card shows: the ticked options per checklist or single-select,
-   and each narrative's text. */
+/* What the note card shows, read by the same function the console bench runs
+   (page-bench.mjs readNoteCard), so a section the corrections pass drew as
+   marks is read as the clinician copies it. Passed as source and evaluated as
+   an expression, which is what keeps the two readers one. */
 export async function readNote(page) {
-  return page.getByTestId('generated-note').evaluate((card) => {
-    const picks = {};
-    card.querySelectorAll('[data-section-id]').forEach((sec) => {
-      const on = [...sec.querySelectorAll('[data-option][data-on="1"]')].map((o) => o.getAttribute('data-option'));
-      if (sec.querySelector('[data-option]')) picks[sec.getAttribute('data-section-id')] = on;
-    });
-    const text = {};
-    card.querySelectorAll('[data-section-key]').forEach((sec) => {
-      const key = sec.getAttribute('data-section-key');
-      // A single-select shows only its chosen answer, marked for reading.
-      const single = sec.querySelector('[data-single-answer]');
-      if (single) { picks[key] = [single.getAttribute('data-single-answer')]; return; }
-      if (sec.querySelector('[data-section-id] [data-option]') || picks[key]) return;
-      const ta = sec.querySelector('textarea');
-      if (ta) text[key] = ta.value;
-    });
-    // The goals table edits in inputs, which innerText does not carry.
-    const fields = [...card.querySelectorAll('textarea, input:not([type]), input[type="text"]')].map((t) => t.value);
-    return { picks, text, all: [card.innerText, ...fields].join('\n') };
-  });
+  await page.getByTestId('generated-note').waitFor();
+  return page.evaluate(`(${readNoteCard.toString()})(document.querySelector('[data-testid="generated-note"]'))`);
 }
 
 /* One case, start to finish. `opts.unlockSend` moves past the Send lock (the
@@ -106,6 +94,7 @@ export async function runCase(page, c, opts = {}) {
 
   const typed = { intake: Object.values(c.fields || {}).reduce((n, t) => n + words(t), 0), answers: 0 };
   const asked = [];
+  const held = [];
   const note = page.getByTestId('generated-note');
   const first = page.locator('[data-panel-question]').first();
   await Promise.race([
@@ -121,10 +110,12 @@ export async function runCase(page, c, opts = {}) {
     if (!(await page.locator('[data-panel-question]').count())) break;
     await openPanel(page);
     const loose = [];
+    let answeredAny = false;
     for (const q of await questionsShown(page)) {
       const answer = answerFor(q.text, c.truth);
       asked.push({ round: round + 1, question: q.text, answered: !!answer });
       if (!answer) continue;
+      answeredAny = true;
       typed.answers += words(answer);
       const own = page.locator(`[data-suggestion-own="${q.i}:own"]`);
       if (await own.isVisible().catch(() => false)) {
@@ -133,6 +124,13 @@ export async function runCase(page, c, opts = {}) {
       } else {
         loose.push(answer);
       }
+    }
+    // A held round with nothing answered: the user's "nothing more", as
+    // page-bench.mjs explains beside HELD_ROUND_ANSWER.
+    if (!answeredAny && await page.locator('[data-skip-held]').isVisible().catch(() => false)) {
+      held.push(round + 1);
+      typed.answers += words(HELD_ROUND_ANSWER);
+      loose.push(HELD_ROUND_ANSWER);
     }
     if (opts.unlockSend) await opts.unlockSend(page);
     const input = page.locator('.revision-input');
@@ -162,6 +160,7 @@ export async function runCase(page, c, opts = {}) {
     id: c.id,
     note: await readNote(page),
     asked,
+    held,
     typed: { ...typed, total: typed.intake + typed.answers },
     seconds: Math.round((Date.now() - started) / 1000),
   };
