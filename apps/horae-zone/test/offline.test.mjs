@@ -315,12 +315,13 @@ test('NEGATIVE CONTROL: another device\'s unreported pass is never superseded, a
   const dev = await confirmedDevice(h, ADDRESS);
   const second = { ...(await registeredDevice(h, ADDRESS, { fresh: false })), seed: dev.seed };
   await ticketFor(h, second);
-  const secondEarly = await ticketFor(h, second);
-  const theirs = newJti();
-  assert.equal((await grant(h, second, { ticket: await ticketFor(h, second), hours: 10, jti: theirs })).status, 200);
   const mine = newJti();
   assert.equal((await grant(h, dev, { ticket: await ticketFor(h, dev), hours: 10, jti: mine })).status, 200);
   h.clock.ms += HOUR_MS;
+  // The other Mac: a code proved before its own pass, still inside its five minutes.
+  const secondEarly = await ticketFor(h, second);
+  const theirs = newJti();
+  assert.equal((await grant(h, second, { ticket: await ticketFor(h, second), hours: 10, jti: theirs })).status, 200);
   const before = h.mail.length;
   assert.equal((await grant(h, dev, { ticket: await ticketFor(h, dev), hours: 10, jti: newJti() })).status, 200);
   const rows = Object.fromEntries(passRows(h).map((r) => [r.jti, r]));
