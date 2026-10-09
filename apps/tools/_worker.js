@@ -4094,6 +4094,47 @@ export function sanitizeVoiceNote(raw) {
   return engagement === undefined ? { tool: raw.tool, levels, diction } : { tool: raw.tool, levels, diction, engagement };
 }
 
+/* SLICE 6, THE READ PATH: the stored voice coming back for a draft.
+ *
+ * The profile Worker sends ids and numbers (profile-api/src/voice-read.js).
+ * This is the same closed-list gate as sanitizeVoiceNote, run the other way,
+ * so nothing reaches the browser, and through it the model, that is not a
+ * house feature, a direction from a closed pair, a house family id, or a
+ * number. A word in any slot is dropped, whoever put it there. The browser
+ * turns what is left into prompt text from its own dictionary and templates. */
+const VOICE_READ_DIRECTIONS = Object.freeze(["more", "less"]);
+const VOICE_READ_LEVEL_MAX = 4; // profile-api LEVEL_MAX, the same plausibility bound
+const VOICE_READ_MAX_LEVELS = 2; // MOVES_PER_NOTE
+const VOICE_READ_MAX_DICTION = 5; // DICTION_MAX_FAMILIES
+// Rows looked at before the caps, so a junk row cannot crowd out a legal one
+// and a huge list is not walked.
+const VOICE_READ_SCAN = 20;
+
+export function sanitizeVoiceReading(raw) {
+  const empty = { levels: [], diction: [] };
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return empty;
+  const levels = [];
+  for (const row of (Array.isArray(raw.levels) ? raw.levels : []).slice(0, VOICE_READ_SCAN)) {
+    if (levels.length >= VOICE_READ_MAX_LEVELS) break;
+    if (!row || typeof row !== "object") continue;
+    if (!VOICE_FEATURES.includes(row.feature) || !VOICE_READ_DIRECTIONS.includes(row.direction)) continue;
+    if (!Number.isFinite(row.target) || row.target < 0 || row.target > VOICE_READ_LEVEL_MAX) continue;
+    if (!Number.isInteger(row.n) || row.n < 1) continue;
+    levels.push({ feature: row.feature, direction: row.direction, target: Math.round(row.target * 1e6) / 1e6, n: row.n });
+  }
+  const diction = [];
+  for (const row of (Array.isArray(raw.diction) ? raw.diction : []).slice(0, VOICE_READ_SCAN)) {
+    if (diction.length >= VOICE_READ_MAX_DICTION) break;
+    if (!row || typeof row !== "object") continue;
+    if (!VOICE_FAMILIES.includes(row.family_id)) continue;
+    if (!Number.isInteger(row.variant_index) || row.variant_index < 0 || row.variant_index >= VOICE_VARIANT_MAX) continue;
+    if (!Number.isFinite(row.share) || row.share < 0 || row.share > 1) continue;
+    if (!Number.isInteger(row.notes) || row.notes < 1) continue;
+    diction.push({ family_id: row.family_id, variant_index: row.variant_index, share: Math.round(row.share * 1000) / 1000, notes: row.notes });
+  }
+  return { levels, diction };
+}
+
 /**
  * A correction is a measurement of a diff, never the diff itself. The browser
  * sends a feature name and a direction; the words that changed never leave the
@@ -4195,12 +4236,13 @@ async function handleStyleCard(request, env) {
     + (seed ? `&seed=${encodeURIComponent(seed)}` : "");
 
   const card = await profileFetch(env, qs, null, "GET");
-  if (!card) return jsonRes(200, { rules: [], block: "", shapeBlock: "", available: false });
+  if (!card) return jsonRes(200, { rules: [], block: "", shapeBlock: "", voice: sanitizeVoiceReading(null), available: false });
 
   return jsonRes(200, {
     rules: card.rules || [],
     block: card.block || "",
     shapeBlock: card.shapeBlock || "",
+    voice: sanitizeVoiceReading(card.voice),
     available: true,
   });
 }

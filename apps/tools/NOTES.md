@@ -1776,3 +1776,49 @@ is still owed. 1311 is the 1294 from slice 5c plus the 17 here.
 
 `git diff --name-only origin/main` plus untracked files lists nothing outside
 `apps/tools` and `apps/profile-api`, and no added line holds an em or en dash.
+
+## Slice 6 - a draft reads its author's stored voice back
+
+`voice_level` and `diction_level` were written and never read. They are read now,
+on the fetch a draft already makes: `/api/style-card` carries a `voice` reading
+beside the card and the shape target, and the page turns it into a few lines of
+the draft's `system_suffix`.
+
+### What travels, hop by hop
+
+| Hop | Holds | Gate |
+|---|---|---|
+| profile-api `src/voice-read.js` | `{levels: [{feature, direction, target, n}], diction: [{family_id, variant_index, share, notes}]}` | `authorTarget` and `planStyleMoves` from slice 5, `familyShares` from 5a |
+| Pages worker `sanitizeVoiceReading` | the same, rebuilt | feature from `VOICE_FEATURES`, direction `more` or `less`, family from `VOICE_FAMILIES`, integers and bounded numbers; a word in any slot is dropped |
+| page `notes/bcba/voice-read.js` | prompt text | fixed sentences plus the house dictionary's base form, read by family id and variant index; anything unrecognised writes nothing |
+
+No hop holds a word the house did not write. The intake still goes through the
+scrub exactly as before; this block never reads the intake.
+
+### Decisions made here, stated so they can be argued with
+
+1. **Only `actor_naming` and `hedging` are read.** `within_cv` and `step_rel`
+   are already set for every note by the shape block (`shape.js`, from
+   `shape_profile`). Two numbers for one quantity in one prompt would
+   contradict each other. Their `voice_level` sums stay stored.
+2. **The budget is `MOVES_PER_NOTE` (2), spent against the house default.**
+   Before the model writes anything, the draft it would write is the house
+   mean, so `planStyleMoves` measures that. A feature whose author band holds
+   the house mean earns no move: the tool already sounds like them there.
+   Moves are therefore rare by design: an author has to sit more than one house
+   sd from the house before the draft is told anything.
+3. **Word choice needs 3 notes and a 60 percent share, 5 families at most.**
+   `familyShares` left the bar to the maintainer; these are the numbers chosen.
+4. **The block rides in `system_suffix`, never in the served prompt.** The
+   prompts in the voice-module store are unchanged, so prompt hash parity holds
+   and no re-extract is needed for this slice.
+5. **Self-revision reads it too**, beside the style card and the intake voice,
+   because the revision is the step the uniformity measurement says works.
+
+### Tests
+
+`apps/profile-api/test/voice-read.test.js` (11) and
+`apps/tools/tests/voice-read-draft.spec.js` (8). The spec drafts through the
+real `_worker.js` and the real profile-api over SQLite, and reads the suffix off
+the drafting call: a warm author gets the lines, a cold author gets the suffix
+that shipped before.
