@@ -193,7 +193,54 @@ document.addEventListener('DOMContentLoaded', async () => {
   restoreResults();
   bindEvents();
   await discoverTopics();
+  mountRoundSetup();
 });
+
+// ── Round setup (Frame 04, shared ../round-setup.js) ───────────────
+// The gated panel is a view over the settings-bar and Options controls, not a
+// second config: every edit in it goes through the same change handlers and
+// the same store, so a panel opened and left alone changes nothing. The token
+// board and the target picker stay where they are.
+
+/** Re-render the whole game from the store after a saved set is applied. */
+async function reloadFromStore() {
+  loadSettings();
+  const topics = state.topicFolders || [];
+  if (topics.length) {
+    state.topic = topics.includes(state.topic) ? state.topic : topics[0];
+    el.selTopic.value = state.topic;
+  }
+  state.posDeck = [];
+  await refreshImages();
+}
+
+function mountRoundSetup() {
+  if (!window.NooutcoRoundSetup) return;
+  window.NooutcoRoundSetup.mount({
+    store: settingsStore,
+    label: 'Matching Market round setup',
+    reload: reloadFromStore,
+    core: [
+      '#sel-topic',
+      '#inp-size',
+    ],
+    advanced: [
+      '#sel-anim-tier',
+      '#chk-caption',
+      '#chk-same-customer',
+      '#chk-represent-errors',
+      '#chk-errorless',
+      '#chk-no-error-anim',
+      '#chk-non-target-distractor',
+      '#chk-cross',
+      '#chk-persists',
+      '#chk-auto-prompt',
+      '#chk-prompt-delay',
+      { sel: '#sel-prompt-delay', label: 'Prompt delay (seconds)' },
+      '#sel-prompt-style',
+    ],
+  });
+}
 
 // ── Durable results persistence (device-local; never transmitted) ──────
 
