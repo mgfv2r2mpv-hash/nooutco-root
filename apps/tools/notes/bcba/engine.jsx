@@ -3345,12 +3345,18 @@ function App() {
          prompt that shipped before any of this existed. */
       const shapeSeed = tool.id + ":" + Date.now() + ":" + Math.random().toString(36).slice(2, 8);
       let shapeBlock = "";
+      /* SLICE 6: the author's stored voice, read back with the same fetch.
+         Built from ids and numbers in voice-read.js, so the text is the house
+         dictionary and fixed sentences and nothing else. Empty for a technician
+         with no stored voice, which drafts exactly as before. */
+      let storedVoiceBlock = "";
       try {
         const withShape = window.NotesGate && NotesGate.styleCard
           ? await NotesGate.styleCard.get({ tool: tool.id, seed: shapeSeed })
           : null;
         shapeBlock = (withShape && withShape.shapeBlock) || "";
-      } catch (e) { shapeBlock = ""; }
+        storedVoiceBlock = window.NoteVoiceRead && withShape ? NoteVoiceRead.block(withShape.voice) : "";
+      } catch (e) { shapeBlock = ""; storedVoiceBlock = ""; }
 
       /* The technician's voice for THIS note, measured from what they just
          typed. Separate from the style card: that is slow, cross-session and
@@ -3429,8 +3435,8 @@ function App() {
       }
 
       const conversation = [{ role: "user", content: userMsg }];
-      patchS({ convStyleBlock: styleBlock + voiceBlock + shapeBlock });
-      let r = await runTurn(conversation, styleBlock + voiceBlock + shapeBlock);
+      patchS({ convStyleBlock: styleBlock + storedVoiceBlock + voiceBlock + shapeBlock });
+      let r = await runTurn(conversation, styleBlock + storedVoiceBlock + voiceBlock + shapeBlock);
       conversation.push({ role: "assistant", content: r.rawText });
 
       /* One self-revision before the technician ever sees it.
@@ -3442,7 +3448,7 @@ function App() {
          Best effort - a failure here keeps the first draft rather than costing
          anyone their note. */
       try {
-        const polished = await selfRevise(conversation, styleBlock + voiceBlock, r);
+        const polished = await selfRevise(conversation, styleBlock + storedVoiceBlock + voiceBlock, r);
         if (polished) {
           r = polished.result;
           conversation.push({ role: "user", content: polished.ask });

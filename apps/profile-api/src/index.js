@@ -23,6 +23,7 @@ import { sanitizeCorrections, sanitizeMetrics, cleanKid, cleanSlug } from "./val
 import { runWeekly, isSendHour } from "./weekly.js";
 import { accumulate, targetFor, renderShapeBlock } from "./shape.js";
 import { acceptVoice, voiceStatements } from "./voice-write.js";
+import { voiceReading } from "./voice-read.js";
 
 /** Corrections considered when rebuilding a card. Bounds the query, and a
  *  technician's style two thousand edits ago is not evidence about today. */
@@ -279,6 +280,22 @@ async function handleGetCard(url, env) {
   ).bind(kid, tool).first();
   const target = targetFor(shapeRow, tool, seed);
 
+  /* SLICE 6: the author's stored voice, read back for this note. It rides on
+     the card for the reason the shape target does: it is fetched at the moment
+     the note is drafted and has to reach the same prompt. Ids and numbers only;
+     the browser holds the words (voice-read.js says why). */
+  const [{ results: levelRows }, { results: dictionRows }] = await Promise.all([
+    env.DB.prepare(
+      `SELECT feature, n, sum, sum_sq, w_n, w_sum, w_sum_sq
+         FROM voice_level WHERE kid = ? AND tool = ?`,
+    ).bind(kid, tool).all(),
+    env.DB.prepare(
+      `SELECT family, variant, count, notes
+         FROM diction_level WHERE kid = ? AND tool = ?`,
+    ).bind(kid, tool).all(),
+  ]);
+  const voice = voiceReading(levelRows || [], dictionRows || []);
+
   /* Kept as two fields rather than one concatenated string. `block` is the
      learned card and must stay empty when there are no rules, which is what
      suppression relies on to prove a removed rule left the prompt. The shape
@@ -289,6 +306,7 @@ async function handleGetCard(url, env) {
     block: renderStyleBlock(rules),
     shapeBlock: renderShapeBlock(target),
     shape: target,
+    voice,
     updatedAt: (results || []).reduce((a, r) => Math.max(a, r.updated_at || 0), 0) || null,
   });
 }
