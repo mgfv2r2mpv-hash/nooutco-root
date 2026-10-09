@@ -152,7 +152,7 @@ export async function spendTicket(db, device, claims) {
 
 // The ticket's claims when one came; refuses code-needed when this device's
 // last code is PIN_LIMITS.codeEveryMs old, or it never had one, and none came.
-async function codeOrRefuse(db, env, ticket, device, now) {
+export async function codeOrRefuse(db, env, ticket, device, now) {
   const claims = ticket === null ? null : await ticketOrRefuse(env, ticket, device, now);
   const check = await db.prepare("SELECT proved_at FROM device_check WHERE device_id = ?").bind(device.id).first();
   const codeDue = !check || now - check.proved_at >= PIN_LIMITS.codeEveryMs;
@@ -167,7 +167,7 @@ async function signKeyOrUnavailable(env) {
 }
 
 // What the lockout's mail needs; without it no PIN is compared.
-function mailOrUnavailable(env, mailer) {
+export function mailOrUnavailable(env, mailer) {
   if (!mailer || !reopenBaseOk(env.HZ_REOPEN_BASE)) throw new Refusal("unavailable", 503);
   return env.HZ_REOPEN_BASE;
 }
@@ -175,7 +175,7 @@ function mailOrUnavailable(env, mailer) {
 // Compares `pin` with the account's verifier inside the PIN lockout: refuses
 // locked before comparing when PIN entry is closed, and bad-pin when wrong.
 // Answers the after-work mailing what the lockout owes.
-async function checkedPin({ db, device, now, keys, mailer, reopenBase }, pin, row) {
+export async function checkedPin({ db, device, now, keys, mailer, reopenBase }, pin, row) {
   const lockout = { db, accountId: device.account_id, now, keys, mailer, reopenBase };
   const tried = await admitPinTry(lockout);
   const right = sameHex(await keys.pinVerifier(pin, row.salt), row.verifier);
@@ -247,7 +247,7 @@ export async function verifyPin({ db, device, body, now, env, mailer }) {
 
 // Runs `work`, and hands a refusal it throws the lockout's after-work, so the
 // mail a settled try owes still goes out.
-async function withAfter(after, work) {
+export async function withAfter(after, work) {
   try {
     return await work();
   } catch (err) {

@@ -170,7 +170,7 @@ function taggedMailbox(address) {
 // the mail plan's daily limit, default 3000). A value
 // that is set but is not a whole number of 1 or more stops starts rather
 // than opening the cap.
-function codesPerDayOf(env) {
+export function codesPerDayOf(env) {
   const value = env.HZ_CODES_PER_DAY;
   if (value === undefined || value === null) return SIGNUP_LIMITS.codesPerDay;
   const n = typeof value === "string" && /^\d+$/.test(value) ? Number(value) : value;
@@ -236,7 +236,7 @@ function mailAfter(mailer, message) {
   };
 }
 
-function linkOf(env, code) {
+export function linkOf(env, code) {
   try {
     return fragmentLink(env.HZ_LINK_BASE, code);
   } catch {

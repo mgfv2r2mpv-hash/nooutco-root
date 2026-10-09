@@ -338,3 +338,59 @@ CREATE TABLE IF NOT EXISTS reverify (
   account_id   TEXT    NOT NULL,
   at           INTEGER NOT NULL
 );
+
+-- A6, recovery and the vault switch (plan §3.5, R-6), and bringing the vault
+-- to a new device (§3.3 "Each further device" step 4). Every table below is
+-- new in A6 and created only IF NOT EXISTS, so the slice adds to the live
+-- database and changes none of its tables.
+
+-- The account recovery link (plan §3.5): the keyed digest of the code a
+-- /recover start mailed, and the code sealed in link_box while it is live, so
+-- a later start can mail it again. One row per address key; a start for an
+-- address with no account writes a row born spent, so both paths run the
+-- same statements (as sign-up's M1). Spent and expired rows are purged hourly.
+CREATE TABLE IF NOT EXISTS recovery (
+  address_key  TEXT    PRIMARY KEY,
+  digest       TEXT    NOT NULL,
+  link_box     TEXT,
+  expires_at   INTEGER NOT NULL,
+  tries        INTEGER NOT NULL DEFAULT 0,
+  used         INTEGER NOT NULL DEFAULT 0
+);
+
+-- The account's current vault id (plan §3.1: Horae Zone holds the current
+-- vault id, never a vault key). The id is 16 random bytes a device minted,
+-- base64url; one account, one current vault, and no two accounts share one.
+-- No row: no vault recorded yet, or a recovery tombstoned the last one.
+CREATE TABLE IF NOT EXISTS vault (
+  account_id   TEXT    PRIMARY KEY,
+  vault_id     TEXT    NOT NULL UNIQUE,
+  set_at       INTEGER NOT NULL
+);
+
+-- Every vault id a switch or a recovery replaced. A tombstone is permanent:
+-- the id is never current again, for any account, so a signed "gone" stays
+-- true, and a device that comes back after months still learns to shred its
+-- wrap. Never purged by time.
+CREATE TABLE IF NOT EXISTS vault_tombstone (
+  vault_id     TEXT    PRIMARY KEY,
+  account_id   TEXT    NOT NULL,
+  at           INTEGER NOT NULL
+);
+
+-- Bringing the vault (pairing v2): one row per asking device. /pair/take
+-- writes the ask (envelope null); /pair/offer puts up the envelope, the vault
+-- key sealed on the approving device to the asker's registered agreement key,
+-- which the service never opens; the asker's next /pair/take hands it out and
+-- deletes the row. Bound to the vault id current at the ask; a switch or a
+-- recovery deletes the account's rows. Rows past expires_at are purged hourly.
+CREATE TABLE IF NOT EXISTS handoff (
+  device_id    TEXT    PRIMARY KEY,
+  account_id   TEXT    NOT NULL,
+  vault_id     TEXT    NOT NULL,
+  from_device  TEXT,
+  envelope     TEXT,
+  expires_at   INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS handoff_account_id ON handoff (account_id);

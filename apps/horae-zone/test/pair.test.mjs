@@ -165,3 +165,13 @@ test('the brought note carries no number, link, id or value the request carried'
   for (const value of [ENVELOPE, V1, owner.id, asker.id, PIN]) assert.equal(note.text.includes(value), false);
   assert.equal(JSON.stringify(auditRows(h.db)).includes(ENVELOPE), false);
 });
+
+test('an asker held back after its checks passed (a recovery landing mid-flight) takes nothing', async () => {
+  const h = harness();
+  const { owner, asker } = await setup(h);
+  await take(h, asker);
+  assert.deepEqual(await offer(h, owner, { to: asker.id }), OK);
+  const { landsMidFlight } = await import('./helpers.mjs');
+  landsMidFlight(h, 'SELECT vault_id FROM vault', (db) => db.sqlite.prepare('UPDATE device SET pending = 1 WHERE id = ?').run(asker.id));
+  assert.deepEqual(await take(h, asker), NONE);
+});

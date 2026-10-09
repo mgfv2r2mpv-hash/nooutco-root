@@ -141,6 +141,7 @@ test('after a recovery the new device is the owner, and every other device is he
   // and have no code to prove until the new device confirms one.
   for (const p of ['/otp/enrol', '/device/remove', '/pin/verify', '/vault/switch', '/devices']) {
     assert.equal((await h.call(await signed(h.call, owner, p, {}))).status, 401, p);
+    h.clock.ms += 60_001; // a refused request leaves its nonce live; let it expire
   }
   assert.deepEqual((await tryCode(h, owner, await codeAt(owner, h.clock.ms))).start, { status: 409, json: { error: 'not-enrolled' } });
   // The new device enrols a new authenticator and confirms it.
@@ -162,7 +163,7 @@ test('a recovery voids every live sign-in ticket and clears the closed code path
   const account = accountOf(h, owner.id);
   const keys = await deviceKeys();
   const ticket = await signIn(h, ADDRESS, { keys, ip: '192.0.2.44' });
-  h.db.sqlite.prepare('INSERT INTO limits (account_id, state, version) VALUES (?, ?, 0)').run(account, '{"closed":"by hand"}');
+  h.db.sqlite.prepare('INSERT OR REPLACE INTO limits (account_id, state, version) VALUES (?, ?, 0)').run(account, '{"closed":"by hand"}');
   await recoveredDevice(h, ADDRESS);
   assert.equal((await h.call(post('/device/register', { ticket, signKey: keys.signKey, agreeKey: keys.agreeKey }))).status, 401, 'the old sign-in ticket registers nothing');
   assert.equal(h.db.sqlite.prepare('SELECT COUNT(*) AS n FROM limits WHERE account_id = ?').get(account).n, 0);

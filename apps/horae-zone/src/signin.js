@@ -99,7 +99,7 @@ async function failuresAt(db, pairBucket, now) {
 
 // Any password an account could hold; the length rule for new passwords is
 // sign-up's, so a later change to it never locks out an older account.
-function passwordOf(value) {
+export function passwordOf(value) {
   if (typeof value !== "string" || value.length === 0 || value.length > SIGNUP_LIMITS.passwordMax) throw new Refusal("shape", 400);
   return value;
 }

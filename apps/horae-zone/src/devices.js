@@ -45,7 +45,7 @@ export async function deviceKeyDigest(signKey, agreeKey) {
 
 // True when `text` is a raw P-256 public point WebCrypto accepts for `name`
 // (ECDSA or ECDH); an off-curve point is refused by importKey.
-async function isPoint(text, name) {
+export async function isPoint(text, name) {
   let bytes;
   try {
     bytes = fromB64url(text);
@@ -76,8 +76,16 @@ export async function registerDevice({ db, body, now, env }) {
   const id = b64url(crypto.getRandomValues(new Uint8Array(DEVICE_ID_BYTES)));
   const owner = spent.owner === 1 ? 1 : 0;
   // The owner device is confirmed as it registers; a pending one when its
-  // code clears the flag (src/unlock.js).
-  await db.prepare("INSERT INTO device (id, account_id, sign_key, agree_key, created_at, pending, owner, confirmed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-    .bind(id, spent.account_id, body.signKey, body.agreeKey, now, 1 - owner, owner, owner === 1 ? now : null).run();
+  // code clears the flag (src/unlock.js). The #248 LOW race (closed in A6):
+  // the spend above and this insert are two statements, so another owner
+  // ticket (a relink's) could register between them, and both would see an
+  // account with no device. The owner device is written only while the
+  // account still has none, in the insert itself; otherwise this ticket is
+  // spent and registers nothing.
+  const made = await db.prepare(
+    `INSERT INTO device (id, account_id, sign_key, agree_key, created_at, pending, owner, confirmed_at) SELECT ?, ?, ?, ?, ?, ?, ?, ?
+     WHERE ? = 0 OR NOT EXISTS (SELECT 1 FROM device WHERE account_id = ?) RETURNING id`,
+  ).bind(id, spent.account_id, body.signKey, body.agreeKey, now, 1 - owner, owner, owner === 1 ? now : null, owner, spent.account_id).first();
+  if (!made) throw new Refusal("bad-ticket", 401);
   return { status: 200, json: { device: id } };
 }
