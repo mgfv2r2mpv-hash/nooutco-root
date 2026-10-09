@@ -625,3 +625,121 @@ test.describe('graph visual analysis', () => {
     await expect(page.locator('#showStats')).toBeChecked();
   });
 });
+
+// Issue #100: several graphs, a Done step that is what bakes each one, one read
+// per picture, and a failed read that retries at a sharper bake before the tool
+// ever asks the analyst to crop. The reader is stubbed: no test reaches a model.
+test.describe('graph pictures (several, each Done before it is read)', () => {
+  const asAdmin = async (page) => {
+    await page.evaluate(() => {
+      const exp = Math.floor(Date.now() / 1000) + 3600;
+      const b64 = btoa(JSON.stringify({ exp, role: 'admin' })).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      localStorage.setItem('notes_auth_token', b64 + '.unverified-signature');
+    });
+    await page.reload();
+    await page.waitForFunction(() => !!window.GVA_PICTURES && !!document.querySelector('#extract'));
+  };
+
+  // Adds pictures through the real file input, drawn in the page: `widths`
+  // gives each one's width, so a test can make one wider than the bake cap.
+  const addPictures = (page, widths) => page.evaluate(async (ws) => {
+    const dt = new DataTransfer();
+    for (const w of ws) {
+      const c = document.createElement('canvas');
+      c.width = w; c.height = 120;
+      const cx = c.getContext('2d');
+      cx.fillStyle = '#fff'; cx.fillRect(0, 0, w, 120);
+      cx.fillStyle = '#336'; cx.fillRect(10, 40, Math.min(w - 20, 200), 30);
+      const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
+      dt.items.add(new File([blob], 'Client Name graph.png', { type: 'image/png' }));
+    }
+    const input = document.getElementById('file');
+    input.files = dt.files;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  }, widths);
+
+  const reading = (name, data) => JSON.stringify({
+    direction: 'dec',
+    phases: [{ name: name + ' baseline', cond: 'base', data }, { name: name + ' plan', cond: 'tx', data: [1, 1, 0] }],
+    uncertainties: [],
+  });
+
+  test.beforeEach(async ({ page }) => {
+    await page.goto(PAGE);
+    await page.evaluate(() => localStorage.clear());
+    await asAdmin(page);
+  });
+
+  test('pictures load as cards, the file name is never shown, and Read waits until each is Done', async ({ page }) => {
+    await addPictures(page, [300, 300]);
+    await expect(page.locator('#picStrip .pic-card')).toHaveCount(2);
+    await expect(page.locator('#picStrip')).not.toContainText('Client Name');
+    await expect(page.locator('#picStrip .pic-card.current .pic-title')).toHaveText('Graph 1');
+
+    await page.locator('#extract').click();
+    await expect(page.locator('#status')).toContainText('Graph 1 is not done yet');
+
+    await page.locator('#redactDone').click();
+    await expect(page.locator('#picStrip .pic-card.current .pic-title')).toHaveText('Graph 2');
+    await expect(page.locator('#picStrip .pic-card').first().locator('img.pic-thumb')).toHaveCount(1);
+    await page.locator('#extract').click();
+    await expect(page.locator('#status')).toContainText('Graph 2 is not done yet');
+
+    await page.locator('#redactDone').click();
+    await expect(page.locator('#picStrip .pic-card img.pic-thumb')).toHaveCount(2);
+    await expect(page.locator('#redactTools')).toBeHidden();
+  });
+
+  test('each picture is read on its own, and a failed read retries sharper before it asks for a crop', async ({ page }) => {
+    const calls = [];
+    await page.route('**/api/llm-call*', async (route) => {
+      const body = route.request().postDataJSON();
+      calls.push({ images: body.images.length, bytes: body.images[0].data.length });
+      // The first call fails to parse; the retry and the second picture read.
+      const text = calls.length === 1 ? 'not json at all' : reading('Graph', calls.length === 2 ? [5, 6, 7] : [9, 9, 8]);
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [{ type: 'text', text }] }) });
+    });
+
+    await addPictures(page, [3200, 300]);
+    await page.locator('#redactDone').click();
+    await page.locator('#redactDone').click();
+    await page.locator('#extract').click();
+
+    await expect(page.locator('#status')).toContainText('Phase data now holds Graph 1');
+    expect(calls.map((c) => c.images)).toEqual([1, 1, 1]);
+    // The retry for Graph 1 sent the sharper bake: a 3200px picture is capped at
+    // 1600 the first time and 2400 the second, so the second upload is larger.
+    expect(calls[1].bytes).toBeGreaterThan(calls[0].bytes);
+    await expect(page.locator('#picStrip .pic-card').nth(0)).toContainText('on a sharper second try');
+    await expect(page.locator('#picStrip .pic-card').nth(1)).toContainText('Read 2 phases, 6 points');
+    await expect(page.locator('#status')).not.toContainText('crop');
+    expect(await page.evaluate(() => document.querySelector('#phases [data-k="data"]').value)).toBe('5, 6, 7');
+
+    await page.locator('#picStrip .pic-card').nth(1).getByRole('button', { name: 'Use this reading' }).click();
+    expect(await page.evaluate(() => document.querySelector('#phases [data-k="data"]').value)).toBe('9, 9, 8');
+  });
+
+  test('a read that fails twice says so, and only then asks for a crop', async ({ page }) => {
+    let n = 0;
+    await page.route('**/api/llm-call*', async (route) => {
+      n += 1;
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [{ type: 'text', text: 'still not json' }] }) });
+    });
+    await addPictures(page, [300]);
+    await page.locator('#redactDone').click();
+    await page.locator('#extract').click();
+    await expect(page.locator('#status')).toContainText('A second, sharper read failed too');
+    await expect(page.locator('#status')).toContainText('crop it to the one you want read');
+    expect(n).toBe(2);
+  });
+
+  test('opening a Done picture again takes its Done away, so the old bake cannot be sent', async ({ page }) => {
+    await addPictures(page, [300]);
+    await page.locator('#redactDone').click();
+    await expect(page.locator('#picStrip img.pic-thumb')).toHaveCount(1);
+    await page.locator('#picStrip').getByRole('button', { name: 'Edit' }).click();
+    await expect(page.locator('#picStrip img.pic-thumb')).toHaveCount(0);
+    await page.locator('#extract').click();
+    await expect(page.locator('#status')).toContainText('Graph 1 is not done yet');
+  });
+});

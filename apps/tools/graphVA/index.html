@@ -141,6 +141,22 @@
   .gva-redact-canvas { max-width: 100%; border: 1px solid var(--border-default);
     border-radius: var(--radius-sm); cursor: crosshair; display: block; touch-action: none; }
   #redactHost { margin-top: 12px; }
+  /* The strip of graph pictures (issue #100): one card each, its baked copy as
+     the thumbnail once Done, so what the card shows is what will be sent. */
+  .pic-strip { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+  .pic-card { width: 150px; border: 1px solid var(--border-default); border-radius: var(--radius-sm);
+    padding: 8px; background: var(--surface-card); font-size: var(--text-xs); color: var(--text-body);
+    display: flex; flex-direction: column; gap: 6px; }
+  .pic-card.current { border-color: var(--border-focus); box-shadow: 0 0 0 1px var(--border-focus); }
+  .pic-card .pic-title { font-weight: var(--weight-semibold); color: var(--text-primary); font-size: var(--text-sm); }
+  .pic-card .pic-thumb { width: 100%; height: 80px; object-fit: contain; background: var(--surface-sunken);
+    border-radius: var(--radius-sm); display: block; }
+  .pic-card .pic-empty { height: 80px; display: flex; align-items: center; justify-content: center;
+    background: var(--surface-sunken); border-radius: var(--radius-sm); color: var(--text-muted); text-align: center; padding: 4px; }
+  .pic-card .pic-state { color: var(--text-muted); white-space: pre-line; }
+  .pic-card .pic-state.err { color: var(--red-700, #b91c1c); }
+  .pic-card .pic-actions { display: flex; flex-wrap: wrap; gap: 4px; }
+  .pic-card .pic-actions button { font-size: var(--text-xs); padding: 2px 8px; }
   .redact-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
   .redact-tools .seg { display: inline-flex; border: 1px solid var(--border-default);
     border-radius: var(--radius-sm); overflow: hidden; }
@@ -262,10 +278,11 @@
   <h2>Read a graph image</h2>
   <div class="card">
     <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose a graph image">
-      <strong>Drop a graph screenshot here, or click to choose a file</strong>
-      Reads printed data labels, phase change lines, and legend text. One panel at a time reads most reliably.
+      <strong>Drop graph screenshots here, or click to choose files</strong>
+      Up to six graphs. Each is blacked out, then marked Done, and each is read on its own.
     </div>
-    <input type="file" id="file" accept="image/png,image/jpeg,image/webp" hidden>
+    <input type="file" id="file" accept="image/png,image/jpeg,image/webp" multiple hidden>
+    <div class="pic-strip hidden" id="picStrip" aria-label="Graph pictures to read"></div>
 
     <div id="redactHost"></div>
     <div class="redact-tools hidden" id="redactTools">
@@ -276,6 +293,7 @@
       <button type="button" id="redactUndo">Undo</button>
       <button type="button" id="redactClear">Clear marks</button>
       <button type="button" id="redactDrop">Remove image</button>
+      <button type="button" id="redactDone" class="btn-primary">Done with this graph</button>
       <span class="status" id="redactState" style="margin:0"></span>
     </div>
 
@@ -348,6 +366,7 @@
 <script src="./verdict.js"></script>
 <script src="./chart.js"></script>
 <script src="./redact.js"></script>
+<script src="./pictures.js"></script>
 <script src="./app.js"></script>
 </body>
 </html>
