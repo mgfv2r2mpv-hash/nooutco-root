@@ -22,8 +22,7 @@ import { RECOVERED_NOTE, RECOVER_LIMITS } from '../src/recover.js';
 import {
   harness, post, signed, pinCall, pinnedDevice, provedDevice, switchVault, vaultId, deviceKeys, everyRow, auditRows,
   recoveryCode, recoverRequest, recoveredDevice, signUpOwner, enrolRequest, enrolTicket, tryCode, codeAt, ticketFor,
-  verifyVaultState, signIn, PASSWORD, RECOVER_IP, RECOVER_LINK_SUBJECT_TEXT,
-} from './helpers.mjs';
+  verifyVaultState, signIn, PASSWORD, RECOVER_IP, RECOVER_LINK_SUBJECT_TEXT, passToken} from './helpers.mjs';
 
 // Fixed, fake values: reserved-domain addresses, a PIN off the public list
 // and an envelope that is only a marker.
@@ -315,9 +314,9 @@ test('review LOW-2: a full sign-up day does not hold back a recovery start, whic
   // A day of two: the owner's own sign-up took one place.
   const h = harness({ env: { HZ_CODES_PER_DAY: '2' } });
   await owned(h);
-  const filled = await h.call(post('/account', { email: 'flood@example.test' }, { 'cf-connecting-ip': '192.0.2.61' }));
+  const filled = await h.call(post('/account', { email: 'flood@example.test', turnstile: passToken('account') }, { 'cf-connecting-ip': '192.0.2.61' }));
   assert.equal(filled.status, 200);
-  assert.equal((await h.call(post('/account', { email: 'flood2@example.test' }, { 'cf-connecting-ip': '192.0.2.62' }))).status, 429, 'the sign-up day is full');
+  assert.equal((await h.call(post('/account', { email: 'flood2@example.test', turnstile: passToken('account') }, { 'cf-connecting-ip': '192.0.2.62' }))).status, 429, 'the sign-up day is full');
   assert.ok(await recoveryCode(h, ADDRESS), 'the recovery link still goes out');
   assert.equal((await h.call(post('/recover', { email: ADDRESS }, { 'cf-connecting-ip': '192.0.2.63' }))).status, 200);
   assert.equal((await h.call(post('/recover', { email: ADDRESS }, { 'cf-connecting-ip': '192.0.2.64' }))).status, 429, 'the recovery day is capped too');
