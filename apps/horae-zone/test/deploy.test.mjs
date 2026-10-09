@@ -13,7 +13,7 @@ import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { ROOT, SCHEMA } from './helpers.mjs';
 import { deploy, runWrangler } from '../bin/deploy.mjs';
-import { declaredColumns, columnDefinitions, planTable } from '../bin/deploy-columns.mjs';
+import { declaredColumns, columnDefinitions, planTable, tableStatements } from '../bin/deploy-columns.mjs';
 import { CATALOG, LineReader, deployConfig, scrub, schemaTables, HOSTNAME } from '../bin/deploy-parts.mjs';
 import { accountKeys } from '../src/account-keys.js';
 import { seedBoxKey } from '../src/otp.js';
@@ -83,7 +83,9 @@ function mockWrangler(state = {}) {
     }
     return { code: 1, stdout: '', stderr: `mock: unknown role command ${sql}` };
   }
-  function columnCommand(sql) {
+  // SQL run on the database as D1 would run it: an SQLite error is a failed
+  // wrangler call carrying SQLite's own words, as wrangler 4 prints them.
+  function onDatabase(sql) {
     try {
       if (/^PRAGMA table_info\(\w+\)$/.test(sql)) return rows(sqlite.prepare(sql).all());
       sqlite.exec(sql);
@@ -91,6 +93,11 @@ function mockWrangler(state = {}) {
     } catch (err) {
       return { code: 1, stdout: '', stderr: `✘ [ERROR] ${err.message}` };
     }
+  }
+  function columnCommand(sql) {
+    if (/^ALTER TABLE/.test(sql) && state.alterFail) return { code: 1, stdout: '', stderr: state.alterFail };
+    if (/^ALTER TABLE/.test(sql) && state.alterOut) return ok(state.alterOut);
+    return onDatabase(sql);
   }
   async function run(args, opts = {}) {
     calls.push({ args, input: opts.input, cwd: opts.cwd, env: opts.env });
@@ -100,7 +107,11 @@ function mockWrangler(state = {}) {
     if (cmd === 'whoami --json') return ok(JSON.stringify({ loggedIn: true, email: 'owner@example.test', accounts: state.accounts ?? [FAKE_ACCOUNT] }));
     if (cmd === 'd1 list') return ok(JSON.stringify(db.present ? [{ uuid: FAKE_DB_ID, name: 'horae-zone' }, { uuid: 'x', name: 'other' }] : [{ uuid: 'x', name: 'other' }]));
     if (cmd === 'd1 create') { db.present = true; return ok(`database_id = "${FAKE_DB_ID}"`); }
-    if (cmd === 'd1 execute' && args.includes('--file')) { sqlite.exec(SCHEMA); return ok('[{"success":true}]'); }
+    if (cmd === 'd1 execute' && args.includes('--file')) {
+      const applied = onDatabase(SCHEMA);
+      return applied.code === 0 ? ok('[{"success":true}]') : applied;
+    }
+    if (cmd === 'd1 execute' && /^CREATE TABLE\b/.test(args[args.indexOf('--command') + 1] ?? '')) return onDatabase(args[args.indexOf('--command') + 1]);
     if (cmd === 'd1 execute' && /^(PRAGMA table_info|ALTER TABLE)\b/.test(args[args.indexOf('--command') + 1] ?? '')) return columnCommand(args[args.indexOf('--command') + 1]);
     if (cmd === 'd1 execute' && !/sqlite_master/.test(args[args.indexOf('--command') + 1] ?? '')) return roleCommand(args[args.indexOf('--command') + 1]);
     if (cmd === 'd1 execute') return ok(JSON.stringify([{ results: (state.tables ?? TABLES).map((name) => ({ name })), success: true }]));
@@ -340,7 +351,8 @@ test('9 Oct incident: an existing device table without confirmed_at gets it adde
   assert.deepEqual(alters.map((c) => c.args[c.args.indexOf('--command') + 1]), ['ALTER TABLE device ADD COLUMN confirmed_at INTEGER']);
   assert.ok(alters[0].args.includes('--remote') && alters[0].args.includes('wrangler.deploy.toml'), 'the ALTER goes to the remote database through the deploy config');
   const at = (pred) => h.wrangler.calls.findIndex(pred);
-  assert.ok(at((c) => c.args.includes('--file')) < h.wrangler.calls.indexOf(alters[0]), 'after schema.sql is applied');
+  assert.ok(sqlCalls(h, /^CREATE TABLE/).length === 1 && h.wrangler.calls.indexOf(sqlCalls(h, /^CREATE TABLE/)[0]) < h.wrangler.calls.indexOf(alters[0]), 'after schema.sql\'s tables are applied');
+  assert.ok(h.wrangler.calls.indexOf(alters[0]) < at((c) => c.args.includes('--file')), 'before schema.sql\'s indexes and triggers');
   assert.ok(h.wrangler.calls.indexOf(alters[0]) < at((c) => c.args[0] === 'deploy'), 'before the Worker deploys');
   const added = result.checklist.find((i) => i.item === 'Column added device.confirmed_at');
   assert.equal(added?.status, 'PASS', 'the checklist names the column it added');
@@ -348,6 +360,50 @@ test('9 Oct incident: an existing device table without confirmed_at gets it adde
   assert.equal(statusOf(result, 'Columns match schema.sql'), 'PASS');
   assert.match(h.output(), /Added column confirmed_at to table device/);
   assertNoSecretAnywhere(h);
+});
+
+test('a missing column that schema.sql also indexes is added before the index is made, and the deploy passes', async () => {
+  // An older limits table: no reopen_hash and so no index on it. Applying the
+  // whole of schema.sql first would fail on CREATE INDEX limits_reopen_hash
+  // (no such column) before any column could be added.
+  const older = olderSchema('  version      INTEGER NOT NULL DEFAULT 0,\n  reopen_hash  TEXT\n);\n\nCREATE INDEX IF NOT EXISTS limits_reopen_hash ON limits (reopen_hash);\n', '  version      INTEGER NOT NULL DEFAULT 0\n);\n');
+  const h = harness({ wrangler: mockWrangler({ dbPresent: true, existingSchema: older }) });
+  const result = await deploy(h.deps);
+  assert.equal(result.ok, true, h.output());
+  assert.ok(columnsOf(h, 'limits').includes('reopen_hash'), 'limits has reopen_hash after the deploy');
+  const index = h.wrangler.sqlite.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'limits_reopen_hash'").get();
+  assert.equal(index?.name, 'limits_reopen_hash', 'the index on it was made');
+  assert.equal(result.checklist.find((i) => i.item === 'Column added limits.reopen_hash')?.status, 'PASS');
+  const at = (c) => h.wrangler.calls.indexOf(c);
+  const [alter] = sqlCalls(h, /^ALTER TABLE limits ADD COLUMN reopen_hash TEXT$/);
+  const file = h.wrangler.calls.find((c) => c.args.includes('--file'));
+  assert.ok(alter && file && at(alter) < at(file), 'the column is added before schema.sql\'s indexes are applied');
+  assert.ok(at(file) < h.wrangler.calls.findIndex((c) => c.args[0] === 'deploy'), 'and the indexes before the Worker deploys');
+});
+
+test('the first pass is every CREATE TABLE in schema.sql and nothing else, and on an empty database makes the same tables', () => {
+  const db = new DatabaseSync(':memory:');
+  db.exec(tableStatements(SCHEMA));
+  const made = (type) => db.prepare('SELECT name FROM sqlite_master WHERE type = ? ORDER BY name').all(type).map((r) => r.name);
+  assert.deepEqual(made('table').filter((t) => t !== 'sqlite_sequence'), [...TABLES].sort());
+  assert.deepEqual([made('index').filter((n) => !n.startsWith('sqlite_autoindex')), made('trigger')], [[], []], 'no index or trigger in the first pass');
+  assert.doesNotMatch(tableStatements(SCHEMA), /--/, 'no comment reaches the command line');
+  assert.deepEqual(declaredColumns(tableStatements(SCHEMA)), declaredColumns(SCHEMA), 'every column as the whole file declares it');
+});
+
+test('a failed ALTER stops before the Worker deploys with wrangler\'s own reason and the table and column named', async () => {
+  const older = olderSchema(',\n  confirmed_at INTEGER\n', '\n');
+  const reason = '✘ [ERROR] A request to the Cloudflare API failed. D1_ERROR: database is locked: SQLITE_BUSY';
+  for (const state of [{ alterFail: reason }, { alterOut: JSON.stringify([{ success: false, error: 'D1_ERROR: database is locked: SQLITE_BUSY' }]) }]) {
+    const h = harness({ wrangler: mockWrangler({ dbPresent: true, existingSchema: older, ...state }) });
+    const result = await deploy(h.deps);
+    assert.equal(result.ok, false);
+    assert.equal(called(h, ['deploy', '--config']), false, 'the Worker is not deployed');
+    assert.match(h.output(), /STOPPED\. Could not add column confirmed_at to table device[^\n]*Worker was not deployed/);
+    assert.match(h.output(), /database is locked: SQLITE_BUSY/, 'wrangler\'s own reason is printed');
+    assert.equal(statusOf(result, 'Columns match schema.sql'), 'FAIL');
+    assert.match(result.checklist.find((i) => i.item === 'Columns match schema.sql').detail, /Could not add column confirmed_at to table device/);
+  }
 });
 
 test('a missing NOT NULL column without a default stops the deploy before the Worker deploys, naming table and column', async () => {

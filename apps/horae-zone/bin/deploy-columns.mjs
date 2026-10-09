@@ -1,6 +1,9 @@
 /**
  * The column step of the Horae Zone deploy (bin/deploy.mjs, Step 3), run
- * after schema.sql is applied and before the Worker deploys.
+ * after schema.sql's CREATE TABLE statements are applied (tableStatements)
+ * and before the whole file is applied for its indexes and triggers, so an
+ * index on a column an existing table lacks is made only once the column is
+ * there. All of it runs before the Worker deploys.
  *
  * Why: every statement in schema.sql is CREATE TABLE IF NOT EXISTS, which
  * never touches a table that already exists. On 9 Oct 2026 production's
@@ -32,11 +35,14 @@ import { DATABASE, DEPLOY_CONFIG, parseJson, schemaTables } from "./deploy-parts
 const sql = (command) => ["d1", "execute", DATABASE, "--remote", "--json", "--command", command, "--config", DEPLOY_CONFIG];
 
 export const COLUMN_COMMANDS = Object.freeze({
+  // The first pass: schema.sql's CREATE TABLE statements alone (tableStatements).
+  applyTables: (statements) => sql(statements),
   columns: (table) => sql(`PRAGMA table_info(${table})`),
   addColumn: (table, definition) => sql(`ALTER TABLE ${table} ADD COLUMN ${definition}`),
 });
 
 const NOT_DEPLOYED = "The Worker was not deployed and no column was changed; fix the database or schema.sql, then run this command again.";
+const KEPT_AND_STOPPED = "The Worker was not deployed; any column added before this stays, as listed above. Fix the cause, then run this command again.";
 const ITEM = "Columns match schema.sql";
 
 // A DEFAULT SQLite accepts on ADD COLUMN for rows already there: a number, a
@@ -70,48 +76,72 @@ export function declaredColumns(schemaSql) {
 // close up; table constraints (PRIMARY KEY (...), UNIQUE (...)) are skipped.
 export function columnDefinitions(schemaSql) {
   const out = new Map();
-  for (const m of schemaSql.matchAll(/CREATE TABLE IF NOT EXISTS (\w+)\s*\(/g)) {
+  for (const { table, parts } of createTables(schemaSql)) {
     const defs = new Map();
-    for (const p of tableParts(schemaSql, m.index + m[0].length)) {
+    for (const p of parts) {
       if (!p || /^(PRIMARY KEY|UNIQUE|CHECK|FOREIGN KEY|CONSTRAINT)\b/i.test(p)) continue;
       defs.set(p.split(" ")[0], p);
     }
-    out.set(m[1], defs);
+    out.set(table, defs);
   }
   return out;
 }
 
-// The comma-separated parts of a CREATE TABLE body, from just after its "("
-// to the ")" that closes it. A comma or bracket inside a 'string' or a nested
-// (...) does not split, and a -- comment outside a string is dropped.
-function tableParts(text, from) {
-  const parts = [];
-  let depth = 1;
+/**
+ * schema.sql's CREATE TABLE statements alone, comments dropped, as one
+ * command: the deploy's first pass. Indexes and triggers wait for the second
+ * pass (the whole file), after the column step, because a CREATE INDEX on a
+ * column an existing table lacks fails with "no such column" and would stop
+ * the deploy before the column could be added.
+ */
+export function tableStatements(schemaSql) {
+  return createTables(schemaSql).map((t) => t.statement).join("\n");
+}
+
+// schema.sql without its -- comments; a -- inside a 'string' stays.
+function stripComments(text) {
+  let out = "";
   let quoted = false;
-  let part = "";
-  for (let i = from; i < text.length && depth > 0; i++) {
+  for (let i = 0; i < text.length; i++) {
     const ch = text[i];
-    if (quoted) {
-      part += ch;
-      if (ch === "'") quoted = false; // '' reads as close then open: the same text
+    if (!quoted && ch === "-" && text[i + 1] === "-") {
+      while (i + 1 < text.length && text[i + 1] !== "\n") i++;
       continue;
     }
-    if (ch === "-" && text[i + 1] === "-") {
-      while (i < text.length && text[i] !== "\n") i++;
-      part += " ";
-      continue;
-    }
-    if (ch === "'") quoted = true;
-    if (ch === "(") depth++;
-    if (ch === ")") depth--;
-    if (depth === 0 || (ch === "," && depth === 1)) {
-      parts.push(part.trim().replace(/\s+/g, " "));
-      part = "";
-    } else {
-      part += ch;
-    }
+    if (ch === "'") quoted = !quoted; // '' reads as close then open: the same text
+    out += ch;
   }
-  return parts;
+  return out;
+}
+
+// Each CREATE TABLE in schema.sql: its name, its statement text through the
+// closing ");" and the comma-separated parts of its body. A comma or bracket
+// inside a 'string' or a nested (...) does not split.
+function createTables(schemaSql) {
+  const text = stripComments(schemaSql);
+  const tables = [];
+  for (const m of text.matchAll(/CREATE TABLE IF NOT EXISTS (\w+)\s*\(/g)) {
+    const parts = [];
+    let depth = 1;
+    let quoted = false;
+    let part = "";
+    let i = m.index + m[0].length;
+    for (; i < text.length && depth > 0; i++) {
+      const ch = text[i];
+      if (ch === "'") quoted = !quoted;
+      if (!quoted && ch === "(") depth++;
+      if (!quoted && ch === ")") depth--;
+      if (!quoted && (depth === 0 || (ch === "," && depth === 1))) {
+        parts.push(part.trim().replace(/\s+/g, " "));
+        part = "";
+      } else {
+        part += ch;
+      }
+    }
+    if (depth !== 0) throw new Error(`schema.sql: CREATE TABLE ${m[1]} has no closing bracket`);
+    tables.push({ table: m[1], statement: `${text.slice(m.index, i).trim()};`, parts });
+  }
+  return tables;
 }
 
 const yesNo = (b) => (b ? "yes" : "no");
@@ -174,9 +204,43 @@ async function readColumns(ctx, table) {
   return shape(results);
 }
 
-function stop(ctx, Stop, problems) {
+function stop(ctx, Stop, problems, lead = `schema.sql and the database differ in a way the deploy will not change. ${NOT_DEPLOYED}`) {
   ctx.item(ITEM, "FAIL", problems[0]);
-  throw new Stop([`schema.sql and the database differ in a way the deploy will not change. ${NOT_DEPLOYED}`, ...problems.map((p) => `  ${p}`)].join("\n"));
+  throw new Stop([lead, ...problems.map((p) => `  ${p}`)].join("\n"));
+}
+
+// D1 reports a failed statement by wrangler's exit code, or (on some
+// versions) as a result with success false; either stops the run with
+// wrangler's own words. Output that is not JSON is left to the read-back
+// check after every ALTER, which stops the run if the column is not there.
+function failedResult(text) {
+  let results;
+  try {
+    results = parseJson(text);
+  } catch {
+    return null;
+  }
+  const bad = (Array.isArray(results) ? results : [results]).find((r) => r?.success === false);
+  if (!bad) return null;
+  return typeof bad.error === "string" ? bad.error : JSON.stringify(bad.error ?? bad);
+}
+
+async function addColumn(ctx, Stop, { table, column, definition }) {
+  const statement = `ALTER TABLE ${table} ADD COLUMN ${definition}`;
+  const label = `adding ${table}.${column}`;
+  let reason = null;
+  try {
+    reason = failedResult(ctx.checked(label, await ctx.wrangler(COLUMN_COMMANDS.addColumn(table, definition))));
+  } catch (err) {
+    reason = err.message;
+  }
+  if (reason !== null) {
+    const first = `Could not add column ${column} to table ${table} (${statement}). ${KEPT_AND_STOPPED}`;
+    ctx.item(ITEM, "FAIL", first);
+    throw new Stop(`${first}\n  wrangler said: ${reason}`);
+  }
+  ctx.say(`  Added column ${column} to table ${table} (${statement}).`);
+  ctx.item(`Column added ${table}.${column}`, "PASS", statement);
 }
 
 /**
@@ -194,16 +258,12 @@ export async function reconcileColumns(ctx, schemaSql, Stop) {
   const problems = plans.flatMap((p) => p.problems);
   if (problems.length) stop(ctx, Stop, problems);
   const adds = plans.flatMap((p) => p.add);
-  for (const { table, column, definition } of adds) {
-    await ctx.wrangler(COLUMN_COMMANDS.addColumn(table, definition));
-    ctx.say(`  Added column ${column} to table ${table} (ALTER TABLE ${table} ADD COLUMN ${definition}).`);
-    ctx.item(`Column added ${table}.${column}`, "PASS", `ALTER TABLE ${table} ADD COLUMN ${definition}`);
-  }
+  for (const add of adds) await addColumn(ctx, Stop, add);
   // The check: every table altered is read again and must now match.
   const altered = [...new Set(adds.map((a) => a.table))];
   const still = [];
   for (const table of altered) still.push(...planTable(table, declared.get(table), await readColumns(ctx, table), definitions.get(table)).problems);
-  if (still.length) stop(ctx, Stop, still.map((p) => `After adding columns: ${p}`));
+  if (still.length) stop(ctx, Stop, still.map((p) => `After adding columns: ${p}`), `A table still differs from schema.sql after the columns were added. ${KEPT_AND_STOPPED}`);
   const detail = `${declared.size} tables, every column as schema.sql declares it${adds.length ? ` (${adds.length} added)` : ""}`;
   ctx.say(`  Columns: ${detail}.`);
   ctx.item(ITEM, "PASS", detail);
