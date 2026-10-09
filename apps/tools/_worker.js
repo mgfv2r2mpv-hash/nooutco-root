@@ -280,6 +280,11 @@ async function routeRequest(request, env, ctx) {
     return handleVoiceBlockRead(request, env);
   }
 
+  // Admin-only: read back who the slice 6 voice read is switched on for.
+  if (url.pathname === "/api/admin/voice-read" && request.method === "GET") {
+    return handleVoiceReadSwitchRead(request, env);
+  }
+
   // Admin-only: file a ticket stub from inside the site.
   if (url.pathname === "/api/admin/ticket" && request.method === "POST") {
     return handleTicket(request, env);
@@ -4135,6 +4140,64 @@ export function sanitizeVoiceReading(raw) {
   return { levels, diction };
 }
 
+/* THE SWITCH FOR THE READ PATH, AND IT IS OFF UNTIL KALEB TURNS IT ON.
+ *
+ * Slice 6 changes every BT's drafts, and a draft is clinical output, so the
+ * read path lands dark. The switch lives in KV beside the house voice block
+ * and is published the same way, by `wrangler kv key put`; this Worker has no
+ * write path to it.
+ *
+ *   key  voice-read:v1
+ *   on for every BT    {"enabled": true, "kids": "all"}
+ *   on for some BTs    {"enabled": true, "kids": ["<login id>", ...]}
+ *
+ * Anything else is OFF: no key, a key that is not JSON, enabled not exactly
+ * true, or no `kids` at all. Site-wide takes the explicit word "all", so a key
+ * written for a pilot with the list left out cannot quietly switch on every
+ * BT. A login id is the `id` on its password record, which is the `kid` on its
+ * session token. While a BT is off, the style card carries an empty reading,
+ * and the page then drafts on exactly the suffix that shipped before slice 6. */
+const VOICE_READ_KV_KEY = "voice-read:v1";
+const VOICE_READ_MAX_KIDS = 500;
+
+export function voiceReadSwitchFrom(raw) {
+  const off = { enabled: false, scope: "off", kids: [] };
+  if (typeof raw !== "string" || !raw) return off;
+  let parsed;
+  try { parsed = JSON.parse(raw); } catch { return off; }
+  if (!parsed || typeof parsed !== "object" || parsed.enabled !== true) return off;
+  if (parsed.kids === "all") return { enabled: true, scope: "all", kids: [] };
+  if (!Array.isArray(parsed.kids)) return off;
+  const kids = [...new Set(parsed.kids.filter((k) => typeof k === "string" && k.length > 0 && k.length <= 64))]
+    .slice(0, VOICE_READ_MAX_KIDS);
+  return kids.length ? { enabled: true, scope: "some", kids } : off;
+}
+
+export function voiceReadOnForKid(sw, kid) {
+  if (!sw || sw.enabled !== true) return false;
+  if (sw.scope === "all") return true;
+  return sw.scope === "some" && typeof kid === "string" && sw.kids.includes(kid);
+}
+
+async function getVoiceReadSwitch(env) {
+  if (!env.API_PASSWORDS) return voiceReadSwitchFrom(null);
+  try {
+    // The same cache bound as the house voice block: a flip lands within 5 minutes.
+    return voiceReadSwitchFrom(await env.API_PASSWORDS.get(VOICE_READ_KV_KEY, { cacheTtl: 300 }));
+  } catch {
+    return voiceReadSwitchFrom(null);
+  }
+}
+
+// Admin-only, read-only, like handleVoiceBlockRead: check the switch without wrangler.
+async function handleVoiceReadSwitchRead(request, env) {
+  const secret = (env.ADMIN_SECRET ?? "").trim();
+  const auth = request.headers.get("Authorization") || "";
+  const payload = secret ? await readToken(auth.replace(/^Bearer\s+/i, ""), secret) : null;
+  if (!payload || payload.role !== "admin") return jsonRes(401, { error: "Admin access required." });
+  return jsonRes(200, await getVoiceReadSwitch(env));
+}
+
 /**
  * A correction is a measurement of a diff, never the diff itself. The browser
  * sends a feature name and a direction; the words that changed never leave the
@@ -4238,11 +4301,14 @@ async function handleStyleCard(request, env) {
   const card = await profileFetch(env, qs, null, "GET");
   if (!card) return jsonRes(200, { rules: [], block: "", shapeBlock: "", voice: sanitizeVoiceReading(null), available: false });
 
+  // Slice 6 is dark until the switch names this BT, or names every BT.
+  const voiceOn = voiceReadOnForKid(await getVoiceReadSwitch(env), kid);
+
   return jsonRes(200, {
     rules: card.rules || [],
     block: card.block || "",
     shapeBlock: card.shapeBlock || "",
-    voice: sanitizeVoiceReading(card.voice),
+    voice: sanitizeVoiceReading(voiceOn ? card.voice : null),
     available: true,
   });
 }

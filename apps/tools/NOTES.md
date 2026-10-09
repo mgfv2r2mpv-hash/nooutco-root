@@ -1822,3 +1822,53 @@ scrub exactly as before; this block never reads the intake.
 real `_worker.js` and the real profile-api over SQLite, and reads the suffix off
 the drafting call: a warm author gets the lines, a cold author gets the suffix
 that shipped before.
+
+## Slice 6, the switch - the read path lands dark
+
+Slice 6 changes every BT's drafts, and a draft is clinical output. So the read
+path is behind a switch that is OFF until Kaleb turns it on after review. The
+Pages worker reads it in `handleStyleCard`: while a BT is off, the style card
+carries an empty reading, and the page drafts on exactly the suffix that
+shipped before slice 6. The profile store still computes the reading; it stops
+at the Pages worker and never reaches the browser.
+
+| KV key `voice-read:v1` in `API_PASSWORDS` | Effect |
+|---|---|
+| absent (production today) | off for everyone |
+| `{"enabled": true, "kids": ["<login id>", ...]}` | on for the BTs named, off for the rest |
+| `{"enabled": true, "kids": "all"}` | on for every BT |
+| anything else, including `{"enabled": true}` with no `kids` | off for everyone |
+
+A login id is the `id` on the BT's password record, which is the `kid` on their
+session token. The Worker has no write path to the key: it is published by
+`wrangler kv key put`, the way the house voice block is, and read with a
+5-minute cache. `GET /api/admin/voice-read` (admin only) reports what is live.
+
+### Decisions made here
+
+1. **The gate sits in the Pages worker, not the page.** One place decides, on
+   the server, and a stale page in a browser cache cannot switch itself on.
+2. **Site-wide needs the word `"all"`.** A key written for a pilot with the list
+   left out reads as off rather than on for everyone.
+3. **The block now says what it may change.** One fixed sentence was added to
+   its header: phrasing, sentence length and word choice only, and never a fact,
+   number, count, percentage, target, date or other session data.
+
+### Tests
+
+`tests/voice-read-draft.spec.js` grew from 8 to 20:
+
+- **The switch (7):** no key reads off; every malformed or partial key reads
+  off; a list turns on only the BTs named; `"all"` turns on everyone; a KV that
+  throws reads off; a warm BT drafts on the pre-slice-6 suffix while off; the
+  admin read-back refuses a BT. Revert proof: with the gate removed, 5 of the 7
+  fail.
+- **Facts (2):** the same invented session (counts, a percentage, a target,
+  times) drafted with and without a stored voice sends byte-identical
+  `messages` and every other request field, a suffix that differs by the voice
+  block alone, and copies the same note for the same model reply.
+- **Isolation (3):** two invented BTs with different stored voices each draft
+  with their own reading, and no request toward any model (triage, draft,
+  revision, expert pass, corrections pass) for one carries the other's lines; a
+  BT naming another BT's kid in the query still gets their own reading, because
+  the kid comes off the signed token; a session with no kid reads no BT's voice.
