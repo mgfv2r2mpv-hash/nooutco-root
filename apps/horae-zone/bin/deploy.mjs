@@ -108,8 +108,8 @@ const EDGE_STEPS = [
   `       (http.host eq "${HOSTNAME}" and http.request.method eq "POST" and http.request.uri.path in {"/account" "/signin" "/recover"})`,
   `     With the same characteristics: IP. When rate exceeds: 2 requests per 10 seconds (the rule already live; add "/recover" to it).`,
   `     Then take action: Block, for the plan's block period. Deploy.`,
-  "     Turnstile is wired in (src/turnstile.js) on /account and /signin: it bounds a stranger with many addresses,",
-  "     which a per-address rule cannot. The rate rule stays as the backstop, and it is the only edge rule on /recover.",
+  "     Turnstile is wired in (src/turnstile.js) on /account, /signin and the /recover start: it bounds a stranger",
+  "     with many addresses, which a per-address rule cannot. The rate rule stays as the backstop on all three.",
 ];
 
 // Printed in Step 7, once the Worker exists: before the deploy there is no

@@ -1,8 +1,8 @@
-// Turnstile on POST /account and an unsigned POST /signin (design of 8 Oct
-// 2026, section 2): src/turnstile.js, its place in the two routes, and the
-// GET /challenge page. siteverify is always a fake (helpers.mjs
-// fakeSiteverify, over Cloudflare's documented test keys) or a stub here, so
-// no test reaches Cloudflare.
+// Turnstile on POST /account, an unsigned POST /signin and the POST /recover
+// start (design of 8 Oct 2026, section 2; #301 for /recover): src/turnstile.js,
+// its place in the three routes, and the GET /challenge page. siteverify is
+// always a fake (helpers.mjs fakeSiteverify, over Cloudflare's documented
+// test keys) or a stub here, so no test reaches Cloudflare.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -10,7 +10,7 @@ import {
   TURNSTILE_PASS, TURNSTILE_FAIL, TURNSTILE_HOST, ANY_KEY_DIGEST, PASSWORD, ORIGIN, T0,
 } from './helpers.mjs';
 import {
-  verifyTurnstile, SITEVERIFY_URL, SITEVERIFY_TIMEOUT_MS, TOKEN_MAX_AGE_MS, MAX_TOKEN_LENGTH, NOT_CONFIGURED_SENTENCE,
+  verifyTurnstile, SITEVERIFY_URL, SITEVERIFY_TIMEOUT_MS, TOKEN_MAX_AGE_MS, MAX_TOKEN_LENGTH, NOT_CONFIGURED_SENTENCE, ACTIONS,
 } from '../src/turnstile.js';
 import { PAGE_SCRIPT, PAGE_STYLE, FRAME_ORIGINS, TURNSTILE_SCRIPT } from '../src/challenge-page.js';
 import { DAILY_BUCKET } from '../src/signup.js';
@@ -336,16 +336,19 @@ test('a stranger with many connecting addresses and no passing token cannot drai
   // A recovery day of two places.
   const h = harness({ env: { HZ_CODES_PER_DAY: '2' } });
   await signUp(h, ADDRESS);
+  // The stranger solves one challenge, honestly, and spends one place with it.
+  const solved = passToken('recover');
+  assert.equal((await recoverStartRaw(h, 'stranger@example.test', solved, '198.51.100.9')).status, 200);
   for (let i = 0; i < 40; i += 1) {
     const ip = `198.51.100.${i + 10}`;
     const email = `stranger${i}@example.test`;
-    // No token, a reused token, a sign-up token and a made-up token: every one refused.
-    const turnstile = [undefined, 'pass.recover.1', passToken('account'), 'not-a-real-token'][i % 4];
+    // No token, the solved token again, a sign-up token and a made-up token: every one refused.
+    const turnstile = [undefined, solved, passToken('account'), 'not-a-real-token'][i % 4];
     const res = await recoverStartRaw(h, email, turnstile, ip);
     assert.ok([400, 403].includes(res.status), `try ${i} answered ${res.status}`);
   }
-  assert.equal(throttleRows(h, RECOVER_DAY_BUCKET), 0, 'the stranger spent no place');
-  assert.equal(recoveryMail(h).length, 0);
+  assert.equal(throttleRows(h, RECOVER_DAY_BUCKET), 1, 'forty tries from forty addresses spent no further place');
+  assert.equal(recoveryMail(h).length, 0, 'an address with no account is never mailed');
   // The owner's start with a passing token still gets the link, inside the day.
   assert.deepEqual(await answer(await recoverStartRaw(h, ADDRESS, passToken('recover'), '192.0.2.76')), { status: 200, json: { ok: true } });
   assert.equal(recoveryMail(h).filter((m) => m.to === ADDRESS).length, 1);
@@ -412,6 +415,7 @@ test('the page script hands the token only to Sass\'s turnstile handler or the t
   assert.match(PAGE_SCRIPT, /location\.hash\.slice\(1\)/);
   assert.match(PAGE_SCRIPT, /var actions = \["account", "signin", "recover"\];/);
   assert.match(PAGE_SCRIPT, /actions\.indexOf\(action\) < 0/);
+  assert.deepEqual(JSON.parse(/var actions = (\[[^\]]*\]);/.exec(PAGE_SCRIPT)[1]), [...ACTIONS], 'the page offers exactly the actions the Worker checks');
   assert.doesNotMatch(PAGE_SCRIPT, /location\.search|fetch\(|XMLHttpRequest|innerHTML/);
 });
 

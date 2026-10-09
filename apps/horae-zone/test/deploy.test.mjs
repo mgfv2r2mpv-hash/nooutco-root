@@ -1467,4 +1467,9 @@ test('Step 4 says Turnstile is wired and the rate rule (2 per 10 seconds) is the
   assert.match(four, /Turnstile is wired in/);
   assert.match(four, /backstop/);
   assert.doesNotMatch(four, /Turnstile is not wired/);
+  // #301: the /recover start pays the challenge too, so the rule is no
+  // longer the only check there.
+  assert.match(four, /on \/account, \/signin and the \/recover start/);
+  assert.doesNotMatch(four, /only edge rule on \/recover/);
+  assert.match(four, /"\/account" "\/signin" "\/recover"/, 'the rule expression still names /recover');
 });
