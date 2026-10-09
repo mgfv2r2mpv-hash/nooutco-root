@@ -8,7 +8,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  harness, post, signed, deviceKeys, keyDigestOf, registerRequest, signIn, signInRequest,
+  harness, post, passToken, signed, deviceKeys, keyDigestOf, registerRequest, signIn, signInRequest,
   registeredDevice, enrolledDevice, confirmedDevice, enrolTicket, enrolRequest, tryCode, startCode, codeAt, wrongCodeAt, auditRows, PASSWORD,
   landsMidFlight, nonceFor, freshCode, removeRequest,
 } from './helpers.mjs';
@@ -21,7 +21,7 @@ const answer = async (res) => ({ status: res.status, json: await res.json() });
 
 // Starts a sign-up and returns the code from the mailed link.
 async function mailedCode(h, email) {
-  await h.call(post('/account', { email }, { 'cf-connecting-ip': IP }));
+  await h.call(post('/account', { email, turnstile: passToken('account') }, { 'cf-connecting-ip': IP }));
   const message = h.mail.filter((m) => m.to === email).at(-1);
   return new URL(message.text.match(/https:\/\/\S+/)[0]).hash.slice(1);
 }

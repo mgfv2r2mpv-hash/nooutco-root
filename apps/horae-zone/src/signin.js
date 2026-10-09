@@ -30,6 +30,16 @@
  * ticket is stored only while that device is not removed, checked in the
  * same statement (security review L2), so a removal landing mid-flight wins.
  *
+ * Turnstile (design of 8 Oct 2026, section 2): every sign-in that is not
+ * signed by a registered device of the account it names carries a solved
+ * challenge's token as `turnstile`, checked by src/turnstile.js after the
+ * account lookup and before any bucket, so a failed challenge is never
+ * counted. A device of another account signing gains nothing: it pays the
+ * challenge like an unsigned try. A signed sign-in from the account's own
+ * device never sees the challenge: the Enclave signature over a fresh nonce
+ * is the stronger proof. With the Turnstile keys unset the unsigned and
+ * foreign tries answer not-configured; the signed ones still work.
+ *
  * A5 re-review, root rule: ownership comes from the email inbox, not the
  * password. The right password on an account with no device yet (its owner
  * device registers only from the sign-up link's ticket, src/signup.js)
@@ -48,8 +58,9 @@
 import { sameHex } from "../../../packages/account-engine/src/limits.mjs";
 import { Refusal, LIVE_DEVICE, b64url } from "./checks.js";
 import { KEY_DIGEST } from "./devices.js";
-import { SIGNUP_LIMITS, hasOnly, addressOf, keysOrUnavailable, requesterOf } from "./signup.js";
+import { SIGNUP_LIMITS, hasOnlyOrToken, addressOf, keysOrUnavailable, requesterOf } from "./signup.js";
 import { admitThrottle, releaseThrottle } from "./throttle.js";
+import { verifyTurnstile } from "./turnstile.js";
 
 export const SIGNIN_LIMITS = Object.freeze({
   ticketTtlMs: 5 * 60 * 1000,
@@ -128,8 +139,8 @@ async function ownerAlert(db, now, account, keys, mailer) {
   };
 }
 
-export async function signIn({ db, device, body, now, env, request, mailer }) {
-  if (!hasOnly(body, ["email", "password", "keyDigest"])) throw new Refusal("shape", 400);
+export async function signIn({ db, device, body, now, env, request, mailer, siteverify }) {
+  if (!hasOnlyOrToken(body, ["email", "password", "keyDigest"])) throw new Refusal("shape", 400);
   const address = addressOf(body.email);
   const password = passwordOf(body.password);
   if (typeof body.keyDigest !== "string" || !KEY_DIGEST.test(body.keyDigest)) throw new Refusal("shape", 400);
@@ -140,6 +151,7 @@ export async function signIn({ db, device, body, now, env, request, mailer }) {
   const account = await db.prepare("SELECT id, address_key, address_box, login_hash, login_salt FROM account WHERE address_key = ?").bind(addressKey).first();
   // device is set only when the request passed every signed check (routes.js "signable").
   const known = Boolean(device && account && device.account_id === account.id);
+  if (!known) await verifyTurnstile(env, body.turnstile, { action: "signin", ip, now, siteverify });
   const addressBucket = `signin-address:${addressKey}`;
   const pairBucket = `signin-pair:${addressKey}:${requester}`;
   const perRequester = { bucket: `signin-requester:${requester}`, limit: SIGNIN_LIMITS.perRequesterHour };

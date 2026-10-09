@@ -36,21 +36,63 @@ export const TICKET_KEY = JSON.stringify(await crypto.subtle.exportKey('jwk', ti
 // blocklist is the private package, never in this repository.
 export const PIN_RULES = createPinRules(PIN_FIXTURE);
 
+// Cloudflare's documented Turnstile test keys (developers.cloudflare.com
+// turnstile/troubleshooting/testing): the 1x pair always passes, the 2x pair
+// always fails. No test sends them anywhere: siteverify is the fake below.
+export const TURNSTILE_PASS = Object.freeze({ sitekey: '1x00000000000000000000AA', secret: '1x0000000000000000000000000000000AA' });
+export const TURNSTILE_FAIL = Object.freeze({ sitekey: '2x00000000000000000000AB', secret: '2x0000000000000000000000000000000AA' });
+export const TURNSTILE_HOST = 'horae-zone.nooutco.me';
+
+// A token as the widget would hand one over for `action`, unique per call.
+// The fake siteverify reads the action back out of it, as the real one reads
+// it from Cloudflare's record of the solved challenge.
+let tokens = 0;
+export function passToken(action) {
+  tokens += 1;
+  return `pass.${action}.${tokens}`;
+}
+
+// A stand-in for Cloudflare's siteverify over the test keys: the pass secret
+// accepts a token passToken made, once; a second use answers
+// timeout-or-duplicate, as the real one does. The fail secret refuses every
+// token; any other secret is invalid-input-secret. `calls` records each form
+// (the test reads it to see that a refusal made no subrequest).
+export function fakeSiteverify(clock, { hostname = TURNSTILE_HOST } = {}) {
+  const used = new Set();
+  const calls = [];
+  const reply = (json) => new Response(JSON.stringify(json), { status: 200, headers: { 'content-type': 'application/json' } });
+  const fn = async (url, init) => {
+    const form = Object.fromEntries(init.body.entries());
+    calls.push({ url, form });
+    if (form.secret === TURNSTILE_FAIL.secret) return reply({ success: false, 'error-codes': ['invalid-input-response'] });
+    if (form.secret !== TURNSTILE_PASS.secret) return reply({ success: false, 'error-codes': ['invalid-input-secret'] });
+    const minted = /^pass\.(account|signin)\.\d+$/.exec(form.response ?? '');
+    if (!minted) return reply({ success: false, 'error-codes': ['invalid-input-response'] });
+    if (used.has(form.response)) return reply({ success: false, 'error-codes': ['timeout-or-duplicate'] });
+    used.add(form.response);
+    return reply({ success: true, 'error-codes': [], challenge_ts: new Date(clock.ms).toISOString(), hostname, action: minted[1], cdata: '' });
+  };
+  fn.calls = calls;
+  return fn;
+}
+
 // `mailer` replaces the sink (a test of a failing send). `env` adds to or
 // overrides the bindings. `pinRules` replaces the PIN rules (null: none
 // injected, as in a Worker built without the private list). Deferred work
 // (ctx.waitUntil) is awaited before `call` returns, so a test sees the mail
-// a request sent.
-export function harness({ mailer = null, env = {}, pinRules = PIN_RULES } = {}) {
+// a request sent. `siteverify` replaces the fake siteverify (a test of one
+// that times out or answers something odd); h.siteverify is the one in use.
+export function harness({ mailer = null, env = {}, pinRules = PIN_RULES, siteverify = null } = {}) {
   const db = d1Sqlite(SCHEMA);
   const clock = { ms: T0 };
   const mail = [];
   const send = mailer ?? (async (message) => { mail.push(message); return true; });
-  const handler = createHandler({ now: () => clock.ms, mailer: send, pinRules });
+  const verify = siteverify ?? fakeSiteverify(clock);
+  const handler = createHandler({ now: () => clock.ms, mailer: send, pinRules, siteverify: verify });
   const bindings = {
     DB: db, HZ_ACCOUNT_KEY: ACCOUNT_KEY, HZ_LINK_BASE: LINK_BASE,
     HZ_SEED_KEY: SEED_KEY, HZ_TICKET_KEY: TICKET_KEY, HZ_REOPEN_BASE: REOPEN_BASE,
-    HZ_RESET_BASE: RESET_BASE, ...env,
+    HZ_RESET_BASE: RESET_BASE, HZ_TURNSTILE_SECRET: TURNSTILE_PASS.secret, HZ_TURNSTILE_SITEKEY: TURNSTILE_PASS.sitekey, ...env,
   };
   const call = async (req) => {
     const waits = [];
@@ -58,7 +100,7 @@ export function harness({ mailer = null, env = {}, pinRules = PIN_RULES } = {}) 
     await Promise.all(waits);
     return res;
   };
-  return { db, clock, call, mail, env: bindings };
+  return { db, clock, call, mail, env: bindings, siteverify: verify };
 }
 
 // A device row written straight into the table, not pending unless asked.
@@ -144,7 +186,7 @@ export async function signUp(h, email, { owner = true, ...options } = {}) {
 // Signs up by the emailed link; the verify hands back the owner ticket (A5
 // re-review), bound to `keys` when given.
 export async function signUpOwner(h, email, { password = PASSWORD, ip = '192.0.2.10', keys = null } = {}) {
-  await h.call(post('/account', { email }, { 'cf-connecting-ip': ip }));
+  await h.call(post('/account', { email, turnstile: passToken('account') }, { 'cf-connecting-ip': ip }));
   const message = h.mail.filter((m) => m.to === email).at(-1);
   const code = new URL(message.text.match(/https:\/\/\S+/)[0]).hash.slice(1);
   const keyDigest = keys ? await keyDigestOf(keys) : ANY_KEY_DIGEST;
@@ -169,7 +211,7 @@ export async function keyDigestOf({ signKey, agreeKey }) {
 export const ANY_KEY_DIGEST = b64url(new Uint8Array(32).fill(9));
 
 export function signInRequest(email, password = PASSWORD, ip = '192.0.2.10', keyDigest = ANY_KEY_DIGEST) {
-  return post('/signin', { email, password, keyDigest }, { 'cf-connecting-ip': ip });
+  return post('/signin', { email, password, keyDigest, turnstile: passToken('signin') }, { 'cf-connecting-ip': ip });
 }
 
 // `keys` (from deviceKeys) binds the ticket to the device that will register it.

@@ -11,7 +11,7 @@ import path from 'node:path';
 import { SIGNUP_LIMITS } from '../src/signup.js';
 import { accountKeys } from '../src/account-keys.js';
 import { b64url } from '../src/checks.js';
-import { harness, post, auditRows, everyRow, addDevice, ANY_KEY_DIGEST, LINK_BASE, ROOT, T0 } from './helpers.mjs';
+import { harness, post, passToken, auditRows, everyRow, addDevice, ANY_KEY_DIGEST, LINK_BASE, ROOT, T0 } from './helpers.mjs';
 
 // Fixed, fake values: reserved-domain addresses, a TEST-NET-1 requester, and
 // a password no one uses.
@@ -23,7 +23,7 @@ const accounts = (db) => db.sqlite.prepare('SELECT * FROM account').all().map((r
 const challenges = (db) => db.sqlite.prepare('SELECT * FROM challenge').all().map((r) => ({ ...r }));
 
 function start(h, email = ADDRESS, ip = IP) {
-  return h.call(post('/account', { email }, { 'cf-connecting-ip': ip }));
+  return h.call(post('/account', { email, turnstile: passToken('account') }, { 'cf-connecting-ip': ip }));
 }
 
 function verify(h, { email = ADDRESS, code, password = PASSWORD, ip = IP, query = '' } = {}) {

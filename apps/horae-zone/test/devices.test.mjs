@@ -14,7 +14,7 @@ import { SIGNIN_LIMITS, backoffMs } from '../src/signin.js';
 import { LIVE_NONCES_PER_DEVICE, NONCE_TTL_MS } from '../src/checks.js';
 import { accountKeys } from '../src/account-keys.js';
 import {
-  harness, post, signed, nonceFor, addDevice, auditRows, everyRow,
+  harness, post, passToken, signed, nonceFor, addDevice, auditRows, everyRow,
   signUp, signIn, signInRequest, deviceKeys, registerRequest, registeredDevice, keyDigestOf, ANY_KEY_DIGEST, PASSWORD, ROOT, T0,
   removedMidFlight, FIND_DEVICE, SPEND_NONCE, confirmedDevice, ticketFor, removeRequest,
 } from './helpers.mjs';
@@ -361,7 +361,11 @@ test('H2 NEGATIVE CONTROL: a device of another account does not lift the address
   await signUp(h, ADDRESS);
   const stranger = await registeredDevice(h, OTHER);
   await strangersFill(h, ADDRESS);
-  assert.deepEqual(await answer(await h.call(await signedSignIn(h, stranger, ADDRESS, '203.0.113.9'))), { status: 429, json: { error: 'slow-down' } });
+  // Turnstile (design of 8 Oct 2026): a device of another account pays the
+  // challenge like an unsigned try, so with no token it never reaches a bucket.
+  assert.deepEqual(await answer(await h.call(await signedSignIn(h, stranger, ADDRESS, '203.0.113.9'))), { status: 400, json: { error: 'shape' } });
+  const withToken = await signed(h.call, stranger, '/signin', { email: ADDRESS, password: PASSWORD, keyDigest: ANY_KEY_DIGEST, turnstile: passToken('signin') }, { headers: { 'cf-connecting-ip': '203.0.113.9' } });
+  assert.deepEqual(await answer(await h.call(withToken)), { status: 429, json: { error: 'slow-down' } });
 });
 
 test('H2 NEGATIVE CONTROL: a signed sign-in still pays the per-requester bucket', async () => {

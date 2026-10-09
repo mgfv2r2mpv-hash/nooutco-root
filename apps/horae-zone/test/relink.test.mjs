@@ -10,14 +10,14 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SIGNUP_LIMITS, OWNER_TICKET_TTL_MS } from '../src/signup.js';
 import {
-  harness, post, deviceKeys, keyDigestOf, registerRequest, signInRequest, addDevice, signUp, PASSWORD, LINK_BASE, T0,
+  harness, post, passToken, deviceKeys, keyDigestOf, registerRequest, signInRequest, addDevice, signUp, PASSWORD, LINK_BASE, T0,
 } from './helpers.mjs';
 
 const OWNER = 'owner@example.test';
 const IP = '192.0.2.10';
 const answer = async (res) => ({ status: res.status, json: await res.json() });
 
-const start = (h, email, ip = IP) => h.call(post('/account', { email }, { 'cf-connecting-ip': ip }));
+const start = (h, email, ip = IP) => h.call(post('/account', { email, turnstile: passToken('account') }, { 'cf-connecting-ip': ip }));
 const mailTo = (h, email) => h.mail.filter((m) => m.to === email);
 const codeOf = (message) => new URL(message.text.match(/https:\/\/\S+/)[0]).hash.slice(1);
 const liveCodes = (h) => h.db.sqlite.prepare('SELECT COUNT(*) AS n FROM challenge WHERE used = 0 AND expires_at > ?').get(h.clock.ms).n;

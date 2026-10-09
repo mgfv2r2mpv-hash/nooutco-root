@@ -9,7 +9,7 @@ import { ROUTES } from '../src/routes.js';
 import { createHandler } from '../src/index.js';
 import { NONCE_TTL_MS } from '../src/checks.js';
 import {
-  harness, addDevice, makeAdmin, post, signed, everyRow, signUp, signIn, signInRequest, deviceKeys, registerRequest, keyDigestOf, ANY_KEY_DIGEST, ROOT,
+  harness, passToken, addDevice, makeAdmin, post, signed, everyRow, signUp, signIn, signInRequest, deviceKeys, registerRequest, keyDigestOf, ANY_KEY_DIGEST, ROOT,
   registeredDevice, enrolRequest, enrolTicket, codeAt, wrongCodeAt, tryCode, reopenTokenFrom,
 } from './helpers.mjs';
 
@@ -68,11 +68,11 @@ test('a sign-up leaves no address, email code or password in any answer, table, 
   const password = 'CANARY-password-9c1d-long';
   const seen = [];
   const send = async (p, body) => { seen.push(await everything(await h.call(post(p, body, { 'cf-connecting-ip': '192.0.2.50' })))); };
-  await send('/account', { email: address });
+  await send('/account', { email: address, turnstile: passToken('account') });
   const code = new URL(h.mail[0].text.match(/https:\/\/\S+/)[0]).hash.slice(1);
   await send('/account/email/verify', { email: address, code: `${code[0] === 'A' ? 'B' : 'A'}${code.slice(1)}`, password, keyDigest: ANY_KEY_DIGEST });
   await send('/account/email/verify', { email: address, code, password, keyDigest: ANY_KEY_DIGEST });
-  await send('/account', { email: address });
+  await send('/account', { email: address, turnstile: passToken('account') });
   await send('/account/email/verify', { email: address, code, password, keyDigest: ANY_KEY_DIGEST });
   assert.equal(h.db.sqlite.prepare('SELECT COUNT(*) AS n FROM account').get().n, 1, 'the sign-up went through');
   const dump = `${JSON.stringify(h.db.sqlite.prepare('SELECT * FROM audit').all())}${JSON.stringify(h.db.bound.map((b) => b.values))}`;

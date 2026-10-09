@@ -27,6 +27,11 @@ const isAddress = (v) => {
 };
 // A from-address may carry a display name: Name <mail@domain>.
 const isFrom = (v) => isAddress(v) || (/^[^<>\r\n]+<([^<>\s]+)>$/.test(v) && isAddress(v.match(/<([^<>\s]+)>$/)[1]));
+// A production Turnstile key as the dashboard shows it (0x then letters,
+// digits, _ or -). Cloudflare's test keys (1x, 2x, 3x) are refused: the 1x
+// secret passes every token, so one set by mistake would switch the check off.
+export const isTurnstileKey = (v) => /^0x[A-Za-z0-9_-]{16,100}$/.test(v);
+const TURNSTILE_RULE = "a production key from the Turnstile page (starts 0x; Cloudflare's 1x, 2x and 3x test keys are refused)";
 const isLinkBase = (v) => {
   try {
     fragmentLink(v, SAMPLE_CODE);
@@ -62,6 +67,8 @@ export const CATALOG = Object.freeze([
   { name: "HZ_LINK_BASE", source: "asked", store: "secret", sensitive: false, label: "Sign-up link base (the https page that reads the code after #)", check: isLinkBase, rule: "https, no ? and no #" },
   { name: "HZ_REOPEN_BASE", source: "asked", store: "secret", sensitive: false, label: "Reopen link base (the https page that reads the reopen token after #, mailed when a code path closes)", check: reopenBaseOk, rule: "https, no ? and no #" },
   { name: "HZ_RESET_BASE", source: "asked", store: "secret", sensitive: false, label: "PIN reset link base (the page on the device that reads the emailed reset code after #)", check: reopenBaseOk, rule: "https, no ? and no #" },
+  { name: "HZ_TURNSTILE_SITEKEY", source: "asked", store: "var", sensitive: false, label: "Turnstile site key (the horae-zone widget; public, shown on the challenge page)", check: isTurnstileKey, rule: TURNSTILE_RULE },
+  { name: "HZ_TURNSTILE_SECRET", source: "asked", store: "secret", sensitive: true, hidden: true, label: "Turnstile secret key (the same widget)", check: isTurnstileKey, rule: TURNSTILE_RULE },
   { name: "HZ_CODES_PER_DAY", source: "asked", store: "var", sensitive: false, optional: true, label: "Mail plan daily send limit (blank keeps the default 3000)", check: (v) => /^[1-9]\d{0,6}$/.test(v), rule: "a whole number from 1" },
 ]);
 
