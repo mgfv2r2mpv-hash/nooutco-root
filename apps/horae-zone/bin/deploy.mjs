@@ -27,7 +27,10 @@
  * Steps: print `wrangler --version`; confirm the Cloudflare account, and a
  * y before replacing a Worker already named horae-zone there; ask the values only the owner has
  * (the Resend key on a hidden prompt); create or find the D1 database, write
- * the gitignored wrangler.deploy.toml and apply schema.sql (idempotent); show
+ * the gitignored wrangler.deploy.toml, apply schema.sql (idempotent) and add
+ * any column schema.sql declares that a table already there lacks
+ * (bin/deploy-columns.mjs, which stops the run on a difference it cannot
+ * add); show
  * the rate rule clicks; deploy; put each secret through stdin; set the
  * owner's account as administrator once it exists (Step 6); check
  * everything (with the hostname checks to make once the Worker exists) and
@@ -52,6 +55,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { OWNER_ADMIN_FLAG, ownerAdminStep, ownerAdminDryRun } from "./deploy-admin.mjs";
+import { COLUMN_COMMANDS, reconcileColumns } from "./deploy-columns.mjs";
 import {
   CATALOG, SECRET_NAMES, DATABASE, HOSTNAME, DEPLOY_CONFIG, CRON, ACCOUNT_KEY_BYTES, SEED_KEY_BYTES,
   LineReader, deployConfig, scrub, parseJson, findDatabaseId, schemaTables, renderChecklist, ticketKeyJwk, isChallenge, isTurnstileKey,
@@ -299,8 +303,12 @@ async function prepareDatabase(ctx, deps, values) {
   deps.writeFile(path.join(deps.root, DEPLOY_CONFIG), configText);
   ctx.say(`  Wrote ${DEPLOY_CONFIG} (gitignored): database id, route ${HOSTNAME}, no secret.`);
   await ctx.wrangler(COMMANDS.applySchema);
-  ctx.say("  Applied schema.sql (every statement is IF NOT EXISTS).");
+  ctx.say("  Applied schema.sql (every statement is IF NOT EXISTS, so a table already there keeps its columns).");
   ctx.item("Database present", "PASS", found ? "found" : "created");
+  // IF NOT EXISTS never adds a column to a table already there (9 Oct 2026:
+  // device had no confirmed_at, and every unlock answered 500). A difference
+  // this cannot fix stops the run here, before the Worker deploys.
+  await reconcileColumns(ctx, deps.readFile(path.join(deps.root, "schema.sql")), Stop);
   return configText;
 }
 
@@ -508,6 +516,10 @@ function dryRun(deps) {
     `  ${show(COMMANDS.d1Create)}   (only when missing, from an empty temp folder)`,
     `  write ${DEPLOY_CONFIG} (gitignored): wrangler.toml + database id + route ${HOSTNAME} as a Custom domain`,
     `  ${show(COMMANDS.applySchema)}`,
+    `  ${show(COLUMN_COMMANDS.columns("<table>"))}   for each table schema.sql creates, compared with schema.sql's own columns`,
+    `  ${show(COLUMN_COMMANDS.addColumn("<table>", "<column as schema.sql defines it>"))}   for each missing column that is nullable or has a constant DEFAULT; each one is a checklist line`,
+    "  a missing NOT NULL column with no constant DEFAULT, a changed type, NOT NULL, DEFAULT or key, or a column schema.sql no longer declares: stops here, before the Worker deploys",
+    "  then each table altered is read again; one that still differs stops here too",
     "Step 4. Edge rule, before the route goes live",
     ...EDGE_STEPS.map((l) => `  ${l}`),
     "  prompt: is the rate rule in place?",
