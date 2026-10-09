@@ -176,8 +176,8 @@ test.describe('one Send ends the round', () => {
   });
 });
 
-test.describe('Send waits a minute on revisions nobody has answered', () => {
-  test('locked for 60 seconds, counting down beside the button, then open', async ({ page }) => {
+test.describe('Send waits 30 seconds on revisions nobody has answered', () => {
+  test('locked for 30 seconds, counting down beside the button, then open', async ({ page }) => {
     await ask(page, REVISIONS);
     await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
     const send = page.locator('.revision-send');
@@ -185,7 +185,7 @@ test.describe('Send waits a minute on revisions nobody has answered', () => {
 
     await expect(send).toHaveCount(0);
     await expect(lock).toBeVisible();
-    await expect(lock).toHaveText(/\b(60|59|58)s\b/, { timeout: 2000 });
+    await expect(lock).toHaveText(/\b(30|29|28)s\b/, { timeout: 2000 });
     // With a note standing where Send was, the field carries the note.
     await expect(page.locator('.revision-input')).toHaveAttribute('aria-describedby', /revision-send-lock/);
 
@@ -195,11 +195,11 @@ test.describe('Send waits a minute on revisions nobody has answered', () => {
     await page.locator('.revision-input').fill('Twice.');
     await expect(send).toHaveCount(0);
 
-    await page.clock.runFor(30_000);
+    await page.clock.runFor(15_000);
     await expect(send).toHaveCount(0);
-    await expect(lock).toHaveText(/\b(30|29|28)s\b/, { timeout: 2000 });
+    await expect(lock).toHaveText(/\b(15|14|13)s\b/, { timeout: 2000 });
 
-    await page.clock.runFor(25_000);
+    await page.clock.runFor(10_000);
     await expect(send).toHaveCount(0);
 
     await page.clock.runFor(6_000);
@@ -214,13 +214,13 @@ test.describe('Send waits a minute on revisions nobody has answered', () => {
     const send = page.locator('.revision-send');
     const lock = page.locator('[data-send-lock]');
 
-    await page.clock.runFor(30_000);
+    await page.clock.runFor(15_000);
     // Every keystroke re-renders the engine; the count must not start over.
     await page.locator('.revision-input').pressSequentially('Twice.');
-    await expect(lock).toHaveText(/\b(30|29|28)s\b/, { timeout: 2000 });
+    await expect(lock).toHaveText(/\b(15|14|13)s\b/, { timeout: 2000 });
     await expect(send).toHaveCount(0);
 
-    await page.clock.runFor(31_000);
+    await page.clock.runFor(16_000);
     await expect(lock).toHaveCount(0);
     await expect(send).toBeEnabled();
   });

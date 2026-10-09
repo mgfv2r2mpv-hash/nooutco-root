@@ -270,12 +270,14 @@ test.describe('triage questions before drafting', () => {
     await fillRequiredAndGenerate(page);
 
     const lock = page.locator('[data-send-lock]');
-    await expect(lock).toHaveText(/\b60s\b/, { timeout: 2000 });
+    await expect(lock).toHaveText(/\b30s\b/, { timeout: 2000 });
+    // His ruling, 2026-10-09: the lock never tells them what opens it early.
+    await expect(lock).not.toHaveText(/character|suggestion|opens/i);
 
     const width = () => page.locator('.send-lock-bar > span').evaluate((el) => el.style.width);
     const before = await width();
     await page.clock.runFor(10_000);
-    await expect(lock).toHaveText(/\b50s\b/, { timeout: 2000 });
+    await expect(lock).toHaveText(/\b20s\b/, { timeout: 2000 });
     const after = await width();
     expect(parseFloat(after)).toBeGreaterThan(parseFloat(before));
   });
@@ -330,7 +332,7 @@ test.describe('triage questions before drafting', () => {
 
     test('84 waits the full minute', async ({ page }) => {
       const send = await openQuestions(page, triageWith({ readiness: 84 }));
-      await startsAt(page, 60);
+      await startsAt(page, 30);
       await expect(send).toHaveCount(0);
     });
 
@@ -378,8 +380,8 @@ test.describe('triage questions before drafting', () => {
       // malformed reply or an older tool must never hand out the shortcut that
       // a genuinely ready note earns.
       const send = await openQuestions(page, triageWith({}));
-      await startsAt(page, 60);
-      await page.clock.runFor(55_000);
+      await startsAt(page, 30);
+      await page.clock.runFor(25_000);
       await expect(send).toHaveCount(0);
     });
 

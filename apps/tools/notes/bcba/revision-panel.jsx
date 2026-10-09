@@ -1514,7 +1514,9 @@ function RevisionPanel({
             <div className="send-wait" data-send-wait="1">
               {sendLocked && (
                 <div className="send-lock" id="revision-send-lock" data-send-lock={sendLock.left}>
-                  <span>{"Send locked · " + sendLock.left + "s · opens at " + SEND_UNLOCK_CHARS + " characters typed or a suggestion chosen"}</span>
+                  {/* The label never names what opens it early, his ruling of 2026-10-09:
+                      technicians find the 25 characters as they type. */}
+                  <span>{"Send locked · " + sendLock.left + "s"}</span>
                   <div className="send-lock-bar" aria-hidden="true">
                     <span style={{ width: ((sendLock.total - sendLock.left) / sendLock.total) * 100 + "%" }} />
                   </div>

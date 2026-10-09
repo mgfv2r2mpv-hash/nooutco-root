@@ -268,7 +268,7 @@ test.describe('the Send lock after Regenerate', () => {
     await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
     await expect(send).toHaveCount(0);
     await expect(lock).toBeVisible();
-    await expect(lock).toHaveText(/\b(60|59|58)s\b/, { timeout: 2000 });
+    await expect(lock).toHaveText(/\b(30|29|28)s\b/, { timeout: 2000 });
     await expect(page.locator('.revision-input')).toHaveAttribute('aria-describedby', /revision-send-lock/);
     expect(seen.notes).toHaveLength(0);
 
