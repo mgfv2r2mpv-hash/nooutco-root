@@ -1,6 +1,6 @@
 # Horae Zone deploy
 
-You must be logged in to Cloudflare with wrangler (`wrangler login`) on the Mac you run this from, and you need the Resend API key at hand. The script also asks for the Turnstile widget's two keys; it prints the clicks to make the widget first (item 8 below). The script deploys a live Worker at `horae-zone.nooutco.me`, so run it only when you mean to.
+You must be logged in to Cloudflare with wrangler (`wrangler login`) on the Mac you run this from. The first deploy asks for every value below, so have the Resend API key at hand then; the script also asks for the Turnstile widget's two keys and prints the clicks to make the widget first (item 8 below). A later deploy keeps every value already set (next section). The script deploys a live Worker at `horae-zone.nooutco.me`, so run it only when you mean to.
 
 ## The one command
 
@@ -27,7 +27,37 @@ node bin/deploy.mjs --check-only
 
 It needs no secret: it reads the account, the table list and the secret names (never a value), and fetches the route. It picks the account without asking (the only one logged in, else the one `CLOUDFLARE_ACCOUNT_ID` names) and stops when it cannot tell which. Before the first deploy it stops at once ("wrangler.deploy.toml is not here"). The cron trigger and the rate rule show as SKIPPED with where to look in the dashboard, since a checks-only run has no deploy output and asks nothing.
 
+## The next deploy: what it keeps
+
+Every value you typed once already lives in Cloudflare: the secrets as Worker secrets (encrypted, and nobody can read them back), the plain values as Worker variables. So a rerun does not ask for them again. Before Step 2 the script reads the names of the Worker's secrets (`wrangler secret list`, names only) and the plain variables of the version serving now (`wrangler versions view`). Step 2 then prints "Already set on the live Worker (names only)" with the list, and asks one question:
+
+```
+  Press Return to keep all of these, or type the names to replace (comma separated):
+```
+
+- Return keeps them all. Each one prints "kept (already set)", and the script puts no secret for it, so a value you did not retype is never overwritten.
+- Type one or more names (`RESEND_KEY`, or `resend key` as dictated) and the script asks for just those, on a hidden prompt where it always was (the Resend key and the Turnstile secret), and puts them. A name that is not on the list is refused with the list and asked again; the script never prints what was typed, in case a key was pasted there by mistake.
+- A value not set yet is asked anyway ("Not set yet, so asked below"). An optional value never set (the daily limit) stays at its default and shows as "Left at their default"; type its name to set it.
+
+So the next deploy asks `y` for the account, `y` to replace the Worker's code, Return at the keep question, and `y` for the rate rule, unless something is missing or you name something to change.
+
+Two flags skip the question:
+
+```
+node bin/deploy.mjs --change RESEND_KEY
+node bin/deploy.mjs --ask-all
+```
+
+`--change NAME[,NAME]` asks only the values named (and any not set yet), for example to rotate the Resend key. `--ask-all` asks every value, as a first deploy does. A name `--change` does not know stops the run before anything is read. The three generated keys keep their own flags (`--new-account-key`, `--new-ticket-key`).
+
+The plain values survive the deploy two ways. The script writes the live ones back into `wrangler.deploy.toml` (they are public: the Turnstile site key and the daily limits), with any you typed this run over them. It also writes `keep_vars = true` there, so wrangler keeps a variable the file does not name instead of deleting it, which is wrangler's default. When the script cannot read the live version it says "Could not read the live Worker's plain values" and asks each plain value; one left blank keeps its live value. No secret value is written to any file.
+
+The checklist ends with "Values kept" and "Values set", naming each.
+
 ## What it asks
+
+On a first deploy (nothing set yet), or with `--ask-all`, the script asks all of these. A rerun asks only what the keep question leaves (above).
+
 
 The script first prints the wrangler version it found (`wrangler --version`) and stops there if wrangler is missing. Every wrangler call runs with `WRANGLER_LOG_SANITIZE=true`, so a shell that turned wrangler's log redaction off cannot turn it off for this run.
 
@@ -52,7 +82,7 @@ A bad answer is asked again, up to 3 times. All answers are asked before anythin
 ## What it does
 
 1. Finds the D1 database `horae-zone`, or creates it (from an empty temp folder, so wrangler cannot edit `wrangler.toml`).
-2. Writes `wrangler.deploy.toml` next to `wrangler.toml`: the real database id, the route `horae-zone.nooutco.me` as a Custom domain (always proxied, so `cf-connecting-ip` comes from the Cloudflare edge), `workers_dev = false`, the Turnstile site key, and the daily limit when you gave one. It holds no secret and is gitignored. The committed `wrangler.toml` keeps its zero id and no route (`test/config.test.mjs`).
+2. Writes `wrangler.deploy.toml` next to `wrangler.toml`: the real database id, the route `horae-zone.nooutco.me` as a Custom domain (always proxied, so `cf-connecting-ip` comes from the Cloudflare edge), `workers_dev = false`, `keep_vars = true` (wrangler keeps a plain variable the file does not name), the Turnstile site key, and the daily limit when you gave one or the live Worker has one. It holds no secret and is gitignored. The committed `wrangler.toml` keeps its zero id and no route (`test/config.test.mjs`).
 3. Applies `schema.sql` to the remote database in two passes, with a column step between them. Every statement is `IF NOT EXISTS`, so a rerun changes nothing, and so a table already there keeps the columns it had: `CREATE TABLE IF NOT EXISTS` never adds a column. On 9 Oct 2026 that left production's `device` table without `confirmed_at` while the deployed code wrote it, and every unlock answered 500 until the column was added by hand. A `CREATE INDEX` on a column a table lacks would fail outright with `no such column`, so the order is:
    - First pass: only the `CREATE TABLE` statements of `schema.sql`, as one `wrangler d1 execute --command`. A new table is made here; a table already there is left as it is.
    - The column step: the script reads each table's columns on the remote database (`PRAGMA table_info`, one table at a time) and compares them with the columns `schema.sql` declares (`bin/deploy-columns.mjs` runs `schema.sql` on an empty in-memory SQLite database and reads the same `PRAGMA` there, so both sides are SQLite's own report).
@@ -61,7 +91,7 @@ A bad answer is asked again, up to 3 times. All answers are asked before anythin
    - An `ALTER TABLE` that fails stops the run before the Worker deploys, naming the table and column and printing wrangler's own reason after `wrangler said:`. A column added before it stays.
    - Then the check: every table it added a column to is read again, and a table that still differs from `schema.sql` stops the run there, also before the Worker deploys. When every table matches, the checklist shows `Columns match schema.sql` as PASS.
    - Second pass: the whole of `schema.sql` with `--file`, for its indexes and triggers, once every column they name is there.
-4. Reads the Worker's secret list (names only), then deploys the Worker and puts each secret with `wrangler secret put`, the value on stdin: `HZ_ACCOUNT_KEY`, `HZ_SEED_KEY`, `HZ_TICKET_KEY`, `RESEND_KEY`, `HZ_MAIL_FROM`, `HZ_ALERT_TO`, `HZ_LINK_BASE`, `HZ_REOPEN_BASE`, `HZ_RESET_BASE`, `HZ_TURNSTILE_SECRET`. A key already set is kept (below). A list the script cannot read stops the run before the deploy, with the Worker and its secrets untouched ("could not read the secret list; the Worker and its secrets were not changed"); only wrangler's answer that the Worker is not found, on a first deploy, reads as no secrets yet.
+4. Deploys the Worker and puts each secret it has a new value for with `wrangler secret put`, the value on stdin: `HZ_ACCOUNT_KEY`, `HZ_SEED_KEY`, `HZ_TICKET_KEY`, `RESEND_KEY`, `HZ_MAIL_FROM`, `HZ_ALERT_TO`, `HZ_LINK_BASE`, `HZ_REOPEN_BASE`, `HZ_RESET_BASE`, `HZ_TURNSTILE_SECRET`. A key already set is kept (below), and so is every value the keep question kept. The secret list (names only) is read before Step 2; a list the script cannot read stops the run there, before anything is created or deployed, with the Worker and its secrets untouched ("could not read the secret list; the Worker and its secrets were not changed"); only wrangler's answer that the Worker is not found, on a first deploy, reads as no secrets yet.
 5. Sets your account as the first administrator (A5c), once. When an administrator is already set it changes nothing and asks nothing. When no account exists yet (the first deploy, before you sign up in the app) it shows SKIPPED and names `node bin/deploy.mjs --owner-admin` to run after sign-up. Otherwise it asks which account is yours (item 11 above) and runs one write that adds the role only while no account holds it.
 6. Checks everything and prints the checklist. The Turnstile site key is a Worker var, so the secret list cannot show it: the checklist reads it from `wrangler.deploy.toml` instead.
 

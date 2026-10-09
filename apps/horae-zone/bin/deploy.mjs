@@ -23,6 +23,13 @@
  *   --new-ticket-key                replace an HZ_TICKET_KEY already set (every
  *                                   ticket already issued stops working); asks
  *                                   for a y first
+ *   --change NAME[,NAME]            ask only these values (and any not set
+ *                                   yet), e.g. --change RESEND_KEY to rotate it
+ *   --ask-all                       ask every value, as a first deploy does
+ *
+ * A rerun keeps each value the live Worker already holds (bin/deploy-keep.mjs):
+ * Step 2 lists the stored names and one question, where Return keeps them all,
+ * replaces the prompt for every value.
  *
  * Steps: print `wrangler --version`; confirm the Cloudflare account, and a
  * y before replacing a Worker already named horae-zone there; ask the values only the owner has
@@ -56,6 +63,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { OWNER_ADMIN_FLAG, ownerAdminStep, ownerAdminDryRun } from "./deploy-admin.mjs";
 import { COLUMN_COMMANDS, reconcileColumns, tableStatements } from "./deploy-columns.mjs";
+import { ASK_ALL_FLAG, KEEP_QUESTION, changeFlag, chooseAsked, currentVersionId, plainVars } from "./deploy-keep.mjs";
 import {
   CATALOG, SECRET_NAMES, DATABASE, HOSTNAME, DEPLOY_CONFIG, CRON, ACCOUNT_KEY_BYTES, SEED_KEY_BYTES,
   LineReader, deployConfig, scrub, parseJson, findDatabaseId, schemaTables, renderChecklist, ticketKeyJwk, isChallenge, isTurnstileKey,
@@ -80,6 +88,7 @@ export const COMMANDS = Object.freeze({
   deploy: ["deploy", "--config", DEPLOY_CONFIG],
   secretPut: (name) => ["secret", "put", name, "--config", DEPLOY_CONFIG],
   secretList: ["secret", "list", "--format", "json", "--config", DEPLOY_CONFIG],
+  versionView: (id) => ["versions", "view", id, "--name", WORKER, "--json"],
   tables: ["d1", "execute", DATABASE, "--remote", "--json", "--command", "SELECT name FROM sqlite_master WHERE type='table'", "--config", DEPLOY_CONFIG],
 });
 
@@ -225,19 +234,36 @@ const UNKNOWN_WORKER = `could not tell whether Worker ${WORKER} exists; nothing 
 const NO_SUCH_WORKER = /\[code: 10007\]/;
 
 // In the confirmed account, before anything is created: a Worker already
-// named horae-zone has its code replaced only on a typed y.
+// named horae-zone has its code replaced only on a typed y. Returns its
+// deployment list, or null when there is no such Worker.
 async function confirmWorker(ctx, deps) {
   let list;
   try {
     list = parseJson(ctx.checked("the Worker check", await ctx.wrangler(COMMANDS.deployments)));
   } catch (err) {
-    if (NO_SUCH_WORKER.test(err.message)) return;
+    if (NO_SUCH_WORKER.test(err.message)) return null;
     throw new Stop(`${UNKNOWN_WORKER}\n${err.message}`);
   }
   if (!Array.isArray(list)) throw new Stop(`${UNKNOWN_WORKER}\nthe deployment list is not a list`);
   ctx.say(`  Worker ${WORKER} already exists; this will replace its code.`);
   const yes = (await deps.ask({ name: "confirm-replace-worker", question: "  Replace it? Type y to go on, n to stop: ", hidden: false })).trim().toLowerCase();
   if (yes !== "y" && yes !== "yes") throw new Stop(`Worker ${WORKER} not replaced; nothing was changed.`);
+  return list;
+}
+
+// The catalog's plain vars on the version serving now (public values, so
+// Step 3 can write them back). No Worker: none. An unreadable view: null, and
+// Step 2 asks each var rather than guess.
+async function readLiveVars(ctx, deployments) {
+  if (deployments === null) return {};
+  try {
+    const id = currentVersionId(deployments);
+    if (id === null) throw new Error("no current version in the deployment list");
+    return plainVars(parseJson(ctx.checked("the version check", await ctx.wrangler(COMMANDS.versionView(id)))));
+  } catch (err) {
+    ctx.say(`  Could not read the live Worker's plain values (${err.message.split("\n")[0]}); they are asked, and one left blank keeps its live value.`);
+    return null;
+  }
 }
 
 // `n` fresh random bytes as base64url; the bytes are zeroed once encoded.
@@ -248,11 +274,16 @@ function randomKey(deps, n) {
   return key;
 }
 
-async function collectAnswers(ctx, deps) {
+async function collectAnswers(ctx, deps, live, flags) {
   ctx.say("Step 2. Values only you have (typed answers are kept in memory only)");
-  for (const line of TURNSTILE_WIDGET_STEPS) ctx.say(`  ${line}`);
+  const { ask, stored } = await chooseAsked(ctx, deps, { ...live, ...flags }, Stop);
+  if (ask.some((n) => n.startsWith("HZ_TURNSTILE_"))) for (const line of TURNSTILE_WIDGET_STEPS) ctx.say(`  ${line}`);
   const values = {};
   for (const entry of CATALOG.filter((s) => s.source === "asked")) {
+    if (!ask.includes(entry.name)) {
+      if (stored.includes(entry.name)) ctx.say(`  ${entry.name}: kept (already set)`);
+      continue;
+    }
     let value = null;
     for (let i = 0; i < ANSWER_TRIES && value === null; i++) {
       const answer = (await deps.ask({ name: entry.name, question: `  ${entry.label}${entry.hidden ? " (hidden)" : ""}: `, hidden: entry.hidden === true })).trim();
@@ -278,10 +309,10 @@ async function collectAnswers(ctx, deps) {
   // The JWK string and its private part d, so wrangler echoing either is masked.
   ctx.known.push(values.HZ_TICKET_KEY, JSON.parse(values.HZ_TICKET_KEY).d);
   ctx.say("  Generated HZ_TICKET_KEY (ECDSA P-256 private key, JWK). It is never shown or saved; a key already set is kept unless --new-ticket-key.");
-  return values;
+  return { values, kept: stored.filter((n) => !ask.includes(n)) };
 }
 
-async function prepareDatabase(ctx, deps, values) {
+async function prepareDatabase(ctx, deps, values, liveVars) {
   ctx.say(`Step 3. D1 database "${DATABASE}"`);
   let id = findDatabaseId(parseJson(await ctx.wrangler(COMMANDS.d1List)));
   const found = id !== null;
@@ -297,7 +328,9 @@ async function prepareDatabase(ctx, deps, values) {
     if (id === null) throw new Stop(`"${DATABASE}" was created but is not in the database list yet. Run this command again.`);
   }
   ctx.say(`  ${found ? "Found" : "Created"} "${DATABASE}".`);
-  const vars = Object.fromEntries(CATALOG.filter((s) => s.store === "var" && values[s.name]).map((s) => [s.name, values[s.name]]));
+  // The live plain vars are written back, so a kept one stays in the file;
+  // one answered this run replaces it.
+  const vars = { ...liveVars, ...Object.fromEntries(CATALOG.filter((s) => s.store === "var" && values[s.name]).map((s) => [s.name, values[s.name]])) };
   const toml = deps.readFile(path.join(deps.root, "wrangler.toml"));
   const configText = deployConfig(toml, { databaseId: id, vars });
   deps.writeFile(path.join(deps.root, DEPLOY_CONFIG), configText);
@@ -386,25 +419,33 @@ const KEPT = Object.freeze({
 // every ticket already issued, so a rerun keeps each one already set unless
 // its flag says otherwise. An unreadable list (null) only gets this far under
 // a confirmed --new-account-key, and then all three are put.
-async function deployWorker(ctx, deps, values, { newAccountKey, newTicketKey }) {
+async function deployWorker(ctx, deps, values, { existing, kept, newAccountKey, newTicketKey }) {
   ctx.say("Step 5. Deploy the Worker, then put each secret");
-  const existing = await secretsBeforeDeploy(ctx, newAccountKey);
   if (newAccountKey && (existing === null || ACCOUNT_FLAG_KEYS.some((n) => existing.has(n)))) await confirmReplaceKey(ctx, deps, existing);
   if (newTicketKey && (existing === null || existing.has("HZ_TICKET_KEY"))) await confirmReplaceTicketKey(ctx, deps, existing);
   const keep = new Set([
     ...(newAccountKey ? [] : ACCOUNT_FLAG_KEYS.filter((n) => existing.has(n))),
     ...(!newTicketKey && existing?.has("HZ_TICKET_KEY") ? ["HZ_TICKET_KEY"] : []),
+    ...kept,
   ]);
+  // A secret with no value to put and not kept would be left unset: stop
+  // before the deploy rather than put an empty one.
+  const unset = SECRET_NAMES.filter((n) => !keep.has(n) && typeof values[n] !== "string");
+  if (unset.length > 0) throw new Stop(`no value for ${unset.join(", ")}; nothing was deployed. Rerun with --change ${unset.join(",")}`);
   const out = await ctx.wrangler(COMMANDS.deploy);
   ctx.item("Worker deployed", "PASS", `horae-zone, route ${HOSTNAME} (Custom domain)`);
   for (const name of SECRET_NAMES) {
     if (keep.has(name)) {
-      ctx.say(KEPT[name]);
+      if (KEPT[name]) ctx.say(KEPT[name]);
       continue;
     }
     await ctx.wrangler(COMMANDS.secretPut(name), { input: values[name] });
     ctx.say(`  Set ${name}.`);
   }
+  const keptNames = CATALOG.map((s) => s.name).filter((n) => keep.has(n));
+  const setNames = CATALOG.map((s) => s.name).filter((n) => !keep.has(n) && typeof values[n] === "string");
+  ctx.item("Values kept", "PASS", keptNames.length > 0 ? `${keptNames.join(", ")} (already set; --change NAME replaces one)` : "none");
+  ctx.item("Values set", "PASS", setNames.length > 0 ? setNames.join(", ") : "none");
   return out;
 }
 
@@ -512,6 +553,11 @@ function dryRun(deps) {
     `  ${show(COMMANDS.whoami)}   then: confirm the account name (prompt)`,
     `  ${show(COMMANDS.deployments)}   when Worker ${WORKER} already exists: prompt, y replaces its code, anything else stops`,
     "Step 2. Values only you have",
+    `  ${show(COMMANDS.secretList)}   names only; an unreadable list stops here (an HZ_ACCOUNT_KEY may be set)`,
+    `  ${show(COMMANDS.versionView("<live-version-id>"))}   the plain vars of the version serving now, read back for Step 3`,
+    "  on a rerun with values already set: lists their names (never a value), then",
+    `  prompt:${KEEP_QUESTION.trimEnd()}   Return keeps all; only the names typed and any value not set yet are asked`,
+    `  --change NAME[,NAME] asks only those (and any not set yet), with no keep question; ${ASK_ALL_FLAG} or a first deploy asks every value below`,
     ...TURNSTILE_WIDGET_STEPS.map((l) => `  ${l}`),
     ...CATALOG.filter((s) => s.source === "asked").map((s) => `  prompt${s.hidden ? " (hidden)" : ""}: ${s.label} -> ${s.name}${s.store === "var" ? ` ([vars] in ${DEPLOY_CONFIG} when answered)` : ""}   checked: ${s.rule}`),
     `  generate: HZ_ACCOUNT_KEY = [masked] (${ACCOUNT_KEY_BYTES} random bytes, base64url)`,
@@ -520,7 +566,7 @@ function dryRun(deps) {
     `Step 3. D1 database "${DATABASE}"`,
     `  ${show(COMMANDS.d1List)}`,
     `  ${show(COMMANDS.d1Create)}   (only when missing, from an empty temp folder)`,
-    `  write ${DEPLOY_CONFIG} (gitignored): wrangler.toml + database id + route ${HOSTNAME} as a Custom domain`,
+    `  write ${DEPLOY_CONFIG} (gitignored): wrangler.toml + database id + route ${HOSTNAME} as a Custom domain + keep_vars = true + the plain vars (live ones read back, answered ones over them)`,
     `  ${show(COLUMN_COMMANDS.applyTables("<schema.sql's CREATE TABLE statements only>"))}`,
     `  ${show(COLUMN_COMMANDS.columns("<table>"))}   for each table schema.sql creates, compared with schema.sql's own columns`,
     `  ${show(COLUMN_COMMANDS.addColumn("<table>", "<column as schema.sql defines it>"))}   for each missing column that is nullable or has a constant DEFAULT; each one is a checklist line`,
@@ -531,7 +577,7 @@ function dryRun(deps) {
     ...EDGE_STEPS.map((l) => `  ${l}`),
     "  prompt: is the rate rule in place?",
     "Step 5. Deploy the Worker, then put each secret",
-    `  ${show(COMMANDS.secretList)}   (an HZ_ACCOUNT_KEY or HZ_SEED_KEY already set is kept unless --new-account-key; an unreadable list stops here)`,
+    `  the secret list read in Step 2: an HZ_ACCOUNT_KEY or HZ_SEED_KEY already set is kept unless --new-account-key; a value kept in Step 2 is not put`,
     "  with --new-account-key over an account or seed key that is set (or an unreadable list): prompt, type replace or the run stops",
     "  an HZ_TICKET_KEY already set is kept unless --new-ticket-key; with it over a key that is set: prompt, y replaces it or the run stops",
     `  ${show(COMMANDS.deploy)}`,
@@ -555,7 +601,7 @@ function dryRun(deps) {
 export async function deploy(deps) {
   const argv = deps.argv ?? [];
   if (argv.includes("--help")) {
-    deps.write(`Usage: node bin/deploy.mjs [--dry-run] [--check-only] [${OWNER_ADMIN_FLAG}] [--new-account-key] [--new-ticket-key]   (from apps/horae-zone; see DEPLOY.md)`);
+    deps.write(`Usage: node bin/deploy.mjs [--dry-run] [--check-only] [${OWNER_ADMIN_FLAG}] [--new-account-key] [--new-ticket-key] [--change NAME[,NAME]] [${ASK_ALL_FLAG}]   (from apps/horae-zone; see DEPLOY.md)`);
     return { ok: true, checklist: [] };
   }
   const full = { readFile: (f) => readFileSync(f, "utf8"), generateTicketKey: ticketKeyJwk, ...deps };
@@ -564,16 +610,30 @@ export async function deploy(deps) {
   if (argv.includes("--check-only")) return finish(ctx, () => checkOnly(ctx, full));
   if (argv.includes(OWNER_ADMIN_FLAG)) return finish(ctx, () => ownerAdminOnly(ctx, full));
   return finish(ctx, async () => {
+    const flags = { change: changeOrStop(argv), askAll: argv.includes(ASK_ALL_FLAG) };
+    const newAccountKey = argv.includes("--new-account-key");
     await wranglerVersion(ctx);
     await confirmAccount(ctx, full);
-    await confirmWorker(ctx, full);
-    const values = await collectAnswers(ctx, full);
-    const configText = await prepareDatabase(ctx, full, values);
+    const deployments = await confirmWorker(ctx, full);
+    // Read before Step 2, so a value already set is not asked again; an
+    // unreadable secret list still stops here, before anything is created.
+    const existing = await secretsBeforeDeploy(ctx, newAccountKey);
+    const liveVars = await readLiveVars(ctx, deployments);
+    const { values, kept } = await collectAnswers(ctx, full, { existing, liveVars }, flags);
+    const configText = await prepareDatabase(ctx, full, values, liveVars ?? {});
     const edgeConfirmed = await edgeRule(ctx, full);
-    const deployOut = await deployWorker(ctx, full, values, { newAccountKey: argv.includes("--new-account-key"), newTicketKey: argv.includes("--new-ticket-key") });
+    const deployOut = await deployWorker(ctx, full, values, { existing, kept, newAccountKey, newTicketKey: argv.includes("--new-ticket-key") });
     await ownerAdminStep(ctx, full);
     await runChecks(ctx, full, { deployOut, edgeConfirmed, configText });
   });
+}
+
+function changeOrStop(argv) {
+  try {
+    return changeFlag(argv);
+  } catch (err) {
+    throw new Stop(`${err.message}. Nothing was read or changed.`);
+  }
 }
 
 // --check-only: Step 7 alone, after a deploy. It asks nothing and needs no
