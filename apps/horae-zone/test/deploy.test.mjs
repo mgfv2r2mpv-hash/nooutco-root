@@ -64,6 +64,10 @@ function mockWrangler(state = {}) {
   sqlite.exec(state.existingSchema ?? SCHEMA);
   const db = { present: state.dbPresent ?? false };
   const secretsSet = new Set(state.existingSecrets ?? []);
+  // The live Worker's plain vars, name to value. A deploy replaces them with
+  // the config's [vars], as wrangler does, unless the config says
+  // keep_vars = true: then a var the config does not name is kept.
+  let liveVars = { ...(state.liveVars ?? {}) };
   // As wrangler 4 does: a Worker that was never deployed has no secret list.
   let deployed = state.workerExists ?? secretsSet.size > 0;
   const ok = (stdout = '') => ({ code: 0, stdout, stderr: '' });
@@ -118,6 +122,9 @@ function mockWrangler(state = {}) {
     if (cmd === 'd1 execute' && !/sqlite_master/.test(args[args.indexOf('--command') + 1] ?? '')) return roleCommand(args[args.indexOf('--command') + 1]);
     if (cmd === 'd1 execute') return ok(JSON.stringify([{ results: (state.tables ?? TABLES).map((name) => ({ name })), success: true }]));
     if (cmd === 'deploy --config') deployed = true;
+    if (cmd === 'deploy --config') liveVars = varsAfterDeploy(liveVars, api.config());
+    if (cmd === 'versions view' && state.versionViewFail) return { code: 1, stdout: '', stderr: state.versionViewFail };
+    if (cmd === 'versions view') return ok(JSON.stringify({ id: args[2], resources: { bindings: [{ type: 'd1', name: 'DB' }, ...[...secretsSet].map((name) => ({ type: 'secret_text', name })), ...Object.entries(liveVars).map(([name, text]) => ({ type: 'plain_text', name, text }))] } }));
     if (cmd === 'deploy --config') return ok(state.deployOut ?? `Uploaded horae-zone\nDeployed horae-zone triggers\n  ${HOSTNAME} (custom domain)\n  schedule: 0 * * * *\nCurrent Version ID: v1`);
     if (cmd === 'deployments list' && state.deploymentsFail) return { code: 1, stdout: '', stderr: state.deploymentsFail };
     if (cmd === 'deployments list' && state.deploymentsOut !== undefined) return ok(state.deploymentsOut);
@@ -130,12 +137,23 @@ function mockWrangler(state = {}) {
     if (cmd === 'secret list') return ok(state.secretListOut ?? JSON.stringify([...secretsSet].filter((n) => n !== state.dropSecret).map((name) => ({ name, type: 'secret_text' }))));
     return { code: 1, stdout: '', stderr: `mock: unknown command ${args.join(' ')}` };
   }
-  return { run, calls, admins, sqlite };
+  // The harness points config at the deploy config the script wrote.
+  const api = { run, calls, admins, sqlite, config: () => '', liveVars: () => ({ ...liveVars }) };
+  return api;
+}
+
+// What wrangler deploy leaves as the Worker's plain vars: the config's
+// [vars], plus the old ones it does not name only under keep_vars = true.
+function varsAfterDeploy(before, config) {
+  const block = config.split(/^\[vars\]$/m)[1]?.split(/^\[/m)[0] ?? '';
+  const named = Object.fromEntries([...block.matchAll(/^(\w+) = ("(?:[^"\\]|\\.)*")$/gm)].map((m) => [m[1], JSON.parse(m[2])]));
+  return /^keep_vars = true$/m.test(config) ? { ...before, ...named } : named;
 }
 
 // route: one answer for every fetch, or a list answered in order (the last
 // repeats). recheck: the answers to "re-check the route now?", in order.
-function harness({ wrangler = mockWrangler(), argv = [], answers = ANSWERS, confirm = 'y', edge = 'y', replaceKey, replaceTicketKey, replaceWorker = 'y', ticketKey = FIXED_TICKET_KEY, randomBytes, route = { status: 405, body: '{"error":"method"}', ray: true }, recheck, pick, confirmOwner = 'y' } = {}) {
+// keep: the answer to the keep question, or a list answered in order.
+function harness({ wrangler = mockWrangler(), argv = [], answers = ANSWERS, confirm = 'y', edge = 'y', replaceKey, replaceTicketKey, replaceWorker = 'y', ticketKey = FIXED_TICKET_KEY, randomBytes, route = { status: 405, body: '{"error":"method"}', ray: true }, recheck, pick, confirmOwner = 'y', keep = '' } = {}) {
   const lines = [];
   const draws = [FIXED_BYTES, FIXED_SEED_BYTES];
   const files = new Map();
@@ -143,6 +161,7 @@ function harness({ wrangler = mockWrangler(), argv = [], answers = ANSWERS, conf
   const asked = [];
   const routes = Array.isArray(route) ? [...route] : [route];
   const rechecks = recheck === undefined ? undefined : [...recheck];
+  const keeps = Array.isArray(keep) ? [...keep] : null;
   const ask = async ({ question, hidden, name }) => {
     asked.push({ question, hidden, name });
     if (name === 'confirm-account') return confirm;
@@ -153,6 +172,7 @@ function harness({ wrangler = mockWrangler(), argv = [], answers = ANSWERS, conf
     if (name === 'confirm-replace-worker') return replaceWorker;
     if (name === 'pick-owner-account' && pick !== undefined) return pick;
     if (name === 'confirm-owner-account') return confirmOwner;
+    if (name === 'keep-or-replace') return keeps ? keeps.shift() ?? '' : keep;
     if (name in answers) return answers[name];
     throw new Error(`unexpected prompt ${name}`);
   };
@@ -179,6 +199,7 @@ function harness({ wrangler = mockWrangler(), argv = [], answers = ANSWERS, conf
   };
   // ticketKey null leaves the script's own WebCrypto generator in place.
   if (ticketKey !== null) deps.generateTicketKey = async () => ticketKey;
+  wrangler.config = () => files.get(path.join(ROOT, 'wrangler.deploy.toml')) ?? '';
   return { deps, lines, files, fetched, asked, wrangler, output: () => lines.join('\n') };
 }
 
@@ -270,7 +291,8 @@ test('a full run against mocked wrangler creates the database, sets every secret
   const result = await deploy(h.deps);
   assert.equal(result.ok, true, h.output());
   const order = h.wrangler.calls.map((c) => c.args.slice(0, 2).join(' '));
-  assert.deepEqual(order.slice(0, 7), ['--version', 'whoami --json', 'deployments list', 'd1 list', 'd1 create', 'd1 list', 'd1 execute']);
+  // The secret list (names only) is read before Step 2, so a value already set is not asked.
+  assert.deepEqual(order.slice(0, 8), ['--version', 'whoami --json', 'deployments list', 'secret list', 'd1 list', 'd1 create', 'd1 list', 'd1 execute']);
   assert.ok(order.indexOf('deploy --config') < order.indexOf('secret put'), 'the Worker exists before a secret is put');
   // d1 create runs in an empty folder, so it cannot edit the committed wrangler.toml.
   assert.equal(h.wrangler.calls.find((c) => c.args[1] === 'create').cwd, '/tmp/hz-deploy-test-empty');
@@ -1201,7 +1223,7 @@ test('a bad answer is asked again, and three bad answers stop the run before any
   const result = await deploy(h.deps);
   assert.equal(result.ok, false);
   assert.equal(h.asked.filter((a) => a.name === 'HZ_LINK_BASE').length, 3);
-  assert.equal(h.wrangler.calls.some((c) => c.args[1] === 'create' || c.args[0] === 'deploy' || c.args[0] === 'secret'), false);
+  assert.equal(h.wrangler.calls.some((c) => c.args[1] === 'create' || c.args[0] === 'deploy' || (c.args[0] === 'secret' && c.args[1] === 'put')), false, 'no write (the secret list, a read, runs before Step 2)');
 });
 
 test('the reopen link base is asked with a plain prompt, checked the way src/unlock.js checks it, and put through stdin', async () => {
@@ -1230,7 +1252,7 @@ test('a bad reopen link base is asked again, and three bad answers stop the run 
   assert.equal(result.ok, false);
   assert.equal(h.asked.filter((a) => a.name === 'HZ_REOPEN_BASE').length, 3);
   assert.ok(h.output().includes('Not accepted (https, no ? and no #)'));
-  assert.equal(h.wrangler.calls.some((c) => c.args[1] === 'create' || c.args[0] === 'deploy' || c.args[0] === 'secret'), false);
+  assert.equal(h.wrangler.calls.some((c) => c.args[1] === 'create' || c.args[0] === 'deploy' || (c.args[0] === 'secret' && c.args[1] === 'put')), false, 'no write (the secret list, a read, runs before Step 2)');
 });
 
 test('the schema check expects every table schema.sql creates, A5 tables included', () => {
@@ -1282,7 +1304,7 @@ test('DEPLOY.md names every value the script asks for, generates and puts', () =
 
 test('every message DEPLOY.md quotes is one the script prints', async () => {
   const { plain } = deployDoc();
-  const quoted = ['What it asks', 'What it does'].flatMap((s) => [...plain(s).matchAll(/"([^"\n]+)"/g)].map((m) => m[1]));
+  const quoted = ['The next deploy: what it keeps', 'What it asks', 'What it does'].flatMap((s) => [...plain(s).matchAll(/"([^"\n]+)"/g)].map((m) => m[1]));
   assert.ok(quoted.length >= 4, `DEPLOY.md quotes the script (found ${quoted.length})`);
   const stored = (state = {}) => mockWrangler({ dbPresent: true, existingSecrets: ['HZ_ACCOUNT_KEY', 'HZ_SEED_KEY', 'HZ_TICKET_KEY'], ...state });
   const runs = [
@@ -1293,6 +1315,8 @@ test('every message DEPLOY.md quotes is one the script prints', async () => {
     harness({ wrangler: stored({ secretListOut: '{}' }) }),
     harness({ argv: ['--new-account-key'], replaceKey: 'n', wrangler: stored() }),
     harness({ argv: ['--new-ticket-key'], replaceTicketKey: 'n', wrangler: stored() }),
+    harness({ wrangler: mockWrangler({ dbPresent: true, existingSecrets: SECRET_NAMES.filter((n) => n !== 'HZ_ALERT_TO'), liveVars: { HZ_TURNSTILE_SITEKEY: ANSWERS.HZ_TURNSTILE_SITEKEY } }) }),
+    harness({ wrangler: mockWrangler({ dbPresent: true, existingSecrets: SECRET_NAMES, liveVars: { HZ_TURNSTILE_SITEKEY: ANSWERS.HZ_TURNSTILE_SITEKEY }, versionViewFail: 'no' }) }),
   ];
   for (const h of runs) await deploy(h.deps);
   const printed = runs.map((h) => h.output()).join('\n');
@@ -1445,7 +1469,7 @@ test('Cloudflare\'s Turnstile test keys are refused at the prompt, and three of 
     assert.equal(result.ok, false, `${name} ${testKey}`);
     assert.equal(h.asked.filter((a) => a.name === name).length, 3);
     assert.match(h.output(), /Not accepted \(a production key from the Turnstile page \(starts 0x; Cloudflare's 1x, 2x and 3x test keys are refused\)\)/);
-    assert.equal(h.wrangler.calls.some((c) => c.args[1] === 'create' || c.args[0] === 'deploy' || c.args[0] === 'secret'), false);
+    assert.equal(h.wrangler.calls.some((c) => c.args[1] === 'create' || c.args[0] === 'deploy' || (c.args[0] === 'secret' && c.args[1] === 'put')), false, 'no write (the secret list, a read, runs before Step 2)');
   }
   assert.equal(CATALOG.find((s) => s.name === 'HZ_TURNSTILE_SECRET').check(ANSWERS.HZ_TURNSTILE_SECRET), true, 'NEGATIVE CONTROL: a production-shaped key passes');
 });
@@ -1504,4 +1528,185 @@ test('the shared mail budget prompt is optional, a plain var, and names the Work
   assert.ok(!entry.check('0') && !entry.check('') && !entry.check('1.5'), 'blank is the default, never a typed zero');
   const names = CATALOG.map((s) => s.name);
   assert.equal(names.indexOf('HZ_MAIL_PER_DAY') + 1, names.indexOf('HZ_CODES_PER_DAY'), 'asked just before the sign-up cap');
+});
+
+// A rerun keeps what the live Worker already holds (Kaleb, 9 Oct 2026: "I
+// want this to be the last time I have to paste everything in"). One
+// question lists the stored names, and Return keeps them all.
+const ASKED = CATALOG.filter((c) => c.source === 'asked').map((c) => c.name);
+const ASKED_SECRETS = CATALOG.filter((c) => c.source === 'asked' && c.store === 'secret').map((c) => c.name);
+const LIVE_VARS = { HZ_TURNSTILE_SITEKEY: ANSWERS.HZ_TURNSTILE_SITEKEY, HZ_MAIL_PER_DAY: '100', HZ_CODES_PER_DAY: '500' };
+const CONFIG_FILE = path.join(ROOT, 'wrangler.deploy.toml');
+const valuePrompts = (h) => h.asked.filter((a) => ASKED.includes(a.name)).map((a) => a.name);
+const secretPuts = (h) => h.wrangler.calls.filter((c) => c.args[0] === 'secret' && c.args[1] === 'put').map((c) => c.args[2]);
+const rerun = ({ secrets = SECRET_NAMES, vars = LIVE_VARS, state = {}, ...rest } = {}) =>
+  harness({ wrangler: mockWrangler({ dbPresent: true, workerExists: true, existingSecrets: secrets, liveVars: vars, ...state }), ...rest });
+
+test('everything set: Return at the one keep question asks no value and puts no secret', async () => {
+  const h = rerun();
+  const result = await deploy(h.deps);
+  assert.equal(result.ok, true, h.output());
+  assert.deepEqual(h.asked.map((a) => a.name), ['confirm-account', 'confirm-replace-worker', 'keep-or-replace', 'confirm-edge'], 'the account, the Worker, the keep question and the rate rule; nothing else');
+  assert.equal(h.asked.find((a) => a.name === 'keep-or-replace').question, '  Press Return to keep all of these, or type the names to replace (comma separated): ');
+  assert.deepEqual(secretPuts(h), [], 'no secret is put, so none is overwritten');
+  const two = stepText(h.output(), 2);
+  assert.match(two, new RegExp(`Already set on the live Worker \\(names only\\): ${ASKED.filter((n) => !['HZ_MAIL_PER_DAY', 'HZ_CODES_PER_DAY'].includes(n) || LIVE_VARS[n]).join(', ')}`));
+  for (const name of ASKED) assert.match(two, new RegExp(`^  ${name}: kept \\(already set\\)$`, 'm'));
+  assert.doesNotMatch(two, /Add widget/, 'no widget clicks when no Turnstile key is asked');
+  const kept = result.checklist.find((i) => i.item === 'Values kept');
+  assert.equal(kept?.status, 'PASS');
+  for (const name of [...ASKED, 'HZ_ACCOUNT_KEY', 'HZ_SEED_KEY', 'HZ_TICKET_KEY']) assert.ok(kept.detail.includes(name), `kept lists ${name}`);
+  assert.equal(result.checklist.find((i) => i.item === 'Values set')?.detail, 'none');
+  for (const name of SECRET_NAMES) assert.equal(statusOf(result, `Secret ${name}`), 'PASS');
+  assertNoSecretAnywhere(h);
+});
+
+test('one value missing on the live Worker: only that one is asked and put', async () => {
+  const h = rerun({ secrets: SECRET_NAMES.filter((n) => n !== 'HZ_ALERT_TO') });
+  const result = await deploy(h.deps);
+  assert.equal(result.ok, true, h.output());
+  assert.deepEqual(valuePrompts(h), ['HZ_ALERT_TO']);
+  assert.deepEqual(secretPuts(h), ['HZ_ALERT_TO']);
+  assert.match(stepText(h.output(), 2), /Not set yet, so asked below: HZ_ALERT_TO/);
+  assert.equal(result.checklist.find((i) => i.item === 'Values set')?.detail, 'HZ_ALERT_TO');
+  assertNoSecretAnywhere(h);
+});
+
+test('--change RESEND_KEY asks only it, hidden, and puts only it; no keep question', async () => {
+  for (const argv of [['--change', 'RESEND_KEY'], ['--change=resend key']]) {
+    const h = rerun({ argv });
+    const result = await deploy(h.deps);
+    assert.equal(result.ok, true, h.output());
+    assert.deepEqual(valuePrompts(h), ['RESEND_KEY'], argv.join(' '));
+    assert.equal(h.asked.some((a) => a.name === 'keep-or-replace'), false);
+    assert.equal(h.asked.find((a) => a.name === 'RESEND_KEY').hidden, true);
+    assert.deepEqual(secretPuts(h), ['RESEND_KEY']);
+    assert.equal(h.wrangler.calls.find((c) => c.args[2] === 'RESEND_KEY').input, ANSWERS.RESEND_KEY);
+    assertNoSecretAnywhere(h);
+  }
+  const two = rerun({ argv: ['--change', 'RESEND_KEY,HZ_TURNSTILE_SITEKEY'] });
+  await deploy(two.deps);
+  assert.deepEqual(valuePrompts(two), ['HZ_TURNSTILE_SITEKEY', 'RESEND_KEY'].sort((a, b) => ASKED.indexOf(a) - ASKED.indexOf(b)));
+  assert.deepEqual(secretPuts(two), ['RESEND_KEY']);
+});
+
+test('--change with a name it cannot ask stops before anything is read or changed', async () => {
+  for (const bad of ['HZ_ACCOUNT_KEY', 'NOT_A_NAME', '']) {
+    const h = rerun({ argv: ['--change', bad] });
+    const result = await deploy(h.deps);
+    assert.equal(result.ok, false, bad);
+    assert.match(h.output(), /--change takes one or more of: RESEND_KEY, /);
+    assert.deepEqual(h.wrangler.calls, [], 'no wrangler call');
+    assert.deepEqual(h.asked, []);
+  }
+});
+
+test('--ask-all asks every value as before, with no keep question, and puts every asked secret', async () => {
+  const h = rerun({ argv: ['--ask-all'] });
+  const result = await deploy(h.deps);
+  assert.equal(result.ok, true, h.output());
+  assert.deepEqual(valuePrompts(h), ASKED);
+  assert.equal(h.asked.some((a) => a.name === 'keep-or-replace'), false);
+  assert.deepEqual(secretPuts(h), ASKED_SECRETS, 'the generated keys stay kept');
+  assertNoSecretAnywhere(h);
+});
+
+test('a first deploy (nothing set) asks every value and no keep question', async () => {
+  const h = harness();
+  const result = await deploy(h.deps);
+  assert.equal(result.ok, true, h.output());
+  assert.deepEqual(valuePrompts(h), ASKED);
+  assert.equal(h.asked.some((a) => a.name === 'keep-or-replace'), false);
+  assert.deepEqual(secretPuts(h), SECRET_NAMES);
+  assert.equal(result.checklist.find((i) => i.item === 'Values kept')?.detail, 'none');
+});
+
+test('names typed at the keep question are asked (secrets hidden) and put; dictated spacing and case are read', async () => {
+  const h = rerun({ keep: 'resend key, hz_turnstile_secret.' });
+  const result = await deploy(h.deps);
+  assert.equal(result.ok, true, h.output());
+  assert.deepEqual(valuePrompts(h), ['RESEND_KEY', 'HZ_TURNSTILE_SECRET']);
+  assert.ok(h.asked.filter((a) => ASKED.includes(a.name)).every((a) => a.hidden === true));
+  assert.deepEqual(secretPuts(h), ['RESEND_KEY', 'HZ_TURNSTILE_SECRET']);
+  assert.match(stepText(h.output(), 2), /Add widget/, 'the widget clicks print before a Turnstile key is asked');
+  assertNoSecretAnywhere(h);
+});
+
+test('an unknown name at the keep question is refused with the list and asked again, never echoed', async () => {
+  const h = rerun({ keep: ['NOPE_NAME', ANSWERS.RESEND_KEY, 'HZ_ALERT_TO'] });
+  const result = await deploy(h.deps);
+  assert.equal(result.ok, true, h.output());
+  assert.equal(h.asked.filter((a) => a.name === 'keep-or-replace').length, 3);
+  assert.match(h.output(), /Not accepted: type names from this list, comma separated, or press Return: RESEND_KEY, /);
+  assert.equal(h.output().includes('NOPE_NAME'), false, 'what was typed is not echoed');
+  assert.equal(h.output().toUpperCase().includes(ANSWERS.RESEND_KEY.toUpperCase()), false, 'a pasted value is not echoed in any case');
+  assert.deepEqual(valuePrompts(h), ['HZ_ALERT_TO']);
+  assertNoSecretAnywhere(h);
+
+  const stop = rerun({ keep: ['x', 'y', 'z'] });
+  const r = await deploy(stop.deps);
+  assert.equal(r.ok, false);
+  assert.match(stop.output(), /No acceptable answer to the keep question after 3 tries\. Nothing was created\./);
+  assert.equal(stop.wrangler.calls.some((c) => c.args[1] === 'create' || c.args[0] === 'deploy' || c.args[1] === 'put'), false);
+});
+
+test('plain vars survive a rerun: read back into wrangler.deploy.toml, and keep_vars keeps any it does not name', async () => {
+  const h = rerun();
+  await deploy(h.deps);
+  const config = h.files.get(CONFIG_FILE);
+  assert.match(config, /^keep_vars = true$/m);
+  assert.ok(config.indexOf('keep_vars') < config.indexOf('[triggers]'), 'keep_vars is a top-level key');
+  assert.match(config, new RegExp(`^HZ_TURNSTILE_SITEKEY = "${ANSWERS.HZ_TURNSTILE_SITEKEY}"$`, 'm'));
+  assert.match(config, /^HZ_CODES_PER_DAY = "500"$/m);
+  assert.deepEqual(h.wrangler.liveVars(), LIVE_VARS, 'the live Worker still has both after the deploy');
+  // NEGATIVE CONTROL: the mock drops a var a config without keep_vars does not name, as wrangler does.
+  assert.deepEqual(varsAfterDeploy(LIVE_VARS, '[vars]\nHZ_TURNSTILE_SITEKEY = "0xA"\n'), { HZ_TURNSTILE_SITEKEY: '0xA' });
+
+  // An unreadable version view: the vars are asked (blank keeps the live one under keep_vars).
+  const blind = rerun({ state: { versionViewFail: '✘ [ERROR] A request to the Cloudflare API failed. [code: 10000]' } });
+  const r = await deploy(blind.deps);
+  assert.equal(r.ok, true, blind.output());
+  assert.deepEqual(valuePrompts(blind), ['HZ_TURNSTILE_SITEKEY', 'HZ_MAIL_PER_DAY', 'HZ_CODES_PER_DAY']);
+  assert.match(blind.output(), /Could not read the live Worker's plain values/);
+  assert.deepEqual(blind.wrangler.liveVars(), LIVE_VARS, 'HZ_CODES_PER_DAY left blank survives');
+});
+
+test('an optional value never set is left at its default on Return, and set when its name is typed', async () => {
+  const vars = { HZ_TURNSTILE_SITEKEY: ANSWERS.HZ_TURNSTILE_SITEKEY };
+  const h = rerun({ vars });
+  await deploy(h.deps);
+  assert.match(stepText(h.output(), 2), /Left at their default: HZ_MAIL_PER_DAY, HZ_CODES_PER_DAY \(type a name to set it\)/);
+  assert.deepEqual(valuePrompts(h), []);
+
+  const set = rerun({ vars, keep: 'HZ_CODES_PER_DAY', answers: { ...ANSWERS, HZ_CODES_PER_DAY: '250' } });
+  await deploy(set.deps);
+  assert.deepEqual(valuePrompts(set), ['HZ_CODES_PER_DAY']);
+  assert.match(set.files.get(CONFIG_FILE), /^HZ_CODES_PER_DAY = "250"$/m);
+  assert.deepEqual(set.wrangler.liveVars(), { ...vars, HZ_CODES_PER_DAY: '250' });
+});
+
+test('no secret value reaches a file on any of the rerun paths', async () => {
+  for (const opts of [{}, { keep: 'RESEND_KEY,HZ_MAIL_FROM,HZ_ALERT_TO,HZ_TURNSTILE_SECRET' }, { argv: ['--ask-all'] }]) {
+    const h = rerun(opts);
+    await deploy(h.deps);
+    assert.deepEqual([...h.files.keys()], [CONFIG_FILE]);
+    for (const v of SECRET_VALUES) assert.equal(h.files.get(CONFIG_FILE).includes(v), false);
+    assertNoSecretAnywhere(h);
+  }
+});
+
+test('the dry run, --help and DEPLOY.md name the keep question, --change and --ask-all', async () => {
+  const lines = [];
+  await deploy({ argv: ['--dry-run'], root: ROOT, write: (t) => lines.push(t) });
+  const two = stepText(lines.join('\n'), 2);
+  assert.match(two, /wrangler versions view <live-version-id> --name horae-zone --json/);
+  assert.match(two, /Press Return to keep all/);
+  assert.match(two, /--change NAME/);
+  assert.match(two, /--ask-all/);
+  const help = [];
+  await deploy({ argv: ['--help'], write: (t) => help.push(t) });
+  assert.match(help.join('\n'), /--change NAME\[,NAME\]/);
+  assert.match(help.join('\n'), /--ask-all/);
+  const doc = readFileSync(path.join(ROOT, 'DEPLOY.md'), 'utf8');
+  for (const s of ['Press Return to keep all of these', '--change RESEND_KEY', '--ask-all', 'keep_vars = true']) assert.ok(doc.includes(s), `DEPLOY.md says ${s}`);
 });
