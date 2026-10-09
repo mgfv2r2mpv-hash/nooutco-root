@@ -10,8 +10,10 @@ import { PassThrough } from 'node:stream';
 import { EventEmitter } from 'node:events';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import { ROOT, SCHEMA } from './helpers.mjs';
 import { deploy, runWrangler } from '../bin/deploy.mjs';
+import { declaredColumns, columnDefinitions, planTable } from '../bin/deploy-columns.mjs';
 import { CATALOG, LineReader, deployConfig, scrub, schemaTables, HOSTNAME } from '../bin/deploy-parts.mjs';
 import { accountKeys } from '../src/account-keys.js';
 import { seedBoxKey } from '../src/otp.js';
@@ -50,8 +52,14 @@ const SECRET_NAMES = ['HZ_ACCOUNT_KEY', 'HZ_SEED_KEY', 'HZ_TICKET_KEY', 'RESEND_
 
 // A wrangler stand-in. `state` decides what each command answers; every call
 // is recorded with its args, stdin, cwd and env.
+// The remote database is real SQLite (D1 is SQLite), made from
+// `state.existingSchema` (schema.sql by default): applying schema.sql runs it
+// for real, so CREATE TABLE IF NOT EXISTS leaves an existing table as it was,
+// and every PRAGMA table_info and ALTER TABLE the script sends runs on it.
 function mockWrangler(state = {}) {
   const calls = [];
+  const sqlite = new DatabaseSync(':memory:');
+  sqlite.exec(state.existingSchema ?? SCHEMA);
   const db = { present: state.dbPresent ?? false };
   const secretsSet = new Set(state.existingSecrets ?? []);
   // As wrangler 4 does: a Worker that was never deployed has no secret list.
@@ -75,6 +83,15 @@ function mockWrangler(state = {}) {
     }
     return { code: 1, stdout: '', stderr: `mock: unknown role command ${sql}` };
   }
+  function columnCommand(sql) {
+    try {
+      if (/^PRAGMA table_info\(\w+\)$/.test(sql)) return rows(sqlite.prepare(sql).all());
+      sqlite.exec(sql);
+      return rows([]);
+    } catch (err) {
+      return { code: 1, stdout: '', stderr: `✘ [ERROR] ${err.message}` };
+    }
+  }
   async function run(args, opts = {}) {
     calls.push({ args, input: opts.input, cwd: opts.cwd, env: opts.env });
     const cmd = args.slice(0, 2).join(' ');
@@ -83,7 +100,8 @@ function mockWrangler(state = {}) {
     if (cmd === 'whoami --json') return ok(JSON.stringify({ loggedIn: true, email: 'owner@example.test', accounts: state.accounts ?? [FAKE_ACCOUNT] }));
     if (cmd === 'd1 list') return ok(JSON.stringify(db.present ? [{ uuid: FAKE_DB_ID, name: 'horae-zone' }, { uuid: 'x', name: 'other' }] : [{ uuid: 'x', name: 'other' }]));
     if (cmd === 'd1 create') { db.present = true; return ok(`database_id = "${FAKE_DB_ID}"`); }
-    if (cmd === 'd1 execute' && args.includes('--file')) return ok('[{"success":true}]');
+    if (cmd === 'd1 execute' && args.includes('--file')) { sqlite.exec(SCHEMA); return ok('[{"success":true}]'); }
+    if (cmd === 'd1 execute' && /^(PRAGMA table_info|ALTER TABLE)\b/.test(args[args.indexOf('--command') + 1] ?? '')) return columnCommand(args[args.indexOf('--command') + 1]);
     if (cmd === 'd1 execute' && !/sqlite_master/.test(args[args.indexOf('--command') + 1] ?? '')) return roleCommand(args[args.indexOf('--command') + 1]);
     if (cmd === 'd1 execute') return ok(JSON.stringify([{ results: (state.tables ?? TABLES).map((name) => ({ name })), success: true }]));
     if (cmd === 'deploy --config') deployed = true;
@@ -99,7 +117,7 @@ function mockWrangler(state = {}) {
     if (cmd === 'secret list') return ok(state.secretListOut ?? JSON.stringify([...secretsSet].filter((n) => n !== state.dropSecret).map((name) => ({ name, type: 'secret_text' }))));
     return { code: 1, stdout: '', stderr: `mock: unknown command ${args.join(' ')}` };
   }
-  return { run, calls, admins };
+  return { run, calls, admins, sqlite };
 }
 
 // route: one answer for every fetch, or a list answered in order (the last
@@ -299,6 +317,89 @@ test('the schema is idempotent: every CREATE in schema.sql says IF NOT EXISTS', 
   const creates = sql.match(/CREATE\s+(TABLE|INDEX|UNIQUE INDEX)[^(;]*/gi) ?? [];
   assert.ok(creates.length > 0);
   for (const c of creates) assert.match(c, /IF NOT EXISTS/i, c);
+});
+
+// ---- Columns: schema.sql's columns reach a table that already exists ----
+// schema.sql with one stretch of a table's text replaced, as an older
+// database was made; the guard fails loudly if the text it edits has moved.
+function olderSchema(from, to) {
+  assert.ok(SCHEMA.includes(from), `schema.sql still has: ${from.trim()}`);
+  return SCHEMA.replace(from, to);
+}
+const columnsOf = (h, table) => h.wrangler.sqlite.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
+const sqlCalls = (h, re) => h.wrangler.calls.filter((c) => re.test(c.args[c.args.indexOf('--command') + 1] ?? ''));
+const called = (h, first) => h.wrangler.calls.some((c) => c.args[0] === first[0] && c.args[1] === first[1]);
+
+test('9 Oct incident: an existing device table without confirmed_at gets it added before the Worker deploys', async () => {
+  const h = harness({ wrangler: mockWrangler({ dbPresent: true, existingSchema: olderSchema(',\n  confirmed_at INTEGER\n', '\n') }) });
+  assert.equal(columnsOf(h, 'device').includes('confirmed_at'), false, 'the database starts the way production was');
+  const result = await deploy(h.deps);
+  assert.equal(result.ok, true, h.output());
+  assert.ok(columnsOf(h, 'device').includes('confirmed_at'), 'device has confirmed_at after the deploy');
+  const alters = sqlCalls(h, /^ALTER TABLE/);
+  assert.deepEqual(alters.map((c) => c.args[c.args.indexOf('--command') + 1]), ['ALTER TABLE device ADD COLUMN confirmed_at INTEGER']);
+  assert.ok(alters[0].args.includes('--remote') && alters[0].args.includes('wrangler.deploy.toml'), 'the ALTER goes to the remote database through the deploy config');
+  const at = (pred) => h.wrangler.calls.findIndex(pred);
+  assert.ok(at((c) => c.args.includes('--file')) < h.wrangler.calls.indexOf(alters[0]), 'after schema.sql is applied');
+  assert.ok(h.wrangler.calls.indexOf(alters[0]) < at((c) => c.args[0] === 'deploy'), 'before the Worker deploys');
+  const added = result.checklist.find((i) => i.item === 'Column added device.confirmed_at');
+  assert.equal(added?.status, 'PASS', 'the checklist names the column it added');
+  assert.match(added.detail, /ALTER TABLE device ADD COLUMN confirmed_at INTEGER/);
+  assert.equal(statusOf(result, 'Columns match schema.sql'), 'PASS');
+  assert.match(h.output(), /Added column confirmed_at to table device/);
+  assertNoSecretAnywhere(h);
+});
+
+test('a missing NOT NULL column without a default stops the deploy before the Worker deploys, naming table and column', async () => {
+  const h = harness({ wrangler: mockWrangler({ dbPresent: true, existingSchema: olderSchema('  sign_key    TEXT    NOT NULL,\n', '') }) });
+  const result = await deploy(h.deps);
+  assert.equal(result.ok, false);
+  assert.equal(sqlCalls(h, /^ALTER TABLE/).length, 0, 'no column is added');
+  assert.equal(called(h, ['deploy', '--config']), false, 'the Worker is not deployed');
+  assert.equal(called(h, ['secret', 'put']), false, 'no secret is put');
+  assert.equal(columnsOf(h, 'device').includes('sign_key'), false);
+  assert.match(h.output(), /STOPPED\. [^\n]*Worker was not deployed/);
+  assert.match(h.output(), /Table device is missing column sign_key, which schema\.sql declares NOT NULL with no constant DEFAULT/);
+  assert.equal(statusOf(result, 'Columns match schema.sql'), 'FAIL');
+});
+
+test('a changed type or a column schema.sql no longer declares stops the deploy before the Worker deploys', async () => {
+  const h = harness({ wrangler: mockWrangler({ dbPresent: true, existingSchema: olderSchema('  agree_key   TEXT,\n', '  agree_key   INTEGER,\n  legacy_key  TEXT,\n') }) });
+  const result = await deploy(h.deps);
+  assert.equal(result.ok, false);
+  assert.equal(sqlCalls(h, /^ALTER TABLE/).length, 0);
+  assert.equal(called(h, ['deploy', '--config']), false, 'the Worker is not deployed');
+  assert.match(h.output(), /Table device column agree_key is INTEGER in the database but TEXT in schema\.sql/);
+  assert.match(h.output(), /Table device has column legacy_key, which schema\.sql does not declare/);
+});
+
+test('a missing NOT NULL column with a constant DEFAULT is added; a UNIQUE, key or non-constant DEFAULT column is not', () => {
+  const ddl = `CREATE TABLE IF NOT EXISTS t (
+  id    TEXT    PRIMARY KEY,
+  n     INTEGER NOT NULL DEFAULT 0, -- a comment, (with a comma)
+  s     TEXT    DEFAULT 'a,b',
+  u     TEXT    UNIQUE,
+  e     INTEGER DEFAULT (1 + 1)
+);`;
+  const want = declaredColumns(ddl).get('t');
+  const defs = columnDefinitions(ddl).get('t');
+  const only = (name) => want.filter((c) => c.name === 'id' || c.name === name);
+  const added = planTable('t', want, only('none'), defs);
+  assert.deepEqual(added.add.map((a) => a.definition), ['n INTEGER NOT NULL DEFAULT 0', "s TEXT DEFAULT 'a,b'"]);
+  assert.match(added.problems.join('\n'), /missing column u, which schema\.sql declares UNIQUE/);
+  assert.match(added.problems.join('\n'), /missing column e, which has DEFAULT 1 \+ 1 in schema\.sql, not a constant/);
+  assert.match(planTable('t', want, want.filter((c) => c.name !== 'id'), defs).problems.join('\n'), /missing column id, which schema\.sql declares part of the PRIMARY KEY/);
+  assert.deepEqual(planTable('t', want, want, defs), { add: [], problems: [] }, 'NEGATIVE CONTROL: the same columns plan nothing');
+});
+
+test('NEGATIVE CONTROL: a database that matches schema.sql gets no column added', async () => {
+  const h = harness({ wrangler: mockWrangler({ dbPresent: true }) });
+  const result = await deploy(h.deps);
+  assert.equal(result.ok, true, h.output());
+  assert.equal(sqlCalls(h, /^ALTER TABLE/).length, 0, 'no ALTER TABLE is sent');
+  assert.equal(result.checklist.some((i) => i.item.startsWith('Column added')), false);
+  assert.equal(statusOf(result, 'Columns match schema.sql'), 'PASS');
+  assert.deepEqual(sqlCalls(h, /^PRAGMA table_info/).map((c) => c.args[c.args.indexOf('--command') + 1]), TABLES.map((t) => `PRAGMA table_info(${t})`), 'every table schema.sql declares is read once');
 });
 
 test('declining the account stops before anything is created or deployed', async () => {
