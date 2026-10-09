@@ -579,7 +579,7 @@
         </div>
         <div class="card">
           <h2>Production errors, last 7 days</h2>
-          <p class="muted" style="margin: 0 0 12px;">Every occurrence is counted, including the ones the error email held back.<br>No message text is kept here. The fingerprint matches the line on the error email.</p>
+          <p class="muted" style="margin: 0 0 12px;">Every occurrence is counted, including the ones the error email held back.<br>Only structure is kept here: tool, route, error class and code, status, request ids and build. No message, note text or anything typed. The fingerprint matches the line on the error email.</p>
           <div id="errorRecord"><span class="muted" style="font-size: 13px;">Loading...</span></div>
         </div>
       </div>
@@ -866,11 +866,17 @@
           .then(function (d) {
             var rows = d.records || [];
             if (!rows.length) { box.innerHTML = '<span class="muted" style="font-size: 13px;">No errors recorded in the last 7 days.</span>'; return; }
-            box.innerHTML = '<table><thead><tr><th>Last seen</th><th>Tool</th><th>Count</th><th>Day</th><th>Source</th><th>Fingerprint</th></tr></thead><tbody>'
+            var cell = function (v) { return "<td>" + escapeHtml(v === null || v === undefined || v === "" ? "-" : v) + "</td>"; };
+            var code = function (v) { return "<td><code>" + escapeHtml(v || "-") + "</code></td>"; };
+            var joined = function (parts) { return parts.filter(function (x) { return x !== null && x !== undefined && x !== ""; }).join(" / "); };
+            box.innerHTML = '<div style="overflow-x: auto;"><table><thead><tr><th>Last seen</th><th>Tool</th><th>Route</th><th>Error</th><th>Status</th><th>Count</th><th>Source</th><th>Request ids</th><th>Build</th><th>Fingerprint</th></tr></thead><tbody>'
               + rows.map(function (r) {
-                return "<tr><td>" + escapeHtml(fmtDateTime(r.last)) + "</td><td>" + escapeHtml(r.tool || "-") + "</td><td>" + escapeHtml(r.count || 0)
-                  + "</td><td>" + escapeHtml(r.day || "-") + "</td><td>" + escapeHtml(r.source || "-") + "</td><td><code>" + escapeHtml(r.fingerprint || "-") + "</code></td></tr>";
-              }).join("") + "</tbody></table>";
+                return "<tr>" + cell(fmtDateTime(r.last)) + cell(joined([r.tool, r.noteTool])) + cell(r.route)
+                  + cell(joined([r.errorClass, r.errorCode]))
+                  + cell(joined([r.status, r.upstreamStatus ? "upstream " + r.upstreamStatus : null]))
+                  + cell(r.count || 0) + cell(r.source)
+                  + code((r.requestIds || []).join(" ")) + code(r.build) + code(r.fingerprint) + "</tr>";
+              }).join("") + "</tbody></table></div>";
           })
           .catch(function (e) { box.innerHTML = '<span class="muted" style="font-size: 13px;">The error record could not be read: ' + escapeHtml(e.message || "unknown") + "</span>"; });
       }
