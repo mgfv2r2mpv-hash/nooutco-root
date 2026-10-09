@@ -104,10 +104,33 @@
     return out;
   }
 
+  /* NOTHING TO CHANGE, his ruling of 2026-10-09 on the board: when the expert
+     has nothing to fix, its output collapses to a small check mark.
+
+     A RULE, NOT A FIELD. The expert's schema carries no "nothing to report"
+     flag (expertSchema in _worker.js), so this reads what is left after the
+     praise is dropped. Something to change is any ask, any phrase to reword
+     that is not a keep, any abbreviation it could not read, or any finding
+     the cap cut. A reading it did resolve is a reading aid rather than a fix,
+     so it does not hold the block open. */
+  function nothingToChange(found) {
+    if (!found || typeof found !== "object") return false;
+    var hints = Array.isArray(found.hints) ? found.hints : [];
+    var register = Array.isArray(found.register) ? found.register : [];
+    var terms = Array.isArray(found.terms) ? found.terms : [];
+    var asks = hints.filter(function (h) { return h && text(h.ask).trim(); });
+    var rewrites = register.filter(function (r) {
+      return r && text(r.quote).trim() && (r.action || "ask") !== "keep";
+    });
+    var unread = terms.filter(function (t) { return t && text(t.token).trim() && t.status !== "resolved"; });
+    return !asks.length && !rewrites.length && !unread.length && !found.hintsDropped;
+  }
+
   window.ExpertPraise = {
     praiseOnly: praiseOnly,
     hintIsPraise: hintIsPraise,
     registerIsPraise: registerIsPraise,
     drop: drop,
+    nothingToChange: nothingToChange,
   };
 })();

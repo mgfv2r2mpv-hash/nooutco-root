@@ -1352,6 +1352,22 @@ function expertForReader(found, map) {
   };
 }
 
+/* The expert's "nothing here": one small mark, named for a screen reader and
+   on hover, in the expert's own green. */
+function ExpertCheck({ testid, label }) {
+  return (
+    <span
+      role="img"
+      aria-label={label}
+      title={label}
+      data-testid={testid}
+      style={{ display: "inline-block", fontSize: 14, fontWeight: 700, color: "#7a9460", lineHeight: 1 }}
+    >
+      {"\u2713"}
+    </span>
+  );
+}
+
 /* Everything the expert found that is not about one section: the abbreviations
    it resolved, the sentences it read as claims, and its whole-note asks. It
    sits above the grid for the same reason NoteHints does - filing a whole-note
@@ -1394,6 +1410,19 @@ function ExpertReading({ expert, claimAnswers, onClaimAnswer, busy }) {
     );
   }
 
+  /* NOTHING TO FIX IS A CHECK MARK (issue #119, his ruling of 2026-10-09):
+     "what is the use in the expert saying 'this is good' to me? It just
+     wastes space." The rule is ExpertPraise.nothingToChange. The mark still
+     answers the question the failed state exists for: a pass that ran and
+     found nothing reads differently from one that broke. */
+  if (window.ExpertPraise && ExpertPraise.nothingToChange(expert)) {
+    return (
+      <div style={{ marginBottom: 8, lineHeight: 1 }} data-testid="expert-reading">
+        <ExpertCheck testid="expert-clear" label="Expert: nothing to change" />
+      </div>
+    );
+  }
+
   // The expert's asks and its claim questions are asked in the NoMe panel
   // (expert-questions.js, his ruling of 2026-10-04), so this block keeps what
   // is not a question: the abbreviation readings and the phrases to reword.
@@ -1412,10 +1441,11 @@ function ExpertReading({ expert, claimAnswers, onClaimAnswer, busy }) {
         <RegisterStack findings={register} answers={claimAnswers} onAnswer={null} busy={busy} />
       ) : (
         /* Finding nothing is a result, and the panel has to agree or a clean
-           note reads as a broken call. */
-        <p style={{ fontSize: 12.5, color: "#7a9460", marginBottom: 8 }} data-testid="expert-register-empty">
-          No unobserved claims found in the intake.
-        </p>
+           note reads as a broken call. A mark rather than a sentence since
+           issue #119: the sentence was the expert saying "this is good". */
+        <div style={{ marginBottom: 8, lineHeight: 1 }}>
+          <ExpertCheck testid="expert-register-empty" label="Expert: no unobserved claims" />
+        </div>
       )}
       {expert.hintsDropped ? (
         <p style={{ fontSize: 11.5, color: "#7a9460", marginTop: 6 }} data-testid="expert-dropped">
@@ -2275,7 +2305,15 @@ function App() {
           ),
         })
       : [];
-    const injected = misplaced.concat(effectGaps, repeats);
+    /* THE FOURTH (issue #118): a clause saying a behavior stopped when the
+       notes say it did not. His reading: "if the vocalizations didn't
+       resolve, then the client kept making the vocalizations." It reads the
+       intake this draft was written from, and it only ever adds a hint; the
+       sentence stays the clinician's to correct. */
+    const stoppedClaims = window.NoteUnresolved
+      ? window.NoteUnresolved.hints(restored, draftIntakeRef.current, narrativeIds())
+      : [];
+    const injected = misplaced.concat(effectGaps, repeats, stoppedClaims);
     const withHints = injected.length
       ? { ...restored, hints: (Array.isArray(restored.hints) ? restored.hints : []).concat(injected) }
       : restored;
@@ -2296,15 +2334,23 @@ function App() {
     const filled = window.NoteHollow
       ? window.NoteHollow.passNote(stripped.output, narrativeIds())
       : { output: stripped.output, recast: 0, hollow: 0 };
+    /* "Did not resolve" reads "continued" (issue #118), his own reading of
+       the phrase. Last, for the reason the recast above runs after the strip:
+       it writes a word no model wrote, so nothing before it reads that word. */
+    const continued = window.NoteUnresolved
+      ? window.NoteUnresolved.passNote(filled.output, narrativeIds())
+      : { output: filled.output, recast: 0 };
 
     return {
-      output: filled.output,
+      output: continued.output,
       cut: stripped.cut,
       flagged: stripped.flagged,
       recast: filled.recast,
       hollow: filled.hollow,
       misplaced: misplaced.length,
       effectUnstated: effectGaps.length,
+      unresolvedRecast: continued.recast,
+      stoppedClaims: stoppedClaims.length,
     };
   };
   const finalOutput = (parsed) => finalize(parsed).output;
@@ -3415,7 +3461,11 @@ function App() {
                the phrases to reword and the alert budget all read the same
                list. A finding that praises and also asks for something stays. */
             const read = raw ? expertForReader(NotesScrub.restoreOutput(raw, scrubMapRef.current), scrubMapRef.current) : raw;
-            const found = read && window.ExpertPraise ? ExpertPraise.drop(read) : read;
+            const praised = read && window.ExpertPraise ? ExpertPraise.drop(read) : read;
+            /* And a finding that assumes a behavior stopped when the notes say
+               it did not (issue #118): "how long until the vocalizations
+               stopped?" asks about something that did not happen. */
+            const found = praised && window.NoteUnresolved ? NoteUnresolved.dropExpert(praised, expertIntake) : praised;
             patchS((s) => {
               if (!s.expert || s.expert.runId !== runId) return {};
               return { expert: found ? { status: "done", runId, ...found } : { status: "failed", runId } };
@@ -3430,6 +3480,7 @@ function App() {
                 terms: (found.terms || []).length,
                 dropped: found.hintsDropped || 0,
                 praise: found.praiseDropped || 0,
+                unresolved: found.unresolvedDropped || 0,
                 inTokens: (found.usage && found.usage.input_tokens) || 0,
                 cachedTokens: (found.usage && found.usage.cache_read_input_tokens) || 0,
                 outTokens: (found.usage && found.usage.output_tokens) || 0,
@@ -3606,6 +3657,9 @@ function App() {
            the model drops the hint, which was the open question one live note
            could not settle. */
         effectUnstated: finalDraft.effectUnstated,
+        // Issue #118: "did not resolve" recast, and stopped claims flagged.
+        unresolvedRecast: finalDraft.unresolvedRecast,
+        stoppedClaims: finalDraft.stoppedClaims,
       });
       /* ITS OWN EVENT, for the same reason note_postpass is. This payload is
          as wide as the number of codes a draft raised, so folding it into
