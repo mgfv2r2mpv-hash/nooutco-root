@@ -25,6 +25,20 @@
  * report, an unused one included; the Mac sends it the first time it reaches
  * the service after the pass was used, expired, blocked or replaced.
  *
+ * A MAC THAT LOST ITS RECORD (option c, the ringleader's call on Pollux's
+ * cross-PR finding of 9 Oct 2026). sass #309's vault transfer clears the
+ * Mac's offline record but keeps its Horae identity, and the Mac can report
+ * only from a record, so its unreported pass would hold it back for good. A
+ * grant whose ticket is fresh (its code proved after that pass was issued)
+ * and not yet spent re-proves the Mac, and it supersedes the device's own
+ * unreported pass: superseded_at is set, reported_at stays null (a
+ * superseded pass is never counted as reported, and no count of opens is
+ * made up for it), the request's audit row says superseded, the account is
+ * mailed SUPERSEDED_NOTE, and the new pass is issued. A code no newer than
+ * the pass, or one already spent, still answers report-due before anything
+ * is spent. Another device's pass is never touched, and a locked account
+ * never reaches the handler (the route is not lockedOk).
+ *
  * THE REPORT. The jti, each offline open as {seq, at} with seq running from 1,
  * the count of wrong PINs (at most 10: the tenth deletes the pass on the Mac)
  * and `head`, the log's chain: SHA-256 over `${LOG_LABEL}.${jti}`, then over
@@ -87,6 +101,13 @@ export const ISSUED_NOTE = Object.freeze({
   ].join("\n"),
 });
 
+// A fixed note: the device has no name of its own, and the A5b rule keeps a
+// note to no time, count or device id.
+export const SUPERSEDED_NOTE = Object.freeze({
+  subject: "Horae Zone: an offline pass was replaced",
+  text: "An offline pass on one of this account's Macs was replaced before it reported its offline opens.",
+});
+
 export const OPENED_NOTE = Object.freeze({
   subject: "Horae Zone: a Mac opened offline",
   text: "One of this account's Macs reported that it opened NoMe on its offline pass while it could not reach Horae Zone.",
@@ -116,12 +137,55 @@ async function signKeyOrUnavailable(env) {
   return signKey;
 }
 
-async function unreported(db, deviceId) {
-  return Boolean(await db.prepare("SELECT 1 AS due FROM offline_pass WHERE device_id = ? AND reported_at IS NULL").bind(deviceId).first());
+// A pass that still holds its device back: not reported and not superseded.
+const OPEN_PASS = "reported_at IS NULL AND superseded_at IS NULL";
+
+// When this device's latest open pass was issued, or null when it holds none.
+async function openPassIssued(db, deviceId) {
+  const row = await db.prepare(`SELECT MAX(issued_at) AS issued_at FROM offline_pass WHERE device_id = ? AND ${OPEN_PASS}`).bind(deviceId).first();
+  return row?.issued_at ?? null;
+}
+
+// A ticket re-proves the Mac when its code came after the open pass was
+// issued and it has not been spent (src/pin.js spendTicket).
+async function reProves(db, claims, issuedAt) {
+  if (claims.at <= issuedAt) return false;
+  return !(await db.prepare("SELECT 1 AS spent FROM spent_ticket WHERE jti = ?").bind(claims.jti).first());
 }
 
 async function jtiTaken(db, jti) {
   return Boolean(await db.prepare("SELECT 1 AS taken FROM offline_pass WHERE jti = ?").bind(jti).first());
+}
+
+// Only for a live device that holds no open pass, in the write.
+function insertPass(db, device, pass) {
+  return db.prepare(
+    `INSERT INTO offline_pass (jti, account_id, device_id, at, until, issued_at, max_opens)
+     SELECT ?, ?, ?, ?, ?, ?, ? WHERE ${LIVE_DEVICE}
+     AND NOT EXISTS (SELECT 1 FROM offline_pass WHERE device_id = ? AND ${OPEN_PASS})
+     ON CONFLICT (jti) DO NOTHING RETURNING jti`,
+  ).bind(pass.jti, device.account_id, device.id, pass.at, pass.until, pass.issuedAt, OFFLINE_LIMITS.maxOpens, device.id, device.id);
+}
+
+// Supersedes this device's open passes issued before the code, and issues the
+// new one, in one batch. The supersede holds only when the insert will: a live
+// device, a jti not taken, and no open pass of this device as new as the code.
+async function supersedeAndInsert(db, device, pass) {
+  await db.batch([
+    db.prepare(
+      `UPDATE offline_pass SET superseded_at = ? WHERE device_id = ? AND ${OPEN_PASS} AND issued_at < ? AND ${LIVE_DEVICE}
+       AND NOT EXISTS (SELECT 1 FROM offline_pass WHERE jti = ?)
+       AND NOT EXISTS (SELECT 1 FROM offline_pass WHERE device_id = ? AND ${OPEN_PASS} AND issued_at >= ?)`,
+    ).bind(pass.issuedAt, device.id, pass.at, device.id, pass.jti, device.id, pass.at),
+    insertPass(db, device, pass),
+  ]);
+  const made = await db.prepare("SELECT jti FROM offline_pass WHERE jti = ? AND device_id = ? AND issued_at = ?")
+    .bind(pass.jti, device.id, pass.issuedAt).first();
+  if (!made) return { made: null, superseded: false };
+  // A pass reported between the read and the batch was not superseded: no note for it.
+  const replaced = await db.prepare("SELECT COUNT(*) AS n FROM offline_pass WHERE device_id = ? AND superseded_at = ?")
+    .bind(device.id, pass.issuedAt).first();
+  return { made, superseded: replaced.n > 0 };
 }
 
 // POST /offline/grant. Every refusal but a lost race comes before the spend.
@@ -132,25 +196,24 @@ export async function grantPass({ db, device, body, now, env, mailer }) {
   const signKey = await signKeyOrUnavailable(env);
   const claims = await readTicket(env, ticket, device, now);
   if (!claims) throw new Refusal("bad-ticket", 401);
-  if (await unreported(db, device.id)) throw new Refusal("report-due", 409);
+  const openIssued = await openPassIssued(db, device.id);
+  if (openIssued !== null && !(await reProves(db, claims, openIssued))) throw new Refusal("report-due", 409);
   if (await jtiTaken(db, jti)) throw new Refusal("shape", 400);
   await spendTicket(db, device, claims);
-  const until = claims.at + hours * HOUR_MS;
-  // Only for a live device that still holds no unreported pass, in the write.
-  const made = await db.prepare(
-    `INSERT INTO offline_pass (jti, account_id, device_id, at, until, issued_at, max_opens)
-     SELECT ?, ?, ?, ?, ?, ?, ? WHERE ${LIVE_DEVICE}
-     AND NOT EXISTS (SELECT 1 FROM offline_pass WHERE device_id = ? AND reported_at IS NULL)
-     ON CONFLICT (jti) DO NOTHING RETURNING jti`,
-  ).bind(jti, device.account_id, device.id, claims.at, until, now, OFFLINE_LIMITS.maxOpens, device.id, device.id).first();
+  const pass = { jti, at: claims.at, until: claims.at + hours * HOUR_MS, issuedAt: now };
+  const { made, superseded } = openIssued === null
+    ? { made: await insertPass(db, device, pass).first(), superseded: false }
+    : await supersedeAndInsert(db, device, pass);
   if (!made) {
     await findDevice(db, device.id);
-    throw (await unreported(db, device.id)) ? new Refusal("report-due", 409) : new Refusal("shape", 400);
+    throw (await openPassIssued(db, device.id)) !== null ? new Refusal("report-due", 409) : new Refusal("shape", 400);
   }
-  const pass = await signedText(signKey, PASS_LABEL, {
-    typ: PASS_TYP, account: device.account_id, device: device.id, at: claims.at, until, jti, maxOpens: OFFLINE_LIMITS.maxOpens,
+  const signed = await signedText(signKey, PASS_LABEL, {
+    typ: PASS_TYP, account: device.account_id, device: device.id, at: pass.at, until: pass.until, jti, maxOpens: OFFLINE_LIMITS.maxOpens,
   });
-  return { status: 200, json: { ok: true, pass }, after: mailAfter({ db, keys, mailer, accountId: device.account_id, notes: [ISSUED_NOTE] }) };
+  const notes = superseded ? [SUPERSEDED_NOTE, ISSUED_NOTE] : [ISSUED_NOTE];
+  const after = mailAfter({ db, keys, mailer, accountId: device.account_id, notes });
+  return { status: 200, json: { ok: true, pass: signed }, after, ...(superseded ? { audit: "superseded" } : {}) };
 }
 
 function opensOf(value) {
