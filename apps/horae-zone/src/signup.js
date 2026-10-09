@@ -40,6 +40,7 @@ import { Refusal, b64url } from "./checks.js";
 import { accountKeys } from "./account-keys.js";
 import { admitThrottle } from "./throttle.js";
 import { verifyTurnstile } from "./turnstile.js";
+import { MAIL_BUCKET, mailBucketFor, paidSend, sendReason, wholeFromOne } from "./mail-budget.js";
 
 // SHA-256, base64url without padding: the digest of the two public keys a
 // ticket may register (src/devices.js deviceKeyDigest).
@@ -66,9 +67,11 @@ const TICKET_BYTES = 32;
 // place in codesPerMailboxHour to mint. Item 5: codesPerDay is the hard cap,
 // the mail plan's daily limit (100, the Resend free plan's daily send limit
 // as DESIGN-REVIEW A3 row 9 records it, or HZ_CODES_PER_DAY for a larger
-// plan), and at alertAtPercent of it one alert a day goes to HZ_ALERT_TO.
-// The default sits at the plan's limit so a flood meets this cap, answered
-// slow-down, before the plan itself drops real sign-up mail unannounced.
+// plan). PR #324: every start also takes a place in the shared mail budget
+// (src/mail-budget.js) only while it is under the sign-up tier, 70 of the
+// plan's 100, so sign-ups never use the places recovery and the security
+// notices need. At alertAtPercent of the lower of the two stops, counted in
+// the shared budget, one alert a day goes to HZ_ALERT_TO.
 export const SIGNUP_LIMITS = Object.freeze({
   codeTtlMs: 10 * 60 * 1000,
   triesPerAddressRequesterHour: 5,
@@ -176,10 +179,8 @@ function taggedMailbox(address) {
 export function codesPerDayOf(env) {
   const value = env.HZ_CODES_PER_DAY;
   if (value === undefined || value === null) return SIGNUP_LIMITS.codesPerDay;
-  const n = typeof value === "string" && /^\d+$/.test(value) ? Number(value) : value;
-  if (!Number.isSafeInteger(n) || n < 1) {
-    throw new Refusal("unavailable", 503);
-  }
+  const n = wholeFromOne(value);
+  if (n === null) throw new Refusal("unavailable", 503);
   return n;
 }
 
@@ -228,15 +229,10 @@ function codeMessage(to, link, msLeft) {
 }
 
 // The mail runs after the answer and its audit row; a send that fails or
-// throws is audited as mail-failed and changes nothing else.
+// throws is audited as mail-failed and changes nothing else. The start's
+// admit already took its place in the shared budget, so the send is paid.
 function mailAfter(mailer, message) {
-  return async () => {
-    try {
-      return (await mailer(message)) ? null : "mail-failed";
-    } catch {
-      return "mail-failed";
-    }
-  };
+  return () => sendReason(paidSend(mailer), message);
 }
 
 export function linkOf(env, code) {
@@ -292,19 +288,22 @@ async function resendCode(db, keys, addressKey, mailboxKey, now) {
   }
 }
 
-// Item 5: true for the one start that brings the day's count to
-// alertAtPercent of the cap while no alert went out in the last day. One
+// Item 5: the threshold for the one start that brings the day's shared mail
+// count (src/mail-budget.js) to alertAtPercent of `stop`, the lower of the
+// sign-up cap and the sign-up tier, while no alert went out in the last day;
+// null for every other start. Every admitted start took a place in the shared
+// count, so it reaches the threshold no later than the day's starts do. One
 // statement checks both and takes the alert row, so two starts together
 // cannot both alert. Every start past the first step runs it, so the M1
 // statements still match.
-async function takeAlert(db, now, codesPerDay) {
-  const threshold = Math.ceil((codesPerDay * SIGNUP_LIMITS.alertAtPercent) / 100);
+async function takeAlert(db, now, stop) {
+  const threshold = Math.ceil((stop * SIGNUP_LIMITS.alertAtPercent) / 100);
   const since = now - SIGNUP_LIMITS.dayMs;
   const row = await db.prepare(
     `INSERT INTO throttle (bucket, at) SELECT ?, ?
      WHERE (SELECT COUNT(*) FROM throttle WHERE bucket = ? AND at > ?) >= ?
      AND NOT EXISTS (SELECT 1 FROM throttle WHERE bucket = ? AND at > ?) RETURNING bucket`,
-  ).bind(ALERT_BUCKET, now, DAILY_BUCKET, since, threshold, ALERT_BUCKET, since).first();
+  ).bind(ALERT_BUCKET, now, MAIL_BUCKET, since, threshold, ALERT_BUCKET, since).first();
   return row ? threshold : null;
 }
 
@@ -319,12 +318,12 @@ function alertAddressOf(env) {
 }
 
 // Plain notes on state; it names no address and no requester.
-function alertMessage(to, reached, codesPerDay) {
+function alertMessage(to, reached, stop) {
   return {
     to,
     subject: "Horae Zone sign-ups at half the daily cap",
     text: [
-      `Sign-up starts in the last 24 hours reached ${reached}, half the daily cap of ${codesPerDay}.`,
+      `Mail sent in the last 24 hours reached ${reached}, half the sign-up daily cap of ${stop}.`,
       "At the cap, new sign-up starts answer slow-down until the 24-hour count falls.",
       "No other alert is sent for 24 hours.",
     ].join("\n"),
@@ -332,17 +331,12 @@ function alertMessage(to, reached, codesPerDay) {
 }
 
 // Item 5: the alert's after-work. A missing or bad HZ_ALERT_TO is audited
-// alert-unset, a send that fails or throws alert-failed.
-function alertAfter(env, mailer, reached, codesPerDay) {
+// alert-unset, a send that fails or throws alert-failed, and one the shared
+// budget refused mail-budget. The alert takes a notice place of its own.
+function alertAfter(env, mailer, reached, stop) {
   const to = alertAddressOf(env);
   if (!to) return async () => "alert-unset";
-  return async () => {
-    try {
-      return (await mailer(alertMessage(to, reached, codesPerDay))) ? null : "alert-failed";
-    } catch {
-      return "alert-failed";
-    }
-  };
+  return () => sendReason(mailer, alertMessage(to, reached, stop), "alert-failed");
 }
 
 // The link mail, then the alert; each failure is a reason for the audit.
@@ -369,6 +363,7 @@ export async function startSignup({ db, body, now, env, request, mailer, sitever
   const keys = await keysOrUnavailable(env);
   if (!mailer) throw new Refusal("unavailable", 503);
   const codesPerDay = codesPerDayOf(env);
+  const mailDay = mailBucketFor(env, "signup");
   linkOf(env, newCode()); // a link base that cannot carry a link stops the start before any write
   const addressKey = await keys.addressKey(address);
   const requester = await keys.requesterKey(ip);
@@ -377,13 +372,16 @@ export async function startSignup({ db, body, now, env, request, mailer, sitever
   // Turnstile before the buckets (design of 8 Oct 2026, 2.4): a failed or
   // missing challenge never spends a place in the daily cap.
   await verifyTurnstile(env, body.turnstile, { action: "account", ip, now, siteverify });
-  // The requester's own cap and the daily cap refuse a start outright.
+  // The requester's own cap, the daily cap and the sign-up tier of the
+  // shared mail budget refuse a start outright, all or none.
   const counted = await admitThrottle(db, now, SIGNUP_LIMITS.windowMs, [
     { bucket: `start-requester:${requester}`, limit: SIGNUP_LIMITS.startsPerRequesterHour },
     { bucket: DAILY_BUCKET, limit: codesPerDay, windowMs: SIGNUP_LIMITS.dayMs },
+    mailDay,
   ]);
   if (!counted) throw new Refusal("slow-down", 429);
-  const alerted = await takeAlert(db, now, codesPerDay);
+  const stop = Math.min(codesPerDay, mailDay.limit);
+  const alerted = await takeAlert(db, now, stop);
   // Nothing past here refuses. A tagged address mints only inside its
   // mailbox's cap; any start that does not mint re-sends the live link.
   const mints = mailboxKey
@@ -393,7 +391,7 @@ export async function startSignup({ db, body, now, env, request, mailer, sitever
   const sent = minted.made ? minted.sent : await resendCode(db, keys, addressKey, mailboxKey, now);
   const works = [
     ...(sent ? [mailAfter(mailer, codeMessage(address, linkOf(env, sent.code), sent.msLeft))] : []),
-    ...(alerted ? [alertAfter(env, mailer, alerted, codesPerDay)] : []),
+    ...(alerted ? [alertAfter(env, mailer, alerted, stop)] : []),
   ];
   if (works.length === 0) return { status: 200, json: { ok: true } };
   return { status: 200, json: { ok: true }, after: afterAll(works) };

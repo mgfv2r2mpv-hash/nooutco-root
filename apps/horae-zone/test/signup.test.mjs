@@ -361,10 +361,11 @@ test('third review, item 2: strangers\' 3 mints and 3 re-sends, then the owner\'
 });
 
 test('third review, item 2: strangers starting every 10 s for an hour never leave the owner without a working link', async () => {
-  // 181 starts in the half hour: past the default daily cap (100), which
-  // its own tests cover. This test is about one address's live link, so a
-  // paid plan's larger cap keeps the daily bucket out of the way.
-  const h = harness({ env: { HZ_CODES_PER_DAY: '1000' } });
+  // 181 starts in the half hour: past the default daily cap (100) and the
+  // shared mail budget's sign-up tier (70), which their own tests cover. This
+  // test is about one address's live link, so a paid plan's larger caps keep
+  // both day counts out of the way.
+  const h = harness({ env: { HZ_CODES_PER_DAY: '1000', HZ_MAIL_PER_DAY: '1000' } });
   const step = 10_000;
   const ownerAt = 30 * 60 * 1000 + 5_000;
   for (let t = 0; t < ownerAt; t += step) {
@@ -735,7 +736,13 @@ test('item 5: the alert check sends the same statements whether or not the addre
   const mid = h.db.bound.length;
   await start(h, 'fresh@example.test', '198.51.100.51');
   const without = h.db.bound.slice(mid).map(shape);
-  assert.deepEqual(withAccount, without);
+  // The request's own statements end at its audit row. After the answer, the
+  // third start's alert takes its place in the shared mail budget
+  // (src/mail-budget.js): that follows the day's count, not the address.
+  const answered = (list) => list.slice(0, list.findIndex((sql) => sql.startsWith('INSERT INTO audit')) + 1);
+  assert.deepEqual(answered(withAccount), answered(without));
+  assert.deepEqual(withAccount.slice(answered(withAccount).length), [], 'no after-work for the start with an account');
+  assert.deepEqual(without.slice(answered(without).length).map((sql) => /INSERT INTO throttle/.test(sql)), [true], 'only the alert\'s budget place');
   assert.equal(alertsIn(h).length, 1, 'the third start reached half the cap');
 });
 

@@ -38,6 +38,7 @@ import { Refusal, readBody, findDevice, checkSignature, isAdmin } from "./checks
 import { purgeExpired } from "./retention.js";
 import { accountLocked } from "./account-lock.js";
 import { challengePage } from "./challenge-page.js";
+import { budgetedMailer } from "./mail-budget.js";
 
 const HEADERS = { "content-type": "application/json", "cache-control": "no-store" };
 
@@ -59,6 +60,14 @@ async function audit(db, at, route, reason) {
 function mailerFrom(env) {
   if (!env.HZ_MAIL_FROM || !env.RESEND_KEY) return null;
   return createMailer({ from: env.HZ_MAIL_FROM, readKey: async () => env.RESEND_KEY });
+}
+
+// The transport a handler gets: every send takes a place in the shared daily
+// mail budget first (src/mail-budget.js), whoever sends it. Null when there
+// is no transport, so the routes that mail answer unavailable.
+function budgeted(db, env, now, mailer) {
+  const base = mailer ?? mailerFrom(env);
+  return base ? budgetedMailer({ db, env, now, mailer: base }) : null;
 }
 
 // Runs a handler's after-work and audits each failure reason it names (one
@@ -102,7 +111,7 @@ async function run(request, env, ctx, { routes, now, mailer, pinRules, siteverif
       if (!route.lockedOk && (await accountLocked(db, device.account_id))) throw new Refusal("account-locked", 423);
     }
     if (!route.handler) throw new Refusal("not-built", 501);
-    const out = await route.handler({ db, device, body, now, env, request, mailer: mailer ?? mailerFrom(env), pinRules, siteverify });
+    const out = await route.handler({ db, device, body, now, env, request, mailer: budgeted(db, env, now, mailer), pinRules, siteverify });
     // A handler may name its outcome word in place of "ok" (A5c: an admin
     // unlock says whether it unlocked); always a fixed word, never a value.
     await audit(db, now, name, out.audit ?? "ok");
