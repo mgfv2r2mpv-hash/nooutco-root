@@ -243,7 +243,9 @@ test('A6: a purge removes spent or expired recovery links and stale handoffs, ne
   db.prepare("INSERT INTO vault (account_id, vault_id, set_at) VALUES ('acct-1', 'v-now', 0)").run();
   db.prepare("INSERT INTO vault_tombstone (vault_id, account_id, at) VALUES ('v-old', 'acct-1', 0)").run();
   await purgeExpired(h.db, T0);
-  assert.deepEqual(db.prepare('SELECT address_key FROM recovery').all().map((r) => r.address_key), ['live']);
+  // A6 security review LOW-1: a spent link inside its life is kept, so a
+  // purge never frees an address to mint a new link early.
+  assert.deepEqual(db.prepare('SELECT address_key FROM recovery ORDER BY address_key').all().map((r) => r.address_key), ['live', 'spent']);
   assert.deepEqual(db.prepare('SELECT device_id FROM handoff').all().map((r) => r.device_id), ['fresh']);
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM vault').get().n, 1);
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM vault_tombstone').get().n, 1);

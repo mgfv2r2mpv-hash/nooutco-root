@@ -200,3 +200,21 @@ test('the switch note carries no number, link, id or value the request carried',
   for (const value of [V1, V2, owner.id]) assert.equal(note.text.includes(value), false);
   assert.ok(auditRows(h.db).some((r) => r.route === '/vault/switch' && r.reason === 'ok'));
 });
+
+// LOW-4 of the A6 security review: the switch's tombstone and drop ran even
+// when its insert was skipped (an id claimed between the check and the
+// batch), leaving the old id both current and tombstoned.
+test('review LOW-4: a switch whose new id is claimed mid-flight leaves the old vault current and untombstoned', async () => {
+  const h = harness();
+  const owner = await owned(h);
+  const account = accountOf(h, owner.id);
+  await switchVault(h, owner, V1);
+  const ticket = await ticketFor(h, owner);
+  const { landsMidFlight } = await import('./helpers.mjs');
+  landsMidFlight(h, 'SELECT 1 AS used WHERE EXISTS', (db) => {
+    db.sqlite.prepare("INSERT INTO vault_tombstone (vault_id, account_id, at) VALUES (?, 'acct-other', 0)").run(V2);
+  });
+  assert.deepEqual(await pinCall(h, owner, '/vault/switch', { vault: V2, ticket }), { status: 409, json: { error: 'vault-used' } });
+  assert.equal(current(h, account), V1);
+  assert.deepEqual(tombstones(h).filter((t) => t.account_id === account), []);
+});
