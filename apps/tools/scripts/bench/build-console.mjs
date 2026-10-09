@@ -67,7 +67,10 @@ export function render(tool) {
     throw new Error('Open ' + ${JSON.stringify(page)} + ' on tools.nooutco.me first, then paste this again.');
   }
   return benchInPage(CASES, checkNote).then((report) => {
-    console.table(report.results.map((r) => ({ case: r.id, pass: !r.fails.length, typed: r.typed ? r.typed.total : '-', seconds: r.seconds || '-', fails: r.fails.join(' | ') || '-' })));
+    console.table(report.results.map((r) => ({ case: r.id, pass: !r.fails.length, typed: r.typed ? r.typed.total : '-', seconds: r.seconds || '-', held: r.held && r.held.length ? r.held.join(', ') : '-', fails: r.fails.join(' | ') || '-' })));
+    /* The table cuts a long cell short (9 Oct 2026: "One-Step Instructi...oals"),
+       so each failure is also printed whole, one per line. */
+    report.results.filter((r) => r.fails.length).forEach((r) => console.log(r.id + ' fails:\\n  ' + r.fails.join('\\n  ')));
     window.benchReport = report;
     try {
       if (!copyNow) throw new Error('no console copy()');

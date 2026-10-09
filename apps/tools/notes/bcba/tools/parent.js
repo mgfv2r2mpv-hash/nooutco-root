@@ -264,6 +264,60 @@ TERMINOLOGY (non-negotiable)\n\
     return reason;
   }
 
+  /* PROGRESS STATUS, HELD BY CODE where his ruling settles it. The prompt
+     states it (progressStatus, under CHECKBOX INFERENCE): "A client goal at 0
+     of 3 beside caregiver goals at 85 to 100 percent is Moderate progress: not
+     Minimal, because the caregiver goals carry it, and not Substantial, because
+     a client goal with no trial correct holds it back. Substantial only when
+     the caregiver goals and the client goals both moved." His 9 Oct 2026 bench
+     run still picked other than Moderate on exactly that note (v1), so the
+     ruling is held here the way the Caregiver Response one is.
+
+     It reads the goal data lines only. A follow-up question ("Q: You wrote 0/3
+     on ...") quotes data already counted from the boxes, so it is skipped, and
+     it ends a goal section the way a new heading does: an answer is not under
+     "Parent Goals:" unless it says Parent Goal itself. */
+  var STRONG_PCT = 85;
+
+  function goalData(intake) {
+    var inParent = false;
+    var lines = [];
+    String(intake).split(/\n/).forEach(function (line) {
+      if (/^\s*Q:/.test(line)) { inParent = false; return; }
+      if (/\bparent goals?\s*:/i.test(line)) inParent = true;
+      else if (/\b(?:client|child|skill|behavior) goals?\s*:/i.test(line)) inParent = false;
+      var found = counts(line);
+      if (!found.length) return;
+      var pct = /\b(\d{1,3})\s*%/.exec(line);
+      lines.push({ parent: inParent || /\bparent goal\b/i.test(line), count: found[0], pct: pct ? +pct[1] : null });
+    });
+    return lines;
+  }
+
+  // Same notation rule as the barrier: a percentage on the line settles it.
+  function noneCorrect(d) { return d.pct !== null ? d.pct === 0 : d.count.done === 0 && d.count.missed > 0; }
+  function strong(d) {
+    if (d.pct !== null) return d.pct >= STRONG_PCT;
+    var total = d.count.done + d.count.missed;
+    return total > 0 && (d.count.done / total) * 100 >= STRONG_PCT;
+  }
+
+  function holdProgress(pick, intake) {
+    var data = goalData(intake);
+    var clientZero = data.filter(function (d) { return !d.parent && noneCorrect(d); })[0];
+    if (!clientZero) return { pick: pick, hint: null };
+    var parentGoals = data.filter(function (d) { return d.parent; });
+    var caregiversCarry = parentGoals.length > 0 && parentGoals.every(strong);
+    var moderate = PROGRESS_OPTIONS[1];
+    var ruled = pick === PROGRESS_OPTIONS[2] || (caregiversCarry && pick !== moderate);
+    if (!ruled) return { pick: pick, hint: null };
+    var zero = clientZero.count.done + "/" + clientZero.count.missed;
+    var why = caregiversCarry
+      ? "the caregiver goals ran at " + STRONG_PCT + " to 100 percent and a client goal had no trial correct (" + zero + ")"
+      : "a client goal had no trial correct (" + zero + ")";
+    return { pick: moderate, hint: { section: "progressStatus", code: "other", detail: "Set to Moderate because " + why + ". Check it." } };
+  }
+
   function holdDefaults(out, intake) {
     var hints = [];
     // Technician is present unless the notes say the BT was not there.
@@ -283,7 +337,9 @@ TERMINOLOGY (non-negotiable)\n\
       response = CAREGIVER_RESPONSES[1];
       hints.push({ section: "caregiverResponse", code: "other", detail: "Set to the middle option because " + barrier + ". Check it." });
     }
-    return { individualsPresent: present, caregiverResponse: response, hints: hints };
+    var progress = holdProgress(out.progressStatus, intake);
+    if (progress.hint) hints.push(progress.hint);
+    return { individualsPresent: present, caregiverResponse: response, progressStatus: progress.pick, hints: hints };
   }
 
   function normalizeOutput(raw, ctx) {
@@ -304,6 +360,7 @@ TERMINOLOGY (non-negotiable)\n\
     if (held) {
       out.individualsPresent = held.individualsPresent;
       out.caregiverResponse = held.caregiverResponse;
+      out.progressStatus = held.progressStatus;
     }
     out.hints = normalizeHints((Array.isArray(o.hints) ? o.hints : []).concat(moved.hints, held ? held.hints : []), HINT_CATALOG, SECTION_IDS);
     // The three revision keys the engine reads back. Kept separate from the

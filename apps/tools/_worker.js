@@ -1650,10 +1650,25 @@ const CORRECTIONS_ADDENDUM = [
   "PEOPLE ARE ROLE TOKENS IN SQUARE BRACKETS: [CLIENT], [CAREGIVER], [BT], [BCBA], [TEACHER], [STAFF], and [CLIENT-2] for a second person of one role. Where the notes or the draft carry one, copy it exactly, brackets and number included. Never write one they do not already carry, and never turn a plain word such as Client or the client into one. Any other token shape for a person, including a role word joined to a number by two hyphens, is retired: never write it.",
 ].join("\n");
 
+/* A PARENT NOTE'S DATA IS ITS CONTENT. Rule 3 above was written for the BT
+   note, whose data ReThink already pulls in, so a sentence reciting it adds
+   nothing. The parent note is the other way round, by his rulings in its own
+   prompt: "NAME EVERY GOAL. Name each goal as the notes write it, with its data
+   line, in the summary", and "DATA IS QUOTED, NEVER PARAPHRASED". Left alone,
+   rule 3 tells this pass to take out exactly what that prompt was told to put
+   in, so for parent it is narrowed. Every other tool reads as before. */
+const CORRECTIONS_ADDENDUM_FOR = {
+  parent: [
+    "",
+    "THIS IS A PARENT TRAINING NOTE, AND RULE 3 IS NARROWER HERE. Each goal the notes list is named in the summary as the notes write it, with its data line, because no other part of the record carries it. Never remove or reword a goal's name, its count, its percentage or its prompt level.",
+  ].join("\n"),
+};
+
 /* Exported so the composition order is pinned by a test rather than inferred.
    The stored prompt carries the rules; this only says what to do with them. */
-export function correctionsSystem(storedPrompt) {
-  return String(storedPrompt || "") + "\n\n" + CORRECTIONS_ADDENDUM;
+export function correctionsSystem(storedPrompt, tool) {
+  const own = Object.prototype.hasOwnProperty.call(CORRECTIONS_ADDENDUM_FOR, tool) ? "\n" + CORRECTIONS_ADDENDUM_FOR[tool] : "";
+  return String(storedPrompt || "") + "\n\n" + CORRECTIONS_ADDENDUM + own;
 }
 
 /* Validate and normalize. Pure and exported, like the pass's validator and the
@@ -1948,7 +1963,7 @@ async function handleCorrections(request, env) {
        call that stands between a finished draft and the technician reading it. */
     const turn = await runExpertTurn({
       apiKey,
-      system: correctionsSystem(composed.system),
+      system: correctionsSystem(composed.system, parsed.tool),
       messages: correctionsTurns(parsed),
       model: EXPERT_MODEL,
       maxTokens: CORRECTIONS_MAX_TOKENS,

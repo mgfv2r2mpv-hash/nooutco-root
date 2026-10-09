@@ -93,6 +93,19 @@ test.describe('what the model is told', () => {
     expect(composed).toContain('CHANGE NOTHING ELSE');
   });
 
+  /* Rule 3 removes data a BT note's record already carries. A parent note's
+     goal names and data lines are what its prompt requires, so for parent the
+     rule is narrowed, after the shared addendum, and for no other tool. */
+  test('a parent note keeps its goal names and data lines; other tools read as before', () => {
+    const parent = correctionsSystem('STORED RULES', 'parent');
+    expect(parent.startsWith(correctionsSystem('STORED RULES'))).toBe(true);
+    expect(parent).toContain('THIS IS A PARENT TRAINING NOTE, AND RULE 3 IS NARROWER HERE');
+    expect(parent).toContain("Never remove or reword a goal's name, its count, its percentage or its prompt level.");
+    for (const tool of ['bt', 'sup', 'assess', 'sap', undefined, 'constructor']) {
+      expect(correctionsSystem('STORED RULES', tool)).toBe(correctionsSystem('STORED RULES'));
+    }
+  });
+
   test('the turns carry the intake first and the draft second, both from the request', () => {
     const turns = correctionsTurns(correctionsRequest(ok()));
     expect(turns.map((t) => t.role)).toEqual(['user', 'user']);

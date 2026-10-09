@@ -344,6 +344,54 @@ test.describe('the defaults hold in code', () => {
     expect(out.caregiverResponse).toBe(first);
   });
 
+  /* His ruling in the prompt, held in code after the 9 Oct 2026 bench run
+   * picked other than Moderate on v1: a client goal at 0 of 3 beside caregiver
+   * goals at 85 to 100 percent is Moderate, and Substantial never stands beside
+   * a client goal with no trial correct. */
+  const MODERATE = 'Moderate progress towards goals';
+  const V1_NOTES = 'Client Goals:\nOne-Step Instructions|Stand up|0/3|%O\nParent Goals:\n1. Parent Goal: Toilet Training|Prompt to Sit|2/0|100%|+,+\n2. Parent Goal: Toilet Training|Use Timer|2/0|100%';
+  for (const pick of ['Substantial progress towards goals', 'Minimal progress towards goals', '']) {
+    test(`Progress Status "${pick || '(blank)'}" becomes Moderate on v1's shape, with a hint saying why`, async ({ page }) => {
+      await parentTool(page);
+      const out = await norm(page, { individualsPresent: [], caregiverResponse: MIDDLE, progressStatus: pick }, { intake: V1_NOTES });
+      expect(out.progressStatus).toBe(MODERATE);
+      expect(out.hints.some((h) => h.section === 'progressStatus' && /caregiver goals ran at 85 to 100 percent and a client goal had no trial correct \(0\/3\)/.test(h.detail))).toBe(true);
+    });
+  }
+
+  test('a question quoting 0/3 is not read as a caregiver goal, and an answer that names a parent goal is', async ({ page }) => {
+    await parentTool(page);
+    const intake = V1_NOTES + '\nQ: You wrote 0/3 on the one-step instruction. What happened?\nA: Tantrum on 1 trial.\n\nQ: How did caregivers respond to climbing?\nA: Add Parent Goal: Implement BIP Climbing: Prompt FCR (Antecedent) 6/1 85%.';
+    const out = await norm(page, { individualsPresent: [], caregiverResponse: MIDDLE, progressStatus: 'Minimal progress towards goals' }, { intake });
+    expect(out.progressStatus).toBe(MODERATE);
+  });
+
+  test('Substantial moves down beside a client goal with no trial correct even when a caregiver goal missed', async ({ page }) => {
+    await parentTool(page);
+    const out = await norm(page, { individualsPresent: [], caregiverResponse: MIDDLE, progressStatus: 'Substantial progress towards goals' }, { intake: 'Client Goals:\nMatching|0/4\nParent Goals:\n1. Parent Goal: Timer|2/3|40%' });
+    expect(out.progressStatus).toBe(MODERATE);
+    expect(out.hints.some((h) => h.section === 'progressStatus' && /a client goal had no trial correct \(0\/4\)/.test(h.detail))).toBe(true);
+  });
+
+  for (const [name, intake, pick] of [
+    ['no client goal at zero', 'Client Goals:\nWaiting|2 minutes|4/0|100%\nParent Goals:\n1. Parent Goal: First-Then|At Home|5/0|100%', 'Substantial progress towards goals'],
+    ['a client goal at zero but a caregiver goal under 85 percent', 'Client Goals:\nMatching|0/4\nParent Goals:\n1. Parent Goal: Timer|2/3|40%', 'Minimal progress towards goals'],
+    ['a client goal with some correct', 'Client Goals:\nManding for Breaks|independent|3/2|60%\nParent Goals:\n1. Parent Goal: Token Board|4/1|80%', 'Minimal progress towards goals'],
+  ]) {
+    test(`Progress Status is left as picked with ${name}`, async ({ page }) => {
+      await parentTool(page);
+      const out = await norm(page, { individualsPresent: [], caregiverResponse: MIDDLE, progressStatus: pick }, { intake });
+      expect(out.progressStatus).toBe(pick);
+      expect(out.hints.some((h) => h.section === 'progressStatus')).toBe(false);
+    });
+  }
+
+  test('without the intake (not a draft) Progress Status is left as it came', async ({ page }) => {
+    await parentTool(page);
+    const out = await norm(page, { individualsPresent: [], caregiverResponse: MIDDLE, progressStatus: 'Substantial progress towards goals' });
+    expect(out.progressStatus).toBe('Substantial progress towards goals');
+  });
+
   test('each fixture case lands on the Caregiver Response its truth names', async ({ page }) => {
     await parentTool(page);
     for (const c of fixture.cases.filter((x) => x.expect && x.expect.caregiverResponse)) {
