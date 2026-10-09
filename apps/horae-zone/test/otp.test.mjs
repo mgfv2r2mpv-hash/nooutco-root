@@ -21,7 +21,7 @@ import { b64url, fromB64url } from '../src/checks.js';
 import { initiatorStart, initiatorFinish, unlockChannelFor } from '../../../packages/account-engine/src/pake.mjs';
 import {
   harness, post, signed, auditRows, everyRow, signUp, signIn, registeredDevice, registerRequest, deviceKeys,
-  enrolRequest, enrolTicket, enrolledDevice, confirmedDevice, codeAt, tryCode, removedMidFlight, landsMidFlight, SPEND_NONCE, SEED_KEY,
+  enrolRequest, enrolTicket, enrolledDevice, confirmedDevice, codeAt, tryCode, removedMidFlight, landsMidFlight, SPEND_NONCE, SEED_KEY, freshCode,
 } from './helpers.mjs';
 
 // Fixed, fake values: reserved-domain addresses.
@@ -228,7 +228,7 @@ test('A5 re-review 2: a second registered device cannot enrol, and does not bloc
   assert.equal((await h.call(await enrolRequest(h.call, first, await enrolTicket(h, ADDRESS, first)))).status, 200, 'the owner enrols');
   assert.equal(pendingOf(h.db, first.id), 0);
   assert.equal(pendingOf(h.db, second.id), 1);
-  assert.equal((await h.call(await signed(h.call, first, '/device/remove', { device: second.id }))).status, 200, 'and removes the second');
+  assert.equal((await h.call(await signed(h.call, first, '/device/remove', { device: second.id, ticket: await freshCode(h, first) }))).status, 200, 'and removes the second');
 });
 
 test('A5 review 1: the probe (password thief registers and tries to enrol first) ends with the thief refused and removed', async () => {
@@ -239,7 +239,7 @@ test('A5 review 1: the probe (password thief registers and tries to enrol first)
   assert.deepEqual(await answer(await h.call(await enrolRequest(h.call, thief, await enrolTicket(h, ADDRESS, thief)))), NO_DEVICE);
   assert.deepEqual(otpRows(h.db), [], 'the thief got no seed');
   assert.equal(pendingOf(h.db, owner.id), 0, 'the owner\'s device is not held back');
-  assert.deepEqual(await answer(await h.call(await signed(h.call, owner, '/device/remove', { device: thief.id }))), { status: 200, json: { ok: true } });
+  assert.deepEqual(await answer(await h.call(await signed(h.call, owner, '/device/remove', { device: thief.id, ticket: await freshCode(h, owner) }))), { status: 200, json: { ok: true } });
   assert.deepEqual(await answer(await h.call(post('/nonce', {}, { 'x-hz-device': thief.id }))), { status: 401, json: { error: 'no-device' } }, 'the thief is out');
   assert.equal((await h.call(await enrolRequest(h.call, owner, await enrolTicket(h, ADDRESS, owner)))).status, 200, 'the owner enrols');
 });
@@ -262,7 +262,7 @@ test('A5 review 1 NEGATIVE CONTROL: after the owner device removes another, it e
   const h = harness();
   const dev = await registeredDevice(h, ADDRESS);
   const gone = await registeredDevice(h, ADDRESS, { fresh: false });
-  assert.equal((await h.call(await signed(h.call, dev, '/device/remove', { device: gone.id }))).status, 200);
+  assert.equal((await h.call(await signed(h.call, dev, '/device/remove', { device: gone.id, ticket: await freshCode(h, dev) }))).status, 200);
   assert.equal((await h.call(await enrolRequest(h.call, dev, await enrolTicket(h, ADDRESS, dev)))).status, 200);
   assert.equal(otpRows(h.db).length, 1);
 });

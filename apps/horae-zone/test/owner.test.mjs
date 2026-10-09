@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import {
   harness, post, signed, deviceKeys, keyDigestOf, registerRequest, signIn, signInRequest,
   registeredDevice, enrolledDevice, confirmedDevice, enrolTicket, enrolRequest, tryCode, startCode, codeAt, wrongCodeAt, auditRows, PASSWORD,
-  landsMidFlight, nonceFor,
+  landsMidFlight, nonceFor, freshCode, removeRequest,
 } from './helpers.mjs';
 import { DAY_MS } from '../../../packages/account-engine/src/limits.mjs';
 
@@ -238,7 +238,7 @@ test('re-review 2: before the first accepted code, a device that is not the owne
   const before = { ...otpRow(h) };
   const other = await registeredDevice(h, OWNER, { fresh: false, ip: IP });
   h.db.sqlite.prepare('UPDATE device SET pending = 0 WHERE id = ?').run(other.id); // a row changed by hand
-  assert.deepEqual(await answer(await h.call(await signed(h.call, other, '/device/remove', { device: owner.id }))), NOT_OWNER);
+  assert.deepEqual(await answer(await h.call(await signed(h.call, other, '/device/remove', { device: owner.id, ticket: await freshCode(h, other) }))), NOT_OWNER);
   assert.ok(isLive(h, owner.id), 'the owner device stays');
   assert.deepEqual(await answer(await h.call(await enrolRequest(h.call, other, await enrolTicket(h, OWNER, other)))), NOT_OWNER);
   assert.deepEqual({ ...otpRow(h) }, before, 'the unconfirmed seed stays');
@@ -259,8 +259,9 @@ test('re-review 2: a removal re-checks the caller\'s standing in its own writes'
   const owner = await confirmedDevice(h, OWNER);
   const other = await registeredDevice(h, OWNER, { fresh: false, ip: IP });
   assert.equal((await tryCode(h, { ...other, seed: owner.seed }, await codeAt(owner, h.clock.ms))).finish.status, 200);
+  h.clock.ms += 30_000; // the next code is a fresh step
   await nonceFor(h.call, owner); // a live nonce of the owner device
-  const request = await signed(h.call, other, '/device/remove', { device: owner.id });
+  const request = await removeRequest(h, { ...other, seed: owner.seed }, owner.id);
   // Held back between the device checks and the removal's writes.
   landsMidFlight(h, 'SELECT 1 AS may_change', (db) => db.sqlite.prepare('UPDATE device SET pending = 1 WHERE id = ?').run(other.id));
   await h.call(request);
@@ -273,7 +274,8 @@ test('re-review 2 NEGATIVE CONTROL: after the first accepted code, a device that
   const owner = await confirmedDevice(h, OWNER);
   const other = await registeredDevice(h, OWNER, { fresh: false, ip: IP });
   assert.equal((await tryCode(h, { ...other, seed: owner.seed }, await codeAt(owner, h.clock.ms))).finish.status, 200);
-  assert.deepEqual(await answer(await h.call(await signed(h.call, other, '/device/remove', { device: owner.id }))), { status: 200, json: { ok: true } });
+  h.clock.ms += 30_000; // the next code is a fresh step
+  assert.deepEqual(await answer(await h.call(await removeRequest(h, { ...other, seed: owner.seed }, owner.id))), { status: 200, json: { ok: true } });
   assert.equal(isLive(h, owner.id), false);
 });
 
@@ -339,7 +341,7 @@ test('re-review 3: the account\'s pending tries are counted for a day from each 
   const second = withSeed(await thiefDevice(h, OWNER), owner);
   const at = h.clock.ms;
   for (const dev of [first, second]) for (let i = 0; i < 3; i += 1) assert.equal((await tryCode(h, dev, await wrongCodeAt(owner, h.clock.ms))).start.status, 200);
-  assert.deepEqual(await answer(await h.call(await signed(h.call, owner, '/device/remove', { device: first.id }))), { status: 200, json: { ok: true } });
+  assert.deepEqual(await answer(await h.call(await removeRequest(h, owner, first.id))), { status: 200, json: { ok: true } });
   const third = withSeed(await thiefDevice(h, OWNER), owner);
   assert.deepEqual((await tryCode(h, third, await codeAt(owner, h.clock.ms))).start, PENDING_LOCKED, 'a right code is refused past the account\'s cap');
   h.clock.ms = at + DAY_MS + 30_000;
