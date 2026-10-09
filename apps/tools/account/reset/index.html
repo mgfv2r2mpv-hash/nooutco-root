@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>PIN reset code - No Outcome ABA</title>
+  <link rel="icon" type="image/svg+xml" href="/logo-mark.svg">
+  <link rel="stylesheet" href="/tokens.css">
+  <link rel="stylesheet" href="/account/account-link.css">
+  <!-- The Horae Zone PIN reset email links here with the code in the fragment.
+       The browser never sends a fragment to the server; account-link.js reads
+       it, shows it, and sends it nowhere. Headers for this path are set in
+       _worker.js (withAccountLinkHeaders), not _headers. -->
+  <script src="/account/account-link.js" defer></script>
+</head>
+<body>
+  <div class="wrap">
+    <header class="brand">
+      <img src="/logo-mark.svg" alt="" width="40" height="40">
+      <div class="name">No Outcome <span>ABA</span></div>
+    </header>
+
+    <main class="card">
+      <section id="found" aria-labelledby="title" hidden>
+        <h1 id="title">Your PIN reset code</h1>
+        <code id="code" class="code"></code>
+        <div class="actions">
+          <button type="button" id="copy" class="copy">Copy</button>
+          <span id="copy-status" class="status" role="status" aria-live="polite"></span>
+        </div>
+        <p class="line">Paste this into Sass C. Assistant on the Mac that asked, to reset your app PIN.</p>
+      </section>
+
+      <section id="missing" class="missing" aria-labelledby="missing-title">
+        <h1 id="missing-title">No PIN reset code</h1>
+        <p>This link is incomplete.</p>
+        <p>Open the newest email from Horae Zone and use the link in it.</p>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

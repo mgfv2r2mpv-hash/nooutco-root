@@ -2,8 +2,8 @@ import { test, expect } from '@playwright/test';
 import { captureClipboard } from './helpers/clipboard.js';
 
 // Horae Zone mails links of the form HZ_LINK_BASE#<code> and
-// HZ_REOPEN_BASE#<token> (packages/account-engine/src/mailer.mjs fragmentLink).
-// The deploy points those bases at /account/ and /account/reopen/ here. The
+// HZ_REOPEN_BASE#<token> and HZ_RESET_BASE#<code> (packages/account-engine/src/mailer.mjs fragmentLink).
+// The deploy points those bases at /account/, /account/reopen/ and /account/reset/ here. The
 // page shows the code for the reader to paste into Sass C. Assistant, which
 // makes the service call through its own bridge: the service answers POST only,
 // so a browser page could not call it even if it wanted to.
@@ -26,6 +26,11 @@ const PAGES = [
     name: 'reopen',
     path: '/account/reopen/',
     line: 'Paste this into Sass C. Assistant to reopen your code path.',
+  },
+  {
+    name: 'PIN reset',
+    path: '/account/reset/',
+    line: 'Paste this into Sass C. Assistant on the Mac that asked, to reset your app PIN.',
   },
 ];
 

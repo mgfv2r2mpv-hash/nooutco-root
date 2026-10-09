@@ -36,8 +36,8 @@ const EXACT_REDIRECTS = {
 // its own address.
 const NOTE_TOOL_PATH = /^\/notes\/(sup|assess|parent|sap)\/?$/;
 
-// The pages a Horae Zone email link opens: /account/ (sign-up code) and
-// /account/reopen/ (reopen token). The code rides in the URL fragment, and a
+// The pages a Horae Zone email link opens: /account/ (sign-up code),
+// /account/reopen/ (reopen token) and /account/reset/ (app PIN reset code). The code rides in the URL fragment, and a
 // browser never sends the fragment to a server, so it is in no request line,
 // no access log and no Referer, and this Worker never sees it. These headers
 // keep the page itself from doing anything with it: no connect-src means the
