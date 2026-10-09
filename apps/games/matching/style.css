@@ -1026,11 +1026,6 @@ body.settings-collapsed #extra-panel { display: none !important; }
 
   #settings-bar { padding: 6px 10px; gap: 6px 8px; flex-shrink: 0; }
   #extra-panel, #target-panel { flex-shrink: 0; }
-  /* The phone viewport is locked, so the Round-setup panel (../round-setup.js)
-     must neither collapse in the column nor run off the bottom: it keeps its
-     height and scrolls inside itself, like the Options panel. `body` lifts the
-     specificity over the panel's injected `overflow: hidden`. */
-  body #round-panel { flex-shrink: 0; max-height: 60dvh; overflow-y: auto; }
 
   #game-area {
     flex: 1 1 auto;
