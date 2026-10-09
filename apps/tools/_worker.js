@@ -62,219 +62,296 @@ function withAccountLinkHeaders(response) {
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
+/* HEADERS ON EVERY RESPONSE (#141).
+ *
+ * apps/tools/_headers used to hold these rules, and none of them ever reached a
+ * browser: a _worker.js puts Pages in advanced mode, which routes every request
+ * here and never applies _headers. Measured 2026-09-04, /assets/notes-gate.js
+ * came back with the platform default max-age=14400. So the Worker sets them,
+ * on the way out of fetch(), for every route it answers.
+ *
+ * SECURITY. The same set apps/games/_headers sends. Nothing here is framed by
+ * anything, so DENY costs nothing. The microphone stays allowed for this site
+ * because dictation (notes/bcba/speech.js) uses it. A route that already set
+ * one of these, like /account/ with its stricter policy, keeps its own value.
+ */
+const SITE_SECURITY_HEADERS = {
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  "Permissions-Policy": "camera=(), geolocation=(), microphone=(self)",
+};
+
+/* CACHE. The note pages are made of files that MUST move together: the page
+ * HTML, notes-gate.js, notes-scrub.js, engine.jsx, revision-panel.jsx and
+ * notes-page.css. Cached for four hours each and independently, a browser could
+ * hold any mixture of old and new after a deploy. On 2026-08-04 that produced
+ * "NotesGate.generateProse is not a function" (a fresh engine.jsx against an
+ * old notes-gate.js) and an unstyled routing card (fresh JSX against an old
+ * stylesheet). Both files were correct on the server. The mixture was the bug.
+ *
+ * So anything that moves in lockstep is no-cache. That is not "download every
+ * time": the browser revalidates with its ETag and gets an empty 304 when
+ * nothing changed. The vendored libraries carry their version in the filename,
+ * so they can be immutable, which is what keeps this cheap: the 3MB of Babel is
+ * fetched once. tokens.css sits at the root, outside /assets/, and a stale one
+ * is the same failure, only quieter.
+ *
+ * First match wins. Error responses keep the platform default. So does an HTML
+ * answer under /vendor/: Pages serves the root page with a 200 for a path that
+ * has no file, and caching that for a year under a library's name would break
+ * the page until the version in the filename changed.
+ */
+const CACHE_NO_CACHE = "no-cache";
+const CACHE_IMMUTABLE = "public, max-age=31536000, immutable";
+const underPath = (pathname, dir) => pathname === dir || pathname.startsWith(dir + "/");
+const SITE_CACHE_RULES = [
+  { matches: (p) => p.startsWith("/vendor/"), value: CACHE_IMMUTABLE, notForHtml: true },
+  { matches: (p) => p.startsWith("/assets/") && (p.endsWith(".js") || p.endsWith(".css")), value: CACHE_NO_CACHE },
+  { matches: (p) => underPath(p, "/notes"), value: CACHE_NO_CACHE },
+  { matches: (p) => underPath(p, "/admin"), value: CACHE_NO_CACHE },
+  { matches: (p) => p === "/tokens.css", value: CACHE_NO_CACHE },
+];
+
+export function siteCacheControl(pathname, contentType = "") {
+  const rule = SITE_CACHE_RULES.find((r) => r.matches(pathname));
+  if (!rule) return null;
+  if (rule.notForHtml && contentType.includes("text/html")) return null;
+  return rule.value;
+}
+
+function withSiteHeaders(response, pathname) {
+  const headers = new Headers(response.headers);
+  for (const [name, value] of Object.entries(SITE_SECURITY_HEADERS)) {
+    if (!headers.has(name)) headers.set(name, value);
+  }
+  const cacheControl = response.status < 400
+    ? siteCacheControl(pathname, headers.get("content-type") || "")
+    : null;
+  if (cacheControl) headers.set("Cache-Control", cacheControl);
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
 export default {
-  // ctx only so the knowledge fetch log can be written after the response goes
-  // out. Nothing a clinician waits on depends on it.
+  // Every response leaves through withSiteHeaders, so a route added later gets
+  // the security and cache headers without having to remember them.
   async fetch(request, env, ctx) {
-    const url = new URL(request.url);
-
-    // Bot Fight Mode (cannot be disabled on this plan) challenges every non-static
-    // request, which breaks fetch()/XHR to /api/* - an XHR can't solve an interactive
-    // challenge, so it receives challenge HTML instead of JSON. Cloudflare exempts
-    // static file extensions from the challenge, so the client appends a ".js" suffix
-    // to API paths (see API_SUFFIX in notes-gate.js). Strip it here so routing is
-    // unchanged. REMOVE this and API_SUFFIX once the edge stops challenging /api/*.
-    if (url.pathname.startsWith("/api/") && url.pathname.endsWith(".js")) {
-      url.pathname = url.pathname.slice(0, -3);
-    }
-
-    // Password login - returns a signed session token that unlocks Generate Note
-    if (url.pathname === "/api/login" && request.method === "POST") {
-      return handleLogin(request, env);
-    }
-
-    // API proxy endpoint for LLM calls (server-side key, requires a session token)
-    if (url.pathname === "/api/llm-call" && request.method === "POST") {
-      return handleLlmCall(request, env);
-    }
-
-    // The expert pass: reads a scrubbed intake and returns findings. It never
-    // writes a note, and its response schema is fixed in the Worker.
-    if (url.pathname === "/api/expert-pass" && request.method === "POST") {
-      return handleExpertPass(request, env, ctx);
-    }
-
-    // The oracle: keep talking to the expert about a pass it already returned.
-    // Admin only, and it never writes a note either.
-    if (url.pathname === "/api/expert-chat" && request.method === "POST") {
-      return handleExpertChat(request, env);
-    }
-
-    // The corrections pass: reads the DRAFT and returns it as the handout says
-    // it should read. It is the one route here that writes into a note, so
-    // every difference it returns is marked in the browser rather than applied
-    // out of sight.
-    if (url.pathname === "/api/corrections-pass" && request.method === "POST") {
-      return handleCorrections(request, env);
-    }
-
-    // Research: the expert reads a fixed list of sources before it answers.
-    // Admin only, a larger model than everything else here, and it writes
-    // nothing - the report is something he argues with, not a rule.
-    if (url.pathname === "/api/expert-research" && request.method === "POST") {
-      return handleExpertResearch(request, env);
-    }
-
-    // The knowledge store, for the console on the admin page. Admin only, and
-    // the browser names an operation rather than an upstream path.
-    if (url.pathname === "/api/expert-knowledge") {
-      return handleExpertKnowledge(request, env);
-    }
-
-    // Admin-only CRUD for managed access passwords (GET/POST/PATCH/DELETE)
-    if (url.pathname === "/api/admin/passwords") {
-      return handleAdminPasswords(request, env);
-    }
-
-    if (url.pathname === "/api/nonpii") {
-      return handleNonPii(request, env);
-    }
-
-    if (url.pathname === "/api/error-report" && request.method === "POST") {
-      return handleErrorReport(request, env);
-    }
-
-    if (url.pathname === "/api/report-error" && request.method === "POST") {
-      return handleUserReport(request, env);
-    }
-
-    if (url.pathname === "/api/suggest" && request.method === "POST") {
-      return handleSuggest(request, env);
-    }
-
-    // Public endpoint - returns learned stopwords/firstNames (generic vocab, not PHI)
-    if (url.pathname === "/api/scrub-config" && request.method === "GET") {
-      return handleScrubConfig(request, env);
-    }
-
-    // Admin-only: manage problem strings queue for next nightly learning run
-    if (url.pathname === "/api/admin/scrub-learn") {
-      return handleScrubLearn(request, env);
-    }
-
-    // Admin-only: view current scrub override state
-    if (url.pathname === "/api/admin/scrub-overrides" && request.method === "GET") {
-      return handleScrubOverrides(request, env);
-    }
-
-    // Admin-only: review queue - list pending AI suggestions, approve/reject
-    if (url.pathname === "/api/admin/scrub-suggestions") {
-      return handleScrubSuggestions(request, env);
-    }
-
-    // Trigger the learning run - admin token OR CRON_SECRET (for the scheduled GitHub Action)
-    if (url.pathname === "/api/admin/scrub-run" && request.method === "POST") {
-      return handleScrubRun(request, env);
-    }
-
-    // Any authenticated user: silently report bare scrubbed words (no context, no
-    // linkage) into the PII review queue. PHI-safe vocabulary capture only.
-    if (url.pathname === "/api/scrub-report" && request.method === "POST") {
-      return handleScrubReport(request, env);
-    }
-
-    // Any authenticated user: content-free audit / usage events.
-    if (url.pathname === "/api/audit" && request.method === "POST") {
-      return handleAudit(request, env);
-    }
-
-    // The technician's own learned style card. The browser talks to us, never
-    // to the profile Worker - see profileFetch.
-    if (url.pathname === "/api/style-card" && request.method === "GET") {
-      return handleStyleCard(request, env);
-    }
-    if (url.pathname === "/api/style-card/mute" && request.method === "POST") {
-      return handleStyleCardMute(request, env);
-    }
-
-    // Admin-only: anonymised, cohort-level view of what the tool has learned
-    // across technicians. Names nobody - see handleInsights in the profile app.
-    if (url.pathname === "/api/admin/style-insights" && request.method === "GET") {
-      return handleStyleInsights(request, env);
-    }
-
-    // Admin-only: read back the house voice block that is currently live.
-    if (url.pathname === "/api/admin/voice-block" && request.method === "GET") {
-      return handleVoiceBlockRead(request, env);
-    }
-
-    // Admin-only: file a ticket stub from inside the site.
-    if (url.pathname === "/api/admin/ticket" && request.method === "POST") {
-      return handleTicket(request, env);
-    }
-
-    // Admin-only: the supervisor view of individual technician profiles, and
-    // removing a rule that is not in line with policy. See handleProfileAdmin.
-    if (url.pathname.startsWith("/api/admin/profile/")) {
-      return handleProfileAdmin(request, env, url);
-    }
-
-    // Admin-only: the durable record of production errors (issue #152), newest
-    // first, counts per day per fingerprint, no message text.
-    if (url.pathname === "/api/admin/errors" && request.method === "GET") {
-      return handleErrorRecord(request, env, url);
-    }
-
-    // Admin-only: review queue for tech-submitted PII/non-PII candidate terms
-    if (url.pathname === "/api/admin/term-queue") {
-      return handleTermQueue(request, env);
-    }
-
-    // Admin-only: directly curate (add/remove) a live PII or non-PII term
-    if (url.pathname === "/api/admin/terms") {
-      return handleTerms(request, env);
-    }
-
-    // Weekly term digest - admin token OR CRON_SECRET (the Friday GitHub Action)
-    if (url.pathname === "/api/admin/term-digest" && request.method === "POST") {
-      return handleTermDigest(request, env);
-    }
-
-    const exact = EXACT_REDIRECTS[url.pathname];
-    if (exact) {
-      return Response.redirect(new URL(exact + url.search, request.url).href, 301);
-    }
-
-    for (const [old, next] of LEGACY_PREFIXES) {
-      if (url.pathname === old || url.pathname.startsWith(old + '/')) {
-        // Targets with a query string are exact destinations - don't append the rest.
-        const rest = next.includes('?') ? '' : url.pathname.slice(old.length).replace(/^\//, '');
-        return Response.redirect(new URL(next + rest, request.url).href, 301);
-      }
-    }
-
-    if (ACCOUNT_LINK_PATH.test(url.pathname)) {
-      return withAccountLinkHeaders(await env.ASSETS.fetch(request));
-    }
-
-    const assetRequest = NOTE_TOOL_PATH.test(url.pathname)
-      ? new Request(new URL("/notes/bcba/", request.url), request)
-      : request;
-    const response = await env.ASSETS.fetch(assetRequest);
-
-    const contentType = response.headers.get("content-type") || "";
-    if (!contentType.includes("text/html")) {
-      return response;
-    }
-
-    const secret = (env.ADMIN_SECRET ?? "").trim();
-    const hash = await sha256Hex(secret);
-    let html = await response.text();
-    html = html.replace(
-      /const ADMIN_SECRET_HASH = "[a-f0-9]{64}";/g,
-      `const ADMIN_SECRET_HASH = "${hash}";`
-    );
-
-    const headers = new Headers(response.headers);
-    headers.delete("content-length");
-
-    return new Response(html, { status: response.status, headers });
+    const response = await routeRequest(request, env, ctx);
+    return withSiteHeaders(response, new URL(request.url).pathname);
   },
 
   async scheduled(event, env, ctx) {
     ctx.waitUntil(runScrubLearning(env));
   },
 };
+
+// ctx only so the knowledge fetch log can be written after the response goes
+// out. Nothing a clinician waits on depends on it.
+async function routeRequest(request, env, ctx) {
+  const url = new URL(request.url);
+
+  // Bot Fight Mode (cannot be disabled on this plan) challenges every non-static
+  // request, which breaks fetch()/XHR to /api/* - an XHR can't solve an interactive
+  // challenge, so it receives challenge HTML instead of JSON. Cloudflare exempts
+  // static file extensions from the challenge, so the client appends a ".js" suffix
+  // to API paths (see API_SUFFIX in notes-gate.js). Strip it here so routing is
+  // unchanged. REMOVE this and API_SUFFIX once the edge stops challenging /api/*.
+  if (url.pathname.startsWith("/api/") && url.pathname.endsWith(".js")) {
+    url.pathname = url.pathname.slice(0, -3);
+  }
+
+  // Password login - returns a signed session token that unlocks Generate Note
+  if (url.pathname === "/api/login" && request.method === "POST") {
+    return handleLogin(request, env);
+  }
+
+  // API proxy endpoint for LLM calls (server-side key, requires a session token)
+  if (url.pathname === "/api/llm-call" && request.method === "POST") {
+    return handleLlmCall(request, env);
+  }
+
+  // The expert pass: reads a scrubbed intake and returns findings. It never
+  // writes a note, and its response schema is fixed in the Worker.
+  if (url.pathname === "/api/expert-pass" && request.method === "POST") {
+    return handleExpertPass(request, env, ctx);
+  }
+
+  // The oracle: keep talking to the expert about a pass it already returned.
+  // Admin only, and it never writes a note either.
+  if (url.pathname === "/api/expert-chat" && request.method === "POST") {
+    return handleExpertChat(request, env);
+  }
+
+  // The corrections pass: reads the DRAFT and returns it as the handout says
+  // it should read. It is the one route here that writes into a note, so
+  // every difference it returns is marked in the browser rather than applied
+  // out of sight.
+  if (url.pathname === "/api/corrections-pass" && request.method === "POST") {
+    return handleCorrections(request, env);
+  }
+
+  // Research: the expert reads a fixed list of sources before it answers.
+  // Admin only, a larger model than everything else here, and it writes
+  // nothing - the report is something he argues with, not a rule.
+  if (url.pathname === "/api/expert-research" && request.method === "POST") {
+    return handleExpertResearch(request, env);
+  }
+
+  // The knowledge store, for the console on the admin page. Admin only, and
+  // the browser names an operation rather than an upstream path.
+  if (url.pathname === "/api/expert-knowledge") {
+    return handleExpertKnowledge(request, env);
+  }
+
+  // Admin-only CRUD for managed access passwords (GET/POST/PATCH/DELETE)
+  if (url.pathname === "/api/admin/passwords") {
+    return handleAdminPasswords(request, env);
+  }
+
+  if (url.pathname === "/api/nonpii") {
+    return handleNonPii(request, env);
+  }
+
+  if (url.pathname === "/api/error-report" && request.method === "POST") {
+    return handleErrorReport(request, env);
+  }
+
+  if (url.pathname === "/api/report-error" && request.method === "POST") {
+    return handleUserReport(request, env);
+  }
+
+  if (url.pathname === "/api/suggest" && request.method === "POST") {
+    return handleSuggest(request, env);
+  }
+
+  // Public endpoint - returns learned stopwords/firstNames (generic vocab, not PHI)
+  if (url.pathname === "/api/scrub-config" && request.method === "GET") {
+    return handleScrubConfig(request, env);
+  }
+
+  // Admin-only: manage problem strings queue for next nightly learning run
+  if (url.pathname === "/api/admin/scrub-learn") {
+    return handleScrubLearn(request, env);
+  }
+
+  // Admin-only: view current scrub override state
+  if (url.pathname === "/api/admin/scrub-overrides" && request.method === "GET") {
+    return handleScrubOverrides(request, env);
+  }
+
+  // Admin-only: review queue - list pending AI suggestions, approve/reject
+  if (url.pathname === "/api/admin/scrub-suggestions") {
+    return handleScrubSuggestions(request, env);
+  }
+
+  // Trigger the learning run - admin token OR CRON_SECRET (for the scheduled GitHub Action)
+  if (url.pathname === "/api/admin/scrub-run" && request.method === "POST") {
+    return handleScrubRun(request, env);
+  }
+
+  // Any authenticated user: silently report bare scrubbed words (no context, no
+  // linkage) into the PII review queue. PHI-safe vocabulary capture only.
+  if (url.pathname === "/api/scrub-report" && request.method === "POST") {
+    return handleScrubReport(request, env);
+  }
+
+  // Any authenticated user: content-free audit / usage events.
+  if (url.pathname === "/api/audit" && request.method === "POST") {
+    return handleAudit(request, env);
+  }
+
+  // The technician's own learned style card. The browser talks to us, never
+  // to the profile Worker - see profileFetch.
+  if (url.pathname === "/api/style-card" && request.method === "GET") {
+    return handleStyleCard(request, env);
+  }
+  if (url.pathname === "/api/style-card/mute" && request.method === "POST") {
+    return handleStyleCardMute(request, env);
+  }
+
+  // Admin-only: anonymised, cohort-level view of what the tool has learned
+  // across technicians. Names nobody - see handleInsights in the profile app.
+  if (url.pathname === "/api/admin/style-insights" && request.method === "GET") {
+    return handleStyleInsights(request, env);
+  }
+
+  // Admin-only: read back the house voice block that is currently live.
+  if (url.pathname === "/api/admin/voice-block" && request.method === "GET") {
+    return handleVoiceBlockRead(request, env);
+  }
+
+  // Admin-only: file a ticket stub from inside the site.
+  if (url.pathname === "/api/admin/ticket" && request.method === "POST") {
+    return handleTicket(request, env);
+  }
+
+  // Admin-only: the supervisor view of individual technician profiles, and
+  // removing a rule that is not in line with policy. See handleProfileAdmin.
+  if (url.pathname.startsWith("/api/admin/profile/")) {
+    return handleProfileAdmin(request, env, url);
+  }
+
+  // Admin-only: the durable record of production errors (issue #152), newest
+  // first, counts per day per fingerprint, no message text.
+  if (url.pathname === "/api/admin/errors" && request.method === "GET") {
+    return handleErrorRecord(request, env, url);
+  }
+
+  // Admin-only: review queue for tech-submitted PII/non-PII candidate terms
+  if (url.pathname === "/api/admin/term-queue") {
+    return handleTermQueue(request, env);
+  }
+
+  // Admin-only: directly curate (add/remove) a live PII or non-PII term
+  if (url.pathname === "/api/admin/terms") {
+    return handleTerms(request, env);
+  }
+
+  // Weekly term digest - admin token OR CRON_SECRET (the Friday GitHub Action)
+  if (url.pathname === "/api/admin/term-digest" && request.method === "POST") {
+    return handleTermDigest(request, env);
+  }
+
+  const exact = EXACT_REDIRECTS[url.pathname];
+  if (exact) {
+    return Response.redirect(new URL(exact + url.search, request.url).href, 301);
+  }
+
+  for (const [old, next] of LEGACY_PREFIXES) {
+    if (url.pathname === old || url.pathname.startsWith(old + '/')) {
+      // Targets with a query string are exact destinations - don't append the rest.
+      const rest = next.includes('?') ? '' : url.pathname.slice(old.length).replace(/^\//, '');
+      return Response.redirect(new URL(next + rest, request.url).href, 301);
+    }
+  }
+
+  if (ACCOUNT_LINK_PATH.test(url.pathname)) {
+    return withAccountLinkHeaders(await env.ASSETS.fetch(request));
+  }
+
+  const assetRequest = NOTE_TOOL_PATH.test(url.pathname)
+    ? new Request(new URL("/notes/bcba/", request.url), request)
+    : request;
+  const response = await env.ASSETS.fetch(assetRequest);
+
+  const contentType = response.headers.get("content-type") || "";
+  if (!contentType.includes("text/html")) {
+    return response;
+  }
+
+  const secret = (env.ADMIN_SECRET ?? "").trim();
+  const hash = await sha256Hex(secret);
+  let html = await response.text();
+  html = html.replace(
+    /const ADMIN_SECRET_HASH = "[a-f0-9]{64}";/g,
+    `const ADMIN_SECRET_HASH = "${hash}";`
+  );
+
+  const headers = new Headers(response.headers);
+  headers.delete("content-length");
+
+  return new Response(html, { status: response.status, headers });
+}
 
 // Repeats of an identical tool+message are counted rather than emailed. The
 // first mails immediately; after that only these thresholds do, each carrying
@@ -616,11 +693,14 @@ async function handleLlmCall(request, env) {
     }
 
     // Managed passwords: re-check the KV every call for instant revocation AND
-    // per-tool scope enforcement. Admin bypasses scope.
+    // per-tool scope enforcement. Admin bypasses scope. A scoped login that
+    // names no tool is refused, not waved through: every page and script that
+    // calls this route sends `tool`, so leaving it out was only ever a way past
+    // the scope, the same check expert-pass and corrections-pass already make.
     if (payload.role !== "admin") {
       const rec = env.API_PASSWORDS ? await getPasswordRecord(env.API_PASSWORDS, payload.kid) : null;
       if (!rec || !rec.active) return jsonRes(401, { error: "Access revoked. Please log in again." });
-      if (tool && !rec.tools.includes(tool)) {
+      if (!tool || !rec.tools.includes(tool)) {
         return jsonRes(403, { error: "This login does not include this tool." });
       }
     }
@@ -2056,6 +2136,21 @@ async function handleNonPii(request, env) {
   return jsonRes(405, { error: "Method not allowed." });
 }
 
+/* A TOOL ID THE WORKER DOES NOT KNOW IS REFUSED, NOT DROPPED.
+   The handlers used to filter the submitted list against NOTES_TOOLS and keep
+   what was left. "bcba" is the case that made that wrong: it is the page at
+   /notes/bcba/, not a tool, so ["sup", "bcba"] saved as ["sup"] without a word,
+   and a record scoped to "bcba" would open nothing while looking scoped. The
+   tool ids are bt, sup, parent, assess, sap and graphva. */
+function unknownToolIds(tools) {
+  if (!Array.isArray(tools)) return [];
+  return tools.filter((t) => !NOTES_TOOLS.includes(t)).map((t) => String(t).slice(0, 40));
+}
+
+function unknownToolsMessage(unknown) {
+  return `Not a tool: ${unknown.join(", ")}.\nTools are ${NOTES_TOOLS.join(", ")}.`;
+}
+
 // Admin-only management of the managed access passwords.
 async function handleAdminPasswords(request, env) {
   const secret = (env.ADMIN_SECRET ?? "").trim();
@@ -2088,6 +2183,8 @@ async function handleAdminPasswords(request, env) {
   if (request.method === "POST") {
     const label = (body.label ?? "").trim();
     const password = (body.password ?? "").trim();
+    const unknownTools = unknownToolIds(body.tools);
+    if (unknownTools.length) return jsonRes(400, { error: unknownToolsMessage(unknownTools) });
     const tools = Array.isArray(body.tools) ? body.tools.filter((t) => NOTES_TOOLS.includes(t)) : [];
     if (!password) return jsonRes(400, { error: "A password is required." });
     if (tools.length === 0) return jsonRes(400, { error: "Select at least one tool this password can use." });
@@ -2109,6 +2206,8 @@ async function handleAdminPasswords(request, env) {
     const updated = { ...metadata };
     if (typeof body.active === "boolean") updated.active = body.active;
     if (Array.isArray(body.tools)) {
+      const unknownTools = unknownToolIds(body.tools);
+      if (unknownTools.length) return jsonRes(400, { error: unknownToolsMessage(unknownTools) });
       const t = body.tools.filter((x) => NOTES_TOOLS.includes(x));
       if (t.length === 0) return jsonRes(400, { error: "A password must allow at least one tool." });
       updated.tools = t;
