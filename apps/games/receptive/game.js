@@ -228,7 +228,51 @@ document.addEventListener('DOMContentLoaded', async () => {
   restoreTrials();
   bindEvents();
   await discoverTopics();
+  mountRoundSetup();
 });
+
+// ── Round setup (Frame 04, shared ../round-setup.js) ───────────────
+// The gated panel is a view over the controls in the settings bar and the
+// Options panel, not a second config: every edit in it goes through the same
+// change handlers and the same store, so a panel opened and left alone
+// changes nothing. Target selection and the token board stay where they are.
+
+/** Re-render the whole game from the store, after a saved set is applied. */
+async function reloadFromStore() {
+  loadSettings();
+  const topic = state.topicFolders.includes(state.topic) ? state.topic : (state.topicFolders[0] || '');
+  state.topic = topic;
+  el.selTopic.value = topic;
+  state.posDeck = [];
+  await refreshImages();
+  renderTargetPanel();
+  updateTargetsCount();
+}
+
+function mountRoundSetup() {
+  if (!window.NooutcoRoundSetup) return;
+  window.NooutcoRoundSetup.mount({
+    store: settingsStore,
+    label: 'Receptive Words round setup',
+    reload: reloadFromStore,
+    core: [
+      '#sel-topic',
+      '#inp-size',
+    ],
+    advanced: [
+      '#chk-represent-errors',
+      '#chk-errorless',
+      '#chk-no-error-anim',
+      '#chk-non-target-distractor',
+      '#chk-cross',
+      '#chk-persists',
+      '#chk-auto-prompt',
+      '#chk-prompt-delay',
+      { sel: '#sel-prompt-delay', label: 'Prompt delay (seconds)' },
+      '#sel-prompt-style',
+    ],
+  });
+}
 
 // ── Settings (the shared store) ────────────────────────────────────
 
