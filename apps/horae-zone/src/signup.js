@@ -64,14 +64,17 @@ const TICKET_BYTES = 32;
 // times an hour: mail to one address is bounded at 6 + 3 an hour, and every
 // live link has been mailed to the address. A tagged address also needs a
 // place in codesPerMailboxHour to mint. Item 5: codesPerDay is the hard cap,
-// the mail plan's daily limit (3000, or HZ_CODES_PER_DAY), and at
-// alertAtPercent of it one alert a day goes to HZ_ALERT_TO.
+// the mail plan's daily limit (100, the Resend free plan's daily send limit
+// as DESIGN-REVIEW A3 row 9 records it, or HZ_CODES_PER_DAY for a larger
+// plan), and at alertAtPercent of it one alert a day goes to HZ_ALERT_TO.
+// The default sits at the plan's limit so a flood meets this cap, answered
+// slow-down, before the plan itself drops real sign-up mail unannounced.
 export const SIGNUP_LIMITS = Object.freeze({
   codeTtlMs: 10 * 60 * 1000,
   triesPerAddressRequesterHour: 5,
   codesPerMailboxHour: 10,
   resendsPerAddressHour: 3,
-  codesPerDay: 3000,
+  codesPerDay: 100,
   alertAtPercent: 50,
   dayMs: 24 * 60 * 60 * 1000,
   startsPerRequesterHour: 10,
@@ -167,7 +170,7 @@ function taggedMailbox(address) {
 }
 
 // M2: the global daily cap on codes, from HZ_CODES_PER_DAY when set (item 5:
-// the mail plan's daily limit, default 3000). A value
+// the mail plan's daily limit, default 100). A value
 // that is set but is not a whole number of 1 or more stops starts rather
 // than opening the cap.
 export function codesPerDayOf(env) {

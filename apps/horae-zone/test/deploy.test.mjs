@@ -18,6 +18,7 @@ import { CATALOG, LineReader, deployConfig, scrub, schemaTables, HOSTNAME } from
 import { accountKeys } from '../src/account-keys.js';
 import { seedBoxKey } from '../src/otp.js';
 import { reopenBaseOk } from '../src/unlock.js';
+import { SIGNUP_LIMITS } from '../src/signup.js';
 
 const FAKE_DB_ID = '11111111-2222-3333-4444-555555555555';
 const FAKE_ACCOUNT = { id: 'acc0000000000000000000000000fake', name: 'Example Test Account' };
@@ -1472,4 +1473,16 @@ test('Step 4 says Turnstile is wired and the rate rule (2 per 10 seconds) is the
   assert.match(four, /on \/account, \/signin and the \/recover start/);
   assert.doesNotMatch(four, /only edge rule on \/recover/);
   assert.match(four, /"\/account" "\/signin" "\/recover"/, 'the rule expression still names /recover');
+});
+
+// Hardening, 9 Oct 2026: the prompt for the daily cap names the Worker's own
+// default, so a blank answer keeps exactly the number the prompt promised.
+test('the daily-limit prompt is optional, a plain var, and names the Worker default (100)', () => {
+  const entry = CATALOG.find((s) => s.name === 'HZ_CODES_PER_DAY');
+  assert.equal(entry.optional, true);
+  assert.equal(entry.store, 'var');
+  assert.equal(SIGNUP_LIMITS.codesPerDay, 100);
+  assert.match(entry.label, new RegExp(`blank keeps the default ${SIGNUP_LIMITS.codesPerDay}\\)`));
+  assert.ok(entry.check('3000'), 'a paid plan can still raise it');
+  assert.ok(!entry.check('0') && !entry.check(''), 'blank is the default, never a typed zero');
 });

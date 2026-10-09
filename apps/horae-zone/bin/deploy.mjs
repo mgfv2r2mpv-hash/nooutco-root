@@ -497,8 +497,8 @@ async function runChecks(ctx, deps, { deployOut, edgeConfirmed, configText, chec
     ctx.item("Cron trigger", cronSeen ? "PASS" : "FAIL", cronSeen ? `${CRON} (hourly purge)` : `no "schedule: ${CRON}" in the deploy output; check Triggers in the dashboard`);
   }
   await checkRoute(ctx, deps, checkOnly);
-  if (checkOnly) return ctx.item("Edge rule on /account and /signin", "SKIPPED", "--check-only asks nothing; the rate rule is in the dashboard (step 4, item 1)");
-  ctx.item("Edge rule on /account and /signin", edgeConfirmed ? "PASS" : "FAIL", edgeConfirmed ? "confirmed by you" : "required at the first deploy: add it (step 4, item 1)");
+  if (checkOnly) return ctx.item("Edge rule on /account, /signin and /recover", "SKIPPED", "--check-only asks nothing; the rate rule is in the dashboard (step 4, item 1)");
+  ctx.item("Edge rule on /account, /signin and /recover", edgeConfirmed ? "PASS" : "FAIL", edgeConfirmed ? "confirmed by you" : "required at the first deploy: add it (step 4, item 1)");
 }
 
 function dryRun(deps) {

@@ -43,7 +43,7 @@ The script first prints the wrangler version it found (`wrangler --version`) and
    - the secret key (`HZ_TURNSTILE_SECRET`), on a hidden prompt, put as a Worker secret.
 
    Each must be a production key (it starts `0x`). Cloudflare's test keys (`1x`, `2x`, `3x`) are refused: the `1x` secret passes every token, so one set by mistake would switch the check off. Until both are set, `POST /account` and an unsigned `POST /signin` answer `not-configured` (503) and `GET /challenge` shows the same sentence; nothing fails open.
-9. The mail plan's daily send limit (`HZ_CODES_PER_DAY`, blank keeps 3000).
+9. The mail plan's daily send limit (`HZ_CODES_PER_DAY`, blank keeps 100, the Resend free plan's daily limit; type the plan's limit on a paid plan).
 10. Whether the rate rule is in place. The script prints the exact clicks for it before the route goes live, so you can add it in the dashboard while it waits.
 11. Which account is yours, only when Step 6 finds accounts and no administrator yet (below). It lists them oldest first by creation time and device count; type the number, or leave it blank to set none. The script reads your pick back and sets it only on `y`, since the first administrator is set once.
 
@@ -92,7 +92,7 @@ CHECKLIST
   PASS    Turnstile site key HZ_TURNSTILE_SITEKEY  a Worker var in wrangler.deploy.toml
   PASS    Cron trigger                       0 * * * * (hourly purge)
   PASS    Route answers                      GET /account refused as method (405) through the Cloudflare edge
-  PASS    Edge rule on /account and /signin  confirmed by you
+  PASS    Edge rule on /account, /signin and /recover  confirmed by you
 
 RESULT: PASS
 ```
