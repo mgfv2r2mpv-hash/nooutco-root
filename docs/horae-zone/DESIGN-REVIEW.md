@@ -1189,3 +1189,118 @@ The review of the GREEN commit found nothing above MEDIUM, and `node --test` pas
 
 - The admin Pages screen (Kaleb row 10) and admin device removal (Kaleb row 3).
 - Any deploy, real secret or call to the live service.
+
+## A6: recovery, the vault switch and bringing the vault (`apps/horae-zone`)
+
+Plan §3.3 ("Each further device" step 4, "Bring my vault"), §3.5 ("Recovery and vault switch", R-6), §3.6 (`/recover`, `/vault/switch`, `/pair/offer`, `/pair/take`) and slice 8 ("A6, recovery and vault switch"). Based on `dev` at `bcf1924e` (A5c and the device-removal proof are in; the offline pass, #286, is not). Commits: `b88b1640` (RED: 414 tests, 15 failing, 3 of them whole files that could not load), `7dc1c3e9` (GREEN, 448/448), `c44d6751` (RED for the security review: 4 failing), `2d6bbaf8` (the review's fixes, 452/452).
+
+It also closes the A5 residuals that waited for A6: an account whose owner device was removed before its first accepted code (A5 re-review, item 2), an account that never registered its owner device (MEDIUM-1, the remedy for which kept the "removed ones included" rule), and the #248 LOW race (below).
+
+**Plan tests**, each by its plan name:
+
+| # | Test | File |
+|---|---|---|
+| 1 | "recovery never returns an old vault key" | `test/recover.test.mjs` |
+| 2 | "a switch shreds the old wrap on every device's next launch and tombstones its rows" | `test/vault.test.mjs` |
+
+The service half of plan test 2 is that every device, a held-back or locked one included, gets a signed "gone" for the old id at its next launch, and that the old id is tombstoned and its brings dropped. The device half (the shred itself) is A8's; Sass's decision function is in the Sass A6 PR.
+
+### What is in it
+
+| File | Does |
+|---|---|
+| `src/recover.js` | `/recover {email}` mails a single-use recovery link. `/recover {email, code, password, signKey, agreeKey}` spends the link, checks the password, refuses a locked account, and in one batch recovers the account onto the new device: answers `{device}` |
+| `src/vault.js` | `/vault/switch {vault, ticket}` records a new current vault id. `/vault/state {vault}` answers the signed vault state. Exports `VAULT_STATE_LABEL`, `VAULT_STATE_TYP`, `VAULT_LIMITS`, `VAULT_SWITCHED_NOTE` |
+| `src/pair.js` | `/pair/take {}` records an ask or hands out the envelope once. `/pair/offer {to, vault, envelope, pin, ticket?}` puts it up. Exports `HANDOFF_LIMITS`, `BROUGHT_NOTE` |
+| `src/devices.js` | The #248 LOW race: the owner device's row is written only while the account has no device, in the insert itself |
+| `src/pin.js` | Exports `codeOrRefuse`, `mailOrUnavailable`, `checkedPin` and `withAfter`, so the bring's approval runs the PIN through the same lockout and the code through the same 12-hour rule as every open |
+| `src/signup.js`, `src/signin.js` | Export `codesPerDayOf`, `linkOf` and `passwordOf` for recovery; no behaviour change |
+| `src/retention.js` | The purge removes recovery links past their life (a spent one is kept until then) and handoffs past their life, keeps the recovery day rows a day, and never removes a tombstone |
+| `src/routes.js` | The four plan routes have handlers; `/vault/state` is new, `pendingOk` and `lockedOk` |
+| `schema.sql` | Five tables, all additive and `IF NOT EXISTS`: `recovery`, `account_recovery`, `vault`, `vault_tombstone`, `handoff` (26 tables). No existing table changes, since the database is live |
+| `bin/deploy.mjs`, `DEPLOY.md` | The edge rate rule's expression names `/recover` beside `/account` and `/signin` |
+
+**New refusal words:** `vault-used` (409), `vault-gone` (409), `no-ask` (409), `no-vault` (409). Reused: `shape`, `slow-down`, `bad-code`, `bad-login`, `account-locked`, `unavailable`, `code-needed`, `bad-ticket`, `not-owner`, `no-pin`, `bad-pin`, `locked`, `no-device`.
+
+**No new Worker secret.** The vault state is signed with `HZ_TICKET_KEY` under its own label; the recovery link uses `HZ_LINK_BASE`.
+
+### Decisions
+
+1. **Recovery is the plan's two factors, in one route.** The emailed link (a 128-bit token in the fragment, as sign-up's) plus the account password. The start answers `{ok:true}` for any address and runs the same statements whether or not it has an account (an address with no account gets a row born spent, as sign-up's M1). One link is live at a time; a start while one is live re-sends it, inside 3 an hour. The finish counts the try before the compare, spends the link on the first right code, and only then checks the password, so each link allows one password guess and a wrong one spends it (as the MEDIUM-1 relink).
+2. **The finish registers the new device itself.** It carries the two public keys, not a key digest for a later ticket, so there is no second step to miss and no ticket to strand (the MEDIUM-1 lesson).
+3. **What one batch changes on recovery:** the new device becomes the owner device, confirmed; every other device loses the owner flag and every live one is held back (pending) until it proves the new code; the seed, its exchanges and the code path's lockout row are deleted, so the new device enrols a new authenticator under the A5 owner rule; every live sign-in ticket is voided; the current vault id is tombstoned and every bring in flight is dropped; and the recovery's moment is recorded. One batch, so a Worker that stops midway leaves no half-recovered account.
+4. **What recovery does not change:** the password, the PIN and its reuse locks, the admin role, and the offline block. A locked account answers `account-locked` and nothing changes: only an administrator lifts that lock (A5b).
+5. **The vault id is the device's, the record is the service's.** A vault id is 16 random bytes a device mints. Horae Zone keeps one current id per account, never shared by two accounts, and every id it replaced as a permanent tombstone: a tombstoned id is never current again, for any account (`vault-used`). So a genuine "gone" is true forever.
+6. **The switch takes the removal's proof** (Kaleb's 8 Oct 2026 ruling for `/device/remove`): a signed request from a device that may change the account and a fresh code, spent once, then a notice mail, no delay. A switch to the vault already current changes nothing and spends no code, so a device whose answer was lost can ask again. Recording the first vault mails nothing; replacing one mails `VAULT_SWITCHED_NOTE`.
+7. **The vault state is signed, and only "gone" shreds.** The device asks at every launch about the vault it holds and gets a statement signed with `HZ_TICKET_KEY` over `horae-zone-vault-state-v1.<payload>`, `{v, typ, account, device, vault, state, current, at, exp, kid}`, ten minutes' life. `state` is `current`, `gone`, `unknown` or `none`. The label and the `typ` keep a state from passing as a ticket, a device list or a grant, and the reverse. A device shreds only on a statement that verifies and says `gone` for its own account, itself and the vault it asked about; `unknown` is never a reason to shred, so a service that cannot find a record never destroys a vault.
+8. **After a recovery, every vault from before it is gone** (security review MEDIUM-1): any id that is not current, asked by a device registered before the recovery, is `gone`, recorded or not. The recovered device's own vault, made after the recovery, stays `unknown` until it records it.
+9. **The state reaches every device that still can ask.** `/vault/state` is `pendingOk` and `lockedOk`, so a device held back by the recovery, or of an account the offline block locked, still learns at its next launch that its vault is gone.
+10. **Bringing the vault: the asker asks, the holder approves.** The new device (signed in, registered, past its first code; a pending device never reaches these routes) sends `/pair/take`, which records an ask bound to the current vault id for ten minutes. A device holding the vault approves with Face ID (its signature) and the app PIN (plan: "asks for Face ID + PIN to approve"), compared in the PIN lockout, with the code under the 12-hour rule of every open. It sends the envelope: the vault key sealed on the device to the asker's registered agreement key. The service never opens it.
+11. **An envelope lands only where it was asked for, and is taken once.** The offer needs a live ask from a confirmed, live device of the caller's own account, never itself, for the vault current now, all re-checked in the one write. The asker's next take hands it out and deletes the row in one statement, only while that vault is still current, the approving device is still live and confirmed, and the asker is still confirmed. A switch or a recovery deletes the account's rows; a removal or a hold leaves nothing to take.
+12. **The check word is the devices'.** The take answers the approving device's id and its registered agreement key, so the asker can open the envelope and both screens can compute the check word from the keys each one used (plan A8). A service that swapped a key would show two different words.
+13. **The #248 LOW race** (the agent's reading of the brief's "#248 LOW race"): `/device/register` spent an owner ticket in one statement and wrote the device in the next, so a second owner ticket (a relink's) registering between them made a second owner device. The insert now carries `NOT EXISTS (SELECT 1 FROM device WHERE account_id = ?)` for an owner ticket; the losing ticket is spent and answers `bad-ticket`. A further device's registration is unchanged (a negative control).
+14. **Recovery has its own day cap** (security review LOW-2): `recover-day`, the same number as sign-up's cap, so a flood of sign-up starts never holds back the one way back into an account.
+
+### Decisions for Kaleb
+
+Each row is the safer call where the plan leaves a choice.
+
+| # | Point | Default now (the safer call) | Where |
+|---|---|---|---|
+| 1 | A recovery tombstones the current vault at once, in the recovery's own write, rather than waiting for the new device's `/vault/switch` | At once: nothing of the old vault can be carried after the recovery, even if the new device never records a vault | `src/recover.js` |
+| 2 | A recovery by someone holding both the inbox and the password shreds every device's vault, with no delay or undo window (R-6 as written). A delay that an old confirmed device could cancel would protect availability but leave the old vault live through the delay | No delay; the notice goes to the account's address | `src/recover.js` |
+| 3 | A recovery keeps the PIN; a lost phone passcode is not a forgotten PIN, which has its own reset (A5b) | PIN kept | `src/recover.js` |
+| 4 | A locked account (the offline block) is not recovered: `account-locked`, the link spent, nothing changed | Refused; the admin unlock first | `src/recover.js` |
+| 5 | The recovery link opens the sign-up link page (`HZ_LINK_BASE`) rather than a page of its own, so the deploy asks for no new value. The mail's subject and words say it is a recovery | Shared page | `src/recover.js` `linkMessage` |
+| 6 | The recovery mails carry no number (the A5b rule): "Works once, for a short time." | No number | `src/recover.js` |
+| 7 | The recovery link mail warns: "A recovery replaces the authenticator code and starts a new vault: the old vault is deleted on every device." and "If you did not ask for this, nothing changes unless the link and the password are both used." | As written | `linkMessage` |
+| 8 | The recovered note: "This account was recovered on a new device, with the emailed link and the account password.", "Its authenticator code was cleared; the new device sets up a new one.", "Every other device of this account can do nothing until it proves the new code.", "Every device deletes the old vault the next time it opens." | As written | `RECOVERED_NOTE` |
+| 9 | Recovery limits: the link lives 10 minutes, one live at a time, 3 re-sends an hour, 10 starts an hour per connecting address, 20 finishes an hour per connecting address and 5 at one address from one, and a day cap of its own at sign-up's number (`HZ_CODES_PER_DAY`, default 3000) | Sign-up's numbers | `RECOVER_LIMITS`, `RECOVER_DAY_BUCKET` |
+| 10 | The edge rate rule now names `/recover`. Horae Zone is live, so the rule in the dashboard needs `"/recover"` added to its expression after this merges | Added to the printed rule; the dashboard edit is Kaleb's | `bin/deploy.mjs`, `DEPLOY.md` |
+| 11 | The switch's proof is the removal's: a fresh code, spent once, and a notice mail, no delay. The PIN is not asked | Code + notice, as the removal ruling | `src/vault.js` |
+| 12 | `/vault/state` is a route the plan's table does not name; it is how "every device destroys the old vault wrap at its next launch" can be told apart from a forged answer | New route, signed statement | `src/vault.js` |
+| 13 | Only a signed `gone` shreds. `unknown` (never recorded), `none`, an unsigned refusal or no answer never shred | Shred on signed gone only | `src/vault.js`, Sass `vaultstate.mjs` |
+| 14 | A removed device cannot ask `/vault/state` (every route refuses it), so it never gets a signed "gone" and keeps its wrap. It cannot open it online (every online open needs the service), and offline only inside the 12-hour window of its last grant. A route for removed devices to learn "shred" would need a removed device's signature to be checked again | Not built; the wrap stays shut, not shredded | `src/index.js` |
+| 15 | Vault tombstones are never purged, so a device that comes back after months still learns its vault is gone | Kept while the account is | `src/retention.js` |
+| 16 | The bring's approval is the plan's Face ID + PIN, with the code under the 12-hour rule of every open (not a fresh code every time) | PIN always, code at 12 hours | `src/pair.js` |
+| 17 | An ask and an envelope each live ten minutes; one ask per device | 10 minutes | `HANDOFF_LIMITS.ttlMs` |
+| 18 | The envelope is at most 4096 base64url characters and opaque to the service | 4096 | `HANDOFF_LIMITS.maxEnvelope` |
+| 19 | The brought note: "A device of this account approved sending its vault to another device of this account, with the app PIN.", "Only that device can open what was sent." It goes at the approval, not the take | At the approval | `BROUGHT_NOTE` |
+| 20 | The switch note: "A device of this account started a new vault, with the account's code.", "Every device of this account deletes the old vault the next time it opens.", "What was in the old vault cannot be brought back." | As written | `VAULT_SWITCHED_NOTE` |
+| 21 | When #286 (the offline pass) merges, a recovery should also void every outstanding offline pass of the account, so a held-back device's pass cannot open the old vault offline. Not done here, since #286 is not on `dev` and this PR is not stacked on it | Follow-up after #286 | `src/recover.js` |
+| 22 | The #248 "5-minute gap" (a start between the owner ticket's expiry and the sign-up link's expiry mails nothing) is left as accepted in #248: recovery now also covers a deviceless account at any time | Left; recovery covers it | `src/signup.js` |
+
+### Security review of A6
+
+A security review of `7dc1c3e9` found nothing CRITICAL or HIGH: one MEDIUM and four LOW. Each fix was test first (`c44d6751` RED, `2d6bbaf8` GREEN).
+
+| Finding | What changed |
+|---|---|
+| MEDIUM-1: a vault a device made but never recorded answered `unknown` after a recovery, so it outlived the recovery (R-6) | Fixed. `account_recovery` holds the recovery's moment, and `stateOf` answers `gone` for any id that is not current asked by a device registered before it. Test: "review MEDIUM-1: after a recovery, a vault a device never recorded is gone for every device registered before it", with the recovered device's own unrecorded vault as the negative control. The removed-device half is Kaleb row 14 |
+| LOW-1: the purge deleted a spent recovery link inside its life, so an inbox holder could mint a new link early after each hourly purge | Fixed: the purge removes only links past their life |
+| LOW-2: recovery shared sign-up's daily mail cap, so a flood of sign-up starts held back recovery | Fixed: `recover-day`, kept a day by the purge; the edge rule names `/recover` (Kaleb rows 9 and 10) |
+| LOW-3: a repeated start for an address with a live link opens the sealed link (one AES-GCM open), and one for an address with no account does not; the answers and statements are the same | Accepted: a microsecond-scale difference under network jitter, on a repeat start only |
+| LOW-4: the switch batch tombstoned the old id even when its insert was skipped (an id claimed mid-flight), leaving the old id current and tombstoned | Fixed: every statement of the batch requires the new id unclaimed |
+
+The review also checked and found sound: no old envelope survives a recovery or a switch; a password-only thief stays pending and reaches no vault or bring route; unlock tickets minted before a recovery fail every changer check; the state's label and typ keep it apart from tickets, lists and grants; no audit row or answer carries a code, password or envelope (the take hands the envelope only to its asker). It raised one client rule, kept in Sass's `vaultstate.mjs`: the device checks that the statement names the vault it asked about.
+
+### Security table
+
+| Threat | Control | Test |
+|---|---|---|
+| An old vault key reaches the recovered device through the service | The recovery's one batch tombstones the vault and deletes every handoff; an offer needs the current vault; a take needs it still current | "recovery never returns an old vault key" |
+| A password thief recovers the account | The finish needs the emailed link (128-bit, the inbox) and then the password; one password guess per link | "a recovery needs the emailed link and the password, never one" |
+| An old device keeps changing the account after a recovery | Every other device is demoted and held back in the recovery's write; the old seed is deleted, so it has no code to prove | "after a recovery the new device is the owner, and every other device is held back until it proves the new code" |
+| A forged or misread answer makes a device shred its vault | Signed statement under its own label and typ, bound to account, device and vault; only `gone` shreds | "NEGATIVE CONTROL: an id the service never recorded is unknown, never gone"; "a vault state passes as no ticket and no device list" |
+| A replaced vault comes back | Tombstones are permanent and global | "a gone vault id is never current again, for this account or another" |
+| A stolen device with the PIN sends the vault to a device the thief registered | The taker must be a confirmed device (password and code); the approval takes the PIN in its lockout; the account is mailed | "an offer needs an ask from a confirmed device of the account, for the current vault"; "an offer takes the app PIN, in the PIN lockout" |
+| An envelope outlives a switch, a removal or a hold | The take's one statement re-checks the vault, the approver and the asker | "a switch drops the envelope in flight", "an envelope from a device removed after it approved is never taken", "an asker held back after its checks passed takes nothing" |
+| Two owner devices from racing owner tickets (#248 LOW) | The owner insert requires an account with no device | "#248 LOW: an owner device that lands while another owner ticket is being spent leaves one owner device" |
+| A recovery start says whether an address has an account | Same answer and same statements either way | "a recovery start answers the same and runs the same statements whether or not the address has an account" |
+| Strangers flood recovery or sign-up to lock the owner out | Per-address-and-requester caps, a day cap of recovery's own, the edge rule | "review LOW-2", "recovery tries are capped per connecting address" |
+
+### Out of scope for A6
+
+- The device side: the shred in `Vault.swift`, the launch call, the bring screens and the check word (A8). Sass's A6 PR adds the vault-state check and the launch decision as pure JS, and the open recovery calls; its signed calls wait for A8, which widens the paths the Enclave signs.
+- Revoking a removed device's Cloudflare and Anthropic tokens (the runbook in Sass `docs/ios.md`).
+- Any deploy, real secret or call to the live service.

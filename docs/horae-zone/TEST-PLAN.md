@@ -483,3 +483,38 @@ As in A3: `node --test` in `apps/horae-zone`.
 
 - The admin Pages screen and admin device removal (DESIGN-REVIEW, A5c, Decisions for Kaleb rows 10 and 3).
 - Recovery and the vault switch (A6), the gatekeeper (A7).
+
+## A6: recovery, the vault switch and bringing the vault (`apps/horae-zone`)
+
+### Run
+
+As in A3: `node --test` in `apps/horae-zone`.
+
+- **Expected result now:** Horae Zone 452 tests, 452 pass. `dev` at `bcf1924e` has 408.
+- **RED evidence:** `b88b1640` committed the tests alone: 15 of 414 failed. `recover.test.mjs`, `vault.test.mjs` and `pair.test.mjs` could not load (their modules did not exist); the #248 LOW race test registered a second owner device (200 where `bad-ticket` was expected); the older tests that used `/pair/offer` as the one signed route that answers `not-built` failed until `/pair/take` answered `no-vault`. Two tests were added after `b88b1640` and watched failing before their fix: the A6 purge test, and "an asker held back after its checks passed takes nothing" (also checked against the mutation it guards). `c44d6751` committed the security review's tests alone: 4 failed.
+- **Test values are fake,** as in A5c: `example.test` addresses, fixed PINs with no run of three, vault ids of 16 repeated bytes, an envelope that is only a marker, the per-run ticket key. No test calls a deployed service.
+
+### What each file proves
+
+| File | Proves | Negative controls |
+|---|---|---|
+| `test/recover.test.mjs` (added) | **"recovery never returns an old vault key"** (plan test 1): an envelope of the old vault waiting for a second device is gone from every table after the recovery, the answer is only `{device}`, the new device has no vault to take, the old devices are held back and get a signed `gone`, and the old id can never be recorded again. A recovery needs the link and the password (a wrong password spends the link and changes nothing); the link is single use, and two finishes together register one device; the new device is the owner and every other device is held back until it proves the new code, the old seed's code refused; live sign-in tickets are voided and the code lockout cleared; the PIN, the admin role and a locked account are not lifted; the two stranded accounts of A5 (owner removed before the first code, owner never registered) are recovered; the start answers and runs the same statements with or without an account and keeps one live link; the mails carry no number or password; shape before counting; the per-requester try cap; review MEDIUM-1 and LOW-2 | The link and the password together recover; the recovered device's own unrecorded vault is unknown, never gone |
+| `test/vault.test.mjs` (added) | **"a switch shreds the old wrap on every device's next launch and tombstones its rows"** (plan test 2): the old id is tombstoned, the brings in flight dropped, the account mailed once, and every device, held back or locked included, gets a statement signed for it that says `gone`. The switch needs a fresh code of the caller's own, spent once; a pending device switches nothing; a tombstoned or another account's id is `vault-used`; a switch to the current vault spends nothing; shape first; the note carries no number, link or id; the state passes as no ticket or list, and the reverse; review LOW-4 | An id never recorded is `unknown`, never `gone`; another account's tombstone is not this account's |
+| `test/pair.test.mjs` (added) | The envelope goes only to the device that asked, once, and no table keeps it after; an offer needs an ask from a confirmed device of the account for the current vault, never itself; a pending device can neither ask nor approve; the PIN is compared in the PIN lockout; the code at 12 hours; a switch drops the envelope; a removed approver's envelope is never taken; asks and envelopes live ten minutes; no vault answers `no-vault`; shape before the PIN; the brought note carries no number or id; an asker held back mid-flight takes nothing | The right PIN approves |
+| `test/relink.test.mjs` (2 added) | The #248 LOW race: an owner device landing while another owner ticket is being spent leaves one owner device | A further device registers while another device lands |
+| `test/purge.test.mjs` (2 added) | Expired recovery links and stale handoffs go; a spent link inside its life, the current vault and every tombstone stay; the recovery day rows stay a day | The hourly recovery-start row goes after its hour |
+| `test/checks.test.mjs`, `test/devices.test.mjs`, `test/otp.test.mjs`, `test/purge.test.mjs` | Updated: every route now has its handler, so the stand-in for "passes its checks" is `/pair/take` answering `no-vault`, and the `not-built` answer is tested through an injected route table | |
+| `test/helpers.mjs` | A6 flow helpers: `recoveryCode`, `recoverRequest`, `recoveredDevice`, `provedDevice`, `switchVault`, `vaultId`, `verifyVaultState` (the check a device mirrors) | |
+
+### Manual checks for the reviewer
+
+1. **Only a tombstone or a recovery says gone:** `grep -n "gone" apps/horae-zone/src/vault.js` shows the one query that answers it.
+2. **No old envelope after recovery:** `grep -n "handoff\|vault" apps/horae-zone/src/recover.js` shows the deletes and the tombstone inside `recoveryBatch`.
+3. **Local smoke test:** `curl -s -X POST -H 'content-type: application/json' -d '{}' localhost:8787/vault/state` answers `{"error":"no-device"}`, and `-d '{"email":"a@example.test"}' -H 'cf-connecting-ip: 192.0.2.1' localhost:8787/recover` answers `{"ok":true}`.
+4. **After the merge, in the dashboard:** the rate rule's expression names `"/recover"` (DESIGN-REVIEW A6, Kaleb row 10).
+
+### Not in A6 (do not add here)
+
+- The device side: the shred, the launch call, the bring screens and the check word (A8).
+- Voiding offline passes on recovery (after #286 merges; Kaleb row 21).
+- JanusMirror (A7).
