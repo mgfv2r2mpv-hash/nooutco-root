@@ -78,7 +78,7 @@ CHECKLIST
   PASS    Database present                   created
   PASS    Worker deployed                    horae-zone, route horae-zone.nooutco.me (Custom domain)
   SKIPPED Owner as administrator             no account yet: sign up, then node bin/deploy.mjs --owner-admin
-  PASS    Schema applied                     21 tables present
+  PASS    Schema applied                     25 tables present
   PASS    Secret HZ_ACCOUNT_KEY              set (name only)
   ...
   PASS    Turnstile site key HZ_TURNSTILE_SITEKEY  a Worker var in wrangler.deploy.toml

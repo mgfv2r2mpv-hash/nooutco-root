@@ -32,6 +32,9 @@ import { resetPin } from "./pin-reset.js";
 import { reviewPin } from "./pin-review.js";
 import { reverify } from "./reverify.js";
 import { adminStatus, unlockPins, adminUnlockAccount } from "./admin.js";
+import { recover } from "./recover.js";
+import { switchVault, vaultState } from "./vault.js";
+import { offerVault, takeVault } from "./pair.js";
 
 export const ROUTES = Object.freeze({
   "/account": { checks: "open", handler: startSignup },
@@ -58,10 +61,18 @@ export const ROUTES = Object.freeze({
   "/pin/reset": { checks: "signed", handler: resetPin },
   "/pin/review": { checks: "signed", handler: reviewPin },
   "/reverify": { checks: "signed", handler: reverify },
-  "/pair/offer": { checks: "signed" },
-  "/pair/take": { checks: "signed" },
-  "/recover": { checks: "open" },
-  "/vault/switch": { checks: "signed" },
+  // A6 (src/pair.js): bringing the vault to a new device, between two
+  // confirmed devices of one account.
+  "/pair/offer": { checks: "signed", handler: offerVault },
+  "/pair/take": { checks: "signed", handler: takeVault },
+  // A6 (src/recover.js): the emailed link plus the password, before the new
+  // device has a key to sign with.
+  "/recover": { checks: "open", handler: recover },
+  // A6 (src/vault.js). Every device asks for the state at launch, so a device
+  // held back by a recovery, or of a locked account, still learns its vault
+  // is gone.
+  "/vault/switch": { checks: "signed", handler: switchVault },
+  "/vault/state": { checks: "signed", handler: vaultState, pendingOk: true, lockedOk: true },
   // A5c (src/admin.js): each takes exactly {email}, the account acted on.
   "/admin/status": { checks: "admin", handler: adminStatus },
   "/admin/unlock-pins": { checks: "admin", handler: unlockPins },
