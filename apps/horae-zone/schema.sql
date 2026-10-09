@@ -346,7 +346,11 @@ CREATE TABLE IF NOT EXISTS reverify (
 -- stands on and when it ends, when it was issued and its cap on opens. The
 -- report fills reported_at and the two counts the Mac sent. Never the pass,
 -- its signature, a PIN or the log's entries. Not purged by time: a Mac's next
--- pass waits on its row.
+-- pass waits on its row. superseded_at is set when a fresh, unspent code
+-- re-proves the same Mac while this pass is unreported (a Mac that lost its
+-- record, option c): the pass stops holding the Mac back, and reported_at and
+-- the counts stay null, since nobody reported them. Nullable, so the deploy's
+-- column step adds it to a table made before it.
 CREATE TABLE IF NOT EXISTS offline_pass (
   jti          TEXT    PRIMARY KEY,
   account_id   TEXT    NOT NULL,
@@ -357,7 +361,8 @@ CREATE TABLE IF NOT EXISTS offline_pass (
   max_opens    INTEGER NOT NULL,
   reported_at  INTEGER,
   opens        INTEGER,
-  wrong_tries  INTEGER
+  wrong_tries  INTEGER,
+  superseded_at INTEGER
 );
 
 CREATE INDEX IF NOT EXISTS offline_pass_unreported ON offline_pass (device_id) WHERE reported_at IS NULL;
