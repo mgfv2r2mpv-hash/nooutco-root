@@ -483,3 +483,15 @@ As in A3: `node --test` in `apps/horae-zone`.
 
 - The admin Pages screen and admin device removal (DESIGN-REVIEW, A5c, Decisions for Kaleb rows 10 and 3).
 - Recovery and the vault switch (A6), the gatekeeper (A7).
+
+## Offline unlock, Option C (`apps/horae-zone`)
+
+### Run
+
+`node --test` in `apps/horae-zone`. Expected: 427 tests, 427 pass (`dev` at `bcf1924e` has 408). RED evidence: `bf24246b` committed `test/offline.test.mjs` alone, and its 19 tests failed on `no-route`. Test values are fake: `example.test` addresses, random jtis, the fresh test ticket key.
+
+### What each file proves
+
+| File | Proves | Negative controls |
+|---|---|---|
+| `test/offline.test.mjs` (added) | A fresh code earns a pass bound to the device and account, under its own label, `at` the code's time, `until` the hours asked and never past 12, the jti the Mac chose, the cap of 20; the spend moves `proved_at`. A pass is not a ticket, grant or receipt. The body is exactly `{ticket, hours, jti}`. No, stale, other-device, spent or mislabelled tickets are refused. A pending device and a locked account get none. No mailer or account key: `unavailable`, nothing spent. One plain note per pass. `report-due` while unreported, per device, spending no code. A report marks once, keeps the counts and answers a receipt for this device and jti; a report of an unknown jti marks nothing. The report body is exact and its head is the chain; ten wrong PINs lock the account; a report of opens mails a plain note | Each refusal followed by the same request that is taken; nine wrong PINs lock nothing; an unused pass mails nothing |

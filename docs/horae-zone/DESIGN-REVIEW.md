@@ -1189,3 +1189,39 @@ The review of the GREEN commit found nothing above MEDIUM, and `node --test` pas
 
 - The admin Pages screen (Kaleb row 10) and admin device removal (Kaleb row 3).
 - Any deploy, real secret or call to the live service.
+
+## Offline unlock, Option C (`apps/horae-zone`)
+
+The service half of sass-assistant's offline unlock (design of 8 Oct 2026, section 1, Option C, which Kaleb approved for building). Based on `dev` at `bcf1924e`. Commits: `bf24246b` (RED: `test/offline.test.mjs`, 19 tests, each failing on `no-route`), then the GREEN commit. After both: Horae Zone 427/427 (408 on `dev`). The Mac half is the linked sass-assistant PR.
+
+### What is in it
+
+| File | Does |
+|---|---|
+| `src/offline.js` | `/offline/grant {ticket, hours, jti}` reads and spends a fresh unlock ticket (`src/pin.js` readTicket and spendTicket, so the spend moves `proved_at` as an open's does) and answers `{ok: true, pass}`: `{v, typ: "offline-pass", kid, account, device, at, until, jti, maxOpens}` signed with `HZ_TICKET_KEY` over `horae-zone-offline-pass-v1.<payload>`, `at` the ticket's own time and `until` at most 12 hours after it. `/offline/report {jti, opens, wrongPins, head}` marks this device's pass reported, once, and answers `{ok: true, receipt}` signed over `horae-zone-offline-receipt-v1.<payload>` |
+| `src/routes.js` | Both routes `signed`; neither `pendingOk`; only the report `lockedOk`, so a blocked Mac can still report |
+| `src/account-lock.js` | `lockForBlock`, the lock `/pin/blocked` writes, shared with a report of ten wrong PINs |
+| `schema.sql` | `offline_pass`: the jti, device, account, the code's time, `until`, when issued, the cap on opens, and once reported the time and the two counts. Never the pass, receipt, ticket, log entries or head |
+| `DEPLOY.md` | 22 tables; the break-glass runbook names the report as a second way an account locks |
+
+**New refusal words:** `report-due` (409) and `bad-log` (400). `shape`, `bad-ticket`, `unavailable`, `no-device` and `account-locked` are reused.
+
+### Decisions
+
+1. **A label of its own.** `horae-zone-offline-pass-v1` and `typ: "offline-pass"`, so a pass never reads as an unlock ticket or an A5b PIN grant, and neither of those as a pass. The receipt has its own label and `typ` too.
+2. **The 12-hour cap is the service's.** `hours` is a whole number from 1; above 12 it is cut to 12, so `until - at` is never more than 12 hours whatever is asked. The Mac refuses a pass claiming longer.
+3. **The Mac names the jti.** The design's body was `{ticket, hours}`. The jti joined it so the Mac knows the pass's name before the answer comes back: a grant whose answer is lost on a flaky hospital network can still be reported, and the gate still opens. A jti already used answers `shape`.
+4. **The report gate is per Mac.** One unreported pass for a device answers `report-due` before the ticket is spent, so the code is not used up. Another device of the account is not held back.
+5. **Every pass needs its report,** an unused one included; the Mac sends it the first time it reaches the service after the pass was used, expired, blocked or replaced.
+6. **The log's head is recomputed:** SHA-256 over `horae-zone-offline-log-v1.<jti>`, then over the previous head and `<seq>.<at>` for each open. A head that differs answers `bad-log`. Entries must run 1, 2, 3 and number at most 20, the cap.
+7. **The receipt is signed** and names the device, the account and the jti, so the page cannot tell the Mac a report went in; the Mac deletes its record only on a receipt that verifies. A report of a jti this device was never issued answers a receipt and marks nothing.
+8. **Ten wrong PINs lock the account** through the same write as `/pin/blocked`, and the report still answers its receipt.
+9. **Mail:** one plain note per pass, one per report of opens, neither naming a time, a count or a device. Without a mailer or the account key no pass is issued and nothing is spent.
+
+### Decisions for Kaleb
+
+| # | Point | Default now | Where |
+|---|---|---|---|
+| 1 | The report-of-opens mail could say how many opens; the A5b rule says a mail names no count | No count | `src/offline.js` OPENED_NOTE |
+| 2 | A Mac that loses its record (Keychain item deleted) can never report its last pass, so it gets no new one until it is removed and joins again | As written: fail closed | `src/offline.js` |
+| 3 | Reported rows are kept, not purged | Kept | `schema.sql` |
