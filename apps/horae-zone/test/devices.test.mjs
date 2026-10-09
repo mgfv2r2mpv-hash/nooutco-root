@@ -3,7 +3,8 @@
 // account password and the digest of the device's keys, and answers a
 // single-use ticket; POST /device/register takes that ticket and the two
 // public keys it was bound to; POST /device/remove,
-// signed by a device of the same account, stops a device at once. Until A5
+// signed by a device of the same account with a fresh code (Kaleb's 8 Oct
+// 2026 ruling; test/device-remove.test.mjs), stops a device at once. Until A5
 // no account has an authenticator code, so /signin asks for no code; A5
 // adds the code, RED first.
 import { test } from 'node:test';
@@ -15,7 +16,7 @@ import { accountKeys } from '../src/account-keys.js';
 import {
   harness, post, signed, nonceFor, addDevice, auditRows, everyRow,
   signUp, signIn, signInRequest, deviceKeys, registerRequest, registeredDevice, keyDigestOf, ANY_KEY_DIGEST, PASSWORD, ROOT, T0,
-  removedMidFlight, FIND_DEVICE, SPEND_NONCE,
+  removedMidFlight, FIND_DEVICE, SPEND_NONCE, confirmedDevice, ticketFor, removeRequest,
 } from './helpers.mjs';
 
 // Fixed, fake values: reserved-domain addresses and TEST-NET requesters.
@@ -60,10 +61,12 @@ test('NEGATIVE CONTROL: a request signed by the registered key passes the device
 
 test('a removed device is refused at once', async () => {
   const h = harness();
-  const keep = await registeredDevice(h, ADDRESS);
-  const lost = await registeredDevice(h, ADDRESS, { fresh: false });
+  const keep = await confirmedDevice(h, ADDRESS);
+  const lost = { ...(await registeredDevice(h, ADDRESS, { fresh: false })), seed: keep.seed };
+  await ticketFor(h, lost); // it proves the code, so only the removal stops it
+  const ticket = await ticketFor(h, keep);
   const held = await nonceFor(h.call, lost); // a nonce the lost device already holds
-  assert.deepEqual(await answer(await h.call(await signed(h.call, keep, '/device/remove', { device: lost.id }))), { status: 200, json: { ok: true } });
+  assert.deepEqual(await answer(await h.call(await signed(h.call, keep, '/device/remove', { device: lost.id, ticket }))), { status: 200, json: { ok: true } });
   assert.deepEqual(await answer(await h.call(await signed(h.call, lost, '/pair/offer', {}, { nonce: held }))), { status: 401, json: { error: 'no-device' } });
   assert.deepEqual(await answer(await h.call(post('/nonce', {}, { 'x-hz-device': lost.id }))), { status: 401, json: { error: 'no-device' } });
   assert.equal(liveNonces(h.db, lost.id, h.clock.ms), 0, 'its live nonces are spent with it');
@@ -508,25 +511,27 @@ test('M3: a sign-in without a well-formed key digest is refused as shape, before
 
 test('a device can remove itself, and is refused at once', async () => {
   const h = harness();
-  const dev = await registeredDevice(h, ADDRESS);
-  assert.deepEqual(await answer(await h.call(await signed(h.call, dev, '/device/remove', { device: dev.id }))), { status: 200, json: { ok: true } });
+  const dev = await confirmedDevice(h, ADDRESS);
+  assert.deepEqual(await answer(await h.call(await removeRequest(h, dev, dev.id))), { status: 200, json: { ok: true } });
   assert.equal((await answer(await h.call(post('/nonce', {}, { 'x-hz-device': dev.id })))).json.error, 'no-device');
 });
 
 test('a device cannot remove a device of another account, and the answer does not say so', async () => {
   const h = harness();
-  const mine = await registeredDevice(h, ADDRESS);
+  const mine = await confirmedDevice(h, ADDRESS);
   const theirs = await registeredDevice(h, OTHER);
-  assert.deepEqual(await answer(await h.call(await signed(h.call, mine, '/device/remove', { device: theirs.id }))), { status: 200, json: { ok: true } });
-  assert.deepEqual(await answer(await h.call(await signed(h.call, mine, '/device/remove', { device: 'never-registered' }))), { status: 200, json: { ok: true } });
+  assert.deepEqual(await answer(await h.call(await removeRequest(h, mine, theirs.id))), { status: 200, json: { ok: true } });
+  assert.deepEqual(await answer(await h.call(await removeRequest(h, mine, 'never-registered'))), { status: 200, json: { ok: true } });
   assert.equal((await answer(await h.call(await signed(h.call, theirs, '/pair/offer', {})))).json.error, 'not-built', 'theirs still works');
   assert.equal(devices(h.db).find((d) => d.id === theirs.id).removed_at, null);
 });
 
-test('a remove body must be exactly one device id', async () => {
+test('a remove body holds only a device id and a ticket, each of its shape', async () => {
   const h = harness();
   const dev = await registeredDevice(h, ADDRESS);
-  for (const body of [{}, { device: 7 }, { device: dev.id, also: dev.id }, { device: 'has a space' }]) {
+  const ticket = 'a.b';
+  for (const body of [{}, { ticket }, { device: 7, ticket }, { device: dev.id, ticket, also: dev.id }, { device: 'has a space', ticket },
+    { device: dev.id, ticket: 7 }, { device: dev.id, ticket: '' }, { device: dev.id, ticket: null }, { device: dev.id, ticket: 'x'.repeat(1025) }]) {
     assert.deepEqual(await answer(await h.call(await signed(h.call, dev, '/device/remove', body))), { status: 400, json: { error: 'shape' } });
   }
   assert.equal(devices(h.db)[0].removed_at, null);
@@ -534,15 +539,16 @@ test('a remove body must be exactly one device id', async () => {
 
 test('a removed device keeps its row, marked with when it was removed', async () => {
   const h = harness();
-  const keep = await registeredDevice(h, ADDRESS);
+  const keep = await confirmedDevice(h, ADDRESS);
   const lost = await registeredDevice(h, ADDRESS, { fresh: false });
   h.clock.ms += 1000;
-  await h.call(await signed(h.call, keep, '/device/remove', { device: lost.id }));
-  assert.equal(devices(h.db).find((d) => d.id === lost.id).removed_at, h.clock.ms);
+  await h.call(await removeRequest(h, keep, lost.id));
+  const at = h.clock.ms;
+  assert.equal(devices(h.db).find((d) => d.id === lost.id).removed_at, at);
   // Removing it again changes nothing.
   h.clock.ms += 1000;
-  await h.call(await signed(h.call, keep, '/device/remove', { device: lost.id }));
-  assert.equal(devices(h.db).find((d) => d.id === lost.id).removed_at, h.clock.ms - 1000);
+  await h.call(await removeRequest(h, keep, lost.id));
+  assert.equal(devices(h.db).find((d) => d.id === lost.id).removed_at, at);
 });
 
 // ---- L2 (security review): a removal landing mid-flight wins ----
@@ -551,9 +557,9 @@ test('a removed device keeps its row, marked with when it was removed', async ()
 
 test('L2: a device removed after its checks passed cannot remove another device', async () => {
   const h = harness();
-  const caller = await registeredDevice(h, ADDRESS);
+  const caller = await confirmedDevice(h, ADDRESS);
   const target = await registeredDevice(h, ADDRESS, { fresh: false });
-  const request = await signed(h.call, caller, '/device/remove', { device: target.id });
+  const request = await removeRequest(h, caller, target.id);
   removedMidFlight(h, caller.id, SPEND_NONCE);
   await h.call(request);
   assert.notEqual(devices(h.db).find((d) => d.id === caller.id).removed_at, null, 'the removal landed');
@@ -565,12 +571,13 @@ test('L2: a device removed after its checks passed cannot remove another device'
 
 test('L2 NEGATIVE CONTROL: a live device removes another, and itself', async () => {
   const h = harness();
-  const caller = await registeredDevice(h, ADDRESS);
+  const caller = await confirmedDevice(h, ADDRESS);
   const target = await registeredDevice(h, ADDRESS, { fresh: false });
+  const request = await removeRequest(h, caller, target.id);
   removedMidFlight(h, 'never-registered', SPEND_NONCE);
-  await h.call(await signed(h.call, caller, '/device/remove', { device: target.id }));
+  await h.call(request);
   assert.notEqual(devices(h.db).find((d) => d.id === target.id).removed_at, null);
-  await h.call(await signed(h.call, caller, '/device/remove', { device: caller.id }));
+  await h.call(await removeRequest(h, caller, caller.id));
   assert.notEqual(devices(h.db).find((d) => d.id === caller.id).removed_at, null);
 });
 
@@ -661,14 +668,15 @@ test('the service builds signed bytes with the engine function, and accepts the 
 
 test('sign-in, register and remove each write one audit row of route and reason', async () => {
   const h = harness();
-  const owner = await registeredDevice(h, ADDRESS);
+  const owner = await confirmedDevice(h, ADDRESS);
+  const ticket = await ticketFor(h, owner);
   const before = auditRows(h.db).length;
   await h.call(signInRequest(ADDRESS, 'a wrong password here'));
   const keys = await deviceKeys();
-  const ticket = await signIn(h, ADDRESS, { keys });
+  const signInTicket = await signIn(h, ADDRESS, { keys });
   await h.call(registerRequest('A'.repeat(43), await deviceKeys()));
-  const { device } = await (await h.call(registerRequest(ticket, keys))).json();
-  await h.call(await signed(h.call, owner, '/device/remove', { device }));
+  const { device } = await (await h.call(registerRequest(signInTicket, keys))).json();
+  await h.call(await signed(h.call, owner, '/device/remove', { device, ticket }));
   assert.deepEqual(auditRows(h.db).slice(before), [
     { route: '/signin', reason: 'bad-login' },
     { route: '/signin', reason: 'ok' },

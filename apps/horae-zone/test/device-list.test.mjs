@@ -16,7 +16,7 @@ import { fromB64url, NONCE_TTL_MS, LIVE_NONCES_PER_DEVICE } from '../src/checks.
 import { readTicket } from '../src/pin.js';
 import {
   harness, post, signed, nonceFor, registeredDevice, confirmedDevice, codeAt, wrongCodeAt, tryCode, ticketFor, PASSWORD,
-  verifyDeviceList, verifyUnlockTicket, signWithTicketKey, jwkThumbprint,
+  verifyDeviceList, verifyUnlockTicket, signWithTicketKey, jwkThumbprint, removeRequest,
   TICKET_PUBLIC_JWK, DEVICE_LIST_LABEL_TEXT, UNLOCK_TICKET_LABEL_TEXT, DEVICE_LIST_TYP_TEXT, T0,
 } from './helpers.mjs';
 
@@ -56,7 +56,7 @@ test('a confirmed device gets a signed list of every confirmed device of its acc
   const second = await secondConfirmed(h, owner);
   const pending = await registeredDevice(h, ADDRESS, { fresh: false });
   const gone = await secondConfirmed(h, owner);
-  assert.equal((await answer(await h.call(await signed(h.call, owner, '/device/remove', { device: gone.id })))).status, 200);
+  assert.equal((await answer(await h.call(await removeRequest(h, owner, gone.id)))).status, 200);
 
   const got = await listFor(h, owner);
   assert.equal(got.status, 200, JSON.stringify(got.json));
@@ -100,7 +100,7 @@ test('a removed device is refused', async () => {
   const owner = await confirmedDevice(h, ADDRESS);
   const second = await secondConfirmed(h, owner);
   const n = await nonceFor(h.call, second);
-  assert.equal((await answer(await h.call(await signed(h.call, owner, '/device/remove', { device: second.id })))).status, 200);
+  assert.equal((await answer(await h.call(await removeRequest(h, owner, second.id)))).status, 200);
   const res = await answer(await h.call(await signed(h.call, second, '/devices', {}, { nonce: n })));
   assert.deepEqual(res, { status: 401, json: { error: 'no-device' } });
 });

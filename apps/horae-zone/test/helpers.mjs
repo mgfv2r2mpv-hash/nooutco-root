@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { d1Sqlite } from '../../profile-api/test/helpers/d1-sqlite.js';
 import { createHandler } from '../src/index.js';
 import { signedBytes, b64url, fromB64url } from '../src/checks.js';
+import { UNLOCK_LIMITS } from '../src/unlock.js';
 import { createPinRules } from '../../../packages/account-engine/src/pin.mjs';
 import { PINS as PIN_FIXTURE } from '../../../packages/account-engine/test/fixtures/pin-blocklist.mjs';
 
@@ -348,6 +349,13 @@ export async function ticketFor(h, device) {
   return tried.finish.json.ticket;
 }
 
+// A signed removal of `target` by `caller`, with a fresh unlock ticket of the
+// caller's own (Kaleb's 8 Oct 2026 ruling: a removal takes a fresh code). The
+// caller holds the account's seed, as a confirmed device does.
+export async function removeRequest(h, caller, target) {
+  return signed(h.call, caller, '/device/remove', { device: target, ticket: await ticketFor(h, caller) });
+}
+
 // One signed PIN request, answered as {status, json}.
 export async function pinCall(h, device, pathname, body) {
   return answerOf(await h.call(await signed(h.call, device, pathname, body)));
@@ -431,4 +439,16 @@ export async function signWithTicketKey(claims, label) {
   const payload = b64url(new TextEncoder().encode(JSON.stringify({ ...claims, kid: await jwkThumbprint(jwk) })));
   const sig = await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, key, new TextEncoder().encode(`${label}.${payload}`));
   return `${payload}.${b64url(new Uint8Array(sig))}`;
+}
+
+// A fresh unlock ticket for `device`, signed with the test ticket key in the
+// form /unlock/finish signs (pinned by test/device-remove.test.mjs). For the
+// older A4 and A5 tests whose account has no code to prove, yet whose
+// removal now takes one (Kaleb's 8 Oct 2026 ruling): those tests are about
+// who may remove, not about the code. A test about the code uses ticketFor.
+export async function freshCode(h, device) {
+  const { account_id: account } = h.db.sqlite.prepare('SELECT account_id FROM device WHERE id = ?').get(device.id);
+  const jti = b64url(crypto.getRandomValues(new Uint8Array(16)));
+  const claims = { v: 1, account, device: device.id, at: h.clock.ms, exp: h.clock.ms + UNLOCK_LIMITS.ticketTtlMs, jti };
+  return signWithTicketKey(claims, UNLOCK_TICKET_LABEL_TEXT);
 }

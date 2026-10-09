@@ -21,7 +21,8 @@
 import { issueNonce } from "./checks.js";
 import { startSignup, verifySignup } from "./signup.js";
 import { signIn } from "./signin.js";
-import { registerDevice, removeDevice } from "./devices.js";
+import { registerDevice } from "./devices.js";
+import { removeDevice } from "./device-remove.js";
 import { listDevices } from "./device-list.js";
 import { enrolOtp } from "./otp.js";
 import { startUnlock, finishUnlock, reopenUnlock } from "./unlock.js";
