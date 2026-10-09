@@ -4,7 +4,7 @@
  * the scrubber that keeps a secret value out of every printed line, the
  * prompt reader and the checklist.
  */
-import { addressOf } from "../src/signup.js";
+import { addressOf, SIGNUP_LIMITS } from "../src/signup.js";
 import { reopenBaseOk } from "../src/unlock.js";
 import { fragmentLink } from "../../../packages/account-engine/src/mailer.mjs";
 
@@ -69,7 +69,7 @@ export const CATALOG = Object.freeze([
   { name: "HZ_RESET_BASE", source: "asked", store: "secret", sensitive: false, label: "PIN reset link base (the page on the device that reads the emailed reset code after #)", check: reopenBaseOk, rule: "https, no ? and no #" },
   { name: "HZ_TURNSTILE_SITEKEY", source: "asked", store: "var", sensitive: false, label: "Turnstile site key (the horae-zone widget; public, shown on the challenge page)", check: isTurnstileKey, rule: TURNSTILE_RULE },
   { name: "HZ_TURNSTILE_SECRET", source: "asked", store: "secret", sensitive: true, hidden: true, label: "Turnstile secret key (the same widget)", check: isTurnstileKey, rule: TURNSTILE_RULE },
-  { name: "HZ_CODES_PER_DAY", source: "asked", store: "var", sensitive: false, optional: true, label: "Mail plan daily send limit (blank keeps the default 3000)", check: (v) => /^[1-9]\d{0,6}$/.test(v), rule: "a whole number from 1" },
+  { name: "HZ_CODES_PER_DAY", source: "asked", store: "var", sensitive: false, optional: true, label: `Mail plan daily send limit (blank keeps the default ${SIGNUP_LIMITS.codesPerDay})`, check: (v) => /^[1-9]\d{0,6}$/.test(v), rule: "a whole number from 1" },
 ]);
 
 /**

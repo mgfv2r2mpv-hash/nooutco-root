@@ -361,7 +361,10 @@ test('third review, item 2: strangers\' 3 mints and 3 re-sends, then the owner\'
 });
 
 test('third review, item 2: strangers starting every 10 s for an hour never leave the owner without a working link', async () => {
-  const h = harness();
+  // 181 starts in the half hour: past the default daily cap (100), which
+  // its own tests cover. This test is about one address's live link, so a
+  // paid plan's larger cap keeps the daily bucket out of the way.
+  const h = harness({ env: { HZ_CODES_PER_DAY: '1000' } });
   const step = 10_000;
   const ownerAt = 30 * 60 * 1000 + 5_000;
   for (let t = 0; t < ownerAt; t += step) {
@@ -646,7 +649,7 @@ test('M2: without configuration the daily cap is the default, and a bad value re
 
 // Second review, item 5: a hard cap of 500 starts a day let a stranger stop
 // every sign-up. The hard cap is the mail plan's limit (HZ_CODES_PER_DAY,
-// default 3000), and at half of it one alert a day goes to the operator
+// default 100), and at half of it one alert a day goes to the operator
 // address (HZ_ALERT_TO, set at deploy; here a fake).
 const OPERATOR = 'operator@example.test';
 const alertsIn = (h) => h.mail.filter((m) => m.to === OPERATOR);
@@ -658,8 +661,13 @@ const startsFrom = async (h, count, tag) => {
   return statuses;
 };
 
-test('item 5: without configuration the hard daily cap is the mail plan limit, 3000', () => {
-  assert.equal(SIGNUP_LIMITS.codesPerDay, 3000);
+// Hardening, 9 Oct 2026: the default is the Resend free plan's documented
+// 100 sends a day (DESIGN-REVIEW A3 row 9). At 3000 a flood could spend the
+// plan's whole day and the plan then drops real sign-up mail without a word;
+// at 100 the Worker refuses first with slow-down. HZ_CODES_PER_DAY still
+// raises it for a paid plan.
+test('item 5: without configuration the hard daily cap is the mail plan limit, 100', () => {
+  assert.equal(SIGNUP_LIMITS.codesPerDay, 100);
   assert.equal(SIGNUP_LIMITS.alertAtPercent, 50);
 });
 
