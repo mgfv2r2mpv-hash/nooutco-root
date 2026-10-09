@@ -494,3 +494,60 @@ export async function freshCode(h, device) {
   const claims = { v: 1, account, device: device.id, at: h.clock.ms, exp: h.clock.ms + UNLOCK_LIMITS.ticketTtlMs, jti };
   return signWithTicketKey(claims, UNLOCK_TICKET_LABEL_TEXT);
 }
+
+// ---- A6 flow helpers: recovery, the vault id and bringing the vault ----
+
+// Fixed, fake values. The recovery requests come from their own connecting
+// address, so the sign-up and sign-in buckets of a test are not shared.
+export const RECOVER_IP = '192.0.2.40';
+export const RECOVER_LINK_SUBJECT_TEXT = 'Horae Zone: account recovery link';
+export const VAULT_STATE_LABEL_TEXT = 'horae-zone-vault-state-v1';
+export const VAULT_STATE_TYP_TEXT = 'horae-zone-vault-state';
+
+// A vault id as a device mints it: 16 bytes, base64url, 22 characters. `n`
+// makes a fixed, fake one per test.
+export const vaultId = (n) => b64url(new Uint8Array(16).fill(n));
+
+// Asks for a recovery link and reads the code from the newest recovery mail
+// to `email`, or null when none came.
+export async function recoveryCode(h, email, { ip = RECOVER_IP } = {}) {
+  const res = await h.call(post('/recover', { email }, { 'cf-connecting-ip': ip }));
+  if (res.status !== 200) throw new Error(`the recovery start answered ${res.status}`);
+  const message = h.mail.filter((m) => m.to === email && m.subject === RECOVER_LINK_SUBJECT_TEXT).at(-1);
+  return message ? new URL(message.text.match(/https:\/\/\S+/)[0]).hash.slice(1) : null;
+}
+
+export function recoverRequest(email, code, keys, { password = PASSWORD, ip = RECOVER_IP } = {}) {
+  return post('/recover', { email, code, password, signKey: keys.signKey, agreeKey: keys.agreeKey }, { 'cf-connecting-ip': ip });
+}
+
+// Recovers the account onto a new device with fresh keys, by the emailed link
+// and the password; the device comes back in the shape signed() takes.
+export async function recoveredDevice(h, email, options = {}) {
+  const keys = await deviceKeys();
+  const code = await recoveryCode(h, email, options);
+  const res = await h.call(recoverRequest(email, code, keys, options));
+  if (res.status !== 200) throw new Error(`the recovery answered ${res.status} ${await res.text()}`);
+  const { device } = await res.json();
+  return { id: device, key: keys.key, signKey: keys.signKey, agreeKey: keys.agreeKey, email };
+}
+
+// A further device of `owner`'s account that has proved the account's code,
+// so it is not pending. It holds the seed, as the owner's authenticator does.
+export async function provedDevice(h, owner, { ip = '192.0.2.11' } = {}) {
+  const dev = { ...(await registeredDevice(h, owner.email, { fresh: false, ip })), seed: owner.seed, email: owner.email };
+  await ticketFor(h, dev); // its first code clears its pending flag
+  return dev;
+}
+
+// /vault/switch with a fresh code of the caller's own, answered as {status, json}.
+export async function switchVault(h, device, vault) {
+  return pinCall(h, device, '/vault/switch', { vault, ticket: await ticketFor(h, device) });
+}
+
+// The claims of a signed vault state, checked the way a device checks it, or null.
+export async function verifyVaultState(text, { jwk = TICKET_PUBLIC_JWK, account, device, now }) {
+  const claims = await openSigned(text, VAULT_STATE_LABEL_TEXT, jwk);
+  if (!claims || claims.v !== 1 || claims.typ !== VAULT_STATE_TYP_TEXT || claims.account !== account || claims.device !== device) return null;
+  return fresh(claims, now) ? claims : null;
+}

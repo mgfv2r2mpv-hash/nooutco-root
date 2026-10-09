@@ -14,7 +14,7 @@ async function reason(res) {
 test('the route table names the plan routes and every one declares its checks', () => {
   for (const p of ['/account', '/account/email/verify', '/signin', '/device/register', '/device/remove', '/otp/enrol',
     '/unlock/start', '/unlock/finish', '/unlock/reopen', '/pin/verify', '/pin/set', '/pin/reset', '/pin/review',
-    '/reverify', '/pair/offer', '/pair/take', '/recover', '/vault/switch', '/admin/unlock-pins', '/admin/unlock-account', '/admin/status', '/nonce']) {
+    '/reverify', '/pair/offer', '/pair/take', '/recover', '/vault/switch', '/vault/state', '/admin/unlock-pins', '/admin/unlock-account', '/admin/status', '/nonce']) {
     assert.ok(ROUTES[p], p);
   }
   for (const [p, r] of Object.entries(ROUTES)) assert.ok(['open', 'signable', 'device', 'signed', 'admin'].includes(r.checks), p);
@@ -40,22 +40,22 @@ test('no route answers without its checks', async () => {
 test('NEGATIVE CONTROL: a correctly signed request with a fresh nonce passes the checks', async () => {
   const h = harness();
   const dev = await addDevice(h.db);
-  const res = await h.call(await signed(h.call, dev, '/pair/offer', { x: 1 }));
-  assert.equal(res.status, 501);
-  assert.equal(await reason(res), 'not-built');
+  const res = await h.call(await signed(h.call, dev, '/pair/take', {}));
+  assert.equal(res.status, 409);
+  assert.equal(await reason(res), 'no-vault');
 });
 
 test('a DER signature and a raw signature verify alike', async () => {
   const h = harness();
   const dev = await addDevice(h.db);
-  assert.equal(await reason(await h.call(await signed(h.call, dev, '/pair/offer', {}, { der: true }))), 'not-built');
-  assert.equal(await reason(await h.call(await signed(h.call, dev, '/pair/offer', {}))), 'not-built');
+  assert.equal(await reason(await h.call(await signed(h.call, dev, '/pair/take', {}, { der: true }))), 'no-vault');
+  assert.equal(await reason(await h.call(await signed(h.call, dev, '/pair/take', {}))), 'no-vault');
 });
 
 test('a signature for another path is refused', async () => {
   const h = harness();
   const dev = await addDevice(h.db);
-  const req = await signed(h.call, dev, '/pair/offer', {}, { tamper: { path: '/pin/verify' } });
+  const req = await signed(h.call, dev, '/pair/take', {}, { tamper: { path: '/pin/verify' } });
   assert.equal(await reason(await h.call(req)), 'bad-signature');
 });
 
@@ -64,10 +64,10 @@ test('a nonce expires, and belongs to the device it was issued to', async () => 
   const dev = await addDevice(h.db);
   const other = await addDevice(h.db, { id: 'dev-2' });
   const n = await nonceFor(h.call, dev);
-  assert.equal(await reason(await h.call(await signed(h.call, other, '/pair/offer', {}, { nonce: n }))), 'stale-nonce');
+  assert.equal(await reason(await h.call(await signed(h.call, other, '/pair/take', {}, { nonce: n }))), 'stale-nonce');
   const late = await nonceFor(h.call, dev);
   h.clock.ms += NONCE_TTL_MS + 1;
-  assert.equal(await reason(await h.call(await signed(h.call, dev, '/pair/offer', {}, { nonce: late }))), 'stale-nonce');
+  assert.equal(await reason(await h.call(await signed(h.call, dev, '/pair/take', {}, { nonce: late }))), 'stale-nonce');
 });
 
 test('a removed device is refused', async () => {
@@ -85,11 +85,22 @@ test('admin routes refuse a device whose account is not an admin', async () => {
   assert.equal(await reason(await h.call(await signed(h.call, dev, '/admin/unlock-pins', {}))), 'shape');
 });
 
-test('open routes take a JSON object and answer not-built until their slice lands', async () => {
+// A6 built the last plan routes (/recover, /vault/switch, /pair/offer and
+// /pair/take), so every route in the table has its handler. The not-built
+// answer is still how a route without one answers, after its checks.
+test('every route in the table has its handler', () => {
+  for (const [p, r] of Object.entries(ROUTES)) assert.equal(typeof r.handler, 'function', p);
+});
+
+test('a route with no handler answers not-built, only after its checks pass', async () => {
+  const { createHandler } = await import('../src/index.js');
   const h = harness();
-  const unbuilt = byCheck('open').filter((p) => !ROUTES[p].handler);
-  assert.ok(unbuilt.length > 0);
-  for (const p of unbuilt) assert.equal(await reason(await h.call(post(p, {}))), 'not-built', p);
+  const dev = await addDevice(h.db);
+  const routes = { ...ROUTES, '/unbuilt': { checks: 'signed' }, '/unbuilt-open': { checks: 'open' } };
+  const call = (req) => createHandler({ now: () => h.clock.ms, routes })(req, h.env, {});
+  assert.equal(await reason(await call(post('/unbuilt'))), 'no-device');
+  assert.equal(await reason(await call(await signed(call, dev, '/unbuilt', {}))), 'not-built');
+  assert.equal(await reason(await call(post('/unbuilt-open', {}))), 'not-built');
 });
 
 test('anything but a POST of a JSON object under the size cap is refused', async () => {
@@ -132,12 +143,12 @@ test('an unknown path is refused as no-route and audited as unknown', async () =
 test('every request writes one audit row of route and reason', async () => {
   const h = harness();
   const dev = await addDevice(h.db);
-  await h.call(post('/pair/offer'));
-  await h.call(await signed(h.call, dev, '/pair/offer', {}));
+  await h.call(post('/pair/take'));
+  await h.call(await signed(h.call, dev, '/pair/take', {}));
   assert.deepEqual(auditRows(h.db), [
-    { route: '/pair/offer', reason: 'no-device' },
+    { route: '/pair/take', reason: 'no-device' },
     { route: '/nonce', reason: 'ok' },
-    { route: '/pair/offer', reason: 'not-built' },
+    { route: '/pair/take', reason: 'no-vault' },
   ]);
 });
 
