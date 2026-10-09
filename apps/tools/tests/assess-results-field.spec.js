@@ -45,6 +45,14 @@ test.describe('the form has two narratives and so does the tool', () => {
     ]);
   });
 
+  /* #118. The example intake taught the verdict word the prompt now refuses,
+     so a clinician copying its shape handed the model "resolved" to repeat. */
+  test('the example intake describes each condition by what the client did', async ({ page }) => {
+    const shown = await assess(page, (t) => t.inputs.map((s) => s.placeholder || '').join('\n'));
+    expect(shown).toContain('Crying stopped in the tangible condition; kept going in the attention-only condition');
+    expect(shown).not.toContain('condition resolved it');
+  });
+
   /* The id is the whole integration, so it is asserted on its own. A heading
      with no matching section id renders a box the engine cannot revise. */
   test('results is a section id, which is what the engine keys everything off', async ({ page }) => {
@@ -120,8 +128,23 @@ test.describe('the prompt tells the model which field is which', () => {
 
   test('a function is reported condition by condition and hedged to its evidence', async () => {
     expect(system).toMatch(/condition by condition before naming it/);
-    expect(system).toMatch(/which conditions did and did not resolve it/);
+    expect(system).toContain('in which conditions the behavior stopped and in which the client kept doing it');
     expect(system).toMatch(/A handful of trials does not license a flat assertion of function/);
+  });
+
+  /* Issue #118, his report from an assessment draft that read "the
+     vocalizations did not resolve": "if the vocalizations didn't resolve, then
+     the client kept making the vocalizations." Resolved is a verdict on the
+     condition, and this prompt used to ask for it by name ("which conditions
+     did and did not resolve it"). The rule now asks for what the client did,
+     and carries the plain sentence as its replacement, so the model rewrites
+     the verdict rather than deleting it. */
+  test('a condition is reported as what the client did, never as whether it resolved', async () => {
+    expect(system, 'the prompt must not ask for the verdict word itself').not.toContain('did and did not resolve');
+    expect(system).toContain('never whether the behavior "resolved"');
+    expect(system).toContain('"Did not resolve" means the client kept doing it');
+    expect(system).toContain('"The client kept vocalizing", not "The vocalizations did not resolve"');
+    expect(system).toContain('Where it stopped, say it stopped');
   });
 
   /* The inversion, and the reason it has to be stated. B10 of the completeness

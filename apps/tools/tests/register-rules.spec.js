@@ -602,7 +602,7 @@ test.describe('the analysis rules reach the technician tool and no other', () =>
     'Purpose belongs here ("administered to assess X", "to eliminate confounds for behavioral function").',
     '- Report strengths and deficits BY DOMAIN and carry the boundary, because the boundary is the finding.',
     '"Imitation showed generalized instances but not across functional tasks or vocal instruction to imitate" is a finding.',
-    '- Where a function was assessed, report it condition by condition before naming it: what the behavior looked like, what occasioned it, what was delivered in each condition, and which conditions did and did not resolve it.',
+    '- Where a function was assessed, report it condition by condition before naming it: what the behavior looked like, what occasioned it, what was delivered in each condition, and in which conditions the behavior stopped and in which the client kept doing it.',
     'A handful of trials does not license a flat assertion of function.',
     'Assigning a function, naming an establishing operation and identifying an intervention target is what an assessment is for, and it is this author\'s own work.',
     '- So do not cut a causal claim or a clinical hypothesis out of this note.',
