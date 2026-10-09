@@ -58,16 +58,25 @@ export function lockedNote() {
 // written only while the reporting device is live.
 export async function reportBlock({ db, device, body, now, env, mailer }) {
   if (!hasOnly(body, [])) throw new Refusal("shape", 400);
+  const after = await lockForBlock({ db, device, now, env, mailer });
+  return after ? { ...LOCKED, after } : LOCKED;
+}
+
+// Locks the device's account for an offline block, while the device is live:
+// the lock row, and the lock note's after-work when one is due this hour
+// (undefined otherwise). /pin/blocked and an offline pass's report of ten
+// wrong PINs (src/offline.js) both lock through here.
+export async function lockForBlock({ db, device, now, env, mailer }) {
   const locked = await db.prepare(
     `INSERT INTO account_lock (account_id, locked_at) SELECT ?, ? WHERE ${LIVE_DEVICE}
      ON CONFLICT (account_id) DO NOTHING RETURNING account_id`,
   ).bind(device.account_id, now, device.id).first();
   if (!locked) {
     await findDevice(db, device.id); // refuses no-device when the removal is what stopped it
-    return LOCKED;
+    return undefined;
   }
   const due = await admitThrottle(db, now, HOUR_MS, [{ bucket: `pin-block-alert:${device.account_id}`, limit: LOCK_NOTES_PER_HOUR }]);
-  if (!due) return LOCKED;
+  if (!due) return undefined;
   const keys = await accountKeys(env);
-  return { ...LOCKED, after: mailAfter({ db, keys, mailer, accountId: device.account_id, notes: [lockedNote()] }) };
+  return mailAfter({ db, keys, mailer, accountId: device.account_id, notes: [lockedNote()] });
 }

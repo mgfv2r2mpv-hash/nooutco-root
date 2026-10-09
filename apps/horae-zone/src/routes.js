@@ -32,6 +32,7 @@ import { resetPin } from "./pin-reset.js";
 import { reviewPin } from "./pin-review.js";
 import { reverify } from "./reverify.js";
 import { adminStatus, unlockPins, adminUnlockAccount } from "./admin.js";
+import { grantPass, reportPass } from "./offline.js";
 
 export const ROUTES = Object.freeze({
   "/account": { checks: "open", handler: startSignup },
@@ -58,6 +59,10 @@ export const ROUTES = Object.freeze({
   "/pin/reset": { checks: "signed", handler: resetPin },
   "/pin/review": { checks: "signed", handler: reviewPin },
   "/reverify": { checks: "signed", handler: reverify },
+  // Offline unlock (src/offline.js): a pass after a fresh code, and the
+  // report of its offline opens, which a blocked Mac must still be able to send.
+  "/offline/grant": { checks: "signed", handler: grantPass },
+  "/offline/report": { checks: "signed", handler: reportPass, lockedOk: true },
   "/pair/offer": { checks: "signed" },
   "/pair/take": { checks: "signed" },
   "/recover": { checks: "open" },
