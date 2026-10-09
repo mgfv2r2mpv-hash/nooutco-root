@@ -1,0 +1,17 @@
+{
+  "_comment": [
+    "Baseline for scripts/style-gate.mjs (issue #86). One entry per .txt under this folder.",
+    "role draft: prose the tools should produce. Gated on drift and on the ceiling.",
+    "role pole: a deliberate formulaic example. Gated on drift only, so the scorer keeps telling the poles apart.",
+    "score: style-score.mjs total when the entry was recorded. Change it only on purpose, and say why in the commit.",
+    "Recorded 2026-10-09 with the comma term already removed, which is why these sit 1 to 3 points under the 2026-08-02 table in docs/ai-detection-baseline.md."
+  ],
+  "fixtures": {
+    "bt-before-port.txt": { "role": "pole", "score": 24 },
+    "bt-ported-rules.txt": { "role": "draft", "score": 7 },
+    "new-terminology-a.txt": { "role": "draft", "score": 9 },
+    "new-terminology-b.txt": { "role": "draft", "score": 10 },
+    "old-terminology-a.txt": { "role": "pole", "score": 48 },
+    "old-terminology-b.txt": { "role": "pole", "score": 52 }
+  }
+}

@@ -1,0 +1,42 @@
+name: Tools Style Gate
+
+# Issue #86. Scores every committed note fixture with
+# apps/tools/scripts/style-score.mjs and fails on drift past the recorded
+# baseline, or on a draft over the ceiling. Thresholds and their reasons live
+# in apps/tools/scripts/style-gate.mjs; what the gate does and does not claim
+# is in apps/tools/docs/ai-detection-baseline.md.
+#
+# Its own workflow rather than a job in tools-test.yml: it needs no browser, no
+# npm install and no dev server, so it reports in seconds instead of waiting on
+# the e2e matrix.
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - 'apps/tools/**'
+      - '.github/workflows/tools-style-gate.yml'
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - 'apps/tools/**'
+      - '.github/workflows/tools-style-gate.yml'
+
+jobs:
+  style-gate:
+    name: Tools style gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: apps/tools
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: apps/tools
+      - uses: actions/setup-node@v4
+        with:
+          # 20.1 or later for readdirSync's recursive option.
+          node-version: '22'
+      - name: Score the note fixtures against the baseline
+        run: node scripts/style-gate.mjs
