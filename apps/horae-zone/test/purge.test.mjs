@@ -90,6 +90,19 @@ test('item 5: a purge keeps the daily alert row for a day and clears it after', 
     [['alert-day', T0 - SIGNUP_LIMITS.windowMs - 1]]);
 });
 
+// PR #324: the shared mail budget ('mail-day', src/mail-budget.js) counts a
+// sliding day; purged after an hour, the day's sends would be forgotten and
+// the plan's 100 a day could be passed.
+test('mail budget: a purge keeps the shared mail-day rows for a day and clears them after', async () => {
+  const { db } = harness();
+  for (const at of [T0 - SIGNUP_LIMITS.dayMs - 1, T0 - SIGNUP_LIMITS.dayMs, T0 - SIGNUP_LIMITS.windowMs - 1]) {
+    db.sqlite.prepare('INSERT INTO throttle (bucket, at) VALUES (?, ?)').run('mail-day', at);
+  }
+  await purgeExpired(db, T0);
+  assert.deepEqual(db.sqlite.prepare('SELECT bucket, at FROM throttle ORDER BY at').all().map((r) => [r.bucket, r.at]),
+    [['mail-day', T0 - SIGNUP_LIMITS.windowMs - 1]]);
+});
+
 // LOW-2: an account's wrong reset factors count for a day, one bucket per
 // account; purged after an hour, the day cap would never fill.
 test('LOW-2: a purge keeps each account\'s wrong reset rows for a day and clears them after', async () => {
