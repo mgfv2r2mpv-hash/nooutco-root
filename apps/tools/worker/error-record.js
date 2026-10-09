@@ -23,6 +23,11 @@
 export const ERROR_RECORD_PREFIX = "errrec:";
 export const ERROR_RECORD_DAYS = 30;
 export const ERROR_LIST_MAX_DAYS = 30;
+// /api/error-report is open without a token, so a flood of distinct messages
+// could mint a new 30-day key per message. Past this many new fingerprints in
+// a day, new ones are folded into one overflow record; known ones still count.
+export const NEW_RECORDS_PER_DAY = 500;
+const OVERFLOW = "overflow";
 const FIELD_MAX = 80;
 const DAY_MS = 86400000;
 
@@ -45,24 +50,44 @@ export async function errorFingerprint(sha256Hex, tool, message) {
   return (await sha256Hex(String(tool || "") + "|" + String(message || ""))).slice(0, 16);
 }
 
+async function readRecord(kv, key) {
+  try { return JSON.parse((await kv.get(key)) || "null"); } catch { return null; }
+}
+
+// Whether today may still mint a new record, counting this one if so. The
+// counter key sits outside the errrec: prefix so listErrors never reads it.
+async function underNewRecordCap(kv, day) {
+  const capKey = "errrec-new:" + day;
+  const used = parseInt((await kv.get(capKey)) || "0", 10);
+  if (used >= NEW_RECORDS_PER_DAY) return false;
+  await kv.put(capKey, String(used + 1), { expirationTtl: 2 * 86400 });
+  return true;
+}
+
 // Count one occurrence. Never throws: recording must never break the request.
 export async function recordError(kv, sha256Hex, { tool, message, meta, diagnostics, now = Date.now() } = {}) {
   try {
     if (!kv || !message) return null;
-    const fingerprint = await errorFingerprint(sha256Hex, tool, message);
+    let fingerprint = await errorFingerprint(sha256Hex, tool, message);
     const iso = new Date(now).toISOString();
-    const key = ERROR_RECORD_PREFIX + dayOf(now) + ":" + fingerprint;
-    let prior = null;
-    try { prior = JSON.parse((await kv.get(key)) || "null"); } catch { prior = null; }
+    const day = dayOf(now);
+    let key = ERROR_RECORD_PREFIX + day + ":" + fingerprint;
+    let prior = await readRecord(kv, key);
+    if (!prior && !(await underNewRecordCap(kv, day))) {
+      fingerprint = OVERFLOW;
+      key = ERROR_RECORD_PREFIX + day + ":" + OVERFLOW;
+      prior = await readRecord(kv, key);
+    }
+    const overflow = fingerprint === OVERFLOW;
     const record = {
-      day: dayOf(now),
+      day,
       fingerprint,
-      tool: label(tool) || "(unknown)",
-      source: label(meta),
+      tool: overflow ? "(over the daily cap of new errors)" : label(tool) || "(unknown)",
+      source: overflow ? null : label(meta),
       count: (prior && Number.isInteger(prior.count) ? prior.count : 0) + 1,
       first: (prior && prior.first) || iso,
       last: iso,
-      diagnostics: cleanDiagnostics(diagnostics) || (prior && prior.diagnostics) || null,
+      diagnostics: overflow ? null : cleanDiagnostics(diagnostics) || (prior && prior.diagnostics) || null,
     };
     await kv.put(key, JSON.stringify(record), { expirationTtl: ERROR_RECORD_DAYS * 86400 });
     return record;
