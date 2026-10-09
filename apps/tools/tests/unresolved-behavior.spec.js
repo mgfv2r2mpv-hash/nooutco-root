@@ -246,6 +246,11 @@ test.describe('Pollux 1: a correct sentence is never recast', () => {
       'Crying did not resolve within 2 minutes.',
       'Crying did not resolve on its own.',
       'Crying was not resolved by the BCBA.',
+      // Pollux LOW 1 on 9545b0eb: in, as, so and since change the meaning.
+      'Crying did not resolve in 10 minutes.',
+      'Crying did not resolve as expected.',
+      'Crying did not resolve so the BT ended the trial.',
+      'Crying did not resolve since the last session.',
     ]);
     const out = await U(page, (N, [xs, b]) => xs.map((x) => N.recast(x, b).text), [more, said]);
     expect(out).toEqual(more);
