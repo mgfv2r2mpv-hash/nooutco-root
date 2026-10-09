@@ -295,6 +295,27 @@ const hintStyle = { fontSize: 12.5, color: "#7a9460", marginBottom: 10, lineHeig
 const inputBase = { width: "100%", padding: "10px 14px", borderRadius: 8, border: "1.5px solid #c0d4a8", fontSize: 14, color: "#2d3a1f", background: "#fafcf8" };
 const smallBtn = { padding: "4px 12px", borderRadius: 6, border: "1px solid #c0d4a8", background: "white", color: "#374528", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" };
 
+/* PREVIEW OR RAW TEXT, ONE TOGGLE, REMEMBERED PER TOOL. His ask, 2 Oct 2026:
+   switch the generated note between the formatted preview and raw text he can
+   edit by hand. Preview is the note as it has always drawn: correction marks,
+   ticks and tables. Raw text is every section as the plain text Copy takes,
+   and a narrative is a box he types in even where the preview draws marks.
+
+   The choice is a per-viewer convenience, so it lives in localStorage and every
+   read and write is guarded: a private window or blocked storage just opens on
+   Preview. */
+const NOTE_VIEWS = ["preview", "raw"];
+const noteViewKey = (toolId) => "nome:noteView:" + toolId;
+function readNoteView(toolId) {
+  try {
+    const v = localStorage.getItem(noteViewKey(toolId));
+    return NOTE_VIEWS.includes(v) ? v : "preview";
+  } catch (e) { return "preview"; }
+}
+function writeNoteView(toolId, view) {
+  try { localStorage.setItem(noteViewKey(toolId), view); } catch (e) { /* the toggle still works for this visit */ }
+}
+
 // Label-adjacent "i" help affordance. Shows on hover/focus (desktop) and on
 // tap (mobile) via a click toggle; taps outside or Escape dismiss it. On open,
 // the bubble is clamped horizontally to the viewport so it never runs off an
@@ -1636,6 +1657,16 @@ function App() {
   const tool = toolById(activeId) || TOOLS[0];
   const S = sessions[tool.id];
   const canUse = loggedIn && !!(window.NotesGate && NotesGate.canUseTool(tool.id));
+
+  /* Preview or raw text, per tool. Seeded from storage the first time a tool is
+     shown, then held in state so a switch redraws at once. */
+  const [noteViews, setNoteViews] = React.useState({});
+  const noteView = noteViews[tool.id] || readNoteView(tool.id);
+  const chooseNoteView = (view) => {
+    if (!NOTE_VIEWS.includes(view)) return;
+    writeNoteView(tool.id, view);
+    setNoteViews((v) => ({ ...v, [tool.id]: view }));
+  };
 
   React.useEffect(() => (window.NotesGate ? NotesGate.subscribe(setLoggedIn) : undefined), []);
 
@@ -5743,6 +5774,58 @@ function App() {
     patchS((s) => ({ goalConfirmed: { ...(s.goalConfirmed || {}), [key]: true } }));
   };
 
+  /* THE RAW TEXT VIEW of one section: the plain text Copy takes.
+
+     A narrative is a box he types in, even where the preview draws correction
+     marks. The first keystroke into a marked section puts the marks away, the
+     same thing "Edit by hand" does, because a mark drawn over text he has since
+     retyped would describe a sentence that is no longer there. Until he types,
+     the marks stay, so switching back to Preview shows them again.
+
+     Ticks, single picks, tables and facts are shown as the text Copy takes and
+     are not editable here: each is a set of fields the form takes one at a
+     time, and a box of free text would have no field to go back into. A change
+     waiting to be accepted is drawn as it is in Preview, because it is a
+     decision rather than text. */
+  const renderRawSection = (sec) => {
+    const id = sectionId(sec);
+    const pending = pendingChangeFor(id);
+    if (pending) return renderPendingChange(pending);
+    const rawBox = { width: "100%", padding: "11px 12px", borderRadius: 7, border: "1px solid #c0d4a8", fontSize: 14, color: "#2d3a1f", lineHeight: 1.65, resize: "vertical", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" };
+    const shown = forEhr(sectionBody(sec, S.output, S.values));
+    if (sec.kind !== "narrative") {
+      return (
+        <textarea
+          readOnly
+          data-raw-section={id}
+          data-raw-readonly="true"
+          value={shown}
+          title="Set in Preview."
+          rows={Math.max(2, shown.split("\n").length)}
+          style={{ ...rawBox, background: "#f7fbf3", color: "#5a6b4a" }}
+        />
+      );
+    }
+    const marked = !!(S.corrections && S.corrections.sections[id]);
+    return (
+      <textarea
+        value={shown}
+        data-raw-section={id}
+        data-section-id={id}
+        data-section-heading={sec.heading}
+        onChange={(e) => {
+          const next = dehydrate(e.target.value);
+          if (marked) dismissCorrections(id);
+          patchS((s) => ({ output: { ...s.output, [id]: next } }));
+          markSectionRevised(id);
+        }}
+        placeholder={sec.emptyNote || ""}
+        rows={Math.max(3, Math.ceil(shown.length / 95) + 1)}
+        style={{ ...rawBox, minHeight: sec.minHeight || 84, background: "white" }}
+      />
+    );
+  };
+
   const renderSectionContent = (sec) => {
     const id = sectionId(sec);
     const v = S.output[id];
@@ -6312,8 +6395,24 @@ function App() {
         {/* Output */}
         {S.output && (
           <div style={{ ...card, marginBottom: 20 }} data-testid="generated-note">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
               <h2 style={{ fontSize: 17, fontWeight: 700, color: "#2d3a1f" }}>{tool.outputTitle || "Generated Note"}</h2>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
+              {/* One toggle, remembered per tool (readNoteView). */}
+              <div role="group" aria-label="Note view" data-testid="note-view-toggle" style={{ display: "inline-flex", border: "1.5px solid #c0d4a8", borderRadius: 7, overflow: "hidden" }}>
+                {[["preview", "Preview"], ["raw", "Raw text"]].map(([view, label]) => (
+                  <button
+                    key={view}
+                    type="button"
+                    data-note-view={view}
+                    aria-pressed={noteView === view}
+                    onClick={() => chooseNoteView(view)}
+                    style={{ padding: "6px 12px", border: "none", background: noteView === view ? "#374528" : "white", color: noteView === view ? "white" : "#374528", fontSize: 13, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
               {/* Copy All is per-tool. Some EHR forms take one field at a time,
                   where a single combined blob is never what gets pasted.
 
@@ -6329,6 +6428,7 @@ function App() {
                   {copied === "all" ? "Copied!" : "Copy All"}
                 </button>
               )}
+              </div>
             </div>
             <p style={{ fontSize: 13, color: "#7a9460", marginBottom: 20, lineHeight: 1.55 }}>
               Checkbox suggestions are inferred from the intake; verify before checking the form.<br />
@@ -6519,7 +6619,7 @@ function App() {
                       </div>
                     </div>
 
-                    {renderSectionContent(sec)}
+                    {noteView === "raw" ? renderRawSection(sec) : renderSectionContent(sec)}
                     <HintNotes hints={S.output.hints} section={sec} catalog={tool.hintCatalog} />
                     <DesignNote
                       design={S.design}
