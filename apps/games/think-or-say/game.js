@@ -2088,6 +2088,48 @@ function init() {
   // Data
   el.btnPrint.addEventListener('click', printData);
   el.btnClearData.addEventListener('click', clearData);
+
+  mountRoundSetup();
+}
+
+// ── Round setup (Frame 04, shared ../round-setup.js) ───────────────────
+// The gated panel is a view over the controls above, not a second config:
+// every edit in it goes through the same change handlers and the same store,
+// so a panel opened and left alone changes nothing.
+//
+// No named round sets (`sets: false`): this game already spends the store's
+// `sets` / `last` on the Learner A/B/C slots, and a named set would move
+// `last` and so switch the learner. The Learner select is mirrored but kept
+// out of Reset, because its markup default (A) is a slot, not a programme
+// default. The per-level probe block stays in the Options panel only.
+
+function mountRoundSetup() {
+  if (!window.NooutcoRoundSetup) return;
+  window.NooutcoRoundSetup.mount({
+    store: settingsStore,
+    label: 'Think or Say? round setup',
+    start: '#btn-play',
+    sets: false,
+    reload: loadSettings,
+    core: [
+      '#sel-level',
+      { sel: '#sel-learner', reset: false },
+      '#sel-category',
+      '#sel-order',
+    ],
+    advanced: [
+      '#chk-represent-errors',
+      '#chk-errorless',
+      '#chk-no-error-anim',
+      '#chk-auto-prompt',
+      '#chk-prompt-delay',
+      { sel: '#sel-prompt-delay', label: 'Prompt delay (seconds)' },
+      '#sel-prompt-style',
+      '#chk-show-reason',
+      '#chk-show-rule',
+      '#chk-counterbalance',
+    ],
+  });
 }
 
 /**
