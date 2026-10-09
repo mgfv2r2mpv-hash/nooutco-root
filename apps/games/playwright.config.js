@@ -15,7 +15,18 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
-  reporter: 'html',
+  /* CI: a line per test as well as the HTML report. With 'html' alone, the
+     firefox job cancelled at the 35-minute cap on #312 (2026-10-09) left a log
+     with no test names in it. reportSlowTests names the slowest files. */
+  reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'html',
+  reportSlowTests: { max: 10, threshold: 60000 },
+  /* CI: the run ends itself under the job cap. games-test.yml sets
+     PW_GLOBAL_TIMEOUT_MINUTES from what is left of the job's clock, so a long
+     run names the tests it interrupted and still uploads its report, instead
+     of being cancelled by the runner with nothing written. 0 means no limit. */
+  globalTimeout: process.env.CI
+    ? (Number(process.env.PW_GLOBAL_TIMEOUT_MINUTES) || 0) * 60000
+    : 0,
   use: {
     baseURL: BASE_URL,
     trace: 'on-first-retry',
