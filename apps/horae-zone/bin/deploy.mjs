@@ -10,7 +10,12 @@
  *                                   Step 7 alone, after a deploy: the checks
  *                                   and the checklist; asks nothing, needs no
  *                                   secret, changes nothing
- *   --new-account-key               replace an HZ_ACCOUNT_KEY and HZ_SEED_KEY
+ *   node bin/deploy.mjs --owner-admin
+ *                                   Step 6 alone, after a deploy and the
+ *                                   owner's sign-up: set the owner's account
+ *                                   as the first administrator (one prompt,
+ *                                   one guarded write; bin/deploy-admin.mjs)
+ *   --new-account-key              replace an HZ_ACCOUNT_KEY and HZ_SEED_KEY
  *                                   already set (every stored account and
  *                                   enrolled authenticator code becomes
  *                                   unusable); asks for the typed word replace
@@ -23,7 +28,8 @@
  * y before replacing a Worker already named horae-zone there; ask the values only the owner has
  * (the Resend key on a hidden prompt); create or find the D1 database, write
  * the gitignored wrangler.deploy.toml and apply schema.sql (idempotent); show
- * the rate rule clicks; deploy; put each secret through stdin; check
+ * the rate rule clicks; deploy; put each secret through stdin; set the
+ * owner's account as administrator once it exists (Step 6); check
  * everything (with the hostname checks to make once the Worker exists) and
  * print a PASS/FAIL checklist.
  *
@@ -45,7 +51,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { ROUTES } from "../src/routes.js";
+import { OWNER_ADMIN_FLAG, ownerAdminStep, ownerAdminDryRun } from "./deploy-admin.mjs";
 import {
   CATALOG, SECRET_NAMES, DATABASE, HOSTNAME, DEPLOY_CONFIG, CRON, ACCOUNT_KEY_BYTES, SEED_KEY_BYTES,
   LineReader, deployConfig, scrub, parseJson, findDatabaseId, schemaTables, renderChecklist, ticketKeyJwk, isChallenge,
@@ -79,9 +85,6 @@ const labelOf = (args) => {
   return flag === -1 ? args : args.slice(0, Math.max(flag, 1)); // `--version` names itself
 };
 const show = (args) => `wrangler ${args.map((a) => (/[\s'*]/.test(a) ? `"${a}"` : a)).join(" ")}`;
-
-const ADMIN_BUILT = Object.entries(ROUTES).some(([p, r]) => p.startsWith("/admin/") && typeof r.handler === "function");
-const ADMIN_NOTE = "A5c (admin) is not built: the /admin routes answer not-built, and the owner has no account until sign-up through this Worker. This step adds the owner's admin role once A5c lands.";
 
 const EDGE_STEPS = [
   "Cloudflare step this script cannot do safely (dashboard, account confirmed above):",
@@ -192,13 +195,13 @@ async function confirmAccount(ctx, deps) {
   useAccount(ctx, chosen, "confirmed by you");
 }
 
-// --check-only asks nothing: the only account wrangler sees, or the one
-// CLOUDFLARE_ACCOUNT_ID names.
-async function pickAccountQuietly(ctx, deps) {
+// --check-only and --owner-admin ask no account: the only one wrangler sees,
+// or the one CLOUDFLARE_ACCOUNT_ID names. `flag` is the mode to run again.
+async function pickAccountQuietly(ctx, deps, flag = "--check-only") {
   const accounts = await loggedInAccounts(ctx);
   if (accounts.length === 1) return useAccount(ctx, accounts[0], "the only account logged in");
   const named = accounts.find((a) => a.id === deps.accountId);
-  if (!named) throw new Stop(`Logged in to more than one Cloudflare account: set CLOUDFLARE_ACCOUNT_ID to the one Horae Zone runs in, then run --check-only again. Nothing was changed.`);
+  if (!named) throw new Stop(`Logged in to more than one Cloudflare account: set CLOUDFLARE_ACCOUNT_ID to the one Horae Zone runs in, then run ${flag} again. Nothing was changed.`);
   useAccount(ctx, named, "named by CLOUDFLARE_ACCOUNT_ID");
 }
 
@@ -378,12 +381,6 @@ async function deployWorker(ctx, deps, values, { newAccountKey, newTicketKey }) 
   return out;
 }
 
-function adminStep(ctx) {
-  ctx.say("Step 6. Owner as administrator");
-  ctx.say(`  SKIPPED. ${ADMIN_NOTE}`);
-  ctx.item("Owner as administrator", ADMIN_BUILT ? "FAIL" : "SKIPPED", ADMIN_BUILT ? "A5c is built but this script does not set the role yet" : "A5c not built (see step 6)");
-}
-
 // One look at the route, retried only while it answers 5xx or not at all.
 async function probeRoute(ctx, deps) {
   const url = `https://${HOSTNAME}/account`;
@@ -493,8 +490,8 @@ function dryRun(deps) {
     "  an HZ_TICKET_KEY already set is kept unless --new-ticket-key; with it over a key that is set: prompt, y replaces it or the run stops",
     `  ${show(COMMANDS.deploy)}`,
     ...SECRET_NAMES.map((n) => `  ${put(n)}`),
-    "Step 6. Owner as administrator",
-    `  ${ADMIN_BUILT ? "set the owner's admin role" : `SKIPPED. ${ADMIN_NOTE}`}`,
+    ...ownerAdminDryRun(show),
+    "  (A5c: the admin routes need the role; the first administrator is set once)",
     "Step 7. Checks, then the PASS/FAIL checklist",
     ...AFTER_DEPLOY_STEPS.map((l) => `  ${l}`),
     `  ${show(COMMANDS.tables)}`,
@@ -511,13 +508,14 @@ function dryRun(deps) {
 export async function deploy(deps) {
   const argv = deps.argv ?? [];
   if (argv.includes("--help")) {
-    deps.write("Usage: node bin/deploy.mjs [--dry-run] [--check-only] [--new-account-key] [--new-ticket-key]   (from apps/horae-zone; see DEPLOY.md)");
+    deps.write(`Usage: node bin/deploy.mjs [--dry-run] [--check-only] [${OWNER_ADMIN_FLAG}] [--new-account-key] [--new-ticket-key]   (from apps/horae-zone; see DEPLOY.md)`);
     return { ok: true, checklist: [] };
   }
   const full = { readFile: (f) => readFileSync(f, "utf8"), generateTicketKey: ticketKeyJwk, ...deps };
   if (argv.includes("--dry-run")) return dryRun(full);
   const ctx = makeContext(full);
   if (argv.includes("--check-only")) return finish(ctx, () => checkOnly(ctx, full));
+  if (argv.includes(OWNER_ADMIN_FLAG)) return finish(ctx, () => ownerAdminOnly(ctx, full));
   return finish(ctx, async () => {
     await wranglerVersion(ctx);
     await confirmAccount(ctx, full);
@@ -526,7 +524,7 @@ export async function deploy(deps) {
     await prepareDatabase(ctx, full, values);
     const edgeConfirmed = await edgeRule(ctx, full);
     const deployOut = await deployWorker(ctx, full, values, { newAccountKey: argv.includes("--new-account-key"), newTicketKey: argv.includes("--new-ticket-key") });
-    adminStep(ctx);
+    await ownerAdminStep(ctx, full);
     await runChecks(ctx, full, { deployOut, edgeConfirmed });
   });
 }
@@ -543,6 +541,20 @@ async function checkOnly(ctx, deps) {
   }
   await pickAccountQuietly(ctx, deps);
   await runChecks(ctx, deps, { checkOnly: true });
+}
+
+// --owner-admin: Step 6 alone, after a deploy and the owner's sign-up. It
+// asks only which account is the owner's, needs no secret, and its one write
+// is the guarded role insert (bin/deploy-admin.mjs).
+async function ownerAdminOnly(ctx, deps) {
+  await wranglerVersion(ctx);
+  try {
+    deps.readFile(path.join(deps.root, DEPLOY_CONFIG));
+  } catch {
+    throw new Stop(`${DEPLOY_CONFIG} is not here: the deploy writes it (step 3), so run node bin/deploy.mjs first. Nothing was changed.`);
+  }
+  await pickAccountQuietly(ctx, deps, OWNER_ADMIN_FLAG);
+  await ownerAdminStep(ctx, deps);
 }
 
 async function finish(ctx, steps) {

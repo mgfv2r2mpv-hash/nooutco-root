@@ -127,11 +127,12 @@ export function dayHasRoom(state, now) {
   return state.pending.length < Math.max(1, WRONG_PER_ACCOUNT_DAY - wrongToday(state, now));
 }
 
-// Whether the account's code path is closed, read without writing (a state
-// that cannot be read counts as closed). A pending device's try asks this
-// and changes nothing (security review item 2).
-export async function pathClosed(db, accountId) {
-  return (await readLimits(db, accountId, "code")).state.pathLocked;
+// Whether the account's code path (or, with path "pin", PIN entry) is
+// closed, read without writing (a state that cannot be read counts as
+// closed). A pending device's try asks this and changes nothing (security
+// review item 2); the admin status (A5c) asks it of both paths.
+export async function pathClosed(db, accountId, path = "code") {
+  return (await readLimits(db, accountId, path)).state.pathLocked;
 }
 
 // The reopen link's token, looked up by its hash in each path's table, spent
