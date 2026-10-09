@@ -226,3 +226,25 @@ test('a purge removes PIN reset codes past their life and keeps live ones', asyn
   await purgeExpired(db, T0);
   assert.deepEqual(db.sqlite.prepare('SELECT account_id FROM pin_reset').all().map((r) => r.account_id), ['live']);
 });
+
+// A6: spent or expired recovery links and handoffs past their life go; a
+// vault tombstone and the current vault id never do, since a tombstone is
+// what tells a device that comes back after months to shred its wrap.
+test('A6: a purge removes spent or expired recovery links and stale handoffs, never a tombstone or the current vault', async () => {
+  const h = harness();
+  const db = h.db.sqlite;
+  const addLink = (key, expiresAt, used) => db.prepare('INSERT INTO recovery (address_key, digest, expires_at, used) VALUES (?, ?, ?, ?)').run(key, 'd', expiresAt, used);
+  addLink('spent', T0 + 1000, 1);
+  addLink('expired', T0, 0);
+  addLink('live', T0 + 1000, 0);
+  const addHandoff = (device, expiresAt) => db.prepare('INSERT INTO handoff (device_id, account_id, vault_id, expires_at) VALUES (?, ?, ?, ?)').run(device, 'acct-1', 'v', expiresAt);
+  addHandoff('stale', T0);
+  addHandoff('fresh', T0 + 1000);
+  db.prepare("INSERT INTO vault (account_id, vault_id, set_at) VALUES ('acct-1', 'v-now', 0)").run();
+  db.prepare("INSERT INTO vault_tombstone (vault_id, account_id, at) VALUES ('v-old', 'acct-1', 0)").run();
+  await purgeExpired(h.db, T0);
+  assert.deepEqual(db.prepare('SELECT address_key FROM recovery').all().map((r) => r.address_key), ['live']);
+  assert.deepEqual(db.prepare('SELECT device_id FROM handoff').all().map((r) => r.device_id), ['fresh']);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM vault').get().n, 1);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM vault_tombstone').get().n, 1);
+});
