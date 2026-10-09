@@ -19,8 +19,9 @@
  * console output: a log line is one more place a value could land.
  *
  * GET /challenge (src/challenge-page.js) is the one exception to POST only:
- * the fixed page where the Turnstile widget runs. POST /account and an
- * unsigned POST /signin carry its token in the body (src/turnstile.js).
+ * the fixed page where the Turnstile widget runs. POST /account, an
+ * unsigned POST /signin and the POST /recover start carry its token in the
+ * body (src/turnstile.js).
  *
  * A request with a query string is refused as shape before anything else:
  * every value travels in a body (or a link fragment), never in a URL a proxy

@@ -4,8 +4,9 @@
  * doors; the JanusMirror phone opens it in an iframe. Neither client's own
  * origin loads Cloudflare's script.
  *
- * The action rides in the fragment (`/challenge#account`, `/challenge#signin`),
- * since a query string is refused everywhere (src/index.js). The sitekey is
+ * The action rides in the fragment (`/challenge#account`, `/challenge#signin`,
+ * `/challenge#recover`), since a query string is refused everywhere
+ * (src/index.js); the page's list is turnstile.js ACTIONS. The sitekey is
  * the Worker var HZ_TURNSTILE_SITEKEY, public by Cloudflare's design. On a
  * solved challenge the page hands the token to whichever host is present:
  * Sass's `turnstile` message handler, or the parent frame at each of
@@ -35,8 +36,9 @@ export const PAGE_SCRIPT = `(function () {
   var box = document.getElementById("widget");
   var note = document.getElementById("note");
   var action = location.hash.slice(1);
-  if (action !== "account" && action !== "signin") {
-    note.textContent = "This page needs #account or #signin.";
+  var actions = ["account", "signin", "recover"];
+  if (actions.indexOf(action) < 0) {
+    note.textContent = "This page needs #account, #signin or #recover.";
     return;
   }
   var parents = ${JSON.stringify(FRAME_ORIGINS)};

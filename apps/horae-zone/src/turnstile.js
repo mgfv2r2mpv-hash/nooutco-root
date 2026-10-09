@@ -1,15 +1,16 @@
 /**
  * Turnstile on POST /account and an unsigned POST /signin (design of 8 Oct
- * 2026, section 2, Option A). The per-address rate rule at the edge does not
- * bound a stranger with many connecting addresses; a solved challenge per
- * request does, whatever the address.
+ * 2026, section 2, Option A), and on the POST /recover start (issue #301).
+ * The per-address rate rule at the edge does not bound a stranger with many
+ * connecting addresses; a solved challenge per request does, whatever the
+ * address.
  *
  * The client gets its token from GET /challenge (src/challenge-page.js), a
  * page this Worker serves, and sends it in the JSON body as `turnstile`. The
  * Worker checks it with Cloudflare's siteverify and accepts only:
  *   success === true
  *   hostname === TURNSTILE_HOSTNAME (a token from another site's widget fails)
- *   action === the route's action ("account" or "signin")
+ *   action === the route's action ("account", "signin" or "recover")
  *   challenge_ts no older than TOKEN_MAX_AGE_MS (and not in the future)
  *
  * FAIL CLOSED. With no HZ_TURNSTILE_SECRET the routes answer not-configured
@@ -33,7 +34,7 @@ export const TOKEN_MAX_AGE_MS = 300_000;
 // A challenge_ts this far ahead of the Worker's clock is not a real one.
 export const CLOCK_SKEW_MS = 60_000;
 export const MAX_TOKEN_LENGTH = 2048;
-export const ACTIONS = Object.freeze(["account", "signin"]);
+export const ACTIONS = Object.freeze(["account", "signin", "recover"]);
 
 // The sentence a client may show as it is when the keys are not set. It names
 // no value and is the same for both routes.

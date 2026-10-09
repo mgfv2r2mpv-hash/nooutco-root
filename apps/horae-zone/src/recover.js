@@ -2,8 +2,18 @@
  * A6, account recovery (plan §3.5 "Lost authenticator, phone passcode or Mac
  * password", R-6: access is recoverable, the vault is not).
  *
- *   /recover {email}                                      -> {ok: true}
+ *   /recover {email, turnstile}                           -> {ok: true}
  *   /recover {email, code, password, signKey, agreeKey}   -> {device}
+ *
+ * TURNSTILE (#301). The start carries a solved challenge's token for the
+ * "recover" action as `turnstile` (src/turnstile.js), checked after the shape
+ * and before any statement or bucket, exactly as sign-up's start: a missing
+ * token is shape, a refused one challenge, and with the keys unset the start
+ * answers not-configured. So a stranger with many connecting addresses pays a
+ * solved challenge per start, and a failed one never spends a place in
+ * RECOVER_DAY_BUCKET. The check reads no account, so it runs the same whether
+ * or not the address has one. The finish takes no token: the emailed link and
+ * the password are its proof, and its tries are capped per requester.
  *
  * THE TWO FACTORS are the plan's: an emailed code plus the account password.
  * The start mails a single-use link to the address of an account, with the
@@ -57,8 +67,9 @@
 import { sameHex } from "../../../packages/account-engine/src/limits.mjs";
 import { Refusal, b64url } from "./checks.js";
 import {
-  hasOnly, addressOf, requesterOf, keysOrUnavailable, codesPerDayOf, linkOf, SIGNUP_LIMITS,
+  hasOnly, hasOnlyOrToken, addressOf, requesterOf, keysOrUnavailable, codesPerDayOf, linkOf, SIGNUP_LIMITS,
 } from "./signup.js";
+import { verifyTurnstile } from "./turnstile.js";
 import { passwordOf } from "./signin.js";
 import { isPoint } from "./devices.js";
 import { admitThrottle } from "./throttle.js";
@@ -155,7 +166,7 @@ function mailLink(mailer, message) {
   };
 }
 
-async function startRecovery({ db, body, now, env, request, mailer }) {
+async function startRecovery({ db, body, now, env, request, mailer, siteverify }) {
   const address = addressOf(body.email);
   const ip = requesterOf(request);
   const keys = await keysOrUnavailable(env);
@@ -164,6 +175,11 @@ async function startRecovery({ db, body, now, env, request, mailer }) {
   linkOf(env, "x"); // a link base that cannot carry a link stops the start before any write
   const addressKey = await keys.addressKey(address);
   const requester = await keys.requesterKey(ip);
+  // Turnstile before the buckets (#301, as sign-up's start): a failed or
+  // missing challenge never spends a place in RECOVER_DAY_BUCKET. It runs
+  // before any statement, so it reads no account and answers the same for
+  // every address.
+  await verifyTurnstile(env, body.turnstile, { action: "recover", ip, now, siteverify });
   const counted = await admitThrottle(db, now, RECOVER_LIMITS.windowMs, [
     { bucket: `recover-start:${requester}`, limit: RECOVER_LIMITS.startsPerRequesterHour },
     { bucket: RECOVER_DAY_BUCKET, limit: codesPerDay, windowMs: SIGNUP_LIMITS.dayMs },
@@ -242,7 +258,7 @@ async function finishRecovery({ db, body, now, env, request, mailer }) {
 
 export async function recover(context) {
   const { body } = context;
-  if (hasOnly(body, ["email"])) return startRecovery(context);
+  if (hasOnlyOrToken(body, ["email"])) return startRecovery(context);
   if (hasOnly(body, FINISH_KEYS)) return finishRecovery(context);
   throw new Refusal("shape", 400);
 }
