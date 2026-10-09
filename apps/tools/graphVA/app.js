@@ -6,6 +6,7 @@
   var V = window.GVA_VERDICT;
   var C = window.GVA_CHART;
   var R = window.GVA_REDACT;
+  var P = window.GVA_PICTURES;
 
   var TOOL_ID = "graphva";
   var DRAFT_KEY = "graphva";
@@ -44,7 +45,7 @@
     return "1 in " + (n >= 100 ? Math.round(n / 10) * 10 : n);
   };
 
-  var state = { phases: null, editor: null, images: [] };
+  var state = { phases: null, editor: null, strip: window.GVA_PICTURES.empty(), current: null };
 
   // --- persistence ---------------------------------------------------------
 
@@ -343,6 +344,15 @@
     return null;
   }
 
+  // A failure the tool can try to fix itself with a sharper bake, before it
+  // ever asks the analyst to crop (issue #100). Refusals and server errors are
+  // not: a second try would only repeat them.
+  function retryable(message) {
+    var e = new Error(message);
+    e.retryable = true;
+    return e;
+  }
+
   function callReader(baked, context) {
     var prompt = EXTRACT_PROMPT + (context
       ? "\n\nContext supplied by the analyst who owns this record:\n\"\"\"\n" + context.slice(0, 1200) +
@@ -367,7 +377,7 @@
         images: [{ media_type: baked.mediaType, data: baked.base64 }],
       }),
     }).catch(function (e) {
-      if (e && e.name === "AbortError") throw new Error("The reader timed out. Try a smaller crop.");
+      if (e && e.name === "AbortError") throw retryable("The reader timed out.");
       throw e;
     }).then(function (res) {
       return res.text().then(function (raw) {
@@ -494,20 +504,29 @@
     $("drop").addEventListener("drop", function (e) {
       e.preventDefault();
       $("drop").classList.remove("over");
-      if (e.dataTransfer.files.length) loadImage(e.dataTransfer.files[0]);
+      if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
     });
     $("file").addEventListener("change", function (e) {
-      if (e.target.files.length) loadImage(e.target.files[0]);
+      if (e.target.files.length) addFiles(e.target.files);
+      e.target.value = "";
     });
     document.addEventListener("paste", function (e) {
-      if (e.clipboardData && e.clipboardData.files.length) loadImage(e.clipboardData.files[0]);
+      if (e.clipboardData && e.clipboardData.files.length) addFiles(e.clipboardData.files);
     });
 
     $("modeRedact").addEventListener("click", function () { setMode("redact"); });
     $("modeCrop").addEventListener("click", function () { setMode("crop"); });
     $("redactUndo").addEventListener("click", function () { state.editor && state.editor.undo(); });
     $("redactClear").addEventListener("click", function () { state.editor && state.editor.clear(); });
-    $("redactDrop").addEventListener("click", clearImage);
+    $("redactDrop").addEventListener("click", function () { if (state.current) removePicture(state.current); });
+    $("redactDone").addEventListener("click", doneCurrent);
+    $("picStrip").addEventListener("click", function (e) {
+      var b = e.target.closest ? e.target.closest("button[data-act]") : null;
+      if (!b) return;
+      if (b.dataset.act === "edit") openPicture(b.dataset.id);
+      else if (b.dataset.act === "remove") removePicture(b.dataset.id);
+      else if (b.dataset.act === "use") useReading(b.dataset.id);
+    });
     window.addEventListener("resize", function () { state.editor && state.editor.resize(); });
 
     $("extract").addEventListener("click", onExtract);
@@ -523,66 +542,202 @@
     $("modeCrop").setAttribute("aria-pressed", String(mode === "crop"));
   }
 
-  function loadImage(file) {
-    if (!state.editor) {
-      state.editor = R.create($("redactHost"), {
-        onChange: function (s) {
-          $("redactState").textContent = s.loaded
-            ? s.redactions + " blackout" + (s.redactions === 1 ? "" : "s") + (s.cropped ? ", cropped" : "")
-            : "";
-        },
-      });
-    }
-    state.editor.load(file).then(function () {
-      $("redactTools").classList.remove("hidden");
-      $("drop").classList.add("hidden");
-      st("Image loaded. Black out anything identifying, then select Read graph.");
-    }).catch(function (err) { st(err.message, "err"); });
+  // --- the strip of pictures (issue #100) -----------------------------------
+
+  function ensureEditor() {
+    if (state.editor) return;
+    state.editor = R.create($("redactHost"), {
+      onChange: function (s) {
+        $("redactState").textContent = s.loaded
+          ? s.redactions + " blackout" + (s.redactions === 1 ? "" : "s") + (s.cropped ? ", cropped" : "")
+          : "";
+      },
+    });
   }
 
-  function clearImage() {
+  // The marks on the picture in the editor, kept on its card, so switching to
+  // another picture never loses a blackout already drawn.
+  function stashCurrent() {
+    if (!state.current || !state.editor || !state.editor.summary().loaded) return;
+    state.strip = P.update(state.strip, state.current, { marks: state.editor.marks() });
+  }
+
+  function closeEditor() {
     if (state.editor) state.editor.reset();
+    state.current = null;
     $("redactTools").classList.add("hidden");
     $("drop").classList.remove("hidden");
-    $("file").value = "";
-    st("");
   }
 
-  function onExtract() {
-    if (!window.NotesGate || !NotesGate.isLoggedIn()) { NotesGate.openLogin(); return; }
-    if (!state.editor || !state.editor.summary().loaded) { st("Add a graph image first.", "err"); return; }
+  function addFiles(files) {
+    var r = P.add(state.strip, files);
+    state.strip = r.strip;
+    if (r.left) st(r.left + " image" + (r.left === 1 ? " was" : "s were") + " not added: " + P.MAX_PICTURES + " graphs at most.", "err");
+    renderStrip();
+    if (!state.current && r.added.length) openPicture(r.added[0]);
+  }
 
+  // Opening a picture to change it takes its Done away (`P.reopen`), so the copy
+  // baked before the change can never be sent.
+  function openPicture(id) {
+    var p = P.find(state.strip, id);
+    if (!p) return Promise.resolve();
+    stashCurrent();
+    if (p.done) state.strip = P.reopen(state.strip, id);
+    ensureEditor();
+    state.current = id;
+    renderStrip();
+    return state.editor.load(p.file).then(function () {
+      if (p.marks) state.editor.restore(p.marks);
+      $("redactTools").classList.remove("hidden");
+      $("drop").classList.add("hidden");
+      st(p.label + " is open. Black out anything identifying, crop if you want to, then select Done with this graph.");
+    }).catch(function (err) {
+      state.strip = P.remove(state.strip, id);
+      closeEditor();
+      renderStrip();
+      st(err.message, "err");
+    });
+  }
+
+  function doneCurrent() {
+    if (!state.current || !state.editor) return;
     var baked = state.editor.bake();
+    var bakedHi = state.editor.bake(R.RETRY_EDGE);
     if (!baked) { st("Could not compose the image.", "err"); return; }
+    var label = P.find(state.strip, state.current).label;
+    state.strip = P.markDone(state.strip, state.current, state.editor.marks(), baked, bakedHi);
+    closeEditor();
+    var next = P.firstUndone(state.strip);
+    renderStrip();
+    if (next) { openPicture(next.id); return; }
+    st(label + " is done. Select Read graph, or add another graph.");
+  }
 
-    var btn = $("extract");
-    btn.disabled = true;
-    btn.textContent = "Reading";
-    st("Reading graph", "busy");
+  function removePicture(id) {
+    if (id === state.current) closeEditor();
+    state.strip = P.remove(state.strip, id);
+    renderStrip();
+    if (!state.current) {
+      var next = P.firstUndone(state.strip);
+      if (next) openPicture(next.id);
+      else st("");
+    }
+  }
 
-    callReader(baked, $("context").value.trim()).then(function (data) {
+  function readingLine(r) {
+    var n = r.out.phases.reduce(function (acc, p) {
+      return acc + window.GVA_DESIGN.parseValues(Array.isArray(p.data) ? p.data.join(", ") : String(p.data || "")).length;
+    }, 0);
+    return "Read " + r.out.phases.length + " phases, " + n + " points" +
+      (r.sharper ? ", on a sharper second try" : "") + (r.salvaged ? ", partly recovered" : "") + ".";
+  }
+
+  function renderStrip() {
+    var host = $("picStrip");
+    var pics = state.strip.pictures;
+    host.classList.toggle("hidden", !pics.length);
+    host.innerHTML = pics.map(function (p) {
+      var editing = p.id === state.current;
+      var thumb = p.done && p.baked
+        ? '<img class="pic-thumb" alt="' + esc(p.label) + ', as it will be sent" src="' + p.baked.dataUrl + '">'
+        : '<div class="pic-empty">' + (editing ? "Open in the editor" : "Not done") + "</div>";
+      var line = p.error ? p.error : p.reading ? readingLine(p.reading) : p.done ? "Done. Ready to read." : editing ? "Black out, then Done." : "Waiting for its blackout.";
+      var acts = [];
+      if (!editing) acts.push('<button type="button" data-act="edit" data-id="' + p.id + '">' + (p.done ? "Edit" : "Open") + "</button>");
+      acts.push('<button type="button" data-act="remove" data-id="' + p.id + '">Remove</button>');
+      if (p.reading) acts.push('<button type="button" data-act="use" data-id="' + p.id + '">Use this reading</button>');
+      return '<div class="pic-card' + (editing ? " current" : "") + '" data-pic="' + p.id + '">' +
+        '<div class="pic-title">' + esc(p.label) + "</div>" + thumb +
+        '<div class="pic-state' + (p.error ? " err" : "") + '">' + esc(line) + "</div>" +
+        '<div class="pic-actions">' + acts.join("") + "</div></div>";
+    }).join("");
+  }
+
+  // --- reading ---------------------------------------------------------------
+
+  // One call for one baked picture. A failure the sharper bake might fix comes
+  // back marked retryable; a refusal or a server error does not.
+  function readOnce(baked, context) {
+    return callReader(baked, context).then(function (data) {
       var text = (data.content || []).filter(function (b) { return b.type === "text"; })
         .map(function (b) { return b.text; }).join("\n");
-      if (!text.trim()) throw new Error("No reading returned. Retry, or crop to one panel.");
+      if (!text.trim()) throw retryable("No reading came back.");
       var out;
       var salvaged = false;
       try { out = parseJSON(text); }
       catch (e) {
         out = repairJSON(text);
         if (!out) {
-          throw new Error(data.stop_reason === "max_tokens"
-            ? "Reading exceeded the length limit. Crop to one panel and retry."
-            : "Reading could not be parsed. Retry.");
+          throw retryable(data.stop_reason === "max_tokens"
+            ? "The reading ran past its length limit."
+            : "The reading could not be parsed.");
         }
         salvaged = true;
       }
-      var n = applyExtraction(out);
-      st("Read " + state.phases.length + " phases, " + n + " data points" +
-        (out.target ? " for " + out.target : "") + "." +
-        (salvaged ? "\nReading cut off and partly recovered; later phases may be incomplete." : "") +
-        "\nVerify against the source graph before use.", salvaged ? "err" : "ok");
-    }).catch(function (err) {
-      st(String(err.message || err), "err");
+      if (!out || !out.phases || !out.phases.length) throw retryable("No phases were read.");
+      return { out: out, salvaged: salvaged, sharper: false };
+    });
+  }
+
+  // The tool tries the sharper bake itself before it asks the analyst to crop,
+  // and only asks once that try has failed too (issue #100).
+  function readPicture(p, context) {
+    return readOnce(p.baked, context).catch(function (err) {
+      if (!err.retryable || !p.bakedHi) throw err;
+      return readOnce(p.bakedHi, context).then(function (r) {
+        return { out: r.out, salvaged: r.salvaged, sharper: true };
+      }).catch(function (err2) {
+        throw new Error(err2.message + " A second, sharper read failed too." +
+          (err2.retryable ? " If this image holds several panels, crop it to the one you want read." : ""));
+      });
+    });
+  }
+
+  function useReading(id) {
+    var p = P.find(state.strip, id);
+    if (!p || !p.reading) return;
+    var n = applyExtraction(p.reading.out);
+    st("Phase data now holds " + p.label + ": " + state.phases.length + " phases, " + n + " data points." +
+      "\nVerify against the source graph before use.", "ok");
+  }
+
+  function onExtract() {
+    if (!window.NotesGate || !NotesGate.isLoggedIn()) { NotesGate.openLogin(); return; }
+    stashCurrent();
+    var ready = P.readiness(state.strip);
+    if (!ready.ok) { st(ready.reason, "err"); return; }
+
+    var btn = $("extract");
+    btn.disabled = true;
+    btn.textContent = "Reading";
+    var pics = state.strip.pictures.slice();
+    var context = $("context").value.trim();
+    var applied = null;
+    var failed = 0;
+
+    // One picture at a time, in strip order, so each is read at its own
+    // resolution and a slow one never times the others out.
+    var chain = pics.reduce(function (prev, p, i) {
+      return prev.then(function () {
+        st("Reading " + p.label + (pics.length > 1 ? " (" + (i + 1) + " of " + pics.length + ")" : ""), "busy");
+        return readPicture(p, context).then(function (reading) {
+          state.strip = P.update(state.strip, p.id, { reading: reading, error: "" });
+          if (!applied) { applyExtraction(reading.out); applied = p; }
+        }, function (err) {
+          failed += 1;
+          state.strip = P.update(state.strip, p.id, { reading: null, error: String(err.message || err) });
+        }).then(renderStrip);
+      });
+    }, Promise.resolve());
+
+    chain.then(function () {
+      if (!applied) { st(pics.length > 1 ? "No graph could be read. Each card says why." : String(P.find(state.strip, pics[0].id).error), "err"); return; }
+      var got = P.find(state.strip, applied.id).reading;
+      st("Phase data now holds " + applied.label + ". " + readingLine(got) +
+        (pics.length > 1 ? "\nEach card has Use this reading to load its graph instead." : "") +
+        (failed ? "\n" + failed + " graph" + (failed === 1 ? "" : "s") + " could not be read; the card says why." : "") +
+        "\nVerify against the source graph before use.", got.salvaged || failed ? "err" : "ok");
     }).finally(function () {
       btn.disabled = false;
       syncAuth();

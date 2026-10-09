@@ -14,6 +14,11 @@
   // Long edge cap. A graph screenshot past this carries no extra readable
   // detail and costs upload size and tokens.
   var MAX_EDGE = 1600;
+  // The sharper bake a failed read retries with, before the tool ever asks the
+  // analyst to crop (issue #100). Tick labels and point centres are the detail
+  // a downscale loses first, so a retry at a longer edge reads what the first
+  // pass could not. Same bake, same blackouts, only less downscaling.
+  var RETRY_EDGE = 2400;
 
   function create(container, options) {
     var opts = options || {};
@@ -181,12 +186,13 @@
     // never being drawn, and every redaction is painted opaque on top. The
     // result is a fresh canvas, so no pixel of the original survives except the
     // ones deliberately kept.
-    function bake() {
+    function bake(maxEdge) {
       if (!state.image) return null;
       var c = state.crop || { x: 0, y: 0, w: state.naturalW, h: state.naturalH };
       var srcW = Math.max(1, Math.round(c.w));
       var srcH = Math.max(1, Math.round(c.h));
-      var ratio = Math.min(1, MAX_EDGE / Math.max(srcW, srcH));
+      var edge = typeof maxEdge === "number" && maxEdge > 0 ? maxEdge : MAX_EDGE;
+      var ratio = Math.min(1, edge / Math.max(srcW, srcH));
       var outW = Math.max(1, Math.round(srcW * ratio));
       var outH = Math.max(1, Math.round(srcH * ratio));
 
@@ -247,9 +253,24 @@
       },
       resize: function () { fit(); draw(); },
       summary: summary,
+      // The boxes and crop on the loaded image, as plain data, so a picture
+      // put aside in a strip keeps its marks when it is opened again.
+      marks: function () {
+        return {
+          rects: state.rects.map(function (r) { return { x: r.x, y: r.y, w: r.w, h: r.h }; }),
+          crop: state.crop ? { x: state.crop.x, y: state.crop.y, w: state.crop.w, h: state.crop.h } : null,
+        };
+      },
+      restore: function (m) {
+        if (!state.image || !m) return;
+        state.rects = (Array.isArray(m.rects) ? m.rects : []).map(function (r) { return { x: r.x, y: r.y, w: r.w, h: r.h }; });
+        state.crop = m.crop ? { x: m.crop.x, y: m.crop.y, w: m.crop.w, h: m.crop.h } : null;
+        draw();
+        state.onChange(summary());
+      },
       canvas: canvas,
     };
   }
 
-  window.GVA_REDACT = { create: create, MAX_EDGE: MAX_EDGE, OUTPUT_TYPE: OUTPUT_TYPE };
+  window.GVA_REDACT = { create: create, MAX_EDGE: MAX_EDGE, RETRY_EDGE: RETRY_EDGE, OUTPUT_TYPE: OUTPUT_TYPE };
 })();
