@@ -3808,8 +3808,10 @@ function App() {
      A READY NOTE WAITS NOT AT ALL, his ruling of 2026-08-06 ("the floor is 0
      for 85% or better"), kept: the price exists because skipping was cheaper
      than reading, and on a note the model calls complete there is nothing to
-     read. A missing reading gets the full minute. */
-  const SEND_LOCK_SECONDS = 60;
+     read. A missing reading gets the full wait. The wait is 30 seconds, his ruling of
+     2026-10-09: "locking for a minute feels offputting. 30 seconds is plenty
+     of hangtime." */
+  const SEND_LOCK_SECONDS = 30;
   const SKIP_FREE_AT_READINESS = 85;
 
   /* Below the bar the tool refuses to draft until one round is answered. His
