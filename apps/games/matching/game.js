@@ -210,7 +210,51 @@ document.addEventListener('DOMContentLoaded', async () => {
   restoreResults();
   bindEvents();
   await discoverTopics();
+  mountRoundSetup();
 });
+
+// ── Round setup (Frame 04, shared ../round-setup.js) ───────────────
+// The gated panel is a view over the controls the game already has, not a
+// second config: every edit in it goes through the same change handlers and
+// the same store, so a panel opened and left alone changes nothing.
+// Targets (a per-image picker) and the token board keep their own panels.
+
+/** Re-render the game from the store after a saved set is adopted. */
+function reloadFromStore() {
+  loadSettings();
+  const dirs = state.topicFolders;
+  if (dirs.length) {
+    state.topic = dirs.includes(state.topic) ? state.topic : dirs[0];
+    el.selTopic.value = state.topic;
+  }
+  state.posDeck = [];
+  refreshImages();
+}
+
+function mountRoundSetup() {
+  if (!window.NooutcoRoundSetup) return;
+  window.NooutcoRoundSetup.mount({
+    store: settingsStore,
+    label: 'Matching round setup',
+    reload: reloadFromStore,
+    core: [
+      '#sel-topic',
+      '#inp-size',
+    ],
+    advanced: [
+      '#chk-represent-errors',
+      '#chk-errorless',
+      '#chk-no-error-anim',
+      '#chk-non-target-distractor',
+      '#chk-cross',
+      '#chk-persists',
+      '#chk-auto-prompt',
+      '#chk-prompt-delay',
+      { sel: '#sel-prompt-delay', label: 'Prompt delay (seconds)' },
+      '#sel-prompt-style',
+    ],
+  });
+}
 
 // ── Durable results persistence (device-local; never transmitted) ──────
 
