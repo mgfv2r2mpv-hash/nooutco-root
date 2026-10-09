@@ -1307,7 +1307,7 @@ The review also checked and found sound: no old envelope survives a recovery or 
 
 ## Offline unlock, Option C (`apps/horae-zone`)
 
-The service half of sass-assistant's offline unlock (design of 8 Oct 2026, section 1, Option C, which Kaleb approved for building). Based on `dev` at `bcf1924e`. Commits: `bf24246b` (RED: `test/offline.test.mjs`, 19 tests, each failing on `no-route`), then the GREEN commit. After both: Horae Zone 427/427 (408 on `dev`). The supersede (decision 10): `70dd0140` (RED: four tests, failing on `report-due` and the missing `superseded_at`), then its GREEN commit; after it 431/431. The Mac half is the linked sass-assistant PR.
+The service half of sass-assistant's offline unlock (design of 8 Oct 2026, section 1, Option C, which Kaleb approved for building). Based on `dev` at `bcf1924e`. Commits: `bf24246b` (RED: `test/offline.test.mjs`, 19 tests, each failing on `no-route`), then the GREEN commit. After both: Horae Zone 427/427 (408 on `dev`). The supersede (decision 10): `70dd0140` (RED: four tests, failing on `report-due` and the missing `superseded_at`), then its GREEN commit; after it 431/431. Rebased onto `dev` after A6, #287, #301 and #308: 515/515. The Mac half is the linked sass-assistant PR.
 
 ### What is in it
 
@@ -1317,7 +1317,7 @@ The service half of sass-assistant's offline unlock (design of 8 Oct 2026, secti
 | `src/routes.js` | Both routes `signed`; neither `pendingOk`; only the report `lockedOk`, so a blocked Mac can still report |
 | `src/account-lock.js` | `lockForBlock`, the lock `/pin/blocked` writes, shared with a report of ten wrong PINs |
 | `schema.sql` | `offline_pass`: the jti, device, account, the code's time, `until`, when issued, the cap on opens, and once reported the time and the two counts; `superseded_at` (nullable) when a re-proved Mac replaced the pass unreported. Never the pass, receipt, ticket, log entries or head |
-| `DEPLOY.md` | 22 tables; the break-glass runbook names the report as a second way an account locks |
+| `DEPLOY.md` | 27 tables; the break-glass runbook names the report as a second way an account locks |
 
 **New refusal words:** `report-due` (409) and `bad-log` (400). `shape`, `bad-ticket`, `unavailable`, `no-device` and `account-locked` are reused. **New audit word:** `superseded`, the grant's own audit row when it replaced an unreported pass.
 

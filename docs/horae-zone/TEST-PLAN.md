@@ -523,7 +523,7 @@ As in A3: `node --test` in `apps/horae-zone`.
 
 ### Run
 
-`node --test` in `apps/horae-zone`. Expected: 431 tests, 431 pass (`dev` at `bcf1924e` has 408). RED evidence: `bf24246b` committed `test/offline.test.mjs` alone, and its 19 tests failed on `no-route`; `70dd0140` added the four supersede tests alone, and they failed (a fresh code answered `report-due`, and no row had `superseded_at`). Test values are fake: `example.test` addresses, random jtis, the fresh test ticket key.
+`node --test` in `apps/horae-zone`. Expected: 515 tests, 515 pass, on `dev` after A6, #287, #301 and #308 (431 before the rebase, on `dev` at `bcf1924e`, which has 408). RED evidence: `bf24246b` committed `test/offline.test.mjs` alone, and its 19 tests failed on `no-route`; `70dd0140` added the four supersede tests alone, and they failed (a fresh code answered `report-due`, and no row had `superseded_at`). Test values are fake: `example.test` addresses, random jtis, the fresh test ticket key.
 
 ### What each file proves
 
