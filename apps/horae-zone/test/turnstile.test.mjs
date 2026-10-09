@@ -394,7 +394,7 @@ test('GET /challenge answers the fixed page with the exact CSP, no-store and no 
     `style-src 'sha256-${await sha256(PAGE_STYLE)}'`,
     'frame-src https://challenges.cloudflare.com',
     "connect-src 'none'",
-    'frame-ancestors https://lc.nooutco.me https://lp.nooutco.me',
+    'frame-ancestors https://lc.nooutco.me https://lp.nooutco.me https://lavish-castor.nooutco.me https://lavish-pollux.nooutco.me',
     "base-uri 'none'",
     "form-action 'none'",
   ].join('; '));
@@ -408,7 +408,10 @@ test('GET /challenge answers the fixed page with the exact CSP, no-store and no 
 });
 
 test('the page script hands the token only to Sass\'s turnstile handler or the two phone origins, and reads the action from the fragment', () => {
-  assert.deepEqual(FRAME_ORIGINS, ['https://lc.nooutco.me', 'https://lp.nooutco.me']);
+  // lc and lp redirect to the gatekeepers' own hostnames, so the shell that
+  // frames this page runs on lavish-castor and lavish-pollux (Kaleb's phone,
+  // 9 Oct 2026: Sign in stayed dead because the frame was refused there).
+  assert.deepEqual(FRAME_ORIGINS, ['https://lc.nooutco.me', 'https://lp.nooutco.me', 'https://lavish-castor.nooutco.me', 'https://lavish-pollux.nooutco.me']);
   assert.match(PAGE_SCRIPT, /window\.webkit\.messageHandlers\.turnstile/);
   assert.match(PAGE_SCRIPT, /window\.parent\.postMessage\(\{ turnstile: token \}, origin\)/);
   assert.doesNotMatch(PAGE_SCRIPT, /postMessage\([^)]*["']\*["']/, 'never to any origin');

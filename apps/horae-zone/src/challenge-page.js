@@ -22,7 +22,16 @@
 import { NOT_CONFIGURED_SENTENCE, turnstileSecret } from "./turnstile.js";
 
 // The JanusMirror phone origins allowed to frame the page (design 2.9 item 5).
-export const FRAME_ORIGINS = Object.freeze(["https://lc.nooutco.me", "https://lp.nooutco.me"]);
+// lc and lp redirect to the gatekeepers' own hostnames (lavish-castor and
+// lavish-pollux, janusmirror docs/REMOTE-SETUP.md), so the shell that frames
+// this page runs there; without them the frame is refused and the phone's
+// Sign in never gets a token (Kaleb's phone, 9 Oct 2026).
+export const FRAME_ORIGINS = Object.freeze([
+  "https://lc.nooutco.me",
+  "https://lp.nooutco.me",
+  "https://lavish-castor.nooutco.me",
+  "https://lavish-pollux.nooutco.me",
+]);
 export const TURNSTILE_SCRIPT = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
 const CHALLENGE_ORIGIN = "https://challenges.cloudflare.com";
 
