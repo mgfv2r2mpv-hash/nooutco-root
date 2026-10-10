@@ -262,8 +262,11 @@ test.describe('a strategy narrated under the wrong heading', () => {
   });
 
   test('a strategy in its own section is not a finding', async ({ page }) => {
+    // A first-then board rather than a visual schedule: since bt-checks.js, a
+    // "visual schedule" the intake never names is flagged in its own right, and
+    // this intake (draft above) names no schedule.
     await draft(page, noteWith({
-      antecedentNarrative: 'A visual schedule was posted at the table and the client checked it between tasks.',
+      antecedentNarrative: 'A first-then board was posted at the table and the client checked it between tasks.',
     }));
     await expect(page.getByTestId('hints-antecedentNarrative')).toHaveCount(0);
   });
