@@ -3,6 +3,7 @@
 import { jsonRes, sha256Hex } from "./shared/helpers.js";
 import { handleSuggest } from "./shared/suggest.js";
 import { recordError, listErrors, errorFingerprint, errorRecordFields } from "./worker/error-record.js";
+import { checkedWhy, checkedReasons } from "./worker/change-claims.js";
 
 // Notes tools that can be scoped to a managed password.
 const NOTES_TOOLS = ["bt", "sup", "parent", "assess", "sap", "graphva"];
@@ -1912,7 +1913,17 @@ export function correctionsFound(api, draft) {
     const reasons = (Array.isArray(c.reasons) ? c.reasons : [])
       .filter((r) => r && typeof r.quote === "string" && typeof r.why === "string" && r.quote.trim() && r.why.trim())
       .map((r) => ({ quote: r.quote, why: r.why }));
-    corrections.push({ section, text: next, why: typeof c.why === "string" ? c.why : "", reasons });
+    /* A change note never claims an edit that did not land (2026-10-09: a
+       note said it removed "preliminary assessment suggests" and the text
+       still had it). Each claim is held against the section before and after,
+       and one the text contradicts is dropped. See worker/change-claims.js. */
+    const before = String(known.get(section));
+    corrections.push({
+      section,
+      text: next,
+      why: checkedWhy(typeof c.why === "string" ? c.why : "", before, next),
+      reasons: checkedReasons(reasons, before, next),
+    });
   }
   return { corrections, dropped };
 }

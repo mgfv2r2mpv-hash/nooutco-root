@@ -168,6 +168,26 @@ TERMINOLOGY (non-negotiable)\n\
   var CAREGIVER_WORD = /\b(?:parents?|caregivers?|guardians?|mom|dad|mother|father|grand(?:ma|pa|mother|father|parents?)|family|families)\b/i;
   var PARENT_REVIEW = "Review results with parent";
 
+  /* THE no_results LABEL SAYS THE FIELD IS EMPTY, so it is only shown when it
+     is. Kaleb's Assessment bench run, 2026-10-09: "Findings missing; Results of
+     Assessment is empty" sat under a Results of Assessment that had text, in
+     both the FBA case and the report-writing case. The model uses the code for
+     one missing finding as well as for an empty field, and its detail names
+     which ("no current rate for manding"). So the hint keys on the field
+     itself: an empty field keeps the label, and a field with text gets the
+     model's own detail as a plain note saying what is missing. */
+  function resultsHintsTrue(hints, results) {
+    if (!String(results || "").trim()) return hints;
+    return hints.map(function (h) {
+      if (!h || h.code !== "no_results") return h;
+      var detail = typeof h.detail === "string" ? h.detail.trim() : "";
+      return Object.assign({}, h, {
+        code: "other",
+        detail: detail ? "A finding is missing from Results of Assessment: " + detail : "Results of Assessment may be missing a finding.",
+      });
+    });
+  }
+
   function normalizeOutput(raw, ctx) {
     var o = raw && typeof raw === "object" ? raw : {};
     var picked = (Array.isArray(o.activities) ? o.activities : []).filter(function (v) { return ACTIVITIES.indexOf(v) !== -1; });
@@ -176,12 +196,13 @@ TERMINOLOGY (non-negotiable)\n\
       picked = picked.filter(function (v) { return v !== PARENT_REVIEW; });
       held.push({ section: "activities", code: "other", detail: "Unticked Review results with parent: the notes name no parent or caregiver." });
     }
+    var results = typeof o.results === "string" ? o.results : "";
     var out = {
       activities: picked,
       reporting: (Array.isArray(o.reporting) ? o.reporting : []).filter(function (v) { return REPORTING.indexOf(v) !== -1; }),
       narrative: typeof o.narrative === "string" ? o.narrative : "",
-      results: typeof o.results === "string" ? o.results : "",
-      hints: normalizeHints((Array.isArray(o.hints) ? o.hints : []).concat(held), HINT_CATALOG, SECTION_IDS),
+      results: results,
+      hints: normalizeHints(resultsHintsTrue((Array.isArray(o.hints) ? o.hints : []).concat(held), results), HINT_CATALOG, SECTION_IDS),
     };
     // The three revision keys the engine reads back. Kept separate from the
     // note's own fields because they never reach the EHR: an answer is shown
