@@ -50,6 +50,7 @@
           "echoic",
           [
             "90%",
+            "90 %",
             "90 percent"
           ],
           [
@@ -176,6 +177,7 @@
             "1-minute",
             "one min",
             "one-min",
+            "a minute warning",
             "60 sec",
             "60-sec"
           ],
@@ -184,11 +186,11 @@
             "parents",
             "parent",
             "mom",
-            "caregiver",
-            "family"
+            "caregiver"
           ],
           [
             "100%",
+            "100 %",
             "100 percent"
           ]
         ],

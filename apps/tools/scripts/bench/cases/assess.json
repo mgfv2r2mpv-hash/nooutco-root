@@ -44,8 +44,13 @@
             "VB MAPP"
           ],
           [
-            "Level 1",
-            "Level One"
+            {
+              "whole": "Level 1"
+            },
+            "Level One",
+            {
+              "whole": "Level I"
+            }
           ],
           [
             "prompt dependence",
@@ -54,8 +59,13 @@
           ],
           "bath",
           [
-            "Level 2",
-            "Level Two"
+            {
+              "whole": "Level 2"
+            },
+            "Level Two",
+            {
+              "whole": "Level II"
+            }
           ]
         ],
         "forbid": [

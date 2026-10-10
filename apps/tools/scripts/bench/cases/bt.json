@@ -44,7 +44,7 @@
       },
       "truth": [
         { "about": ["intensity", "injur", "mark", "hard", "force", "severity", "open hand", "closed fist"], "answer": "Open hand to my forearm, no marks, each one a single swing." },
-        { "about": ["precursor", "warning sign", "right before", "just before", "lead up", "leading up", "whine", "beep"], "answer": "He whined and grabbed the chains when the timer beeped, no warning before the timer ended." },
+        { "about": ["precursor", "warning sign", "signs", "upset", "right before", "just before", "before hitting", "before the hit", "before he hit", "lead up", "leading up", "whine", "beep"], "answer": "He whined and grabbed the chains when the timer beeped, no warning before the timer ended." },
         { "about": ["medication", "med", "prescri", "dose"], "answer": "Mom did not say which med, only that it was new yesterday." }
       ],
       "expect": {
@@ -71,7 +71,7 @@
         "Follow-Up & Concerns": "teacher asked for a copy of the turn card for the classroom"
       },
       "truth": [
-        { "about": ["greet", "peers", "line up", "wave", "gesture"], "answer": "Gesture was a wave cue from me; the independent one was to a kid he plays with often." },
+        { "about": ["greet", "peers", "line up", "wave", "wave cue"], "answer": "Gesture was a wave cue from me; the independent one was to a kid he plays with often." },
         { "about": ["teacher", "turn card", "copy", "classroom"], "answer": "I said I would ask the BCBA before giving her a copy." }
       ],
       "expect": {
@@ -98,7 +98,7 @@
         { "about": ["move", "moving", "toys", "packed", "play skill"], "answer": "Toys stay packed until the move; play skills will not run for 2 more weeks." }
       ],
       "expect": {
-        "mentions": [["dad", "father", "parent", "caregiver"], ["first-then", "first then", "first/then"], ["move", "moving", "relocat"], ["play skill", "play program", "play target"]],
+        "mentions": [["dad", "father"], ["first-then", "first then", "first/then"], ["move", "moving", "relocat"], ["play skill", "play program", "play target"]],
         "forbid": ["responded well", "did great", "went well", "throughout the session", "mastered", "was observed", "was reinforced", "the behavior analyst"],
         "picks": {
           "individualsPresent": ["Client", "Parent/Caregiver"],

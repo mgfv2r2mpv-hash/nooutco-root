@@ -169,6 +169,22 @@ test.describe('answer matching', () => {
     expect(drive.answerFor('Has the 3 step imitation been broken down yet?', truth)).toMatch(/two 2-step chains/);
   });
 
+  /* Review R330-H1, 9 Oct 2026. */
+  test('clinic: a plain question about what came before the hits gets the precursor answer', () => {
+    const truth = bt('bt-clinic-hitting-new-med');
+    expect(drive.answerFor('What did he do before hitting?', truth)).toMatch(/whined and grabbed the chains/);
+    expect(drive.answerFor('Were there signs he was getting upset before the hits?', truth)).toMatch(/whined and grabbed the chains/);
+  });
+
+  test('school: a gesture question about the hand raise does not get the greeting answer', () => {
+    expect(drive.answerFor('What gesture did you use to cue the hand raise?', bt('bt-school-no-behaviors'))).toBeNull();
+  });
+
+  test('one word of the question counts once, however many keywords start it', () => {
+    const truth = [{ about: ['med', 'medication'], answer: 'A' }, { about: ['medication', 'new'], answer: 'B' }];
+    expect(drive.pickAnswers(['Did mom name the new medication?'], truth)[0]).toMatchObject({ answer: 'B', matchedOn: ['medication', 'new'] });
+  });
+
   test('every truth keyword is one the picker counts', () => {
     for (const t of ['parent', 'sup', 'bt', 'assess', 'sap']) {
       for (const c of JSON.parse(readFileSync(path.join(ROOT, `scripts/bench/cases/${t}.json`), 'utf8')).cases) {
@@ -221,6 +237,38 @@ test.describe('mentions', () => {
   test('a ticked pick and a goals table row are part of the note', () => {
     const shown = { text: { summary: '' }, picks: { antecedentStrategies: ['Visual schedule'] }, tables: { goalsAnalyzed: ['Tacting animals | Errorless, echoic at 0 sec'] }, all: '' };
     expect(checks.checkNote({ expect: { mentions: ['visual schedule', 'errorless'] } }, shown)).toEqual([]);
+  });
+
+  /* Review R330-H1, 9 Oct 2026. */
+  const caseOf2 = (tool, id) => JSON.parse(readFileSync(path.join(ROOT, `scripts/bench/cases/${tool}.json`), 'utf8')).cases.find((x) => x.id === id);
+  const only = (c, i) => ({ expect: { mentions: [c.expect.mentions[i]] } });
+
+  test('telehealth: a ticked Parent/Caregiver does not stand in for dad', () => {
+    const c3 = caseOf2('bt', 'bt-telehealth-parent-coaching');
+    const shown = { text: { session: 'Coached the client\'s caregiver on video through each trial.' }, picks: { individualsPresent: ['Client', 'Parent/Caregiver'] }, all: '' };
+    expect(checks.checkNote(only(c3, 0), shown)).toEqual(['missing from the note: "dad" or "father"']);
+  });
+
+  test('supervision: the new-sibling line alone does not carry the parents', () => {
+    const c4 = caseOf2('sup', 'sup-behavior-plan-change-pending');
+    expect(checks.checkNote(only(c4, 2), note('New baby sister at home; the family is adjusting.'))).toHaveLength(1);
+    expect(checks.checkNote(only(c4, 2), note('BCBA will talk with mom first.'))).toEqual([]);
+  });
+
+  test('a non-breaking hyphen or space reads as a plain one', () => {
+    expect(checks.checkNote(c(['first-then']), note('Showed the first\u2011then board.'))).toEqual([]);
+    expect(checks.checkNote(c(['first-then']), note('Showed the first\u2010then board.'))).toEqual([]);
+    expect(checks.checkNote(c(['5 sec']), note('Within 5\u00a0sec of the instruction.'))).toEqual([]);
+  });
+
+  test('shorthand forms pass where the case allows them', () => {
+    const two = caseOf2('sap', 'sap-two-step-instructions');
+    expect(checks.checkNote(two, note('Follow within 5s, 80 % of opportunities, with his teacher, a point paired; probes for 4 wks.'))).toEqual([]);
+    const vb = caseOf2('assess', 'assess-vbmapp-and-interview');
+    expect(checks.checkNote(only(vb, 1), note('Scored VB-MAPP Level I.'))).toEqual([]);
+    expect(checks.checkNote(only(vb, 1), note('Level II is half done.'))).toHaveLength(1);
+    const plan = caseOf2('sup', 'sup-behavior-plan-change-pending');
+    expect(checks.checkNote(only(plan, 0), note('BCBA thinks a minute warning is needed.'))).toEqual([]);
   });
 
   test('a missing fact names every form it looked for', () => {
