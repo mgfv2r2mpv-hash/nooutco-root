@@ -256,9 +256,19 @@ test.describe('4. VB-MAPP: a detail the tool was unsure of stays as he wrote it'
 // ── 5. Credit only to the person who said it (hints only) ──────────────
 
 test.describe('5. Credit a statement only to the person who made it (hints only)', () => {
-  test('bench error: a teacher interview ticked as Caregiver/Guardian interview is flagged, and stays ticked', () => {
+  // Kaleb, 10 Oct: "Teacher interview is caregiver interview, yeah." School
+  // staff who care for the child count; clinic staff (an RBT, a BT, a
+  // therapist) do not, so those still raise the hint.
+  test('a teacher interview ticked as Caregiver/Guardian interview raises no hint', () => {
     const out = run(FBA, { ...FBA_GOOD, activities: FBA_PICKS.concat(['Caregiver/Guardian interview']) });
-    expect(details(out)).toContain('activities: Caregiver/Guardian interview is ticked, but the interview in the notes was with the teacher.');
+    expect(details(out).filter((d) => /ticked/.test(d))).toEqual([]);
+    expect(out.activities).toContain('Caregiver/Guardian interview');
+  });
+
+  test('an RBT interview ticked as Caregiver/Guardian interview is flagged, and stays ticked', () => {
+    const intake = 'BCBA interviewed the RBT about the morning routine. Observed 30 min in clinic.';
+    const out = assess.normalizeOutput(draft({ activities: ['Caregiver/Guardian interview'] }), { intake });
+    expect(details(out)).toContain('activities: Caregiver/Guardian interview is ticked, but the interview in the notes was with the RBT.');
     expect(out.activities).toContain('Caregiver/Guardian interview');
   });
 

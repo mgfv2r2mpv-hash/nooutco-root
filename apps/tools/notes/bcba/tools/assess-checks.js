@@ -15,9 +15,10 @@
  *   added". Flagged where the note writes a planned action as done.
  *   AN UNSURE DETAIL STAYS. "mand at 6 items w full echoic" lost "w full
  *   echoic". Flagged when a prompt level the notes give is dropped.
- *   A STATEMENT IS CREDITED TO WHO MADE IT. A teacher interview ticked as
- *   "Caregiver/Guardian interview", and "Collateral report from mother and
- *   father" when dad only joined for the bath-time part. Flagged.
+ *   A STATEMENT IS CREDITED TO WHO MADE IT. "Collateral report from mother
+ *   and father" when dad only joined for the bath-time part. Flagged. (A
+ *   teacher interview ticked as "Caregiver/Guardian interview" is right, his
+ *   ruling of 10 Oct; an RBT or BT interview ticked that way is flagged.)
  *
  * Every check only adds a hint. None changes a pick or rewrites a sentence:
  * the BCBA wrote the notes and reads the flag, and a pattern is not sure
@@ -322,7 +323,10 @@
   // ── 5: a statement is credited to who made it ──────────────────────────
 
   var CAREGIVER = /\b(?:parents?|caregivers?|guardians?|mom|dad|mother|father|grand(?:ma|pa|mother|father|parents?)|family|families)\b/i;
-  var STAFF = /\b(teachers?|aides?|paras?|paraprofessionals?|staff|principal|counselor|therapists?|RBTs?|BTs?)\b/i;
+  // Clinic staff only. Kaleb, 10 Oct: "Teacher interview is caregiver
+  // interview, yeah", so school staff who care for the child (a teacher, an
+  // aide, a para) are a caregiver interview and raise nothing here.
+  var STAFF = /\b(staff|therapists?|RBTs?|BTs?)\b/i;
 
   function clauses(str) {
     return text(str).split(/[.;\n]+/).map(function (c) { return c.trim(); }).filter(Boolean);
@@ -339,7 +343,8 @@
     if (!heard.length || heard.some(function (c) { return CAREGIVER.test(c); })) return [];
     var staff = heard.map(function (c) { return STAFF.exec(c); }).filter(Boolean)[0];
     if (!staff) return [];
-    return [hint("activities", CAREGIVER_INTERVIEW + " is ticked, but the interview in the notes was with the " + staff[1].toLowerCase() + ".")];
+    var who = /^[A-Z]+s?$/.test(staff[1]) ? staff[1] : staff[1].toLowerCase();
+    return [hint("activities", CAREGIVER_INTERVIEW + " is ticked, but the interview in the notes was with the " + who + ".")];
   }
 
   var PARENTS = [
