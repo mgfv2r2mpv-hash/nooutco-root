@@ -72,16 +72,12 @@ test.describe('the draft says it continued', () => {
     const out = await U(page, (N, b) => [
       N.recast('The vocalizations did not resolve.', b).text,
       N.recast("Crying didn't resolve when attention was delivered.", b).text,
-      N.recast('The vocalizations failed to resolve until the iPad was delivered.', b).text,
       N.recast('Whining remained unresolved across both trials.', b).text,
-      N.recast('The crying was not resolved.', b).text,
     ], said);
     expect(out).toEqual([
       'The vocalizations continued.',
       'Crying continued when attention was delivered.',
-      'The vocalizations continued until the iPad was delivered.',
       'Whining continued across both trials.',
-      'The crying continued.',
     ]);
   });
 
@@ -423,5 +419,142 @@ test.describe('on the page, Pollux 1 and 3', () => {
     await expect(page.getByTestId('expert-unresolved-dropped')).toBeVisible({ timeout: 10000 });
     await expect(page.getByTestId('expert-unresolved-dropped')).toContainText('notes say');
     await expect(page.getByRole('img', { name: 'Expert: nothing to change' })).toHaveCount(0);
+  });
+});
+
+/* THE LATE REVIEW'S HOLD ON #328 (10 Oct). Kaleb's clinical rule: automatic
+ * checks raise hints and never rewrite a correct sentence or change a tick or
+ * a pick. Each sentence below is one the reviewer quoted, and each test says
+ * what the module must do with it: leave it as written, stay silent, or hint. */
+
+test.describe('late hold 1: a correct sentence is never rewritten', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto(BCBA);
+    await page.waitForFunction(() => !!window.NoteUnresolved);
+  });
+
+  const HOLD_1 = [
+    'The data did not resolve whether the function was attention or escape.',
+    'The FA failed to resolve which condition maintained it.',
+    'Crying failed to resolve to prompting.',
+    'Vocalizations did not resolve into a clear pattern.',
+    'Crying was not resolved by planned ignoring.',
+  ];
+  // The intake says every one of those subjects did not resolve, so only the
+  // gate on the subject and the words after the phrase stand between each
+  // sentence and a rewrite.
+  const NAMED_1 = HOLD_1.join(' ') + ' Crying did not stop. Vocalizations did not resolve.';
+
+  test('each of the five sentences comes out as written, against notes that name the subject', async ({ page }) => {
+    const out = await U(page, (N, [xs, intake]) => xs.map((x) => N.passNote({ results: x }, ['results'], intake)), [HOLD_1, NAMED_1]);
+    expect(out.map((o) => o.output.results)).toEqual(HOLD_1);
+    expect(out.map((o) => o.recast)).toEqual(HOLD_1.map(() => 0));
+  });
+
+  test('none of them is rewritten even when the subject is handed in as a behavior', async ({ page }) => {
+    const said = ['data', 'fa', 'crying', 'vocalizations'];
+    const out = await U(page, (N, [xs, b]) => xs.map((x) => N.recast(x, b).text), [HOLD_1, said]);
+    expect(out).toEqual(HOLD_1);
+  });
+
+  test('whether, which, what, how, if, to, into and by after the phrase each block the rewrite', async ({ page }) => {
+    const xs = ['whether', 'which', 'what', 'how', 'if', 'to', 'into', 'by']
+      .map((w) => `Crying did not resolve ${w} the BT expected.`);
+    const out = await U(page, (N, list) => list.map((x) => N.recast(x, ['crying']).text), xs);
+    expect(out).toEqual(xs);
+  });
+
+  test('"failed to resolve" and a passive "was not resolved" are never rewritten, even at the end of a clause', async ({ page }) => {
+    const xs = [
+      'Crying failed to resolve.',
+      'The vocalizations failed to resolve until the iPad was delivered.',
+      'The crying was not resolved.',
+      'Whining was not resolved across both trials.',
+      'Vocalizations were not resolved.',
+    ];
+    const out = await U(page, (N, list) => list.map((x) => N.recast(x, ['crying', 'vocalizations', 'whining'])), xs);
+    expect(out.map((o) => o.text)).toEqual(xs);
+    expect(out.map((o) => o.n)).toEqual(xs.map(() => 0));
+  });
+
+  test('a subject the intake names that is not a behavior is never read as one', async ({ page }) => {
+    const out = await U(page, (N) => [
+      N.behaviors('The data did not resolve.'),
+      N.behaviors('The FA did not resolve. The question remained unresolved.'),
+      N.behaviors('The function did not resolve across conditions.'),
+      N.passNote({ results: 'The data did not resolve.' }, ['results'], 'The data did not resolve.').output.results,
+    ]);
+    expect(out).toEqual([[], [], [], 'The data did not resolve.']);
+  });
+
+  test('a behavior from the intake, at the end of a clause, is still recast', async ({ page }) => {
+    const out = await U(page, (N) => [
+      N.passNote({ results: 'The vocalizations did not resolve.' }, ['results'], 'Vocalizations did not resolve.').output.results,
+      N.passNote({ results: 'Elopement did not resolve.' }, ['results'], 'Elopement did not stop.').output.results,
+    ]);
+    expect(out).toEqual(['The vocalizations continued.', 'Elopement continued.']);
+  });
+});
+
+test.describe('late hold 2: a correct sentence is not hinted', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto(BCBA);
+    await page.waitForFunction(() => !!window.NoteUnresolved);
+  });
+
+  const SPLIT = 'Vocalizations did not stop in attention but stopped in escape.';
+  const LATER = [
+    'Vocalizations stopped immediately in the escape condition.',
+    'Rate of vocalizations ended at zero in play.',
+    'During tangible, vocalizations resolved.',
+  ];
+
+  test('"did not stop in attention but stopped in escape" leaves nothing unresolved', async ({ page }) => {
+    const out = await U(page, (N, i) => [
+      N.behaviors(i),
+      N.behaviors('Vocalizations did not stop in attention but did stop in escape.'),
+      N.behaviors('Vocalizations did not stop in attention, but in escape, they stopped.'),
+    ], SPLIT);
+    expect(out).toEqual([[], [], []]);
+  });
+
+  test('the later correct sentences get no hint after that intake', async ({ page }) => {
+    const out = await U(page, (N, [xs, i]) => xs.map((x) => N.hints({ results: x }, i, ['results'])), [LATER, SPLIT]);
+    expect(out).toEqual(LATER.map(() => []));
+  });
+
+  test('a behavior unresolved in one condition is not hinted when a sentence says it stopped in another', async ({ page }) => {
+    const intake = '- Attention condition: vocalizations did not resolve.';
+    const out = await U(page, (N, [xs, i]) => xs.map((x) => N.hints({ results: x }, i, ['results'])), [LATER, intake]);
+    expect(out).toEqual(LATER.map(() => []));
+  });
+
+  test('a stop claim in the same condition, or with no condition named, is still hinted', async ({ page }) => {
+    const intake = '- Attention condition: vocalizations did not resolve.';
+    const out = await U(page, (N, i) => [
+      N.hints({ results: 'In the attention condition, vocalizations stopped after 2 minutes.' }, i, ['results']).length,
+      N.hints({ results: 'Vocalizations stopped.' }, i, ['results']).length,
+    ], intake);
+    expect(out).toEqual([1, 1]);
+  });
+
+  test('a stop read further back than two words is negated', async ({ page }) => {
+    const intake = 'Vocalizations did not resolve.';
+    const xs = [
+      'Vocalizations were not likely to have stopped.',
+      'Vocalizations were not observed to have stopped.',
+      'Vocalizations were not at any point observed to have stopped.',
+      'Vocalizations were unlikely to have stopped.',
+    ];
+    const out = await U(page, (N, [list, i]) => list.map((x) => N.hints({ results: x }, i, ['results'])), [xs, intake]);
+    expect(out).toEqual(xs.map(() => []));
+  });
+
+  test('"the interval ended with vocalizations occurring" is the interval ending, not the behavior', async ({ page }) => {
+    const out = await U(page, (N) => [
+      N.hints({ results: 'The interval ended with vocalizations occurring.' }, 'Vocalizations did not resolve.', ['results']),
+      N.hints({ results: 'The BT stopped the task when crying started.' }, "Crying didn't stop.", ['results']),
+    ]);
+    expect(out).toEqual([[], []]);
   });
 });

@@ -218,8 +218,14 @@ test.describe('nothing to change', () => {
       // Pollux's hold on #328, finding 3: an ask the #118 check dropped is a
       // finding, so it holds the block open rather than hiding behind the mark.
       P.nothingToChange({ terms: [], register: [], hints: [], hintsDropped: 0, unresolvedDropped: 1 }),
+      // The late hold on #328 (10 Oct), finding 3. A reading with its lists
+      // missing is a broken call, not a clean pass.
+      P.nothingToChange({}),
+      P.nothingToChange({ terms: [], register: [] }),
+      // A hint with no ask but a reason is still a finding.
+      P.nothingToChange({ terms: [], register: [], hints: [{ section: 'note', rank: 1, kind: 'thin', ask: '', why: 'The rate is not given.' }] }),
     ]);
-    expect(read).toEqual([false, false, false, false, false, false]);
+    expect(read).toEqual([false, false, false, false, false, false, false, false, false]);
   });
 });
 

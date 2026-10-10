@@ -1398,7 +1398,10 @@ function ExpertReading({ expert, claimAnswers, onClaimAnswer, busy }) {
     );
   }
 
-  if (expert.status === "failed") {
+  /* A reading without its findings list is a broken call, never a clean
+     pass (the late hold on #328, finding 3). NotesGate.expertPass already
+     returns null for one; this keeps the mark from ever standing in for it. */
+  if (expert.status === "failed" || (expert.status === "done" && !Array.isArray(expert.hints))) {
     return (
       <div style={{ marginBottom: 16 }} data-testid="expert-reading">
         {head}
