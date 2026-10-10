@@ -697,9 +697,15 @@ test.describe('annotate + panel revision', () => {
   });
 
   test('the collapsed pill carries the note quality, not just a label', async ({ page }) => {
+    // The intake fillRequiredAndGenerate types says "faded to independent", and
+    // since bt-checks.js a note that drops "independent" earns a hint, so the
+    // complete note here keeps the word.
+    const complete = note({
+      lessonProgressNarrative: 'The behavior technician utilized a three-item array, and the client responded independently.',
+    });
     await page.route('**/api/llm-call**', async (route) => {
       const body = JSON.parse(route.request().postData() || '{}');
-      return route.fulfill(reply(isTriageCall(body) ? { sufficient: true, questions: [] } : note()));
+      return route.fulfill(reply(isTriageCall(body) ? { sufficient: true, questions: [] } : complete));
     });
 
     await page.goto('/notes/bt/');

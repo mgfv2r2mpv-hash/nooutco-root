@@ -504,6 +504,32 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
     // name two different objects in one prompt.
     "- Return ONLY a JSON object. No markdown, no preamble, no commentary.";
 
+  /* ── Who did what, in whose words (card bt-coaching-actor, 2026-10-09) ──
+     From Kaleb's bench run of a telehealth parent-coaching case. The intake
+     said "dad ran trials w me coaching on video ... 'sit down' needed dad to
+     guide him", the answer said "I told dad to wait 3 seconds before guiding;
+     he did it on the next 3 trials", and the note wrote that the parent waited
+     before "a full physical prompt" and "the client completed the direction on
+     the next three trials". The coaching was gone, dad's act had become the
+     client's, and the prompt level was invented.
+
+     These sit in the user prompt, which the browser sends, rather than in
+     SYSTEM_CORE: this tool's system prompt is served from the prompt store, so
+     wording added there would not reach a live draft until it was re-extracted
+     in voice-module. The checks that can be made exactly live in
+     bt-checks.js. */
+  var FIDELITY_RULES = [
+    "",
+    "WHO DID WHAT, IN THE NOTES' OWN WORDS:",
+    "- Every act keeps the actor the notes give it. The technician coached, the caregiver implemented, the client responded. Never move an act from one person to another. When the notes say the technician told the caregiver to do something and \"he did it\" or \"she did it\", the caregiver did it, not the client.",
+    "- When the technician coached a caregiver, in person or on video, the coaching is the service. Report what the technician told, showed or modeled for the caregiver, the feedback given, and what the caregiver then did, before what the client did. Never drop the coaching and report only the caregiver's or the client's part.",
+    "- Say what the client did only where the notes say what the client did.",
+    "- Name a prompt level only when the notes name that level. \"Guide him\" is written as guided. Never turn it into full physical, partial physical, hand over hand or any other level the technician did not write. The rule to name prompt types specifically applies to a level the notes give, and is never a reason to supply one.",
+    "- Shorthand keeps its meaning and every qualifier: \"indep\" is independent (\"indep on most\" means independent on most trials), \"w\" is with, \"bx\" is behavior. A qualifier such as independent, most, or with a model is the result of the trial and is never dropped.",
+    "- Name a support for what it is. A \"my turn / your turn\" card is a turn-taking card, not a visual schedule. \"Visual schedule\" is a picture sequence of the activities coming up, and is ticked only when the notes say schedule.",
+    "- \"Contact family, new behavior\" is ticked only when the notes report a behavior that is new for this client (they say new, first time, or never seen before). A caregiver's question, such as one about toilet training, is not a new behavior: it goes in followUpNarrative as an item for the BCBA, and no box calls it a behavior.",
+  ];
+
   function buildUserPrompt(values) {
     return [
       "FACTUAL SESSION DATA (provided, do not infer, do not include in the JSON):",
@@ -594,7 +620,7 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
       // toilet training program goal 2. Replace worn / missing pieces velco on
       // the token board".
       "  When there are items, write them as numbered actions, direct and formal: \"BT to follow up with BCBA about: 1. Caregiver's request about a toilet training goal. 2. Replacing worn velcro on the token board.\"",
-    ].join("\n");
+    ].concat(FIDELITY_RULES).join("\n");
   }
 
   /* ── Normalizer ───────────────────────────────────────────────────────────
@@ -625,10 +651,17 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
        the intake, a blank pick becomes the middle option, and a hint says the
        tool chose it, the way parent's Caregiver Response does since #247. */
     var extraHints = [];
-    if (ctx && typeof ctx.intake === "string" && !out.consequenceEffectiveness) {
+    var isDraft = !!(ctx && typeof ctx.intake === "string");
+    if (isDraft && !out.consequenceEffectiveness) {
       out.consequenceEffectiveness = EFFECTIVENESS[1];
       extraHints.push({ section: "consequenceEffectiveness", code: "other", detail: "Notes did not say; set to the middle option. Check it." });
     }
+    /* The draft read against the technician's own notes (bt-checks.js): two
+       unsupported ticks undone, and the actor, prompt-level and dropped-word
+       gaps flagged. Fails open when the file did not load. */
+    var checked = isDraft && window.BtChecks ? window.BtChecks.apply(out, ctx.intake) : { output: out, hints: [] };
+    out = checked.output;
+    extraHints = extraHints.concat(checked.hints);
     out.hints = normalizeHints((Array.isArray(o.hints) ? o.hints : []).concat(extraHints), HINT_CATALOG, SECTION_IDS);
     // Only present on a revision that reached past the section the clinician
     // pointed at. Validated against the same closed section list as hints, so a

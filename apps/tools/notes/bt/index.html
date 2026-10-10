@@ -84,6 +84,10 @@
   <script src="/notes/bcba/expert-questions.js"></script>
   <script src="/notes/bcba/expert-praise.js"></script>
   <script src="/notes/bcba/unresolved.js"></script>
+  <!-- Reads a draft against the technician's own notes: undoes two ticks the
+       notes cannot support and flags lost actors, prompt levels and words.
+       Loaded before bt.js, which calls it from normalizeOutput. -->
+  <script src="/notes/bcba/tools/bt-checks.js"></script>
   <script src="/notes/bcba/tools/bt.js"></script>
 
   <!-- Which tool the address names: sets the crumb and tab title before the
