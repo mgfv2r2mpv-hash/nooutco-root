@@ -50,13 +50,19 @@
      punctuation ("new: hair pulling", "biting (new)", "kicking - new",
      "pinching is new"), "first time" or "first instance", "never ... before" or
      "not seen before", and a behavior that "started" or "began". After #331
-     (card tool-hint-polish) also "has not done that before" and "new this
-     week", and climbing counts as a behavior. Erring wide is
+     (card tool-hint-polish) also "has not done that before", a behavior
+     "new this week", and climbing onto furniture. Erring wide is
      the safe side here: the tick stays either way, and a match only keeps the
      "check this" hint quiet. "new behavior plan" and its kin are a document,
      not a behavior, so they do not count. */
-  var BEHAVIOR_WORDS = "behaviou?rs?|bxs?|aggression|elopement|eloping|self[- ]injur\\w*|SIB|tantrums?|flopping|dropping|biting|hitting|kicking|scratching|spitting|screaming|yelling|throwing|pinching|pushing|grabbing|pulling|hair pulling|climbing|crying|bolting|property destruction|mouthing|pica|head[- ]?banging";
-  var BEHAVIOR_VERBS = "hit|hits|bite|bit|bites|kick|kicked|kicks|scratch|scratched|spit|spat|pinch|pinched|push|pushed|throw|threw|scream|screamed|yell|yelled|elope|eloped|bolt|bolted|flop|flopped|grab|grabbed|pull|pulled|bang|banged|cry|cried|climb|climbed|climbs";
+  var BEHAVIOR_NOUNS = "behaviou?rs?|bxs?|aggression|elopement|eloping|self[- ]injur\\w*|SIB|tantrums?|flopping|dropping|biting|hitting|kicking|scratching|spitting|screaming|yelling|throwing|pinching|pushing|grabbing|pulling|hair pulling|crying|bolting|property destruction|mouthing|pica|head[- ]?banging";
+  var BEHAVIOR_VERBS = "hit|hits|bite|bit|bites|kick|kicked|kicks|scratch|scratched|spit|spat|pinch|pinched|push|pushed|throw|threw|scream|screamed|yell|yelled|elope|eloped|bolt|bolted|flop|flopped|grab|grabbed|pull|pulled|bang|banged|cry|cried";
+  /* Climbing is a behavior only onto something not meant for climbing, as in
+     sup-checks.js. "Climbing the stairs" in OT, a "climbing wall" and a
+     "climbing program" are skills, so the hint still asks (R336 round 3).
+     One whitespace run per gap, so a long run of spaces cannot backtrack. */
+  var CLIMBING = "climb(?:ing|ed|s)?\\s+(?:(?:on|onto|up|over|in)\\s+){0,2}(?:(?:the|a|his|her|their)\\s+)?(?:\\w+\\s+){0,2}?(?:furniture|counters?|shel(?:f|ves)|bookshel(?:f|ves)|tables?|fences?|chairs?|couch(?:es)?|cabinets?|dressers?|desks?|windows?)";
+  var BEHAVIOR_WORDS = BEHAVIOR_NOUNS + "|" + CLIMBING;
   var NOT_A_BEHAVIOR = "(?!\\s+(?:plan|support|intervention|goal|program|protocol|sheet|data|target)s?\\b)";
   var NEW_BEHAVIOR = new RegExp(
     "\\b(?:brand\\s+)?new\\s+(?:\\w+\\s+){0,2}(?:" + BEHAVIOR_WORDS + ")\\b" + NOT_A_BEHAVIOR +
@@ -66,8 +72,11 @@
     "|\\b(?:is|was|are|were)\\s+(?:brand\\s+)?new\\b" +
     "|\\bfirst\\s+(?:time|instance|occurrence|episode)\\b" +
     "|\\bnever\\s+(?:\\w+\\s+){0,5}before\\b|\\bnot\\s+seen\\s+before\\b|\\bnever\\s+(?:seen|done|happened|did)\\b" +
-    "|(?:\\bnot|n't)\\s+(?:done|seen|shown|happened|did)\\s+(?:\\w+\\s+){0,3}before\\b" +
-    "|\\bnew\\s+(?:this|today|since|as\\s+of)\\b" +
+    // "has not done that before", but not "has not done that puzzle before"
+    // or "hasn't seen the new tech before" (R336 round 3).
+    "|(?:\\bnot|n't)\\s+(?:done|seen|shown|happened|did)\\s+(?:(?:that|this|it)\\s+)?before\\b" +
+    // "climbing furniture, new this week", but not "new this week: token board".
+    "|\\b(?:" + BEHAVIOR_WORDS + ")\\b[^.;\\n]{0,40}?\\bnew\\s+(?:this|today|since|as\\s+of)\\b" +
     "|\\b(?:started|began|starting|beginning|new onset of)\\s+(?:to\\s+)?(?:" + BEHAVIOR_WORDS + "|" + BEHAVIOR_VERBS + ")\\b" +
     "|\\b(?:" + BEHAVIOR_WORDS + ")\\s+(?:\\w+\\s+){0,2}(?:started|began)\\b",
     "i"

@@ -49,10 +49,9 @@
   /* Card tool-hint-polish, after the #336 review. A behavior word followed
      by a program word ("behavior data", "bx graphing", "hitting criterion")
      is about the program, not a behavior, as in bt-checks.js. */
-  // A score is a digit with a unit ("80%", "80 percent", "9 of 10 trials");
-  // a bare count ("3x", "4 times") is a frequency and keeps the alert.
-  var SCORE = "\\d+\\s*(?:%|percent\\b|trials?\\b|of\\b)";
-  var NOT_A_BEHAVIOR = "(?!\\s+(?:(?:plan|support|intervention|goal|program|protocol|sheet|data|target|criterion|mastery|percent|graph\\w*|chart\\w*|probe)s?\\b|" + SCORE + "))";
+  // No number counts here: "50% of intervals" and "2 of 5 sessions" are
+  // the data of a reduction target (R336 round 3).
+  var NOT_A_BEHAVIOR = "(?!\\s+(?:plan|support|intervention|goal|program|protocol|sheet|data|target|criterion|mastery|percent|graph\\w*|chart\\w*|probe)s?\\b)";
 
   // Climbing is a behavior only onto something not meant for climbing.
   // "Climbing the stairs" in OT, a "climbing wall" and a "climbing program"
@@ -67,8 +66,16 @@
   // percent", "hit her goal". A behavior or verb before one of these is good
   // news (R336 HIGH).
   // An object thrown "at" someone is aggression, so "at" after it keeps the
-  // alert ("throwing the ball at staff").
-  var SKILL_OBJECT = "(?!\\s+(?:\\w+\\s+){0,2}?(?:(?:ball|cart|clothespin|wall|stairs?|steps?|gum|car|criterion|mastery|goal|target|percent|data|bubble|button|ladder|slide|swing|mark|benchmark)s?\\b(?!\\s+at\\b)|" + SCORE + "))";
+  // alert ("throwing the ball at staff"). A wall is not here: kicking the
+  // wall is property disruption (R336 round 3).
+  var SKILL_WORDS = "(?:ball|cart|clothespin|stairs?|steps?|gum|car|criterion|mastery|goal|target|percent|data|bubble|button|ladder|slide|swing|mark|benchmark)s?\\b(?!\\s+at\\b)";
+  // After a behavior noun: skill objects only. A number there is the
+  // behavior's own data ("hitting 50% of intervals", "2 of 4 sessions").
+  var SKILL_OBJECT = "(?!\\s+(?:\\w+\\s+){0,2}?" + SKILL_WORDS + ")";
+  // After a verb, a score is a skill result too ("hit 80%", "hit 3 of 5
+  // targets", "hit 9 of 10 trials").
+  var SCORE = "\\d+\\s*(?:%|percent\\b|trials?\\b|of\\b)";
+  var VERB_OBJECT = "(?!\\s+(?:(?:\\w+\\s+){0,2}?" + SKILL_WORDS + "|" + SCORE + "))";
 
   /* "For the first time" counts only after a behavior noun, or after a harm
      verb with a person as its object ("hit mom", "threw a toy at a peer").
@@ -86,7 +93,7 @@
 
   // A behavior verb after "started" or "first time", unless a skill object
   // follows it. "A bit" is an amount, not a bite.
-  var VERB = "\\b(?:" + BEHAVIOR_VERBS + ")\\b" + SKILL_OBJECT;
+  var VERB = "\\b(?:" + BEHAVIOR_VERBS + ")\\b" + VERB_OBJECT;
 
   var NEW_BEHAVIOR = new RegExp(
     "\\bnew\\s+(?:\\w+\\s+){0,2}" + BEHAVIOR +
@@ -95,7 +102,8 @@
     "|\\bfirst\\s+(?:time|instance|occurrence)\\s+(?:of\\s+)?(?:(?!a\\s+bit\\b)\\w+\\s+){0,2}(?:" + BEHAVIOR + SKILL_OBJECT + "|" + VERB + ")" +
     "|" + FIRST_TIME +
     // "pinching is new" (tool-hint-polish).
-    "|" + BEHAVIOR + "\\s+(?:is|was|are|were)\\s+(?:brand\\s+)?new\\b",
+    // A behavior new "last month" or "2 weeks ago" is history (R336 round 3).
+    "|" + BEHAVIOR + "\\s+(?:is|was|are|were)\\s+(?:brand\\s+)?new\\b(?!\\s+(?:last\\s+\\w+|\\d+\\s+\\w+\\s+ago|\\w+\\s+ago|previously|earlier|before|back\\s+in)\\b)",
     "i"
   );
   // A behavior PLAN is a document. "New behavior plan implemented" is news
