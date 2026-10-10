@@ -391,6 +391,17 @@
     const forms = (m) => (Array.isArray(m) ? m : [m]);
     const QUESTION = /^\s*(clarify|specify|(confirm|verify|determine|check|ask|identify) (whether|if)|find out (whether|if))\b|\?\s*$/i;
     
+    /* What the note says: its narratives, its picks and its goals table rows.
+       Never the page around it. Kaleb's Assessment run on 9 Oct 2026 passed
+       "neuropsych" only because the expert review panel showed "neuropsych - not
+       recognized"; the note itself said "assessment report from May". So mentions
+       and forbids read this, and the card's `all` text is left for the report. */
+    function noteWords(note) {
+      const picks = Object.values(note.picks || {}).flat();
+      const rows = Object.values(note.tables || {}).flat();
+      return [...Object.values(note.text || {}), ...picks, ...rows].join('\n');
+    }
+    
     /* The note as the parent checker reads it: narratives by key, picks by group,
        a single-select as its one label. */
     function flatDraft(note, singles = []) {
@@ -405,12 +416,12 @@
       const e = c.expect || {};
       const fails = [];
       const narratives = Object.values(note.text || {}).join('\n');
-      const all = note.all || narratives;
+      const said = noteWords(note);
     
       for (const m of e.mentions || []) {
-        if (!forms(m).some((f) => saysAtWordStart(all, f))) fails.push(`missing from the note: ${forms(m).map((f) => `"${f}"`).join(' or ')}`);
+        if (!forms(m).some((f) => saysAtWordStart(said, f))) fails.push(`missing from the note: ${forms(m).map((f) => `"${f}"`).join(' or ')}`);
       }
-      for (const f of e.forbid || []) if (lc(all).includes(lc(f))) fails.push(`must not appear: "${f}"`);
+      for (const f of e.forbid || []) if (lc(said).includes(lc(f))) fails.push(`must not appear: "${f}"`);
       for (const [group, labels] of Object.entries(e.picks || {})) {
         const on = (note.picks || {})[group] || [];
         for (const l of labels) if (!on.includes(l)) fails.push(`${group} is missing "${l}"`);
@@ -432,7 +443,7 @@
           if (line.trim() && QUESTION.test(line)) fails.push(`${key} holds a question to the author: "${line.trim()}"`);
         }
       }
-      if (/\[\[T\d+\]\]/.test(all)) fails.push('an opaque token was left in the note');
+      if (/\[\[T\d+\]\]/.test(said)) fails.push('an opaque token was left in the note');
       if (/\u2014/.test(narratives)) fails.push('an em dash in a narrative');
       for (const group of e.singlesNeverBlank || []) {
         if (!((note.picks || {})[group] || [])[0]) fails.push(`${group} left blank`);
@@ -544,8 +555,9 @@
   }
   
   /* THE NOTE CARD AS A CLINICIAN COPIES IT: picks per group, text per narrative,
-   * and `all`, the whole note in the card's order, each section under its own
-   * heading.
+   * the goals table's rows, and `all`, the whole card in its order, each section
+   * under its own heading. The checks read the first three; `all` is for a
+   * person reading the report.
    *
    * A narrative the corrections pass changed is drawn as marks in place of its
    * textarea (engine.jsx renderSectionContent), and that box "holds exactly what
@@ -587,6 +599,7 @@
       if (sec.querySelector('[data-option]')) picks[sec.getAttribute('data-section-id')] = on;
     });
     const text = {};
+    const tables = {};
     const parts = [];
     card.querySelectorAll('[data-section-key]').forEach((sec) => {
       const key = sec.getAttribute('data-section-key');
@@ -601,11 +614,18 @@
       }
       const marked = sec.querySelector('[data-corrections-section]');
       if (marked) { text[key] = boxText(marked); say(text[key]); return; }
+      // The goals table: its rows' cells, never the goal picker above it.
+      const rows = [...sec.querySelectorAll('[data-goal-row]')];
+      if (rows.length) {
+        tables[key] = rows.map((r) => [...r.querySelectorAll('textarea, input:not([type]), input[type="text"]')].map((t) => t.value.trim()).filter(Boolean).join(' | '));
+        say(tables[key].join('\n'));
+        return;
+      }
       const ta = sec.querySelector('textarea');
       if (ta) { text[key] = ta.value; say(text[key]); return; }
       say(shownIn(sec, title));
     });
-    return { picks, text, all: parts.join('\n\n') };
+    return { picks, text, tables, all: parts.join('\n\n') };
   }
   
   async function benchInPage(CASES, checkNote, opts = {}) {

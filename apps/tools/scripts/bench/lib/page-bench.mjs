@@ -99,8 +99,9 @@ export function answerFor(question, truth) {
 }
 
 /* THE NOTE CARD AS A CLINICIAN COPIES IT: picks per group, text per narrative,
- * and `all`, the whole note in the card's order, each section under its own
- * heading.
+ * the goals table's rows, and `all`, the whole card in its order, each section
+ * under its own heading. The checks read the first three; `all` is for a
+ * person reading the report.
  *
  * A narrative the corrections pass changed is drawn as marks in place of its
  * textarea (engine.jsx renderSectionContent), and that box "holds exactly what
@@ -142,6 +143,7 @@ export function readNoteCard(card) {
     if (sec.querySelector('[data-option]')) picks[sec.getAttribute('data-section-id')] = on;
   });
   const text = {};
+  const tables = {};
   const parts = [];
   card.querySelectorAll('[data-section-key]').forEach((sec) => {
     const key = sec.getAttribute('data-section-key');
@@ -156,11 +158,18 @@ export function readNoteCard(card) {
     }
     const marked = sec.querySelector('[data-corrections-section]');
     if (marked) { text[key] = boxText(marked); say(text[key]); return; }
+    // The goals table: its rows' cells, never the goal picker above it.
+    const rows = [...sec.querySelectorAll('[data-goal-row]')];
+    if (rows.length) {
+      tables[key] = rows.map((r) => [...r.querySelectorAll('textarea, input:not([type]), input[type="text"]')].map((t) => t.value.trim()).filter(Boolean).join(' | '));
+      say(tables[key].join('\n'));
+      return;
+    }
     const ta = sec.querySelector('textarea');
     if (ta) { text[key] = ta.value; say(text[key]); return; }
     say(shownIn(sec, title));
   });
-  return { picks, text, all: parts.join('\n\n') };
+  return { picks, text, tables, all: parts.join('\n\n') };
 }
 
 export async function benchInPage(CASES, checkNote, opts = {}) {

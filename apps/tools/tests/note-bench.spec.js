@@ -206,6 +206,23 @@ test.describe('mentions', () => {
     expect(c1.expect.mentions).toContain('errorless');
   });
 
+  test('the page around the note never carries a mention or trips a forbid', () => {
+    // Kaleb's Assessment run, 9 Oct 2026: "neuropsych" passed on the expert
+    // review panel while the note said "assessment report from May".
+    const shown = {
+      text: { summary: 'Read the assessment report from May and the speech eval.' },
+      picks: {},
+      all: 'EXPERT REVIEW OF INTAKE\nneuropsych - not recognized\nwas observed\nRead the assessment report from May and the speech eval.',
+    };
+    expect(checks.checkNote({ expect: { mentions: ['neuropsych', 'speech'], forbid: ['was observed'] } }, shown))
+      .toEqual(['missing from the note: "neuropsych"']);
+  });
+
+  test('a ticked pick and a goals table row are part of the note', () => {
+    const shown = { text: { summary: '' }, picks: { antecedentStrategies: ['Visual schedule'] }, tables: { goalsAnalyzed: ['Tacting animals | Errorless, echoic at 0 sec'] }, all: '' };
+    expect(checks.checkNote({ expect: { mentions: ['visual schedule', 'errorless'] } }, shown)).toEqual([]);
+  });
+
   test('a missing fact names every form it looked for', () => {
     expect(checks.checkNote(c([['dad', 'father']]), note('Mom ran the trials.'))).toEqual(['missing from the note: "dad" or "father"']);
   });
@@ -234,7 +251,10 @@ test.describe('reading the note card', () => {
         <div data-option="Offered choices" data-on="1"><span>Offered choices</span></div>
         <div data-option="Visual schedule" data-on="0"><span>Visual schedule</span></div></div></div>
     <div data-section-key="concerns" data-section-title="Summary of Concerns"><span>Summary of Concerns</span><button>Copy</button>
-      <textarea data-section-id="concerns"></textarea></div></div>`;
+      <textarea data-section-id="concerns"></textarea></div>
+    <div data-section-key="goalsAnalyzed" data-section-title="Goals"><span>Goals</span>
+      <div><span>Suggested goal: Climbing</span></div>
+      <div data-goal-row="0"><input value="Tacting animals"><input value="Errorless, echoic at 0 sec"></div></div></div>`;
 
   test('each narrative sits under its own heading, and an unticked option is not in the note', async ({ page }) => {
     await page.setContent(CARD);
@@ -247,8 +267,11 @@ test.describe('reading the note card', () => {
     expect(out.all).toBe([
       'Session Start', 'Client walked in and greeted staff.', '',
       'Antecedent Strategies', 'Offered choices', '',
-      'Summary of Concerns', '1. Bring a new token board.',
+      'Summary of Concerns', '1. Bring a new token board.', '',
+      'Goals', 'Tacting animals | Errorless, echoic at 0 sec',
     ].join('\n'));
+    // The goal picker above the table is page, not note.
+    expect(out.tables).toEqual({ goalsAnalyzed: ['Tacting animals | Errorless, echoic at 0 sec'] });
   });
 });
 
