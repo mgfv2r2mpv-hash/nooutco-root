@@ -358,12 +358,16 @@ TERMINOLOGY (non-negotiable)\n\
     ["progress", "programming", "behavior", "feedback", "followup"].forEach(function (k) {
       out[k] = typeof o[k] === "string" ? o[k] : "";
     });
-    /* The draft read against the BCBA's own notes (sup-checks.js): overall
-       progress capped at moderate on a stalled program or a new behavior, and
-       a dropped procedure name or an invented prompt level flagged. Only on a
-       real draft, which carries the intake, and fails open when the file did
-       not load. */
+    /* The draft read against the BCBA's own notes (sup-checks.js): hints for
+       a substantial progress pick beside a stall or a new behavior, a dropped
+       procedure name, and an invented prompt level. It never changes a pick or
+       the prose. Only on a real draft, which carries the intake. Fails open
+       when the file did not load, and says so in the console, because a
+       silent skip looks exactly like a clean note. */
     var isDraft = !!(ctx && typeof ctx.intake === "string");
+    if (isDraft && !window.SupChecks && typeof console !== "undefined") {
+      console.warn("SupChecks did not load; this Supervision draft was not checked against the notes.");
+    }
     var checked = isDraft && window.SupChecks ? window.SupChecks.apply(out, ctx.intake) : { output: out, hints: [] };
     out = checked.output;
     out.hints = normalizeHints((Array.isArray(o.hints) ? o.hints : []).concat(checked.hints), HINT_CATALOG, SECTION_IDS);

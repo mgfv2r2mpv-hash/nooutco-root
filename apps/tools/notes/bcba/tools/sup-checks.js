@@ -4,11 +4,14 @@
  * sup-note-accuracy). The prompt now asks for each fix (sup.js,
  * FIDELITY_RULES); this file is the part that can be checked exactly:
  *
- *   OVERALL PROGRESS IS CAPPED AT MODERATE when the notes report a stalled
- *   program or a new behavior of concern. The pick is changed, not only
- *   flagged, because it is a checkbox copied into the EHR as it stands, and a
- *   hint says the tool moved it. This is the most judgment-based rule in the
- *   card: Atlas's call, "no higher than moderate".
+ *   A SUBSTANTIAL PROGRESS PICK NEXT TO A STALL OR A NEW BEHAVIOR gets a hint
+ *   that quotes the phrase it read and asks the BCBA to check it. It used to
+ *   change the pick to moderate, and the reviewer (R332-H1) found it capping
+ *   all 15 substantial notes tried ("no new bx", "no regression", "elopement
+ *   flat at zero", "flat affect"). Atlas's call: the pick stays the BCBA's,
+ *   and the matcher reads negation, a reduction target at zero, and
+ *   maintenance, so the hint is rarely wrong. The rule itself ("no higher than
+ *   moderate") stays in the prompt.
  *
  *   A NAMED PROCEDURE THE NOTE DROPPED, and A PROMPT LEVEL THE NOTES NEVER
  *   NAMED, are flagged and the prose is left alone. "changed to errorless w
@@ -26,23 +29,76 @@
   "use strict";
 
   var STEADY = "Client is making steady, substantial progress towards meeting goals (see summary below)";
-  var MODERATE = "Client is making moderate progress towards meeting goals (see summary below)";
 
   var NARRATIVES = ["progress", "programming", "behavior", "feedback", "followup"];
 
-  var STALLED = /\bstall(?:ed|ing|s)?\b|\bplateau\w*\b|\bflat\b|\bno progress\b|\bnot (?:progressing|making progress)\b|\bregress\w*\b/i;
+  /* WHAT A STALL OR A NEW BEHAVIOR LOOKS LIKE, read one clause at a time so
+     a phrase is judged with the words around it. Each matcher errs toward
+     silence: a hint that is wrong teaches the BCBA to skip the hint. */
+  var STALLED = /\bstall(?:ed|ing|s)?\b|\bplateau\w*\b|\bflat\b|\bno progress\b|\bnot (?:progressing|making progress|improving)\b|\bregress\w*\b|\bstuck\b|\bno (?:gains?|improvement)\b|\blevell?ed off\b|\bhas(?:n't| not) (?:moved|improved)\b/i;
 
-  /* A behavior the notes call new: "new" next to a behavior word, or the plain
-     ways a clinician says it. A new target, a new sibling or a new material is
-     not a new behavior, which is why this is narrower than /new/. */
-  var BEHAVIOR_WORDS = "behaviou?rs?|bxs?|aggression|elopement|eloping|self[- ]injur\\w*|SIB|tantrums?|flopping|dropping|biting|hitting|kicking|scratching|spitting|screaming|yelling|throwing|property destruction|mouthing|pica|head[- ]?banging";
+  // A clause about a reduction target at zero, or about maintenance, is good
+  // news when it says "flat". "Flat affect" is a presentation, not a program.
+  var AT_ZERO = /\bat\s+(?:zero|0)\b|\bzero\b|\b0\s*(?:x|times|occurrences|per)\b/i;
+  var MAINTENANCE = /\bmaint\w*|\bmastered\b|\b100\s*%/i;
+  var STALL_NOT_AFFECT = new RegExp("(?!flat\\s+affect\\b)(?:" + STALLED.source + ")", "i");
+
+  var BEHAVIOR_WORDS = "behaviou?rs?|bxs?|aggression|elopement|eloping|self[- ]injur\\w*|SIB|tantrums?|flopping|dropping|biting|hitting|kicking|scratching|spitting|screaming|yelling|throwing|pinching|pushing|grabbing|hair pulling|bolting|property destruction|mouthing|pica|head[- ]?banging";
+  var BEHAVIOR_VERBS = "hit|bite|bit|kick|kicked|scratch|scratched|spit|spat|pinch|pinched|push|pushed|throw|threw|scream|screamed|elope|eloped|bolt|bolted|flop|flopped";
   var NEW_BEHAVIOR = new RegExp(
     "\\bnew\\s+(?:\\w+\\s+){0,2}(?:" + BEHAVIOR_WORDS + ")\\b" +
-    "|\\b(?:" + BEHAVIOR_WORDS + ")\\b[^.\\n]{0,30}\\b(?:is|was|are|were)\\s+new\\b" +
-    "|\\bfirst time\\b|\\bnever (?:seen|done|happened|did)\\b" +
-    "|\\b(?:started|began|new onset of)\\s+(?:" + BEHAVIOR_WORDS + ")\\b",
+    "|\\b(?:" + BEHAVIOR_WORDS + ")\\s+(?:\\w+\\s+){0,2}(?:started|began)\\b" +
+    "|\\b(?:started|began|new onset of)\\s+(?:to\\s+)?(?:" + BEHAVIOR_WORDS + "|" + BEHAVIOR_VERBS + ")\\b" +
+    "|\\bfirst\\s+(?:time|instance|occurrence)\\s+(?:of\\s+)?(?:\\w+\\s+){0,2}(?:" + BEHAVIOR_WORDS + "|" + BEHAVIOR_VERBS + ")\\b",
     "i"
   );
+  // A behavior PLAN is a document. "New behavior plan implemented" is news
+  // about the protocol, not a new behavior of concern.
+  var BEHAVIOR_DOCUMENT = /\bbehaviou?r\s+(?:support\s+|intervention\s+)?plan\b|\bBIP\b|\bBSP\b/i;
+
+  // A negator in the three words before a match turns it around: "no new bx",
+  // "no regression", "no stalls".
+  var NEGATOR = /\b(?:no|not|without|zero|never|nor|none)\b/i;
+  var CLAUSE_BREAK = /[.;,\n]|\s(?:so|but|and then|then)\s/i;
+  var QUOTE_MAX = 50;
+
+  function negated(clause, index) {
+    var before = clause.slice(0, index).trim().split(/\s+/).slice(-3).join(" ");
+    return NEGATOR.test(before);
+  }
+
+  // The first un-negated match of `re` in a clause, or -1.
+  function hit(clause, re) {
+    var m = re.exec(clause);
+    if (!m) return -1;
+    return negated(clause, m.index) ? -1 : m.index;
+  }
+
+  // The clause, or a window of it around the match, short enough to quote.
+  function quote(clause, at) {
+    if (clause.length <= QUOTE_MAX) return clause;
+    var start = Math.max(0, at - 20);
+    var piece = clause.slice(start, start + QUOTE_MAX);
+    if (start > 0) piece = piece.replace(/^\S*\s/, "");
+    return piece.replace(/\s\S*$/, "").trim();
+  }
+
+  // What in the notes a substantial pick should be checked against, quoted.
+  function concern(intake) {
+    var clauses = String(intake || "").split(CLAUSE_BREAK).map(function (c) { return (c || "").trim(); }).filter(Boolean);
+    for (var i = 0; i < clauses.length; i++) {
+      var c = clauses[i];
+      if (!AT_ZERO.test(c) && !MAINTENANCE.test(c)) {
+        var at = hit(c, STALL_NOT_AFFECT);
+        if (at !== -1) return quote(c, at);
+      }
+      if (!BEHAVIOR_DOCUMENT.test(c)) {
+        var nb = hit(c, NEW_BEHAVIOR);
+        if (nb !== -1) return quote(c, nb);
+      }
+    }
+    return "";
+  }
 
   /* Procedures a supervision note must keep by name. Each is looked for in the
      intake and in the note by the same pattern, with the abbreviation and the
@@ -89,14 +145,17 @@
     return hit ? hit[0] : "";
   }
 
-  function capProgress(out, intake) {
-    if (out.overallProgress !== STEADY) return { changes: {}, hints: [] };
-    var why = STALLED.test(intake) ? "a stalled program" : NEW_BEHAVIOR.test(intake) ? "a new behavior of concern" : "";
-    if (!why) return { changes: {}, hints: [] };
-    return {
-      changes: { overallProgress: MODERATE },
-      hints: [{ section: "overallProgress", code: "other", detail: "Set to moderate: the notes report " + why + "." }],
-    };
+  /* Never changes the pick (R332-H1). A substantial pick beside a stall or a
+     new behavior gets one hint that quotes what was read. */
+  function progressHints(out, intake) {
+    if (out.overallProgress !== STEADY) return [];
+    var said = concern(intake);
+    if (!said) return [];
+    return [{
+      section: "overallProgress",
+      code: "other",
+      detail: "Progress picked substantial, but the notes mention \"" + said + "\"; check it.",
+    }];
   }
 
   function droppedProcedureHints(out, intake) {
@@ -120,17 +179,16 @@
     });
   }
 
-  /* The whole check. Returns a NEW output and the hints to add; the caller
-     concatenates them before its hint normalizer runs, so they take the same
-     validation as every other hint. */
+  /* The whole check. Returns the output unchanged, as a NEW object, and the
+     hints to add; the caller concatenates them before its hint normalizer
+     runs, so they take the same validation as every other hint. */
   function apply(out, intake) {
     var o = out && typeof out === "object" ? out : {};
     var src = text(intake);
-    var capped = capProgress(o, src);
-    var next = Object.assign({}, o, capped.changes);
+    var next = Object.assign({}, o);
     return {
       output: next,
-      hints: capped.hints.concat(droppedProcedureHints(next, src), promptLevelHints(next, src)),
+      hints: progressHints(next, src).concat(droppedProcedureHints(next, src), promptLevelHints(next, src)),
     };
   }
 
