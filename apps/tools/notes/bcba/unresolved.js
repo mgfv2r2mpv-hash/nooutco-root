@@ -34,6 +34,14 @@
  * is clinical text for a BCBA, and a wrong automatic rewrite or a false flag
  * is worse than a miss.
  *
+ * THE LATE HOLD ON #328 (10 Oct) restates Kaleb's clinical rule: automatic
+ * checks raise hints and never rewrite a correct sentence. So a subject
+ * counts only when it is a behavior (a problem behavior below, or one the
+ * notes name as a target), "failed to resolve" and a passive "was not
+ * resolved" are never rewritten, a stop claim needs the behavior as its
+ * subject, and a behavior the notes say did not stop in one condition is not
+ * flagged where a sentence says it stopped in another.
+ *
  * Pure. Every function returns a new value and edits nothing it was given. */
 (function () {
   "use strict";
@@ -59,29 +67,53 @@
   var PROBLEM = ("cry sob wail whine whimper fuss scream shriek squeal yell shout " +
     "curse swear protest refuse tantrum vocalize hit kick bite scratch pinch " +
     "spit slap punch push grab swipe elbow headbutt aggress throw destroy " +
-    "elope bang headbang flop injure mouth lick smear flap script stim growl")
+    "elope bang headbang flop injure mouth lick smear flap script stim growl " +
+    "aggression elopement disrupt noncompliance sib")
     .split(" ");
+  var PROBLEM_STEMS = PROBLEM.map(stem);
   /* Words that name a target behavior in the notes. A word in the same
      sentence counts as named. */
   var TARGET = /\b(?:target(?:ed)?\s+behaviou?rs?|behaviou?rs?\s+of\s+concern|problem\s+behaviou?rs?|challenging\s+behaviou?rs?|maladaptive|bocs?|reduction\s+goals?)\b/i;
 
-  // Words that sit in the behavior slot and are not a behavior.
-  var NOT_A_BEHAVIOR = /^(?:the|a|an|it|this|that|they|he|she|client|child|learner|bcba|bt|rbt|staff|technician|therapist|session|trials?|going|doing|working|playing|engaging|participating|attending)$/i;
+  /* Words that sit in the behavior slot and are not a behavior. The second
+     line is the late hold's: "The data did not resolve whether ...", "The FA
+     failed to resolve which ...". The behavior gate below already keeps them
+     out; naming them here keeps a target sentence that holds them from
+     letting one in. */
+  var NOT_A_BEHAVIOR = /^(?:the|a|an|it|this|that|they|he|she|client|child|learner|bcba|bt|rbt|staff|technician|therapist|session|trials?|going|doing|working|playing|engaging|participating|attending|data|fa|fba|function|assessment|analysis|question|hypothesis|pattern|results?|conditions?|issue|concern|problem|conflict|disagreement|team|plan|intervention|reinforcement|attention|prompting|prompts?|demands?|behaviou?rs?|targets?|targeted|stimulus|stimuli)$/i;
 
   // A claim that a behavior stopped. "no longer" is one with no verb in it.
   var STOPPED = /\b(?:stopped|stops|stop|ceased|ceases|cease|resolved|resolves|resolve|subsided|subsides|subside|ended|extinguished|terminated)\b|\bno\s+longer\b/gi;
   // "n't" carries no word boundary in front of it ("didn't"), so it is not
   // anchored the way the whole words are.
-  /* Four words back, so "did not appear to have stopped" reads as negated
-     (Pollux, finding 2). */
-  var NEGATED = /(?:\bnot|\bnever|\bwithout|\bfailed\s+to|n't)\s+(?:\w+\s+){0,4}$/i;
+  /* Six words back, so "did not appear to have stopped" (Pollux, finding 2)
+     and "were not at any point observed to have stopped" (the late hold)
+     read as negated. "unlikely" negates the same way. */
+  var NEGATED = /(?:\bnot|\bnever|\bwithout|\bunlikely|\bfailed\s+to|n't)\s+(?:\w+\s+){0,6}$/i;
   /* A clause that says the behavior went on is not a stop claim, whatever
      else stopped in it: "Crying continued after the BT told him to stop" is
      about the BT (Pollux, finding 2). */
   var CONTINUING = /\b(?:continu(?:e|ed|es|ing)|kept|keeps|persist(?:ed|s|ing)?|remain(?:ed|s|ing)?|still|did\s+not|didn't|does\s+not|doesn't)\b/i;
   /* A clause whose subject is left out or is a pronoun ("..., but stopped
      within a minute") is about the clause before it. */
-  var SUBJECTLESS = /^(?:(?:it|they|he|she|this|then|eventually|later|finally|soon|quickly)\s+){0,2}(?:stopped|ceased|resolved|subsided|ended)\b/i;
+  var SUBJECTLESS = /^(?:(?:it|they|he|she|this|then|eventually|later|finally|soon|quickly|did|had|has|was|were)\s+){0,3}(?:stopped|stop|ceased|cease|resolved|resolve|subsided|subside|ended|end)\b/i;
+
+  /* After the stop verb, the behavior counts only as its object: "stopped
+     crying", "stopped his crying", "no longer cried". "The interval ended
+     with vocalizations occurring" is the interval ending (the late hold). */
+  var DETERMINER = /^(?:his|her|their|the|all)$/;
+  var NO_LONGER_REACH = 3;
+  // A problem behavior's stem matches a longer word from this length on:
+  // "elop" reads "elopement", "aggress" reads "aggression".
+  var PREFIX_MIN = 4;
+
+  /* The FA conditions a sentence names. A behavior the notes say did not stop
+     in attention is not flagged where a sentence says it stopped in escape
+     (the late hold, finding 2). */
+  var CONDITION = /\b(attention|escape|demands?|tangibles?|play|alone|ignore|control)\b/gi;
+
+  // Sentences, for the conditions a clause sits in.
+  var SENTENCE = /[.;!?\n]+/;
 
   /* Clauses, so "Crying stopped and the vocalizations continued" is two
      claims about two behaviors rather than one sentence holding both words. */
@@ -96,7 +128,12 @@
        a timing         "did not resolve immediately / within 2 minutes"
        a cause          "did not resolve on its own / with redirection"
      So only the end of a clause, or a word that keeps "continued" true. */
-  var RECAST = /\b([a-z][a-z'-]*)\s+((?:did\s+not|didn't|failed\s+to)\s+resolve|(?:was|were)\s+not\s+resolved|remained\s+unresolved)(?=\s*(?:$|[.,;:!?)\n])|\s+(?:until|when|whenever|while|once|after|following|during|across|throughout|despite|for|and|but|or|although|though|even|because)\b)/gi;
+  /* "failed to resolve" and a passive "was not resolved" are not here (the
+     late hold, finding 1): "failed to resolve to prompting" and "was not
+     resolved by planned ignoring" say something "continued" does not, and a
+     miss costs nothing. Whether, which, what, how, if, to, into and by are
+     not on the list after it, so each blocks the rewrite. */
+  var RECAST = /\b([a-z][a-z'-]*)\s+((?:did\s+not|didn't)\s+resolve|remained\s+unresolved)(?=\s*(?:$|[.,;:!?)\n])|\s+(?:until|when|whenever|while|once|after|following|during|across|throughout|despite|for|and|but|or|although|though|even|because)\b)/gi;
   var OPEN_QUESTION = /\b(?:continu\w*|persist\w*|whether)\b/i;
   var RECAST_NOTE = 'Changed "did not resolve" to "continued" to match the notes.';
 
@@ -118,12 +155,33 @@
     return text(s).split(CLAUSE).map(function (c) { return c.trim(); }).filter(Boolean);
   }
 
+  function sentences(s) {
+    return text(s).split(SENTENCE).map(function (c) { return c.trim(); }).filter(Boolean);
+  }
+
   function words(clause) {
     return clause.toLowerCase().match(/[a-z][a-z'-]*/g) || [];
   }
 
+  // The conditions a passage names, singular: "demands" is "demand".
+  function conditionsIn(s) {
+    var out = [];
+    var re = new RegExp(CONDITION.source, "gi");
+    var m;
+    while ((m = re.exec(text(s)))) {
+      var c = m[1].toLowerCase().replace(/s$/, "");
+      if (out.indexOf(c) === -1) out.push(c);
+    }
+    return out;
+  }
+
+  function overlaps(a, b) {
+    return a.some(function (x) { return b.indexOf(x) !== -1; });
+  }
+
   /* True when the clause says something stopped, the verb is not negated,
-     and nothing in the clause says it went on. */
+     and nothing in the clause says it went on. Read on the notes, where a
+     wider reading of "stopped" only means fewer behaviors are checked. */
   function saysStopped(clause) {
     if (CONTINUING.test(clause)) return false;
     var re = new RegExp(STOPPED.source, "gi");
@@ -134,9 +192,29 @@
     return false;
   }
 
-  function mentions(clause, stems) {
-    var ws = words(clause).map(stem);
-    return stems.filter(function (s) { return ws.indexOf(s) !== -1; });
+  // "stopped crying", "stopped his crying": the one word the verb takes.
+  function objectOf(ws) {
+    var i = DETERMINER.test(ws[0] || "") ? 1 : 0;
+    return ws.slice(i, i + 1);
+  }
+
+  /* The stems, out of the ones given, that a clause says stopped: as the
+     subject before the verb, or as its object right after. Read on the
+     draft and the expert, where a wider reading would be a false flag. */
+  function stoppedSubjects(clause, stems) {
+    if (CONTINUING.test(clause)) return [];
+    var re = new RegExp(STOPPED.source, "gi");
+    var out = [];
+    var m;
+    while ((m = re.exec(clause))) {
+      if (NEGATED.test(clause.slice(0, m.index))) continue;
+      var rest = words(clause.slice(m.index + m[0].length));
+      var after = /^no\s/i.test(m[0]) ? rest.slice(0, NO_LONGER_REACH) : objectOf(rest);
+      words(clause.slice(0, m.index)).concat(after).map(stem).forEach(function (s) {
+        if (stems.indexOf(s) !== -1 && out.indexOf(s) === -1) out.push(s);
+      });
+    }
+    return out;
   }
 
   // The words a set of patterns captured in one clause, minus the non-behaviors.
@@ -163,40 +241,108 @@
     return out;
   }
 
-  /* The behaviors the notes say did not stop, as typed (lower case), minus
-     any the notes also say stopped. */
-  function behaviors(intake) {
-    var cs = clauses(intake);
-    var problem = PROBLEM.map(stem).concat(targets(intake));
+  /* A behavior, not a subject that only sits where one could (the late hold,
+     finding 1): a problem behavior below, by stem or by a longer word on the
+     same stem, or a word the notes name as a target. */
+  function isBehavior(word, named) {
+    var s = stem(word);
+    if (named.indexOf(s) !== -1) return true;
+    return PROBLEM_STEMS.some(function (p) {
+      return s === p || (p.length >= PREFIX_MIN && s.indexOf(p) === 0);
+    });
+  }
+
+  /* Every clause of the notes, with the sentence it sits in, so a clause can
+     reach back for its subject without crossing into another sentence. */
+  function clauseList(intake) {
+    var out = [];
+    sentences(intake).forEach(function (sent, n) {
+      clauses(sent).forEach(function (c) { out.push({ text: c, sentence: n }); });
+    });
+    return out;
+  }
+
+  /* A clause with no subject of its own ("but stopped in escape", "but did
+     stop", "they stopped") is about the nearest clause before it in the same
+     sentence that names one of the behaviors, else the clause just before. */
+  function subjectBefore(cs, i, stems) {
+    for (var j = i - 1; j >= 0 && cs[j].sentence === cs[i].sentence; j--) {
+      if (words(cs[j].text).map(stem).some(function (s) { return stems.indexOf(s) !== -1; })) return cs[j].text;
+    }
+    return i > 0 ? cs[i - 1].text : "";
+  }
+
+  /* The conditions one statement about a behavior sits in: its clause, else
+     its sentence, else its line. None found is null, which means any. */
+  function conditionsFor(clause, sentence, line) {
+    var found = [conditionsIn(clause), conditionsIn(sentence), conditionsIn(line)]
+      .filter(function (c) { return c.length; });
+    return found.length ? found[0] : null;
+  }
+
+  /* The behaviors the notes say did not stop, each with the conditions it
+     was said of, minus any the notes also say stopped. Lower case, as typed. */
+  function unresolved(intake) {
+    var named = targets(intake);
     var said = [];
-    cs.forEach(function (c) {
-      var kept = captured(c, KEPT_GOING).filter(function (w) { return problem.indexOf(stem(w)) !== -1; });
-      captured(c, NOT_STOPPED).concat(kept).forEach(function (w) {
-        if (said.indexOf(w) === -1) said.push(w);
+    text(intake).split(/\n+/).forEach(function (line) {
+      sentences(line).forEach(function (sent) {
+        clauses(sent).forEach(function (c) {
+          captured(c, NOT_STOPPED).concat(captured(c, KEPT_GOING)).forEach(function (w) {
+            if (!isBehavior(w, named)) return;
+            var conds = conditionsFor(c, sent, line);
+            var prior = said.filter(function (e) { return e.word === w; })[0];
+            if (!prior) {
+              said = said.concat([{ word: w, conds: conds }]);
+              return;
+            }
+            // Said of no condition once is said of all of them.
+            var merged = prior.conds && conds
+              ? prior.conds.concat(conds.filter(function (x) { return prior.conds.indexOf(x) === -1; }))
+              : null;
+            said = said.map(function (e) { return e.word === w ? { word: w, conds: merged } : e; });
+          });
+        });
       });
     });
     if (!said.length) return [];
-    /* "Crying did not stop during demands, but stopped within a minute of the
-       break." The second clause has no subject, so it takes the one before
-       it, and crying counts as both stopped and not (Pollux, finding 2). */
+    /* "Vocalizations did not stop in attention but stopped in escape." The
+       second clause takes the subject of the first, and the behavior counts
+       as both stopped and not, so it is left alone (Pollux, finding 2, and
+       the late hold, finding 2). */
+    var stems = said.map(function (e) { return stem(e.word); });
+    var cs = clauseList(intake);
     var stopped = [];
     cs.forEach(function (c, i) {
-      if (!saysStopped(c)) return;
-      var ws = SUBJECTLESS.test(c) && i > 0 ? words(cs[i - 1]).concat(words(c)) : words(c);
+      if (!saysStopped(c.text)) return;
+      var ws = words(c.text);
+      if (SUBJECTLESS.test(c.text)) ws = ws.concat(words(subjectBefore(cs, i, stems)));
       stopped = stopped.concat(ws.map(stem));
     });
-    return said.filter(function (w) { return stopped.indexOf(stem(w)) === -1; });
+    return said.filter(function (e) { return stopped.indexOf(stem(e.word)) === -1; });
   }
 
-  // The behaviors a passage says stopped, out of the ones given.
+  // The behaviors the notes say did not stop, as typed (lower case).
+  function behaviors(intake) {
+    return unresolved(intake).map(function (e) { return e.word; });
+  }
+
+  /* The behaviors a passage says stopped, out of the ones given (each a word,
+     or { word, conds } from unresolved). A sentence that names a condition
+     the behavior was never said of is about that other condition, and is
+     not counted. */
   function stoppedIn(passage, said) {
-    var stems = said.map(stem);
+    var entries = said.map(function (e) { return typeof e === "string" ? { word: e, conds: null } : e; });
+    var stems = entries.map(function (e) { return stem(e.word); });
     var found = [];
-    clauses(passage).forEach(function (c) {
-      if (!saysStopped(c)) return;
-      mentions(c, stems).forEach(function (s) {
-        var w = said[stems.indexOf(s)];
-        if (found.indexOf(w) === -1) found.push(w);
+    sentences(passage).forEach(function (sent) {
+      var here = conditionsIn(sent);
+      clauses(sent).forEach(function (c) {
+        stoppedSubjects(c, stems).forEach(function (s) {
+          var e = entries[stems.indexOf(s)];
+          if (e.conds && here.length && !overlaps(e.conds, here)) return;
+          if (found.indexOf(e.word) === -1) found.push(e.word);
+        });
       });
     });
     return found;
@@ -250,7 +396,7 @@
      say it did not. ambiguous_item is in every tool's catalog. Rank 0, as
      misplaced is ranked: it is a match against the notes, not a judgement. */
   function hints(output, intake, ids) {
-    var said = behaviors(intake);
+    var said = unresolved(intake);
     if (!said.length || !output || typeof output !== "object") return [];
     var out = [];
     (ids || []).forEach(function (id) {
@@ -273,7 +419,7 @@
      replacement sentence are. */
   function dropExpert(found, intake) {
     if (!found || typeof found !== "object") return found;
-    var said = behaviors(intake);
+    var said = unresolved(intake);
     var out = {};
     for (var k in found) if (Object.prototype.hasOwnProperty.call(found, k)) out[k] = found[k];
     if (!said.length) {
