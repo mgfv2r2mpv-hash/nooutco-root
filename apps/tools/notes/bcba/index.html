@@ -122,6 +122,11 @@
   <script src="/notes/bcba/tools/sup-checks.js"></script>
   <script src="/notes/bcba/tools/sup.js"></script>
   <script src="/notes/bcba/tools/sap.js"></script>
+  <!-- Read an Assessment draft against the BCBA's notes and add hints; they
+       never change a pick or a sentence. assess.js calls them from
+       normalizeOutput at draft time, so they only need to load before a draft. -->
+  <script src="/notes/bcba/tools/assess-counts.js"></script>
+  <script src="/notes/bcba/tools/assess-checks.js"></script>
   <script src="/notes/bcba/tools/assess.js"></script>
   <script src="/notes/bcba/tools/parent.js"></script>
   <!-- Read a SAP draft against the BCBA's intake and against itself. sap.js

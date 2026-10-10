@@ -150,6 +150,33 @@ TERMINOLOGY (non-negotiable)\n\
 
   var LABELED_FORMAT_BLOCK = "\n\nOUTPUT FORMAT\nReturn labeled sections in the exact order below. For each \"[tick]\" line, list ONLY the options that apply, comma-separated and verbatim from that section's allowed list; if none apply write \"None selected.\" For each \"[narrative]\" line write that field's prose. No JSON, no preamble, no commentary.\n\nACTIVITIES PERFORMED [tick]\nASSESSMENT REPORTING TASKS [tick]\nBRIEF SUMMARY OF ACTIVITIES COMPLETED [narrative]\nRESULTS OF ASSESSMENT [narrative]";
 
+  /* ── Nothing added to what the notes say (card assess-note-accuracy) ────
+     From Kaleb's Assessment bench run, 2026-10-10. His 7 FBA hits became 9
+     when the note added a group with "unclear antecedents" after its own
+     question went unanswered; "parents signed off on goals" became "signed
+     authorization"; "will add a parent training goal" became "was added"; his
+     neuropsych eval became an "assessment report"; his 4 goals were regrouped
+     into 5; "mand at 6 items w full echoic" lost "w full echoic"; a teacher
+     interview was ticked as a caregiver interview; and dad, who joined only
+     for the bath-time part, was credited with mom's answers.
+
+     These ride in the user prompt, which the browser sends, rather than in
+     SYSTEM_CORE: the served system prompt comes from the voice-module store,
+     and verify-parity there re-derives it from this file, so a change to
+     SYSTEM_CORE would not reach a live draft until it was re-extracted. The
+     parts that can be checked in code are checked in assess-checks.js and
+     assess-counts.js, as hints only. */
+  var ACCURACY_RULES = [
+    "NOTHING ADDED TO WHAT THE NOTES SAY. These rules override the instructions above where they differ:",
+    "- Never add a count, a group or a category the notes do not give. The counts in the note add up to the counts in the notes: \"7 episodes, 5 after teacher said clean up, 2 at recess\" is 5 plus 2, and the note says nothing more about the 7. A question you asked that got no answer leaves that fact out of the note. It never becomes \"unclear\", \"unknown\" or \"the remaining episodes\".",
+    "- A document keeps the name the BCBA gave it. \"Parents signed off on goals\" is not \"signed authorization\" or \"signed consent\". \"Neuropsych eval from may\" is the neuropsychological evaluation from May, never an \"assessment report\". Name every document the notes name, and never name a document (authorization, consent, plan, report, evaluation) the notes do not.",
+    "- Planned stays planned. An action the notes give as still to come (\"will add\", \"plan to\", \"need to\", \"next visit\") is written as still to come: \"BCBA will add a parent training goal for the bedtime routine\", never \"was added\" or \"has been added\".",
+    "- A count of goals matches the BCBA's count and grouping. \"4 new goals: 2 communication, 1 social, 1 behavior reduction\" is four goals in those groups. An answer that names the goals fills in those four; it never makes a fifth or moves a goal to another group.",
+    "- A detail you are unsure of stays as the BCBA wrote it. \"Mand at 6 items w full echoic\" keeps \"with a full echoic prompt\". You may ask what it means, but never drop it.",
+    "- Credit a statement only to the person who made it. Where dad joined only for the bath-time part of mom's interview, dad is credited with the bath-time statement and nothing else, and what mom said is credited to mom.",
+    "- \"Caregiver/Guardian interview\" only when a parent, caregiver or guardian was interviewed. An interview with a teacher or other staff is not a caregiver interview.",
+  ].join("\n");
+
   function buildUserPrompt(values) {
     return [
       "Summary notes of activities (primary source, use as the basis of the narrative and the checkbox inference):",
@@ -158,7 +185,23 @@ TERMINOLOGY (non-negotiable)\n\
       "ALLOWED CHECKBOX OPTIONS (return only verbatim values from these lists):",
       "- activities: " + menu(ACTIVITIES),
       "- reporting: " + menu(REPORTING),
+      "",
+      ACCURACY_RULES,
     ].join("\n");
+  }
+
+  /* The draft read against the BCBA's notes (assess-checks.js,
+     assess-counts.js). Hints only: no pick and no sentence is changed. Fails
+     open, so a page where the check files did not load drafts as before, and
+     says so in the console. */
+  function checkHints(out, intake) {
+    if (!window.AssessChecks) {
+      if (typeof console !== "undefined") {
+        console.warn("AssessChecks did not load; this Assessment draft was not checked against the notes.");
+      }
+      return [];
+    }
+    return window.AssessChecks.apply(out, intake).hints;
   }
 
   /* REVIEW RESULTS WITH PARENT, HELD BY CODE. Kaleb's Assessment note,
@@ -197,13 +240,17 @@ TERMINOLOGY (non-negotiable)\n\
       held.push({ section: "activities", code: "other", detail: "Unticked Review results with parent: the notes name no parent or caregiver." });
     }
     var results = typeof o.results === "string" ? o.results : "";
-    var out = {
+    var fields = {
       activities: picked,
       reporting: (Array.isArray(o.reporting) ? o.reporting : []).filter(function (v) { return REPORTING.indexOf(v) !== -1; }),
       narrative: typeof o.narrative === "string" ? o.narrative : "",
       results: results,
-      hints: normalizeHints(resultsHintsTrue((Array.isArray(o.hints) ? o.hints : []).concat(held), results), HINT_CATALOG, SECTION_IDS),
     };
+    // Only a real draft carries the intake it was written from.
+    var checked = ctx && typeof ctx.intake === "string" ? checkHints(fields, ctx.intake) : [];
+    var out = Object.assign({}, fields, {
+      hints: normalizeHints(resultsHintsTrue((Array.isArray(o.hints) ? o.hints : []).concat(held), results).concat(checked), HINT_CATALOG, SECTION_IDS),
+    });
     // The three revision keys the engine reads back. Kept separate from the
     // note's own fields because they never reach the EHR: an answer is shown
     // in the panel and a routing decision is consumed before render.
