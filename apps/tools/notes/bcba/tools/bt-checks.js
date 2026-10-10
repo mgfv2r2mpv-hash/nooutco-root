@@ -66,7 +66,7 @@
     "|\\b(?:is|was|are|were)\\s+(?:brand\\s+)?new\\b" +
     "|\\bfirst\\s+(?:time|instance|occurrence|episode)\\b" +
     "|\\bnever\\s+(?:\\w+\\s+){0,5}before\\b|\\bnot\\s+seen\\s+before\\b|\\bnever\\s+(?:seen|done|happened|did)\\b" +
-    "|(?:\\bnot|n't)\\s+(?:done|seen|shown|happened|did|had)\\s+(?:\\w+\\s+){0,3}before\\b" +
+    "|(?:\\bnot|n't)\\s+(?:done|seen|shown|happened|did)\\s+(?:\\w+\\s+){0,3}before\\b" +
     "|\\bnew\\s+(?:this|today|since|as\\s+of)\\b" +
     "|\\b(?:started|began|starting|beginning|new onset of)\\s+(?:to\\s+)?(?:" + BEHAVIOR_WORDS + "|" + BEHAVIOR_VERBS + ")\\b" +
     "|\\b(?:" + BEHAVIOR_WORDS + ")\\s+(?:\\w+\\s+){0,2}(?:started|began)\\b",

@@ -43,18 +43,46 @@
   var MAINTENANCE = /\bmaint\w*|\bmastered\b|\b100\s*%/i;
   var STALL_NOT_AFFECT = new RegExp("(?!flat\\s+affect\\b)(?:" + STALLED.source + ")", "i");
 
-  var BEHAVIOR_WORDS = "behaviou?rs?|bxs?|aggression|elopement|eloping|self[- ]injur\\w*|SIB|tantrums?|flopping|dropping|biting|hitting|kicking|scratching|spitting|screaming|yelling|throwing|pinching|pushing|grabbing|hair pulling|climbing|bolting|property destruction|mouthing|pica|head[- ]?banging";
-  var BEHAVIOR_VERBS = "hit|bite|bit|kick|kicked|scratch|scratched|spit|spat|pinch|pinched|push|pushed|throw|threw|scream|screamed|elope|eloped|bolt|bolted|flop|flopped|climb|climbed";
+  var BEHAVIOR_WORDS = "behaviou?rs?|bxs?|aggression|elopement|eloping|self[- ]injur\\w*|SIB|tantrums?|flopping|dropping|biting|hitting|kicking|scratching|spitting|screaming|yelling|throwing|pinching|pushing|grabbing|hair pulling|bolting|property destruction|mouthing|pica|head[- ]?banging";
+  var BEHAVIOR_VERBS = "hit|bite|bit|kick|kicked|scratch|scratched|spit|spat|pinch|pinched|push|pushed|throw|threw|scream|screamed|elope|eloped|bolt|bolted|flop|flopped";
+
+  /* Card tool-hint-polish, after the #336 review. A behavior word followed
+     by a program word ("behavior data", "bx graphing", "hitting criterion")
+     is about the program, not a behavior, as in bt-checks.js. */
+  var NOT_A_BEHAVIOR = "(?!\\s+(?:(?:plan|support|intervention|goal|program|protocol|sheet|data|target|criterion|mastery|percent|graph\\w*|chart\\w*|probe)s?\\b|\\d))";
+
+  // Climbing is a behavior only onto something not meant for climbing.
+  // "Climbing the stairs" in OT, a "climbing wall" and a "climbing program"
+  // are skills (R336 MEDIUM).
+  var CLIMBING = "climb(?:ing|ed|s)?\\s+(?:on|onto|up|over|in)?\\s*(?:the\\s+|a\\s+|his\\s+|her\\s+|their\\s+)?(?:furniture|counters?|shel(?:f|ves)|bookshel(?:f|ves)|tables?|fences?|chairs?|couch(?:es)?|cabinets?|dressers?|desks?|windows?)\\b";
+
+  var BEHAVIOR = "(?:\\b(?:" + BEHAVIOR_WORDS + ")\\b" + NOT_A_BEHAVIOR + "|\\b" + CLIMBING + ")";
+
+  // What a skill is done to: "threw the ball", "hit criterion", "hit 80
+  // percent", "hit her goal". A behavior or verb before one of these is good
+  // news (R336 HIGH).
+  var SKILL_OBJECT = "(?!\\s+(?:\\w+\\s+){0,2}?(?:(?:ball|cart|clothespin|wall|stairs?|steps?|gum|car|criterion|mastery|goal|target|percent|data|bubble|button|ladder|slide|swing|toy|block|mark|benchmark)s?\\b|\\d))";
+
+  /* "For the first time" counts only after a behavior noun, or after a harm
+     verb with a person as its object ("hit mom", "threw a toy at a peer").
+     "Hit criterion", "kicked the ball" and "talked a bit louder" are a
+     client's success, the very notes where a BCBA picks substantial. */
+  var PERSON = "(?:(?:his|her|their|a|the|another|other)\\s+)?(?:mom|dad|mother|father|sister|brother|siblings?|peers?|staff|RBT|BT|teacher|therapist|aide|parents?|caregivers?|grandma|grandpa|grandmother|grandfather|friend|classmate|child|kid|baby|him|her|them|me|us|self|himself|herself|themselves)\\b";
+  var HARM_VERBS = "hit|hits|bit|bites?|kick(?:s|ed)?|push(?:es|ed)?|pinch(?:es|ed)?|scratch(?:es|ed)?|(?:threw|throws?)\\s+(?:\\w+\\s+){0,2}at|(?:spit|spat|spits)\\s+(?:at|on)";
+  var FIRST_TIME = "(?:" + BEHAVIOR + SKILL_OBJECT + "|\\b(?:" + HARM_VERBS + ")\\s+" + PERSON + SKILL_OBJECT + ")(?:\\s+\\w+){0,3}?\\s+for\\s+the\\s+first\\s+time\\b";
+
+  // A behavior verb after "started" or "first time", unless a skill object
+  // follows it. "A bit" is an amount, not a bite.
+  var VERB = "\\b(?:" + BEHAVIOR_VERBS + ")\\b" + SKILL_OBJECT;
+
   var NEW_BEHAVIOR = new RegExp(
-    "\\bnew\\s+(?:\\w+\\s+){0,2}(?:" + BEHAVIOR_WORDS + ")\\b" +
-    "|\\b(?:" + BEHAVIOR_WORDS + ")\\s+(?:\\w+\\s+){0,2}(?:started|began)\\b" +
-    "|\\b(?:started|began|new onset of)\\s+(?:to\\s+)?(?:" + BEHAVIOR_WORDS + "|" + BEHAVIOR_VERBS + ")\\b" +
-    "|\\bfirst\\s+(?:time|instance|occurrence)\\s+(?:of\\s+)?(?:\\w+\\s+){0,2}(?:" + BEHAVIOR_WORDS + "|" + BEHAVIOR_VERBS + ")\\b" +
-    // tool-hint-polish: "hit mom for the first time" and "pinching is new".
-    // Only a behavior word or verb counts, so "independent for the first
-    // time" stays good news.
-    "|\\b(?:" + BEHAVIOR_WORDS + "|" + BEHAVIOR_VERBS + ")\\s+(?:\\w+\\s+){0,3}for\\s+the\\s+first\\s+time\\b" +
-    "|\\b(?:" + BEHAVIOR_WORDS + ")\\s+(?:is|was|are|were)\\s+(?:brand\\s+)?new\\b",
+    "\\bnew\\s+(?:\\w+\\s+){0,2}" + BEHAVIOR +
+    "|" + BEHAVIOR + "\\s+(?:\\w+\\s+){0,2}(?:started|began)\\b" +
+    "|\\b(?:started|began|new onset of)\\s+(?:to\\s+)?(?:" + BEHAVIOR + SKILL_OBJECT + "|" + VERB + ")" +
+    "|\\bfirst\\s+(?:time|instance|occurrence)\\s+(?:of\\s+)?(?:(?!a\\s+bit\\b)\\w+\\s+){0,2}(?:" + BEHAVIOR + SKILL_OBJECT + "|" + VERB + ")" +
+    "|" + FIRST_TIME +
+    // "pinching is new" (tool-hint-polish).
+    "|" + BEHAVIOR + "\\s+(?:is|was|are|were)\\s+(?:brand\\s+)?new\\b",
     "i"
   );
   // A behavior PLAN is a document. "New behavior plan implemented" is news
