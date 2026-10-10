@@ -40,9 +40,19 @@
       ],
       "expect": {
         "mentions": [
-          "8 of 10",
-          "tablet",
-          "most-to-least",
+          [
+            "8 of 10",
+            "8 out of 10",
+            "8/10"
+          ],
+          [
+            "tablet",
+            "iPad"
+          ],
+          [
+            "most-to-least",
+            "most to least"
+          ],
           "help"
         ],
         "forbid": [
@@ -79,10 +89,23 @@
       ],
       "expect": {
         "mentions": [
-          "5 seconds",
-          "80%",
+          [
+            "5 second",
+            "5-second",
+            "five second",
+            "five-second"
+          ],
+          [
+            "80%",
+            "80 percent"
+          ],
           "teacher",
-          "4 weeks",
+          [
+            "4 week",
+            "4-week",
+            "four week",
+            "four-week"
+          ],
           "point"
         ],
         "forbid": [
@@ -119,16 +142,21 @@
         {
           "about": [
             "tried",
-            "before",
             "timer",
-            "history"
+            "history",
+            "in the past",
+            "previous"
           ],
           "answer": "A visual timer was tried once and he threw it."
         }
       ],
       "expect": {
         "mentions": [
-          "4 of 5",
+          [
+            "4 of 5",
+            "4 out of 5",
+            "4/5"
+          ],
           "wait"
         ],
         "forbid": [

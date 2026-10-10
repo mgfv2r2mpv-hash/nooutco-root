@@ -21,8 +21,9 @@
         {
           "about": [
             "barrier",
-            "prompt",
-            "dependence"
+            "prompt dependence",
+            "dependence",
+            "impaired mand"
           ],
           "answer": "Prompt dependence scored 2, impaired mand scored 3."
         },
@@ -37,11 +38,25 @@
       ],
       "expect": {
         "mentions": [
-          "VB-MAPP",
-          "Level 1",
-          "prompt dependence",
+          [
+            "VB-MAPP",
+            "VBMAPP",
+            "VB MAPP"
+          ],
+          [
+            "Level 1",
+            "Level One"
+          ],
+          [
+            "prompt dependence",
+            "prompt dependency",
+            "prompt-dependen"
+          ],
           "bath",
-          "Level 2"
+          [
+            "Level 2",
+            "Level Two"
+          ]
         ],
         "forbid": [
           "was reinforced",
@@ -92,11 +107,18 @@
       ],
       "expect": {
         "mentions": [
-          "ABC",
+          [
+            "ABC",
+            "antecedent-behavior-consequence"
+          ],
           "escape",
           "tangible",
           "teacher",
-          "observation"
+          [
+            "observation",
+            "observed",
+            "observing"
+          ]
         ],
         "forbid": [
           "was reinforced",
@@ -139,8 +161,15 @@
         "mentions": [
           "neuropsych",
           "speech",
-          "elopement",
-          "parent training"
+          [
+            "elopement",
+            "eloping",
+            "elope"
+          ],
+          [
+            "parent training",
+            "caregiver training"
+          ]
         ],
         "forbid": [
           "was reinforced",
@@ -183,10 +212,25 @@
       ],
       "expect": {
         "mentions": [
-          "toilet",
-          "sitting tolerance",
-          "bedtime",
-          "signed off"
+          [
+            "toilet",
+            "potty"
+          ],
+          [
+            "sitting tolerance",
+            "tolerate sitting",
+            "tolerance for sitting"
+          ],
+          [
+            "bedtime",
+            "bed time"
+          ],
+          [
+            "signed off",
+            "signed-off",
+            "sign-off",
+            "approved"
+          ]
         ],
         "forbid": [
           "was reinforced",

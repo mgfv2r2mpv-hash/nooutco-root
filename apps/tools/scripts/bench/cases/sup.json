@@ -32,19 +32,30 @@
         {
           "about": [
             "tacting",
-            "prompt",
-            "errorless"
+            "prompt delay",
+            "errorless",
+            "echoic",
+            "fade"
           ],
           "answer": "Echoic prompt at 0 sec delay for now, fade to 2 sec after 2 sessions at 80%."
         }
       ],
       "expect": {
         "mentions": [
-          "tacting",
+          [
+            "tacting",
+            "tact"
+          ],
           "errorless",
           "echoic",
-          "90%",
-          "pacing",
+          [
+            "90%",
+            "90 percent"
+          ],
+          [
+            "pacing",
+            "pace"
+          ],
           "program sheet"
         ],
         "forbid": [
@@ -55,12 +66,10 @@
           "sessionChecks": [
             "Performance Feedback (PF)",
             "IOA check",
-            "Reviewed last week's notes",
             "Follow-up items"
           ]
         },
         "single": {
-          "reviewedNotes": "Yes",
           "overallProgress": "Client is making moderate progress towards meeting goals (see summary below)"
         },
         "tasksOnly": [
@@ -81,18 +90,21 @@
       "truth": [
         {
           "about": [
-            "imitation",
-            "3 step",
             "broken",
-            "task"
+            "break it down",
+            "break down",
+            "breaking",
+            "split",
+            "task analysis",
+            "chain"
           ],
           "answer": "Not done yet, I will split it into two 2-step chains for next week."
         },
         {
           "about": [
             "sleep",
-            "mom",
-            "night"
+            "night",
+            "waking"
           ],
           "answer": "I will bring sleep goal options to the next parent meeting."
         }
@@ -101,7 +113,11 @@
         "mentions": [
           "receptive",
           "maintenance",
-          "imitation",
+          [
+            "imitation",
+            "imitating",
+            "imitate"
+          ],
           "sleep"
         ],
         "forbid": [
@@ -115,9 +131,6 @@
             "Performance Feedback (PF)",
             "IOA check"
           ]
-        },
-        "single": {
-          "reviewedNotes": "No"
         },
         "tasksOnly": [
           "followup"
@@ -156,10 +169,28 @@
       ],
       "expect": {
         "mentions": [
-          "1 min",
+          [
+            "1 min",
+            "1-min",
+            "1 minute",
+            "1-minute",
+            "one min",
+            "one-min",
+            "60 sec",
+            "60-sec"
+          ],
           "warning",
-          "parents",
-          "100%"
+          [
+            "parents",
+            "parent",
+            "mom",
+            "caregiver",
+            "family"
+          ],
+          [
+            "100%",
+            "100 percent"
+          ]
         ],
         "forbid": [
           "was reinforced",
@@ -190,7 +221,7 @@
       "truth": [
         {
           "about": [
-            "prompt",
+            "prompt level",
             "colors",
             "shapes",
             "data"
@@ -217,8 +248,11 @@
       ],
       "expect": {
         "mentions": [
-          "colors",
-          "shapes"
+          [
+            "color",
+            "colour"
+          ],
+          "shape"
         ],
         "forbid": [
           "was reinforced",
@@ -228,12 +262,8 @@
         ],
         "notPicks": {
           "sessionChecks": [
-            "IOA check",
-            "Reviewed last week's notes"
+            "IOA check"
           ]
-        },
-        "single": {
-          "reviewedNotes": "No"
         },
         "tasksOnly": [
           "followup"

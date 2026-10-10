@@ -21,9 +21,9 @@
         {
           "about": [
             "climbing",
-            "caregiver",
             "respond",
-            "bip"
+            "bip",
+            "fcr"
           ],
           "answer": "Add Parent Goal: Implement BIP Climbing: Prompt FCR (Antecedent) 6/1 85%. Parents prompted FCR 5 times when precursors were observed, and climbing happened in 1 of those 5."
         },
@@ -117,7 +117,7 @@
             "token",
             "forgot",
             "missed",
-            "prompt"
+            "model"
           ],
           "answer": "Mom forgot to show the token board once before a demand; BCBA modeled it once after."
         }

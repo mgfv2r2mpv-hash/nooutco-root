@@ -4,7 +4,8 @@
  * follow-up questions, into a note he would submit, in 5 to 7 minutes of a
  * user's time. To measure that, a case is typed into the real page, the
  * questions the page asks are answered from the case's hidden session details
- * (`truth`), and the finished note is read back off the note card. Nothing here
+ * (`truth`, at most once per fact per round, see pickAnswers in page-bench.mjs),
+ * and the finished note is read back off the note card. Nothing here
  * reaches into the page's internals, so a bench run exercises exactly what a
  * user exercises: the scrub, the question rounds, the prompt store, the
  * self-revision and the backstops.
@@ -13,9 +14,11 @@
  * model stubbed (no cost, proves the mechanics), and by scripts/bench/run.mjs
  * against the live site with a bench login (costs drafts; Kaleb approves). */
 
-import { HELD_ROUND_ANSWER, readNoteCard } from './page-bench.mjs';
+import { HELD_ROUND_ANSWER, IGNORED_ABOUT, answerFor, pickAnswers, readNoteCard } from './page-bench.mjs';
 
-export { HELD_ROUND_ANSWER };
+/* The answer picker lives in page-bench.mjs beside the console runner, which
+   cannot import, so the two benches pick answers one way. */
+export { HELD_ROUND_ANSWER, IGNORED_ABOUT, answerFor, pickAnswers };
 
 const words = (s) => String(s || '').trim().split(/\s+/).filter(Boolean).length;
 
@@ -43,20 +46,6 @@ export async function fillCase(page, c) {
   for (const [label, text] of Object.entries(c.fields || {})) {
     await page.getByRole('textbox', { name: new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') }).fill(text);
   }
-}
-
-/* The question asked, matched to the truth entry whose words it shares most.
-   A question nothing in the truth speaks to is left alone, as a user who did
-   not know would leave it. */
-export function answerFor(question, truth) {
-  const q = String(question || '').toLowerCase();
-  let best = null;
-  let bestHits = 0;
-  for (const t of truth || []) {
-    const hits = (t.about || []).filter((k) => q.includes(String(k).toLowerCase())).length;
-    if (hits > bestHits) { best = t; bestHits = hits; }
-  }
-  return best ? best.answer : null;
 }
 
 /* The panel docks as a collapsed pill on some tools and open on others. */
@@ -111,9 +100,11 @@ export async function runCase(page, c, opts = {}) {
     await openPanel(page);
     const loose = [];
     let answeredAny = false;
-    for (const q of await questionsShown(page)) {
-      const answer = answerFor(q.text, c.truth);
-      asked.push({ round: round + 1, question: q.text, answered: !!answer });
+    const shown = await questionsShown(page);
+    const picked = pickAnswers(shown.map((q) => q.text), c.truth);
+    for (const [n, q] of shown.entries()) {
+      const { answer, truth, matchedOn } = picked[n];
+      asked.push({ round: round + 1, question: q.text, answered: !!answer, truth, matchedOn, answer });
       if (!answer) continue;
       answeredAny = true;
       typed.answers += words(answer);

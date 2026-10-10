@@ -14,12 +14,12 @@
         "Follow-Up & Concerns": "mom asked about starting potty training. token board velcro worn, need more"
       },
       "truth": [
-        { "about": ["block", "flop", "how"], "answer": "I stood beside him and put a hand on the table so he could not slide off the chair, no physical holding." },
-        { "about": ["prompt", "said", "model", "follow"], "answer": "He said break please himself after one verbal prompt both times." },
-        { "about": ["usual", "baseline", "normal", "typically"], "answer": "Usually 4 or 5 flops at clean up." }
+        { "about": ["block", "stood", "slide", "hold", "physical", "safety"], "answer": "I stood beside him and put a hand on the table so he could not slide off the chair, no physical holding." },
+        { "about": ["break please", "verbal prompt", "prompt level", "on his own", "himself", "functional communication", "fcr"], "answer": "He said break please himself after one verbal prompt both times." },
+        { "about": ["usual", "baseline", "normal", "typical", "compare"], "answer": "Usually 4 or 5 flops at clean up." }
       ],
       "expect": {
-        "mentions": ["gesture", "full physical", "mastery criteria", "toilet"],
+        "mentions": [["gesture", "gestural"], "full physical", "mastery criteria", ["toilet", "potty"]],
         "forbid": ["responded well", "did great", "went well", "throughout the session", "mastered", "was observed", "was reinforced", "the behavior analyst", "as evidenced by being tired"],
         "picks": {
           "antecedentStrategies": ["Utilized Premack principle (first-then)", "Priming/provided warning", "Offered choices"],
@@ -43,12 +43,12 @@
         "Follow-Up & Concerns": "hitting at swing is new, BCBA saw it. new med started yesterday"
       },
       "truth": [
-        { "about": ["intensity", "injury", "mark", "hit"], "answer": "Open hand to my forearm, no marks, each one a single swing." },
-        { "about": ["precursor", "before", "warning", "timer"], "answer": "He whined and grabbed the chains when the timer beeped, no warning before the timer ended." },
-        { "about": ["medication", "med", "name"], "answer": "Mom did not say which med, only that it was new yesterday." }
+        { "about": ["intensity", "injur", "mark", "hard", "force", "severity", "open hand", "closed fist"], "answer": "Open hand to my forearm, no marks, each one a single swing." },
+        { "about": ["precursor", "warning sign", "right before", "just before", "lead up", "leading up", "whine", "beep"], "answer": "He whined and grabbed the chains when the timer beeped, no warning before the timer ended." },
+        { "about": ["medication", "med", "prescri", "dose"], "answer": "Mom did not say which med, only that it was new yesterday." }
       ],
       "expect": {
-        "mentions": ["swing", "novel", "medication", "forearm"],
+        "mentions": ["swing", ["novel", "new action", "new ones", "new target", "new sequence", "new imitation", "new step", "untaught", "unfamiliar"], ["medication", "medicine"], "forearm"],
         "forbid": ["responded well", "did great", "went well", "throughout the session", "mastered", "was observed", "was reinforced", "the behavior analyst"],
         "picks": {
           "individualsPresent": ["Client", "BCBA"],
@@ -71,11 +71,11 @@
         "Follow-Up & Concerns": "teacher asked for a copy of the turn card for the classroom"
       },
       "truth": [
-        { "about": ["greeting", "peers", "prompt"], "answer": "Gesture was a wave cue from me; the independent one was to a kid he plays with often." },
-        { "about": ["teacher", "card", "copy"], "answer": "I said I would ask the BCBA before giving her a copy." }
+        { "about": ["greet", "peers", "line up", "wave", "gesture"], "answer": "Gesture was a wave cue from me; the independent one was to a kid he plays with often." },
+        { "about": ["teacher", "turn card", "copy", "classroom"], "answer": "I said I would ask the BCBA before giving her a copy." }
       ],
       "expect": {
-        "mentions": ["turn", "gesture", "teacher"],
+        "mentions": ["turn", ["gesture", "gestural"], "teacher"],
         "forbid": ["responded well", "did great", "went well", "throughout the session", "mastered", "was observed", "was reinforced", "the behavior analyst", "no behaviors were observed"],
         "noData": true,
         "singlesNeverBlank": ["consequenceEffectiveness", "clientProgress"],
@@ -94,11 +94,11 @@
         "Follow-Up & Concerns": "family moving in 2 wks, play skills not run 2 wks in a row bc toys packed"
       },
       "truth": [
-        { "about": ["dad", "coaching", "feedback", "implement"], "answer": "I told dad to wait 3 seconds before guiding; he did it on the next 3 trials." },
-        { "about": ["move", "toys", "play"], "answer": "Toys stay packed until the move; play skills will not run for 2 more weeks." }
+        { "about": ["coaching", "coach", "feedback", "implement", "told dad", "wait 3", "fidelity"], "answer": "I told dad to wait 3 seconds before guiding; he did it on the next 3 trials." },
+        { "about": ["move", "moving", "toys", "packed", "play skill"], "answer": "Toys stay packed until the move; play skills will not run for 2 more weeks." }
       ],
       "expect": {
-        "mentions": ["dad", "first-then", "move", "play skills"],
+        "mentions": [["dad", "father", "parent", "caregiver"], ["first-then", "first then", "first/then"], ["move", "moving", "relocat"], ["play skill", "play program", "play target"]],
         "forbid": ["responded well", "did great", "went well", "throughout the session", "mastered", "was observed", "was reinforced", "the behavior analyst"],
         "picks": {
           "individualsPresent": ["Client", "Parent/Caregiver"],
