@@ -2319,20 +2319,14 @@ function App() {
        notes say it did not. His reading: "if the vocalizations didn't
        resolve, then the client kept making the vocalizations." It reads the
        intake this draft was written from, and it only ever adds a hint; the
-       sentence stays the clinician's to correct. */
+       sentence stays the clinician's to correct. There is no rewrite: the
+       review of #337 (10 Oct) found "did not resolve" -> "continued" flipped
+       correct sentences ("did not resolve once" became "continued once"),
+       and his rule is that an automatic check never rewrites one. */
     const stoppedClaims = window.NoteUnresolved
       ? window.NoteUnresolved.hints(restored, draftIntakeRef.current, narrativeIds())
       : [];
-    /* THE FIFTH, the recast's own notice (Pollux's hold on #328): a section
-       whose "did not resolve" is about to read "continued" says so, so the
-       clinician sees the change rather than only the audit counting it. It
-       goes in here to take the tool's validation with the rest; the recast
-       itself runs last, below, and a notice whose section it did not change
-       is taken back out there. */
-    const recastNotes = window.NoteUnresolved && window.NoteUnresolved.recastHints
-      ? window.NoteUnresolved.recastHints(restored, draftIntakeRef.current, narrativeIds())
-      : [];
-    const injected = misplaced.concat(effectGaps, repeats, stoppedClaims, recastNotes);
+    const injected = misplaced.concat(effectGaps, repeats, stoppedClaims);
     const withHints = injected.length
       ? { ...restored, hints: (Array.isArray(restored.hints) ? restored.hints : []).concat(injected) }
       : restored;
@@ -2353,33 +2347,15 @@ function App() {
     const filled = window.NoteHollow
       ? window.NoteHollow.passNote(stripped.output, narrativeIds())
       : { output: stripped.output, recast: 0, hollow: 0 };
-    /* "Did not resolve" reads "continued" (issue #118), his own reading of
-       the phrase. Last, for the reason the recast above runs after the strip:
-       it writes a word no model wrote, so nothing before it reads that word. */
-    const continued = window.NoteUnresolved
-      ? window.NoteUnresolved.passNote(filled.output, narrativeIds(), draftIntakeRef.current)
-      : { output: filled.output, recast: 0, sections: [] };
-    /* A notice for a section the recast did not in the end change (the strip
-       cut the sentence, say) would describe an edit that never happened.
-       Filtering keeps normalizeHints' rank order. */
-    const notice = recastNotes.length ? recastNotes[0].detail : null;
-    const told = notice && Array.isArray(continued.output && continued.output.hints)
-      ? {
-          ...continued.output,
-          hints: continued.output.hints.filter((h) =>
-            !(h.code === "other" && h.detail === notice && !continued.sections.includes(h.section))),
-        }
-      : continued.output;
 
     return {
-      output: told,
+      output: filled.output,
       cut: stripped.cut,
       flagged: stripped.flagged,
       recast: filled.recast,
       hollow: filled.hollow,
       misplaced: misplaced.length,
       effectUnstated: effectGaps.length,
-      unresolvedRecast: continued.recast,
       stoppedClaims: stoppedClaims.length,
     };
   };
@@ -3687,8 +3663,7 @@ function App() {
            the model drops the hint, which was the open question one live note
            could not settle. */
         effectUnstated: finalDraft.effectUnstated,
-        // Issue #118: "did not resolve" recast, and stopped claims flagged.
-        unresolvedRecast: finalDraft.unresolvedRecast,
+        // Issue #118: stopped claims flagged. Nothing is recast.
         stoppedClaims: finalDraft.stoppedClaims,
       });
       /* ITS OWN EVENT, for the same reason note_postpass is. This payload is
