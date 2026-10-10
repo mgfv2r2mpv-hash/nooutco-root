@@ -22,9 +22,9 @@ const ROOT = join(__dirname, '..', 'notes/bcba');
 const CASES = JSON.parse(readFileSync(join(__dirname, '..', 'scripts/bench/cases/sap.json'), 'utf8')).cases;
 const byId = (id) => CASES.find((c) => c.id === id);
 
-function load({ withChecks = true } = {}) {
+function load({ withChecks = true, log = console } = {}) {
   const win = {};
-  const ctx = vm.createContext({ window: win, console });
+  const ctx = vm.createContext({ window: win, console: log });
   const files = ['note-tools-util.js', 'register-rules.js']
     .concat(withChecks ? ['tools/sap-numbers.js', 'tools/sap-checks.js'] : [], ['tools/sap.js']);
   for (const f of files) {
@@ -210,6 +210,30 @@ test.describe('3. the numbers agree with each other (waiting)', () => {
     expect(flags(out)).toContain('maintenanceCriteria: 80% of 3 trials is 2.4 trials. Say 2 of 3 (66.7%) or 3 of 3 (100%).');
   });
 
+  // Reviewer R334-H1: a rounded percentage of a whole trial count is the
+  // same number, and ACCURACY_RULES itself says 2 of 3 is 67%.
+  for (const said of [
+    'Maintained at 2 of 3 trials (67%).',
+    'Maintained at 2 of 3 trials (66.7%).',
+    'Re-enter teaching at 1 of 3 trials (33%).',
+    'Mastery at 5 of 6 trials (83%).',
+    'Probes run at 3 trials and the skill is maintained at 67% or higher.',
+  ]) {
+    test(`a rounded percentage of a whole count is not flagged: "${said}"`, () => {
+      expect(flagged(draft({ maintenanceCriteria: said }, WAITING), /^maintenanceCriteria/)).toEqual([]);
+    });
+  }
+
+  test('a percentage no whole count of the trials can make is still flagged: "6 trials at 85%"', () => {
+    const out = draft({ masteryCriteria: 'Each probe runs 6 trials at 85% accuracy.' }, WAITING);
+    expect(flags(out)).toContain('masteryCriteria: 85% of 6 trials is 5.1 trials. Say 5 of 6 (83.3%) or 6 of 6 (100%).');
+  });
+
+  test('"2 of 3 trials at 80%" is still flagged', () => {
+    const out = draft({ maintenanceCriteria: 'Maintained at 2 of 3 trials at 80%.' }, WAITING);
+    expect(flags(out)).toContain('maintenanceCriteria: 2 of 3 is 66.7%, but the same sentence says 80%.');
+  });
+
   test('the corrected plan raises nothing', () => {
     const out = draft({
       teachingStrategy: 'Initial wait interval: 5 seconds, below current baseline (10 seconds). Increase the wait by 15 seconds after 2 consecutive sessions at criterion, up to 2 minutes.',
@@ -251,6 +275,26 @@ test.describe('4. the refined goal adds no deadline, setting, person or count', 
   test('an added setting, person and count are each named', () => {
     const out = draft({ refinedGoal: '[CLIENT] will request preferred items using a 2-button AAC page in 9 of 10 opportunities across 3 consecutive sessions, at school, with his teacher.' }, AAC);
     expect(flagged(out, /^refinedGoal/)).toEqual(['refinedGoal: Refined goal adds what your goal does not say: teacher, school, 9.']);
+  });
+
+  // Reviewer R334-H1 item 2: his own shorthand for a timeframe is his deadline.
+  for (const [his, refined] of [
+    ['within 1 auth period', 'within 1 authorization period'],
+    ['by end of auth', 'by the end of the authorization period'],
+    ['in 6 months', 'within 6 months'],
+    ['by 6/30/2027', 'by June 30, 2027'],
+  ]) {
+    test(`his shorthand "${his}" is his deadline, reworded as "${refined}"`, () => {
+      const intake = `Client will wait 2 minutes in 4 of 5 opportunities ${his}.\nhome only.`;
+      const out = draft({ refinedGoal: `[CLIENT] will wait 2 minutes in 4 of 5 opportunities ${refined}, at home.` }, intake);
+      expect(flagged(out, /^refinedGoal/)).toEqual([]);
+    });
+  }
+
+  test('maintenance "for 4 weeks" is not a deadline, so an added authorization period is still flagged', () => {
+    expect(TWO_STEP).toMatch(/for 4 weeks/);
+    const out = draft({ refinedGoal: GOAL.replace(/\.$/, ' within 6 months.') }, TWO_STEP);
+    expect(flagged(out, /^refinedGoal/)).toEqual(['refinedGoal: Refined goal adds what your goal does not say: "within 6 months".']);
   });
 
   test('a deadline he wrote himself stays his', () => {
@@ -402,6 +446,20 @@ test.describe('hints only, fail-open, and revisions read the plan against itself
     expect(out.refinedGoal).toBe('x by the end of 1 authorization period');
   });
 
+  test('a page where the check files did not load says so in the console', () => {
+    const warned = [];
+    const bare = load({ withChecks: false, log: { ...console, warn: (...a) => warned.push(a.join(' ')) } });
+    bare.normalizeOutput({ hints: [] }, { intake: WAITING });
+    expect(warned.some((w) => /SapChecks/.test(w))).toBe(true);
+  });
+
+  test('a loaded page does not warn', () => {
+    const warned = [];
+    const ok = load({ log: { ...console, warn: (...a) => warned.push(a.join(' ')) } });
+    ok.normalizeOutput({ hints: [] }, { intake: WAITING });
+    expect(warned).toEqual([]);
+  });
+
   test('no intake (not a real draft) means no checks against an intake', () => {
     const out = sap.normalizeOutput({ refinedGoal: 'x by the end of 1 authorization period' });
     expect(out.hints).toEqual([]);
@@ -425,5 +483,16 @@ test.describe('hints only, fail-open, and revisions read the plan against itself
       dependents: [], conflicts: [], hints: [], design: [],
     }, { promptHierarchy: 'Most-to-Least (MtL) for "help"' });
     expect(flagged(out, /most-to-least/)).toEqual([]);
+  });
+});
+
+test.describe('the SAP page loads the checks', () => {
+  // Reviewer R334-H1 item 3: the vm tests above cannot see a missing script tag.
+  test('window.SapChecks and window.SapNumbers are on /notes/sap/ once the page has loaded', async ({ page }) => {
+    await page.goto('/notes/sap/');
+    await page.waitForFunction(() => (window.NOTE_TOOLS || []).some((t) => t.id === 'sap'));
+    await page.waitForLoadState('load');
+    expect(await page.evaluate(() => typeof (window.SapChecks && window.SapChecks.apply))).toBe('function');
+    expect(await page.evaluate(() => typeof (window.SapNumbers && window.SapNumbers.check))).toBe('function');
   });
 });

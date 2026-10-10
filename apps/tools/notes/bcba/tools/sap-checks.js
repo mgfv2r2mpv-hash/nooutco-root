@@ -184,13 +184,31 @@
   }
 
   /* ── The refined goal adds nothing ──────────────────────────────────── */
+  var MONTHS = "january|february|march|april|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sept?|oct|nov|dec|may(?=\\s+\\d)";
   var DEADLINES = [
     /\b(?:by the end of|within|during|over)\s+(?:\w+\s+){0,2}authori[sz]ation period\b|\bauthori[sz]ation period\b/i,
     /\bby the end of [^,.;]{1,30}/i,
-    /\bwithin (?:\d+|one|two|three|six|twelve) (?:days?|weeks?|months?|years?)\b/i,
-    /\b(?:by|before) (?:january|february|march|april|may|june|july|august|september|october|november|december)\b/i,
+    /\b(?:within|in|over|by) (?:the next )?(?:\d+|one|two|three|six|twelve) (?:days?|weeks?|months?|years?)\b/i,
+    new RegExp("\\b(?:by|before) (?:" + MONTHS + ")\\b", "i"),
+    /\b(?:by|before) \d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b/i,
     /\b(?:per|each|this|by the end of the) (?:quarter|year|school year|semester)\b/i,
   ];
+  /* Any timeframe in HIS words makes the deadline his, however he wrote it:
+     "auth", "within 1 auth period", "in 6 months", "by 6/30/2027". Reviewer
+     R334-H1: the long forms alone flagged his own shorthand as an addition.
+     "for 4 weeks" is a maintenance schedule, not a deadline, so "for" is not
+     read as one. */
+  var HIS_TIMEFRAME = [
+    /\bauth(?:ori[sz]ation)?\b/i,
+    /\b(?:within|in|over|by|before) (?:the next |the end of )?(?:\d+|one|two|three|four|five|six|nine|twelve) (?:days?|weeks?|months?|years?)\b/i,
+    /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/,
+    new RegExp("\\b(?:by|before|until|through) (?:the end of )?(?:" + MONTHS + ")\\b", "i"),
+    /\b(?:quarter|semester|school year)\b/i,
+  ];
+
+  function hasHisTimeframe(clinician) {
+    return HIS_TIMEFRAME.concat(DEADLINES).some(function (re) { return re.test(clinician); });
+  }
   var PEOPLE = [
     { name: "staff", re: /\b(?:staff|therapists?|technicians?|RBTs?|BTs?|instructors?|providers?|shadows?|aides?|paras?|paraprofessionals?|clinicians?|BCBAs?)\b/i },
     { name: "caregiver", re: /\b(?:mom|mother|dad|father|parents?|caregivers?|guardians?|family)\b/i },
@@ -231,7 +249,7 @@
     // A deadline he wrote may be reworded; one he never wrote may not appear.
     var deadline = DEADLINES.map(function (re) { return re.exec(goal); }).filter(Boolean)[0];
     var deadlineText = deadline ? deadline[0] : "";
-    if (deadline && !DEADLINES.some(function (re) { return re.test(clinician); })) {
+    if (deadline && !hasHisTimeframe(clinician)) {
       added.push("\"" + deadlineText.trim() + "\"");
     }
     PEOPLE.forEach(function (p) {
