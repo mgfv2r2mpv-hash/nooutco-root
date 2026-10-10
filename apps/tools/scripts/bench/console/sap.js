@@ -105,17 +105,25 @@
           [
             "5 second",
             "5-second",
+            "5 sec",
+            "5-sec",
+            {
+              "whole": "5s"
+            },
             "five second",
             "five-second"
           ],
           [
             "80%",
+            "80 %",
             "80 percent"
           ],
           "teacher",
           [
             "4 week",
             "4-week",
+            "4 wk",
+            "4-wk",
             "four week",
             "four-week"
           ],
@@ -260,14 +268,18 @@
      * says which apply:
      *
      *   mentions   facts the note must carry. Each is a phrase, or a list of the
-     *              plain forms that say the same fact (["dad", "father", "parent",
-     *              "caregiver"]); any one form passes. A form counts at the start
-     *              of a word, so "gesture" passes "gestures" and "turn" does not
-     *              pass "return". A ruling stays one exact phrase ("full
-     *              physical", "mastery criteria"). Kaleb's BT runs of 9 Oct 2026
-     *              failed notes that said "new action sequences", the intake's own
-     *              "new ones", where the case wanted "novel", and "His father"
-     *              where it wanted "dad".
+     *              plain forms that say the same fact (["dad", "father"]); any
+     *              one form passes. A form counts at the start of a word, so
+     *              "gesture" passes "gestures" and "turn" does not pass "return".
+     *              { "whole": "Level I" } must end a word too, so it does not
+     *              pass "Level II". Unicode and non-breaking hyphens and spaces
+     *              read as plain ones. A ruling stays one exact phrase ("full
+     *              physical", "mastery criteria"). A form must not be a word a
+     *              label the case needs ticked already carries: "parent" passed
+     *              every telehealth note on "Parent/Caregiver" (review R330-H1).
+     *              Kaleb's BT runs of 9 Oct 2026 failed notes that said "new
+     *              action sequences", the intake's own "new ones", where the case
+     *              wanted "novel", and "His father" where it wanted "dad".
      *   forbid     phrases it must not (an invented fact, a hollow line, "was
      *              reinforced", "responded well")
      *   picks      { group: [labels that must be ticked] }
@@ -283,6 +295,9 @@
     
     const lc = (s) => String(s || '').toLowerCase();
     const forms = (m) => (Array.isArray(m) ? m : [m]);
+    // A form is a phrase, or { "whole": phrase } when it must also end a word.
+    const formText = (f) => (typeof f === 'string' ? f : f.whole);
+    const saysForm = (text, f) => saysAtWordStart(text, formText(f), typeof f !== 'string');
     const QUESTION = /^\s*(clarify|specify|(confirm|verify|determine|check|ask|identify) (whether|if)|find out (whether|if))\b|\?\s*$/i;
     
     /* What the note says: its narratives, its picks and its goals table rows.
@@ -313,7 +328,7 @@
       const said = noteWords(note);
     
       for (const m of e.mentions || []) {
-        if (!forms(m).some((f) => saysAtWordStart(said, f))) fails.push(`missing from the note: ${forms(m).map((f) => `"${f}"`).join(' or ')}`);
+        if (!forms(m).some((f) => saysForm(said, f))) fails.push(`missing from the note: ${forms(m).map((f) => `"${formText(f)}"`).join(' or ')}`);
       }
       for (const f of e.forbid || []) if (lc(said).includes(lc(f))) fails.push(`must not appear: "${f}"`);
       for (const [group, labels] of Object.entries(e.picks || {})) {
@@ -392,7 +407,8 @@
    * any one word. Both school questions got the greeting answer ("Q2 answer
    * duplicates Q1 answer"), a question about past sessions got the precursor
    * answer and the note wrote it as history, and a question about what guidance
-   * dad used got the coaching answer.
+   * dad used got the coaching answer. A fact's score is the number of question
+   * words its keywords land on, each word once (review R330-H1).
    *
    * IGNORED_ABOUT holds the words nearly every question in a case carries (who
    * was there, the behavior, "before", "prompt"), so sharing one says nothing
@@ -404,15 +420,52 @@
     'dad', 'mom', 'father', 'mother', 'parent', 'caregiver', 'prompt', 'hit',
   ];
   
-  /* The phrase at the start of a word somewhere in the text, any case. Shared
-     with lib/checks.mjs, which reads a note's mentions the same way. */
-  function saysAtWordStart(text, phrase) {
-    const at = String(text || '').toLowerCase();
-    const p = String(phrase || '').toLowerCase();
+  /* Text as the bench compares it: lower case, with the non-breaking and
+     Unicode hyphens (U+2010, U+2011) and the non-breaking spaces a page or a
+     keyboard can put in read as plain ones. One character for one, so an
+     offset in this text is an offset in the original. */
+  function plainText(s) {
+    return String(s || '').toLowerCase().replace(/[\u2010\u2011]/g, '-').replace(/[\u00a0\u202f]/g, ' ');
+  }
+  
+  /* Where the phrase starts a word in the text, any case. With `whole` it must
+     end one too, which is how "Level I" stays out of "Level II". */
+  function wordStartsOf(text, phrase, whole = false) {
+    const at = plainText(text);
+    const p = plainText(phrase);
+    const found = [];
+    if (!p) return found;
     for (let i = at.indexOf(p); i !== -1; i = at.indexOf(p, i + 1)) {
-      if (i === 0 || !/[a-z0-9]/.test(at[i - 1])) return true;
+      const starts = i === 0 || !/[a-z0-9]/.test(at[i - 1]);
+      const ends = !whole || i + p.length === at.length || !/[a-z0-9]/.test(at[i + p.length]);
+      if (starts && ends) found.push(i);
     }
-    return false;
+    return found;
+  }
+  
+  /* Shared with lib/checks.mjs, which reads a note's mentions the same way. */
+  function saysAtWordStart(text, phrase, whole = false) {
+    return wordStartsOf(text, phrase, whole).length > 0;
+  }
+  
+  /* The words of the question a fact's keywords land on. A word counts once
+     however many keywords start it ("med" and "medication" on "medication"),
+     and a keyword that starts no word ("+,+") counts where it sits. */
+  function wordsCovered(question, keywords) {
+    const q = plainText(question);
+    const starts = [];
+    for (let i = 0; i < q.length; i++) {
+      if (/[a-z0-9]/.test(q[i]) && (i === 0 || !/[a-z0-9]/.test(q[i - 1]))) starts.push(i);
+    }
+    const covered = new Set();
+    for (const k of keywords) {
+      const len = plainText(k).length;
+      for (const o of wordStartsOf(q, k)) {
+        const inside = starts.filter((w) => w >= o && w < o + len);
+        (inside.length ? inside : [o]).forEach((w) => covered.add(w));
+      }
+    }
+    return covered.size;
   }
   
   function pickAnswers(questions, truth) {
@@ -421,10 +474,10 @@
     const fits = [];
     questions.forEach((q, qi) => facts.forEach((t, ti) => {
       const on = (t.about || []).filter((k) => !IGNORED_ABOUT.includes(lc(k)) && saysAtWordStart(q, k));
-      if (on.length) fits.push({ qi, ti, on });
+      if (on.length) fits.push({ qi, ti, on, score: wordsCovered(q, on) });
     }));
     // Best fit first; a tie goes to the earlier question, then the earlier fact.
-    fits.sort((a, b) => b.on.length - a.on.length || a.qi - b.qi || a.ti - b.ti);
+    fits.sort((a, b) => b.score - a.score || a.qi - b.qi || a.ti - b.ti);
     const used = new Set();
     const picked = questions.map(() => ({ truth: null, matchedOn: [], answer: null }));
     for (const f of fits) {

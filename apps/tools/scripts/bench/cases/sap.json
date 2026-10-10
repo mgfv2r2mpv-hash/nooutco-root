@@ -92,17 +92,25 @@
           [
             "5 second",
             "5-second",
+            "5 sec",
+            "5-sec",
+            {
+              "whole": "5s"
+            },
             "five second",
             "five-second"
           ],
           [
             "80%",
+            "80 %",
             "80 percent"
           ],
           "teacher",
           [
             "4 week",
             "4-week",
+            "4 wk",
+            "4-wk",
             "four week",
             "four-week"
           ],
