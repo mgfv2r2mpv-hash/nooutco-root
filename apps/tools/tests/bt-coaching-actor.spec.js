@@ -260,7 +260,7 @@ test.describe('card tool-hint-polish: the misfires the #331 reviewer found after
   }
 
   // Guards: the wider matcher still lets the hint ask when nothing new is named.
-  for (const said of ['new behavior plan', 'did not eat before lunch', 'new targets added this week']) {
+  for (const said of ['new behavior plan', 'did not eat before lunch', 'new targets added this week', "hadn't had a snack before session"]) {
     test(`no new behavior, so the hint still asks: "${said}"`, () => {
       expect(newBehaviorHints(said)).toEqual(['actionItems: Check "new behavior": the notes name no new behavior.']);
     });

@@ -175,6 +175,60 @@ test.describe('card tool-hint-polish: the misses the #332 reviewer found after m
   }
 });
 
+test.describe('card tool-hint-polish, #336 review: success sentences and skill climbing stay quiet', () => {
+  const progressHints = (intake) => {
+    const out = sup.normalizeOutput({ overallProgress: STEADY, hints: [] }, { intake });
+    expect(out.overallProgress, intake).toBe(STEADY);
+    return details(out).filter((d) => d.startsWith('overallProgress:'));
+  };
+
+  // R336 HIGH: "for the first time" after a skill is good news, the very
+  // notes where a BCBA picks substantial progress.
+  // R336 MEDIUM: climbing as a skill or a program is not a behavior.
+  const QUIET = [
+    'hit criterion for the first time on matching',
+    'hit mastery for the first time',
+    'hit 80 percent for the first time',
+    'hit his IEP goal for the first time',
+    'hit her goal for the first time',
+    'threw the ball for the first time',
+    'kicked the ball for the first time',
+    'pushed the cart for the first time',
+    'pinched the clothespin for the first time',
+    'climbed the rock wall for the first time',
+    'spit out the gum for the first time',
+    'bolted to the car for the first time',
+    'kicking the ball for the first time in PE',
+    'talked a bit louder for the first time',
+    'first time talking a bit louder',
+    'reviewed behavior data for the first time with the new RBT',
+    'trained RBT on bx graphing for the first time',
+    'started climbing the stairs independently in OT',
+    'new climbing wall at clinic',
+    'began climbing program today',
+  ];
+  for (const said of QUIET) {
+    test(`no hint: "${said}"`, () => {
+      expect(progressHints(said)).toEqual([]);
+    });
+  }
+
+  const FLAGGED = [
+    ['hit mom for the first time', 'hit mom for the first time'],
+    ['hitting is new, started Tuesday', 'hitting is new'],
+    ['climbing on furniture started this week', 'climbing on furniture started this week'],
+    ['hit his sister for the first time', 'hit his sister for the first time'],
+    ['threw a toy at a peer for the first time', 'threw a toy at a peer for the first time'],
+  ];
+  for (const [said, phrase] of FLAGGED) {
+    test(`hint quotes "${phrase}"`, () => {
+      expect(progressHints(said)).toEqual([
+        `overallProgress: Progress picked substantial, but the notes mention "${phrase}"; check it.`,
+      ]);
+    });
+  }
+});
+
 test.describe('a named procedure stays named', () => {
   test('"errorless" dropped from the note is flagged on the whole note', () => {
     const out = sup.normalizeOutput({
