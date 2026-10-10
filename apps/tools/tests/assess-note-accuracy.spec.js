@@ -330,6 +330,79 @@ test.describe('noise: correct notes raise no hint', () => {
   });
 });
 
+// ── Review R335-H1: hints the first cut raised on correct notes ─────────
+
+test.describe('noise (R335-H1): planned stays planned reads the act\'s own object and time', () => {
+  // The planned check matched any past act on the same word, so "level 2"
+  // planned was hit by "Level 1" done, and an update last month was read as
+  // this visit's. Synthetic intakes, no client.
+  const planned = (intake, results) => details(assess.normalizeOutput(draft({ results }), { intake })).filter((d) => /Keep it planned/.test(d));
+
+  test('"next visit finish level 2" is not hit by "Level 1 was completed and scored today"', () => {
+    expect(planned('scored level 1 today. next visit finish level 2', 'Level 1 was completed and scored today.')).toEqual([]);
+  });
+
+  test('"Level 1" done and "Level 2" still planned raises no hint', () => {
+    expect(planned('scored level 1 today. next visit finish level 2', 'BCBA finished Level 1 today. Level 2 will be finished at the next visit.')).toEqual([]);
+  });
+
+  test('the bench VB-MAPP notes and "Level 1 was completed and scored today" raise no planned hint', () => {
+    expect(planned(INTAKE[VBMAPP], 'Level 1 was completed and scored today, and Level 2 is partially scored.')).toEqual([]);
+  });
+
+  for (const intake of ['will update the BIP again after the FA', 'will update the BIP after the FA']) {
+    test(`"${intake}" is not hit by "the BIP was updated last month"`, () => {
+      expect(planned(intake, 'The BIP was updated last month.')).toEqual([]);
+    });
+  }
+
+  test('still flagged: "next visit finish level 2" written as "BCBA finished Level 2 today"', () => {
+    expect(planned(INTAKE[VBMAPP], 'BCBA finished Level 2 today.')).toEqual(['results: The notes say "next visit finish level 2"; the note says it was done. Keep it planned.']);
+  });
+
+  test('still flagged: "will update the BIP after the FA" written as "BCBA updated the BIP today"', () => {
+    expect(planned('will update the BIP after the FA', 'BCBA updated the BIP today.')).toEqual(['results: The notes say "will update the BIP"; the note says it was done. Keep it planned.']);
+  });
+});
+
+test.describe('noise (R335-H1): an FBA consequence breakdown is its own count', () => {
+  const counted = (results) => details(run(FBA, { results })).filter((d) => /Counts add|adds a group/.test(d));
+
+  test('antecedents 5 + 2, then "Five were followed by" the consequence, raises no hint', () => {
+    expect(counted('BCBA recorded seven hitting episodes: five after clean up or line up, and two at recess. Five were followed by the teacher removing the demand.')).toEqual([]);
+  });
+
+  for (const [marker, sentence] of [
+    ['ended', 'Five ended when the teacher removed the demand.'],
+    ['resulted in', 'Five resulted in the teacher removing the demand.'],
+    ['maintained by', 'Five appeared maintained by the teacher removing the demand.'],
+  ]) {
+    test(`a consequence breakdown opened by "${marker}" raises no hint`, () => {
+      expect(counted(`BCBA recorded 7 episodes of hitting: 5 after clean up or line up, and 2 at recess. ${sentence}`)).toEqual([]);
+    });
+  }
+
+  test('still flagged: "Two episodes had unclear antecedents" makes 9 of his 7', () => {
+    expect(counted(`${FBA_COUNT} Two episodes had unclear antecedents.`)).toEqual(['results: Counts add to 9 (5 + 2 + 2), but the notes give 7 episodes; check for an added group.']);
+  });
+
+  test('still flagged: a consequence breakdown that itself adds past 7', () => {
+    expect(counted(`${FBA_COUNT} Five were followed by the teacher removing the demand, and four were followed by a peer returning the ball.`)).toEqual(['results: Counts add to 9 (5 + 4), but the notes give 7 episodes; check for an added group.']);
+  });
+
+  for (const sentence of [
+    'BCBA recorded 7 episodes (5 demand, 2 tangible).',
+    'BCBA recorded 7 episodes, 5 after demands and 2 at recess, about 3 episodes per hour.',
+    'BCBA recorded 7 episodes of hitting, 2 to 3 episodes in each class period.',
+    'BCBA recorded 7 episodes of hitting. Several episodes followed a demand to clean up.',
+    'Five of the 7 episodes followed a demand to clean up, and 2 occurred at recess.',
+  ]) {
+    test(`quiet: "${sentence}"`, () => {
+      expect(counted(sentence)).toEqual([]);
+    });
+  }
+});
+
 // ── Fail open, and never change anything ────────────────────────────────
 
 test.describe('the checks run only on a real draft, and fail open', () => {

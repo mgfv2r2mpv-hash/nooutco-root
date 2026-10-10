@@ -71,10 +71,13 @@
 
   // A word counts as present when its first six letters start a word, so
   // "neuropsych" is kept by "neuropsychological". Short words match whole.
-  function present(word, str) {
+  function wordPattern(word) {
     var w = String(word).toLowerCase();
-    var re = w.length >= 6 ? new RegExp("\\b" + escapeRe(w.slice(0, 6)), "i") : new RegExp("\\b" + escapeRe(w) + "\\b", "i");
-    return re.test(str);
+    return w.length >= 6 ? "\\b" + escapeRe(w.slice(0, 6)) + "[a-z'-]*" : "\\b" + escapeRe(w) + "\\b";
+  }
+
+  function present(word, str) {
+    return new RegExp(wordPattern(word), "i").test(str);
   }
 
   function contentWords(str) {
@@ -194,6 +197,39 @@
     return forms;
   }
 
+  /* The objects of a planned act. A number keeps the word before it, so
+     "finish level 2" is about "level 2" and a past act on "Level 1" is about
+     something else. */
+  var QUALIFIER_NUMBERS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
+  var QUALIFIER_NUMBER = new RegExp("^(?:\\d+|" + QUALIFIER_NUMBERS.join("|") + ")$");
+
+  function isObjectWord(w) {
+    return /^[a-z][a-z'-]+$/.test(w) && w.length >= 3 && !STOP.test(w) && !QUALIFIER_NUMBER.test(w);
+  }
+
+  function numberKey(t) {
+    var i = QUALIFIER_NUMBERS.indexOf(t);
+    return i === -1 ? String(parseInt(t, 10)) : String(i);
+  }
+
+  function actObjects(str) {
+    var tokens = text(str).toLowerCase().match(/[a-z][a-z'-]*|\d+/g) || [];
+    return tokens.reduce(function (acc, t, i) {
+      if (!QUALIFIER_NUMBER.test(t)) return isObjectWord(t) ? acc.concat([t]) : acc;
+      var prev = tokens[i - 1];
+      return prev && isObjectWord(prev) ? acc.slice(0, -1).concat([prev + " " + numberKey(t)]) : acc;
+    }, []);
+  }
+
+  // "level 2" is present as "Level 2" or "level two", never as "Level 1".
+  function objectPresent(object, str) {
+    var parts = object.split(" ");
+    if (parts.length === 1) return present(object, str);
+    var n = parseInt(parts[1], 10);
+    var alts = [String(n)].concat(QUALIFIER_NUMBERS[n] ? [QUALIFIER_NUMBERS[n]] : []);
+    return new RegExp(wordPattern(parts[0]) + "\\s+(?:" + alts.join("|") + ")\\b", "i").test(str);
+  }
+
   function plannedActs(intake) {
     var acts = [];
     var re = new RegExp(FUTURE.source, FUTURE.flags);
@@ -202,7 +238,7 @@
       var verb = m[1].toLowerCase();
       if (NOT_ACTIONS.test(verb)) continue;
       var tail = (" " + m[2] + " ").split(OBJECT_END)[0];
-      var objects = contentWords(tail).slice(0, 4);
+      var objects = actObjects(tail).slice(0, 4);
       if (!objects.length) continue;
       var forms = [verb].concat(SAME_ACT[verb] || []).reduce(function (acc, v) { return acc.concat(pastForms(v)); }, []);
       acts.push({ said: quote((m[0] + " ").split(OBJECT_END)[0], 40), verb: verb, forms: forms, objects: objects });
@@ -210,12 +246,41 @@
     return acts;
   }
 
+  /* A past time names an earlier event, not this visit's: "the BIP was
+     updated last month" is not the BIP update still planned. Only spans of
+     time count: "prior authorization" is a document, and "previously planned"
+     can describe this visit. */
+  var PAST_TIME = /\b(?:last|previous|prior|past)\s+(?:week|month|year|visit|session|semester|quarter|school\s+year)\b|\byesterday\b|\b(?:\d+|a|an|one|two|three|four|five|six|several|few)\s+(?:days?|weeks?|months?|years?)\s+ago\b|\bearlier\s+this\s+(?:week|month|year)\b/i;
+
+  // The clause around a match: the act and its object, between commas or
+  // semicolons, so "Level 1 was completed, and Level 2 is partial" is two.
+  function clauseAt(sentence, index) {
+    var start = Math.max(sentence.lastIndexOf(",", index), sentence.lastIndexOf(";", index), sentence.lastIndexOf(":", index)) + 1;
+    var rest = sentence.slice(index).search(/[,;:]/);
+    return sentence.slice(start, rest === -1 ? sentence.length : index + rest);
+  }
+
+  function pastHits(sentence, act) {
+    return act.forms.reduce(function (acc, f) {
+      return acc.concat(matchIndexes(new RegExp("\\b" + f + "\\b", "gi"), sentence));
+    }, []);
+  }
+
+  function matchIndexes(re, str) {
+    var out = [];
+    var m;
+    while ((m = re.exec(str)) !== null) out.push(m.index);
+    return out;
+  }
+
   function writtenAsDone(sentence, act) {
-    var hit = act.forms.map(function (f) { return new RegExp("\\b" + f + "\\b", "i").exec(sentence); }).filter(Boolean)[0];
-    if (!hit) return false;
-    if (FUTURE_MARK.test(sentence.slice(0, hit.index))) return false;
+    if (PAST_TIME.test(sentence)) return false;
     var need = Math.min(2, act.objects.length);
-    return act.objects.filter(function (o) { return present(o, sentence); }).length >= need;
+    return pastHits(sentence, act).some(function (index) {
+      if (FUTURE_MARK.test(sentence.slice(0, index))) return false;
+      var clause = clauseAt(sentence, index);
+      return act.objects.filter(function (o) { return objectPresent(o, clause); }).length >= need;
+    });
   }
 
   function tenseHints(out, intake) {

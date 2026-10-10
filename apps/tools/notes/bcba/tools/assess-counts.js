@@ -124,18 +124,77 @@
     "i"
   );
 
+  /* A part that restates the episodes by consequence ("Five were followed by
+     the teacher removing the demand") opens its own breakdown: the same 7 hits
+     counted a second way, never more hits. Only a word or two may sit between
+     the number and the consequence, and none of them a word that places an
+     antecedent, so "2 after peer play ended" stays an antecedent. */
+  var CONSEQUENCE = new RegExp(
+    "^\\s+(?:(?!(?:after|at|during|when|before|in|on|while|once)\\b)[a-z][a-z'-]*\\s+){0,2}?" +
+    "(?:followed\\s+by|ended|resulted\\s+in|maintained\\s+by|led\\s+to)\\b",
+    "i"
+  );
+
+  /* Each part as { n, consequence }. */
   function partsIn(str, total) {
     var s = text(str);
     return matches(PART, s).filter(function (m) {
       return !RATE.test(s.slice(m.index + m[0].length));
-    }).map(function (m) { return toNumber(m[1]); }).filter(function (n) {
-      return n !== total;
+    }).map(function (m) {
+      return { n: toNumber(m[1]), consequence: CONSEQUENCE.test(s.slice(m.index + m[0].length)) };
+    }).filter(function (p) {
+      return p.n !== total;
     });
   }
 
-  /* For one section: each total the notes also give, the parts written after
-     it in the next few sentences, and whether a "remaining" group was added
-     once the parts already account for the total. */
+  /* Adds one part to the breakdowns, as new objects. The first consequence
+     part after an antecedent breakdown starts a new breakdown. */
+  function addPart(groups, p) {
+    var cur = groups[groups.length - 1];
+    if (p.consequence && !cur.consequence && cur.parts.length) {
+      return groups.concat([{ parts: [p.n], consequence: true, remainder: "" }]);
+    }
+    var next = { parts: cur.parts.concat([p.n]), consequence: cur.consequence || p.consequence, remainder: cur.remainder };
+    return groups.slice(0, -1).concat([next]);
+  }
+
+  /* A "remaining" group written once the current breakdown already accounts
+     for the total. */
+  function addRemainder(groups, piece, total) {
+    var cur = groups[groups.length - 1];
+    var r = REMAINDER.exec(piece);
+    if (cur.remainder || !r || sum(cur.parts) < total) return groups;
+    return groups.slice(0, -1).concat([Object.assign({}, cur, { remainder: r[0] })]);
+  }
+
+  /* The breakdowns written after a total: its own sentence's rest and the
+     next few sentences, until a sentence gives another of the notes' totals
+     ("2 elopement attempts" after "12 incidents"). */
+  function breakdowns(after, known, total) {
+    var groups = [{ parts: [], consequence: false, remainder: "" }];
+    var stopped = false;
+    after.forEach(function (piece, k) {
+      if (stopped || (k > 0 && startsCount(piece, known))) { stopped = true; return; }
+      groups = addRemainder(partsIn(piece, total).reduce(addPart, groups), piece, total);
+    });
+    return groups;
+  }
+
+  function groupFinding(section, m, total, g) {
+    var added = sum(g.parts);
+    if (g.parts.length >= 2 && added > total) {
+      return { section: section, kind: "sum", total: total, noun: m[2], parts: g.parts, added: added };
+    }
+    if (g.remainder && g.parts.length >= 1) {
+      return { section: section, kind: "remainder", phrase: g.remainder, total: total, noun: m[2], parts: g.parts, added: added };
+    }
+    return null;
+  }
+
+  /* For one section: each total the notes also give, and each breakdown
+     written after it (by antecedent, then by consequence, counted apart):
+     parts adding past the total, or a "remaining" group added once the parts
+     already account for it. */
   function episodeFindings(section, prose, intake) {
     var known = totalsIn(intake);
     if (!known.length) return [];
@@ -146,23 +205,10 @@
         var total = toNumber(m[1]);
         if (known.indexOf(total) === -1) return;
         var after = [sentence.slice(m.index + m[0].length)].concat(list.slice(i + 1, i + WINDOW));
-        var parts = [];
-        var remainder = "";
-        var stopped = false;
-        after.forEach(function (piece, k) {
-          // A later sentence giving another of the notes' own totals starts a
-          // new count ("2 elopement attempts" after "12 incidents").
-          if (stopped || (k > 0 && startsCount(piece, known))) { stopped = true; return; }
-          parts = parts.concat(partsIn(piece, total));
-          var r = REMAINDER.exec(piece);
-          if (!remainder && r && sum(parts) >= total) remainder = r[0];
+        breakdowns(after, known, total).forEach(function (g) {
+          var f = groupFinding(section, m, total, g);
+          if (f) found.push(f);
         });
-        var added = sum(parts);
-        if (parts.length >= 2 && added > total) {
-          found.push({ section: section, kind: "sum", total: total, noun: m[2], parts: parts, added: added });
-        } else if (remainder && parts.length >= 1) {
-          found.push({ section: section, kind: "remainder", phrase: remainder, total: total, noun: m[2], parts: parts, added: added });
-        }
       });
     });
     return found;
