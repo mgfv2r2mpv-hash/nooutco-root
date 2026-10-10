@@ -721,6 +721,9 @@ function ExpertQuestionRow({ q, answer, onAnswer, claimAnswer, onClaimAnswer, bu
             edited after the expert read it, and only he knows whether the edit
             answered this. */}
         {q.stale ? <span className="expert-stale" data-expert-stale="1">Section edited after expert review.</span> : null}
+        {/* The #118 check's tag (the pass on #337): the ask stays, and says
+            what it takes as given. */}
+        {q.assumes ? <span className="expert-assumes" data-expert-assumes="1">{q.assumes}</span> : null}
       </Bubble>
       {oneClick ? (
         <window.ClaimQuestion quote={q.quoteForModel} answer={claimAnswer} onAnswer={onClaimAnswer} busy={busy} />

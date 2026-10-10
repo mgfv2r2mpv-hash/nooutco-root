@@ -1242,6 +1242,9 @@ function RegisterFinding({ finding, answer, onAnswer, busy }) {
       </span>
       <span style={{ fontStyle: "italic", opacity: 0.78 }}>“{quote}”</span>
       {move ? <span style={{ color: "#374528", fontWeight: 600 }}> → {move}</span> : null}
+      {/* Shown, never applied (the pass on #337): the move takes a stop as
+          given that the notes deny. */}
+      {finding.assumes ? <span className="expert-assumes" data-expert-assumes="1">{finding.assumes}</span> : null}
       {why ? (
         <button
           type="button"
@@ -1455,11 +1458,11 @@ function ExpertReading({ expert, claimAnswers, onClaimAnswer, busy }) {
           {expert.hintsDropped} lower-ranked finding{expert.hintsDropped === 1 ? "" : "s"} not shown.
         </p>
       ) : null}
-      {/* Pollux's hold on #328, finding 3: what the #118 check dropped is
-          said, so a real finding cannot sit behind the check mark unseen. */}
-      {expert.unresolvedDropped ? (
-        <p style={{ fontSize: 11.5, color: "#7a9460", marginTop: 6 }} data-testid="expert-unresolved-dropped">
-          {expert.unresolvedDropped} finding{expert.unresolvedDropped === 1 ? "" : "s"} not shown: {expert.unresolvedDropped === 1 ? "it assumes" : "they assume"} a behavior stopped that the notes say did not.
+      {/* Pollux's hold on #328, finding 3: what the #118 check tagged is
+          counted here too, so it is seen even with the phrases folded. */}
+      {expert.unresolvedTagged ? (
+        <p style={{ fontSize: 11.5, color: "#8a6d1a", marginTop: 6 }} data-testid="expert-unresolved-tagged">
+          {expert.unresolvedTagged} finding{expert.unresolvedTagged === 1 ? "" : "s"} {expert.unresolvedTagged === 1 ? "assumes" : "assume"} a behavior stopped that the notes say did not, and {expert.unresolvedTagged === 1 ? "is" : "are"} tagged.
         </p>
       ) : null}
     </div>
@@ -3470,8 +3473,10 @@ function App() {
             const praised = read && window.ExpertPraise ? ExpertPraise.drop(read) : read;
             /* And a finding that assumes a behavior stopped when the notes say
                it did not (issue #118): "how long until the vocalizations
-               stopped?" asks about something that did not happen. */
-            const found = praised && window.NoteUnresolved ? NoteUnresolved.dropExpert(praised, expertIntake) : praised;
+               stopped?" asks about something that did not happen. It is kept
+               and tagged, never dropped and never applied: a check raises a
+               hint and does not act on its own (Atlas, the pass on #337). */
+            const found = praised && window.NoteUnresolved ? NoteUnresolved.tagExpert(praised, expertIntake) : praised;
             patchS((s) => {
               if (!s.expert || s.expert.runId !== runId) return {};
               return { expert: found ? { status: "done", runId, ...found } : { status: "failed", runId } };
@@ -3486,7 +3491,7 @@ function App() {
                 terms: (found.terms || []).length,
                 dropped: found.hintsDropped || 0,
                 praise: found.praiseDropped || 0,
-                unresolved: found.unresolvedDropped || 0,
+                unresolved: found.unresolvedTagged || 0,
                 inTokens: (found.usage && found.usage.input_tokens) || 0,
                 cachedTokens: (found.usage && found.usage.cache_read_input_tokens) || 0,
                 outTokens: (found.usage && found.usage.output_tokens) || 0,

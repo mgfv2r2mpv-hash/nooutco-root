@@ -126,7 +126,7 @@ test.describe('the expert does not ask when it stopped', () => {
     await page.waitForFunction(() => !!window.NoteUnresolved);
   });
 
-  test('an ask or a rewrite that assumes the behavior stopped is dropped and counted; the rest stays', async ({ page }) => {
+  test('an ask or a rewrite that assumes the behavior stopped is kept, tagged and counted', async ({ page }) => {
     const out = await U(page, (N, intake) => {
       const found = {
         terms: [],
@@ -140,12 +140,20 @@ test.describe('the expert does not ask when it stopped', () => {
         ],
         hintsDropped: 0,
       };
-      const kept = N.dropExpert(found, intake);
+      const kept = N.tagExpert(found, intake);
       return { kept, before: found.hints.length + found.register.length };
     }, INTAKE);
-    expect(out.kept.hints.map((h) => h.ask)).toEqual(['How many seconds of attention were delivered?']);
-    expect(out.kept.register.map((r) => r.move)).toEqual(['BCBA delivered attention for 10 s.']);
-    expect(out.kept.unresolvedDropped).toBe(2);
+    // Kept and tagged, never dropped (Atlas, 10 Oct): a check raises a hint
+    // and does not act on its own.
+    expect(out.kept.hints.map((h) => [h.ask, h.assumes || ''])).toEqual([
+      ['How long after attention did the vocalizations stop?', 'Assumes vocalizations stopped; the notes say they did not.'],
+      ['How many seconds of attention were delivered?', ''],
+    ]);
+    expect(out.kept.register.map((r) => [r.move, r.assumes || ''])).toEqual([
+      ['The vocalizations stopped after attention was delivered.', 'Assumes vocalizations stopped; the notes say they did not.'],
+      ['BCBA delivered attention for 10 s.', ''],
+    ]);
+    expect(out.kept.unresolvedTagged).toBe(2);
     expect(out.before).toBe(4);
   });
 });
@@ -304,8 +312,8 @@ test.describe('Pollux 3: a real finding cannot hide behind the check mark', () =
         ],
         hintsDropped: 0,
       };
-      const kept = N.dropExpert(found, 'Crying did not stop during demands.');
-      return { asks: kept.hints.map((h) => h.ask), dropped: kept.unresolvedDropped, clear: window.ExpertPraise.nothingToChange(kept) };
+      const kept = N.tagExpert(found, 'Crying did not stop during demands.');
+      return { asks: kept.hints.map((h) => h.ask), dropped: kept.unresolvedTagged, clear: window.ExpertPraise.nothingToChange(kept) };
     });
     expect(out.asks).toEqual([
       'Did the crying stop or continue by the end?',
@@ -316,7 +324,7 @@ test.describe('Pollux 3: a real finding cannot hide behind the check mark', () =
     expect(out.clear).toBe(false);
   });
 
-  test('a dropped ask holds the block open', async ({ page }) => {
+  test('a tagged ask holds the block open', async ({ page }) => {
     const out = await U(page, (N) => {
       const found = {
         terms: [],
@@ -324,10 +332,16 @@ test.describe('Pollux 3: a real finding cannot hide behind the check mark', () =
         hints: [{ section: 'results', rank: 1, kind: 'thin', ask: 'How long after attention did the vocalizations stop?', why: '' }],
         hintsDropped: 0,
       };
-      const kept = N.dropExpert(found, 'Vocalizations did not resolve.');
-      return { asks: kept.hints.length, dropped: kept.unresolvedDropped, clear: window.ExpertPraise.nothingToChange(kept) };
+      const kept = N.tagExpert(found, 'Vocalizations did not resolve.');
+      return {
+        asks: kept.hints.length,
+        tagged: kept.unresolvedTagged,
+        clear: window.ExpertPraise.nothingToChange(kept),
+        // Even with the ask emptied, the count alone holds the block open.
+        clearWithoutAsk: window.ExpertPraise.nothingToChange({ ...kept, hints: [] }),
+      };
     });
-    expect(out).toEqual({ asks: 0, dropped: 1, clear: false });
+    expect(out).toEqual({ asks: 1, tagged: 1, clear: false, clearWithoutAsk: false });
   });
 });
 
@@ -385,15 +399,16 @@ test.describe('on the page, Pollux 1 and 3', () => {
     await expect(page.getByTestId('hints-results')).not.toContainText('Changed "did not resolve"');
   });
 
-  test('an expert ask dropped for assuming a stop shows a line, and no check mark', async ({ page }) => {
+  test('an expert ask that assumes a stop shows in the panel with an amber tag, and no check mark', async ({ page }) => {
     await draft(page, {
       terms: [],
       register: [],
       hints: [{ section: 'results', rank: 1, kind: 'thin', ask: 'How long after attention did the vocalizations stop?', why: '' }],
       hintsDropped: 0,
     });
-    await expect(page.getByTestId('expert-unresolved-dropped')).toBeVisible({ timeout: 10000 });
-    await expect(page.getByTestId('expert-unresolved-dropped')).toContainText('notes say');
+    const row = page.getByTestId('panel-expert-questions');
+    await expect(row).toContainText('How long after attention did the vocalizations stop?', { timeout: 10000 });
+    await expect(row.locator('[data-expert-assumes]')).toHaveText('Assumes vocalizations stopped; the notes say they did not.');
     await expect(page.getByRole('img', { name: 'Expert: nothing to change' })).toHaveCount(0);
   });
 });
@@ -631,7 +646,7 @@ test.describe('review of #337: hints', () => {
     expect(rows.map((r) => [r.kind, r.question, r.why])).toEqual([['ask', 'The rate is not given.', '']]);
   });
 
-  test('MEDIUM 4: a question or a correction from the expert is kept; an ask that takes the stop as given is dropped', async ({ page }) => {
+  test('MEDIUM 4: a question or a correction from the expert is untagged; an ask that takes the stop as given is tagged', async ({ page }) => {
     const intake = CRY + ' ' + VOC;
     const out = await U(page, (N, i) => [
       ['Did crying stop before the break?', ''],
@@ -644,7 +659,7 @@ test.describe('review of #337: hints', () => {
       ['In escape, how long until vocalizations stopped?', ''],
       ['How long until the crying stopped?', ''],
       ['Name the replacement behavior taught when crying stopped.', ''],
-    ].map(([ask, why]) => N.dropExpert({ terms: [], register: [], hints: [{ section: 'results', rank: 1, kind: 'thin', ask, why }] }, i).unresolvedDropped), intake);
+    ].map(([ask, why]) => N.tagExpert({ terms: [], register: [], hints: [{ section: 'results', rank: 1, kind: 'thin', ask, why }] }, i).unresolvedTagged), intake);
     expect(out).toEqual([0, 0, 0, 0, 0, 0, 0, 0, 1, 1]);
   });
 
@@ -679,5 +694,116 @@ test.describe('review of #337: hints', () => {
     ];
     const out = await U(page, (N, list) => list.map(([i, x]) => N.hints({ results: x }, i, ['results']).length), cases);
     expect(out).toEqual(cases.map(() => 1));
+  });
+});
+
+/* THE PASS ON #337 (10 Oct), two changes before Ship. A time phrase after
+ * the stop verb is not an object, and an expert ask that assumes a stop is
+ * kept and tagged rather than dropped. */
+
+test.describe('pass on #337: a time phrase after the verb is not an object', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto(BCBA);
+    await page.waitForFunction(() => !!window.NoteUnresolved);
+  });
+
+  test('the core #118 sentence with a time phrase is hinted', async ({ page }) => {
+    const xs = [
+      'Crying stopped a few minutes after the break.',
+      'Crying stopped the moment he got the iPad.',
+      'Crying stopped each time the iPad was delivered.',
+      'Crying stopped this time without a prompt.',
+      'Crying stopped all at once.',
+      'Crying ended that afternoon.',
+    ];
+    expect(await read(page, xs, CRY)).toEqual(all(xs));
+  });
+
+  test('a real object is still an object', async ({ page }) => {
+    const xs = ['Elopement ended the session early.', 'Hitting stopped the game.'];
+    expect(await read(page, xs, 'Elopement did not stop. Hitting did not stop.')).toEqual(none(xs));
+  });
+});
+
+test.describe('pass on #337: expert asks that assume a stop are tagged, never dropped', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto(BCBA);
+    await page.waitForFunction(() => !!window.NoteUnresolved && !!window.ExpertPraise && !!window.ExpertQuestions);
+  });
+
+  test('every such ask stays, with the tag', async ({ page }) => {
+    const asks = [
+      'How long until the crying stopped?',
+      'What did the BT do once crying stopped?',
+      'Which prompt stopped the crying?',
+      'How long until the crying stopped, if it did?',
+    ];
+    const out = await U(page, (N, list) => {
+      const found = {
+        terms: [],
+        register: [{ quote: 'Crying did not resolve', action: 'reframe', why: 'Vague.', move: 'Crying stopped after 2 minutes.' }],
+        hints: list.map((ask, i) => ({ section: 'results', rank: i + 1, kind: 'thin', ask, why: '' })),
+      };
+      const t = N.tagExpert(found, 'Crying did not stop during the session.');
+      return {
+        asks: t.hints.map((h) => [h.ask, h.assumes]),
+        moves: t.register.map((r) => [r.move, r.assumes]),
+        tagged: t.unresolvedTagged,
+        clear: window.ExpertPraise.nothingToChange(t),
+      };
+    }, asks);
+    const TAG = 'Assumes crying stopped; the notes say it did not.';
+    expect(out.asks).toEqual(asks.map((a) => [a, TAG]));
+    expect(out.moves).toEqual([['Crying stopped after 2 minutes.', TAG]]);
+    expect(out.tagged).toBe(5);
+    expect(out.clear).toBe(false);
+  });
+
+  test('the tag rides on the panel row', async ({ page }) => {
+    const rows = await page.evaluate(() => window.ExpertQuestions.list({
+      status: 'done',
+      hints: [{ section: 'results', rank: 1, kind: 'thin', ask: 'How long until the crying stopped?', why: '', assumes: 'Assumes crying stopped; the notes say it did not.' }],
+      register: [],
+    }, { whole: 'note' }));
+    expect(rows.map((r) => r.assumes)).toEqual(['Assumes crying stopped; the notes say it did not.']);
+  });
+});
+
+test.describe('pass on #337, on the page: a register move that assumes a stop', () => {
+  test('shows with the tag and is not applied to the note', async ({ page }) => {
+    await draftWith(page, 'In the tangible condition the vocalizations did not resolve.', INTAKE, {
+      terms: [], hints: [], hintsDropped: 0,
+      register: [{ quote: 'the vocalizations did not resolve', action: 'reframe', why: 'Vague.', move: 'The vocalizations stopped after 2 minutes.' }],
+    });
+    await page.getByTestId('expert-register-toggle').click({ timeout: 10000 });
+    await expect(page.getByTestId('expert-register-row').locator('[data-expert-assumes]'))
+      .toHaveText('Assumes vocalizations stopped; the notes say they did not.');
+    await expect(page.locator('textarea[data-section-id="results"]')).toHaveValue(/the vocalizations did not resolve\./);
+    await expect(page.locator('textarea[data-section-id="results"]')).not.toHaveValue(/stopped after 2 minutes/);
+  });
+});
+
+test.describe('pass on #337: the optional lows', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto(BCBA);
+    await page.waitForFunction(() => !!window.NoteUnresolved);
+  });
+
+  test('"at no point", "nothing suggested", "no indication" and a plan in the present tense are not claims', async ({ page }) => {
+    const xs = [
+      'At no point did crying stop.',
+      'Nothing suggested crying stopped.',
+      'There was no indication that crying stopped.',
+      'When crying stops, the BT will provide praise.',
+      'If crying stops within a minute, the BT praises him.',
+    ];
+    expect(await read(page, xs, CRY)).toEqual(none(xs));
+  });
+
+  test('a list of behaviors that all stopped names every one', async ({ page }) => {
+    const out = await U(page, (N) => N.hints({ results: 'Crying, hitting and kicking all stopped.' }, 'Crying did not stop. Hitting did not stop. Kicking did not stop.', ['results']));
+    expect(out).toHaveLength(1);
+    for (const b of ['crying', 'hitting', 'kicking']) expect(out[0].detail).toContain(b);
+    expect(out[0].detail.length).toBeLessThanOrEqual(120);
   });
 });

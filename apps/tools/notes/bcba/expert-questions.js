@@ -53,7 +53,7 @@
       var id = String(f.section || whole);
       var stale = id !== whole && revised.indexOf(id) !== -1;
       var heading = id === whole ? WHOLE_LABEL : ((o.headingFor && o.headingFor(id)) || id);
-      out.push({ key: "ask:" + id + ":" + i, kind: "ask", section: id, heading: heading, question: ask || why, why: ask ? why : "", stale: stale });
+      out.push({ key: "ask:" + id + ":" + i, kind: "ask", section: id, heading: heading, question: ask || why, why: ask ? why : "", stale: stale, assumes: String((f && f.assumes) || "") });
     });
     shownClaims(expert.register).forEach(function (r) {
       // The wire quote is what the model is answered with; the shown one is
