@@ -45,11 +45,15 @@
     var out = [];
     (expert.hints || []).forEach(function (f, i) {
       var ask = String((f && f.ask) || "").trim();
-      if (!ask) return;
+      var why = String((f && f.why) || "").trim();
+      /* A finding with a reason and no ask is still a finding (the review of
+         #337, MEDIUM 3): its reason is what the row says. Skipping it left
+         the block reading "Expert: no unobserved claims" over a real one. */
+      if (!ask && !why) return;
       var id = String(f.section || whole);
       var stale = id !== whole && revised.indexOf(id) !== -1;
       var heading = id === whole ? WHOLE_LABEL : ((o.headingFor && o.headingFor(id)) || id);
-      out.push({ key: "ask:" + id + ":" + i, kind: "ask", section: id, heading: heading, question: ask, why: String(f.why || "").trim(), stale: stale });
+      out.push({ key: "ask:" + id + ":" + i, kind: "ask", section: id, heading: heading, question: ask || why, why: ask ? why : "", stale: stale, assumes: String((f && f.assumes) || "") });
     });
     shownClaims(expert.register).forEach(function (r) {
       // The wire quote is what the model is answered with; the shown one is

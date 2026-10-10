@@ -114,20 +114,25 @@
      the cap cut. A reading it did resolve is a reading aid rather than a fix,
      so it does not hold the block open.
 
-     AN ASK THE #118 CHECK DROPPED HOLDS IT OPEN TOO (Pollux's hold on #328,
-     finding 3). The drop is a finding about the expert, and a dropped ask
-     that was the right question would otherwise vanish behind the mark. */
+     AN ASK THE #118 CHECK TAGGED HOLDS IT OPEN TOO (Pollux's hold on #328,
+     finding 3; tagged rather than dropped since the pass on #337). The tag
+     is a finding about the expert, so the count alone keeps the mark away.
+
+     THE LATE HOLD ON #328 (10 Oct), finding 3. A reading with any of its
+     three lists missing is a broken call, not a clean pass, so it is never
+     the mark. A hint with no ask but a reason is still a finding. */
   function nothingToChange(found) {
     if (!found || typeof found !== "object") return false;
-    var hints = Array.isArray(found.hints) ? found.hints : [];
-    var register = Array.isArray(found.register) ? found.register : [];
-    var terms = Array.isArray(found.terms) ? found.terms : [];
-    var asks = hints.filter(function (h) { return h && text(h.ask).trim(); });
+    if (!Array.isArray(found.hints) || !Array.isArray(found.register) || !Array.isArray(found.terms)) return false;
+    var hints = found.hints;
+    var register = found.register;
+    var terms = found.terms;
+    var asks = hints.filter(function (h) { return h && (text(h.ask).trim() || text(h.why).trim()); });
     var rewrites = register.filter(function (r) {
       return r && text(r.quote).trim() && (r.action || "ask") !== "keep";
     });
     var unread = terms.filter(function (t) { return t && text(t.token).trim() && t.status !== "resolved"; });
-    return !asks.length && !rewrites.length && !unread.length && !found.hintsDropped && !found.unresolvedDropped;
+    return !asks.length && !rewrites.length && !unread.length && !found.hintsDropped && !found.unresolvedTagged;
   }
 
   window.ExpertPraise = {

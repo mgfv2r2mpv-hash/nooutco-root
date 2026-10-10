@@ -1242,6 +1242,9 @@ function RegisterFinding({ finding, answer, onAnswer, busy }) {
       </span>
       <span style={{ fontStyle: "italic", opacity: 0.78 }}>“{quote}”</span>
       {move ? <span style={{ color: "#374528", fontWeight: 600 }}> → {move}</span> : null}
+      {/* Shown, never applied (the pass on #337): the move takes a stop as
+          given that the notes deny. */}
+      {finding.assumes ? <span className="expert-assumes" data-expert-assumes="1">{finding.assumes}</span> : null}
       {why ? (
         <button
           type="button"
@@ -1398,7 +1401,10 @@ function ExpertReading({ expert, claimAnswers, onClaimAnswer, busy }) {
     );
   }
 
-  if (expert.status === "failed") {
+  /* A reading without its findings list is a broken call, never a clean
+     pass (the late hold on #328, finding 3). NotesGate.expertPass already
+     returns null for one; this keeps the mark from ever standing in for it. */
+  if (expert.status === "failed" || (expert.status === "done" && !Array.isArray(expert.hints))) {
     return (
       <div style={{ marginBottom: 16 }} data-testid="expert-reading">
         {head}
@@ -1452,11 +1458,11 @@ function ExpertReading({ expert, claimAnswers, onClaimAnswer, busy }) {
           {expert.hintsDropped} lower-ranked finding{expert.hintsDropped === 1 ? "" : "s"} not shown.
         </p>
       ) : null}
-      {/* Pollux's hold on #328, finding 3: what the #118 check dropped is
-          said, so a real finding cannot sit behind the check mark unseen. */}
-      {expert.unresolvedDropped ? (
-        <p style={{ fontSize: 11.5, color: "#7a9460", marginTop: 6 }} data-testid="expert-unresolved-dropped">
-          {expert.unresolvedDropped} finding{expert.unresolvedDropped === 1 ? "" : "s"} not shown: {expert.unresolvedDropped === 1 ? "it assumes" : "they assume"} a behavior stopped that the notes say did not.
+      {/* Pollux's hold on #328, finding 3: what the #118 check tagged is
+          counted here too, so it is seen even with the phrases folded. */}
+      {expert.unresolvedTagged ? (
+        <p style={{ fontSize: 11.5, color: "#8a6d1a", marginTop: 6 }} data-testid="expert-unresolved-tagged">
+          {expert.unresolvedTagged} finding{expert.unresolvedTagged === 1 ? "" : "s"} {expert.unresolvedTagged === 1 ? "assumes" : "assume"} a behavior stopped that the notes say did not, and {expert.unresolvedTagged === 1 ? "is" : "are"} tagged.
         </p>
       ) : null}
     </div>
@@ -2316,20 +2322,14 @@ function App() {
        notes say it did not. His reading: "if the vocalizations didn't
        resolve, then the client kept making the vocalizations." It reads the
        intake this draft was written from, and it only ever adds a hint; the
-       sentence stays the clinician's to correct. */
+       sentence stays the clinician's to correct. There is no rewrite: the
+       review of #337 (10 Oct) found "did not resolve" -> "continued" flipped
+       correct sentences ("did not resolve once" became "continued once"),
+       and his rule is that an automatic check never rewrites one. */
     const stoppedClaims = window.NoteUnresolved
       ? window.NoteUnresolved.hints(restored, draftIntakeRef.current, narrativeIds())
       : [];
-    /* THE FIFTH, the recast's own notice (Pollux's hold on #328): a section
-       whose "did not resolve" is about to read "continued" says so, so the
-       clinician sees the change rather than only the audit counting it. It
-       goes in here to take the tool's validation with the rest; the recast
-       itself runs last, below, and a notice whose section it did not change
-       is taken back out there. */
-    const recastNotes = window.NoteUnresolved && window.NoteUnresolved.recastHints
-      ? window.NoteUnresolved.recastHints(restored, draftIntakeRef.current, narrativeIds())
-      : [];
-    const injected = misplaced.concat(effectGaps, repeats, stoppedClaims, recastNotes);
+    const injected = misplaced.concat(effectGaps, repeats, stoppedClaims);
     const withHints = injected.length
       ? { ...restored, hints: (Array.isArray(restored.hints) ? restored.hints : []).concat(injected) }
       : restored;
@@ -2350,33 +2350,15 @@ function App() {
     const filled = window.NoteHollow
       ? window.NoteHollow.passNote(stripped.output, narrativeIds())
       : { output: stripped.output, recast: 0, hollow: 0 };
-    /* "Did not resolve" reads "continued" (issue #118), his own reading of
-       the phrase. Last, for the reason the recast above runs after the strip:
-       it writes a word no model wrote, so nothing before it reads that word. */
-    const continued = window.NoteUnresolved
-      ? window.NoteUnresolved.passNote(filled.output, narrativeIds(), draftIntakeRef.current)
-      : { output: filled.output, recast: 0, sections: [] };
-    /* A notice for a section the recast did not in the end change (the strip
-       cut the sentence, say) would describe an edit that never happened.
-       Filtering keeps normalizeHints' rank order. */
-    const notice = recastNotes.length ? recastNotes[0].detail : null;
-    const told = notice && Array.isArray(continued.output && continued.output.hints)
-      ? {
-          ...continued.output,
-          hints: continued.output.hints.filter((h) =>
-            !(h.code === "other" && h.detail === notice && !continued.sections.includes(h.section))),
-        }
-      : continued.output;
 
     return {
-      output: told,
+      output: filled.output,
       cut: stripped.cut,
       flagged: stripped.flagged,
       recast: filled.recast,
       hollow: filled.hollow,
       misplaced: misplaced.length,
       effectUnstated: effectGaps.length,
-      unresolvedRecast: continued.recast,
       stoppedClaims: stoppedClaims.length,
     };
   };
@@ -3491,8 +3473,10 @@ function App() {
             const praised = read && window.ExpertPraise ? ExpertPraise.drop(read) : read;
             /* And a finding that assumes a behavior stopped when the notes say
                it did not (issue #118): "how long until the vocalizations
-               stopped?" asks about something that did not happen. */
-            const found = praised && window.NoteUnresolved ? NoteUnresolved.dropExpert(praised, expertIntake) : praised;
+               stopped?" asks about something that did not happen. It is kept
+               and tagged, never dropped and never applied: a check raises a
+               hint and does not act on its own (Atlas, the pass on #337). */
+            const found = praised && window.NoteUnresolved ? NoteUnresolved.tagExpert(praised, expertIntake) : praised;
             patchS((s) => {
               if (!s.expert || s.expert.runId !== runId) return {};
               return { expert: found ? { status: "done", runId, ...found } : { status: "failed", runId } };
@@ -3507,7 +3491,7 @@ function App() {
                 terms: (found.terms || []).length,
                 dropped: found.hintsDropped || 0,
                 praise: found.praiseDropped || 0,
-                unresolved: found.unresolvedDropped || 0,
+                unresolved: found.unresolvedTagged || 0,
                 inTokens: (found.usage && found.usage.input_tokens) || 0,
                 cachedTokens: (found.usage && found.usage.cache_read_input_tokens) || 0,
                 outTokens: (found.usage && found.usage.output_tokens) || 0,
@@ -3684,8 +3668,7 @@ function App() {
            the model drops the hint, which was the open question one live note
            could not settle. */
         effectUnstated: finalDraft.effectUnstated,
-        // Issue #118: "did not resolve" recast, and stopped claims flagged.
-        unresolvedRecast: finalDraft.unresolvedRecast,
+        // Issue #118: stopped claims flagged. Nothing is recast.
         stoppedClaims: finalDraft.stoppedClaims,
       });
       /* ITS OWN EVENT, for the same reason note_postpass is. This payload is
