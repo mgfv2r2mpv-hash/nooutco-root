@@ -49,12 +49,14 @@
      phrasings say it (R331-H1): "new" beside a behavior word or set off by
      punctuation ("new: hair pulling", "biting (new)", "kicking - new",
      "pinching is new"), "first time" or "first instance", "never ... before" or
-     "not seen before", and a behavior that "started" or "began". Erring wide is
+     "not seen before", and a behavior that "started" or "began". After #331
+     (card tool-hint-polish) also "has not done that before" and "new this
+     week", and climbing counts as a behavior. Erring wide is
      the safe side here: the tick stays either way, and a match only keeps the
      "check this" hint quiet. "new behavior plan" and its kin are a document,
      not a behavior, so they do not count. */
-  var BEHAVIOR_WORDS = "behaviou?rs?|bxs?|aggression|elopement|eloping|self[- ]injur\\w*|SIB|tantrums?|flopping|dropping|biting|hitting|kicking|scratching|spitting|screaming|yelling|throwing|pinching|pushing|grabbing|pulling|hair pulling|crying|bolting|property destruction|mouthing|pica|head[- ]?banging";
-  var BEHAVIOR_VERBS = "hit|hits|bite|bit|bites|kick|kicked|kicks|scratch|scratched|spit|spat|pinch|pinched|push|pushed|throw|threw|scream|screamed|yell|yelled|elope|eloped|bolt|bolted|flop|flopped|grab|grabbed|pull|pulled|bang|banged|cry|cried";
+  var BEHAVIOR_WORDS = "behaviou?rs?|bxs?|aggression|elopement|eloping|self[- ]injur\\w*|SIB|tantrums?|flopping|dropping|biting|hitting|kicking|scratching|spitting|screaming|yelling|throwing|pinching|pushing|grabbing|pulling|hair pulling|climbing|crying|bolting|property destruction|mouthing|pica|head[- ]?banging";
+  var BEHAVIOR_VERBS = "hit|hits|bite|bit|bites|kick|kicked|kicks|scratch|scratched|spit|spat|pinch|pinched|push|pushed|throw|threw|scream|screamed|yell|yelled|elope|eloped|bolt|bolted|flop|flopped|grab|grabbed|pull|pulled|bang|banged|cry|cried|climb|climbed|climbs";
   var NOT_A_BEHAVIOR = "(?!\\s+(?:plan|support|intervention|goal|program|protocol|sheet|data|target)s?\\b)";
   var NEW_BEHAVIOR = new RegExp(
     "\\b(?:brand\\s+)?new\\s+(?:\\w+\\s+){0,2}(?:" + BEHAVIOR_WORDS + ")\\b" + NOT_A_BEHAVIOR +
@@ -64,28 +66,32 @@
     "|\\b(?:is|was|are|were)\\s+(?:brand\\s+)?new\\b" +
     "|\\bfirst\\s+(?:time|instance|occurrence|episode)\\b" +
     "|\\bnever\\s+(?:\\w+\\s+){0,5}before\\b|\\bnot\\s+seen\\s+before\\b|\\bnever\\s+(?:seen|done|happened|did)\\b" +
+    "|(?:\\bnot|n't)\\s+(?:done|seen|shown|happened|did|had)\\s+(?:\\w+\\s+){0,3}before\\b" +
+    "|\\bnew\\s+(?:this|today|since|as\\s+of)\\b" +
     "|\\b(?:started|began|starting|beginning|new onset of)\\s+(?:to\\s+)?(?:" + BEHAVIOR_WORDS + "|" + BEHAVIOR_VERBS + ")\\b" +
     "|\\b(?:" + BEHAVIOR_WORDS + ")\\s+(?:\\w+\\s+){0,2}(?:started|began)\\b",
     "i"
   );
 
-  var SCHEDULE_WORD = /\bschedule\b/i;
+  // "sched" and "scheds" are the technician's shorthand (tool-hint-polish).
+  // "Scheduled" is a calendar word, not a schedule, so it does not count.
+  var SCHEDULE_WORD = /\bsched(?:ule)?s?\b/i;
   var NOTE_VISUAL_SCHEDULE = /\bvisual schedule\b/i;
 
   /* Prompt levels a note can name. `note` is how the level reads in a note;
      `intake` adds the shorthand a technician writes for that same level (FP,
-     PP, "full phys", hoh, "used a point"). A level counts as the technician's
-     only when they wrote that level, in either form, so "guide" never counts
-     as "full physical", which is the case that started this. The capitals-only
-     codes (FP, PP, FV, PV) are case-sensitive, so "app" or "fp" in passing are
-     not read as a level. */
+     PP, "full phys", hoh, "used a point", "G prompt"). A level counts as the
+     technician's only when they wrote that level, in either form, so "guide"
+     never counts as "full physical", which is the case that started this. The
+     capitals-only codes (FP, PP, FV, PV) are case-sensitive, so "app" or "fp"
+     in passing are not read as a level. */
   var PROMPT_LEVELS = [
     { name: "full physical", note: /\bfull[-\s]+physical\b/i, intake: [/\bfull[-\s]*phys\w*/i, /\bFPP?\b/] },
     { name: "partial physical", note: /\bpartial[-\s]+physical\b/i, intake: [/\bpartial[-\s]*phys\w*/i, /\bPPP?\b/] },
     { name: "hand over hand", note: /\bhand[-\s]+over[-\s]+hand\b|\bHOH\b/i, intake: [/\bhand[-\s]+over[-\s]+hand\b/i, /\bhoh\b/i] },
     { name: "full verbal", note: /\bfull[-\s]+verbal\b/i, intake: [/\bfull[-\s]*verb\w*/i, /\bFV\b/] },
     { name: "partial verbal", note: /\bpartial[-\s]+verbal\b/i, intake: [/\bpartial[-\s]*verb\w*/i, /\bPV\b/] },
-    { name: "gestural", note: /\bgestur(?:e|es|al|ally)\b/i, intake: [/\bgestur\w*/i, /\bpoint(?:s|ed|ing)?\b/i] },
+    { name: "gestural", note: /\bgestur(?:e|es|al|ally)\b/i, intake: [/\bgestur\w*/i, /\bpoint(?:s|ed|ing)?\b/i, /\bG[-\s]*prompt\w*/i] },
     { name: "positional", note: /\bpositional\b/i, intake: [/\bpositional\b/i] },
   ];
 

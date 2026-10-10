@@ -249,6 +249,64 @@ test.describe('the hints accept the words a technician actually writes', () => {
   }
 });
 
+test.describe('card tool-hint-polish: the misfires the #331 reviewer found after merge', () => {
+  const newBehaviorHints = (intake) =>
+    details(bt.normalizeOutput({ actionItems: ['Contact family, new behavior'] }, { intake })).filter((d) => /new behavior/.test(d));
+
+  for (const said of ['bit his sister, has not done that before', 'climbing furniture, new this week', "hit dad, hasn't done that before"]) {
+    test(`a real new behavior raises no "new behavior" hint: "${said}"`, () => {
+      expect(newBehaviorHints(said)).toEqual([]);
+    });
+  }
+
+  // Guards: the wider matcher still lets the hint ask when nothing new is named.
+  for (const said of ['new behavior plan', 'did not eat before lunch', 'new targets added this week']) {
+    test(`no new behavior, so the hint still asks: "${said}"`, () => {
+      expect(newBehaviorHints(said)).toEqual(['actionItems: Check "new behavior": the notes name no new behavior.']);
+    });
+  }
+
+  const promptHints = (note, intake) =>
+    details(bt.normalizeOutput({ lessonProgressNarrative: note }, { intake })).filter((d) => /prompt words/.test(d));
+
+  for (const intake of ['G prompt to the cup', 'touch nose, G prompts x2', 'g-prompt on 3 trials']) {
+    test(`"${intake}" counts as gestural shorthand`, () => {
+      expect(promptHints('Receptive ID: a gestural prompt was used.', intake)).toEqual([]);
+    });
+  }
+
+  test('a gestural prompt the notes never gave is still flagged', () => {
+    expect(promptHints('Receptive ID: a gestural prompt was used.', 'gave a prompt to the dog')).toEqual([
+      'lessonProgressNarrative: Notes never say "gestural"; use your own prompt words.',
+    ]);
+  });
+
+  const scheduleHints = (intake) =>
+    details(bt.normalizeOutput({
+      antecedentStrategies: ['Visual schedule'],
+      antecedentNarrative: 'A visual schedule was used for transitions.',
+    }, { intake })).filter((d) => /schedule/i.test(d));
+
+  for (const intake of ['sched', 'went to sched on own', 'used scheds at transitions']) {
+    test(`"${intake}" counts as a schedule`, () => {
+      expect(scheduleHints(intake)).toEqual([]);
+    });
+  }
+
+  test('"scheduled" a meeting is not a schedule, so both schedule hints still ask', () => {
+    expect(scheduleHints('scheduled a parent meeting')).toEqual([
+      'antecedentStrategies: Check "Visual schedule": the notes name no schedule.',
+      'antecedentNarrative: Notes name no visual schedule; name the support you used.',
+    ]);
+  });
+
+  test('the checks still never change a tick', () => {
+    const out = bt.normalizeOutput({ actionItems: ['Contact family, new behavior'], antecedentStrategies: ['Visual schedule'] }, { intake: 'sched. new behavior plan' });
+    expect(out.actionItems).toEqual(['Contact family, new behavior']);
+    expect(out.antecedentStrategies).toEqual(['Visual schedule']);
+  });
+});
+
 test.describe('the checks run only on a real draft, and fail open', () => {
   test('without the intake, nothing is flagged', () => {
     const out = bt.normalizeOutput(BAD_DRAFT);
