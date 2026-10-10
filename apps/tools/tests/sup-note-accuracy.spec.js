@@ -12,9 +12,9 @@ import vm from 'node:vm';
 
 const ROOT = join(__dirname, '..', 'notes/bcba');
 
-function load({ withChecks = true } = {}) {
+function load({ withChecks = true, log = console } = {}) {
   const win = {};
-  const ctx = vm.createContext({ window: win, console });
+  const ctx = vm.createContext({ window: win, console: log });
   const files = ['note-tools-util.js', 'register-rules.js']
     .concat(withChecks ? ['tools/sup-checks.js'] : [], ['tools/sup.js']);
   for (const f of files) {
@@ -73,35 +73,82 @@ test.describe('the Supervision prompt carries the only-what-the-BCBA-wrote rules
   });
 });
 
-test.describe('overall progress is no higher than moderate on a stall or a new behavior', () => {
-  test('tacting stalled 3 sessions: "steady, substantial" becomes moderate, with a hint saying so', () => {
-    const out = sup.normalizeOutput({ overallProgress: STEADY, hints: [] }, { intake: FIDELITY_INTAKE });
-    expect(out.overallProgress).toBe(MODERATE);
-    expect(details(out)).toContain('overallProgress: Set to moderate: the notes report a stalled program.');
+test.describe('overall progress: a substantial pick next to a stall or a new behavior gets a hint, never a change', () => {
+  /* Reviewer R332-H1, Atlas's call: the check never changes the pick. It
+     quotes the phrase it read and asks. The pick stays the BCBA's. */
+  const progressHints = (intake) => {
+    const out = sup.normalizeOutput({ overallProgress: STEADY, hints: [] }, { intake });
+    expect(out.overallProgress, intake).toBe(STEADY);
+    return details(out).filter((d) => d.startsWith('overallProgress:'));
+  };
+
+  test('the bench case: tacting stalled 3 sessions is quoted back, and the pick stays', () => {
+    expect(progressHints(FIDELITY_INTAKE)).toEqual([
+      'overallProgress: Progress picked substantial, but the notes mention "tacting animals stalled 3 sessions at 40%"; check it.',
+    ]);
   });
 
-  test('a new behavior of concern caps it too', () => {
-    const out = sup.normalizeOutput({ overallProgress: STEADY }, { intake: 'manding up to 8. new behavior: spitting at peers x3.' });
-    expect(out.overallProgress).toBe(MODERATE);
-    expect(details(out)).toContain('overallProgress: Set to moderate: the notes report a new behavior of concern.');
+  // The reviewer's substantial notes that wrongly capped, plus close variants.
+  const QUIET = [
+    'No new behaviors of concern',
+    'no new bx',
+    'no regression',
+    'no stalls',
+    'no plateau',
+    'elopement flat at zero',
+    'maintenance probes flat at 100%',
+    'flat affect at arrival, warmed up by the second block',
+    'first time he slept through the night',
+    'new behavior plan implemented',
+    'no new behaviors this week',
+    'tantrums flat at 0 for 3 wks',
+    'no stalled programs, all targets moving',
+    'mastered targets flat at 100% on maintenance',
+    'new behavior support plan started monday',
+  ];
+  for (const said of QUIET) {
+    test(`no hint: "${said}"`, () => {
+      expect(progressHints(said)).toEqual([]);
+    });
+  }
+
+  // Stalls and new behaviors the first matcher missed, and the ones it caught.
+  const FLAGGED = [
+    ['tacting stuck at 40%', 'tacting stuck at 40%'],
+    ['no gains for 3 sessions on matching', 'no gains for 3 sessions on matching'],
+    ['imitation leveled off', 'imitation leveled off'],
+    ['biting started this week', 'biting started this week'],
+    ['imitation w objects flat 2 wks', 'imitation w objects flat 2 wks'],
+    ['tacting plateaued', 'tacting plateaued'],
+    ['no progress on matching', 'no progress on matching'],
+    ['receptive ID not progressing', 'receptive ID not progressing'],
+    ['manding up to 8. new behavior: spitting at peers x3.', 'new behavior: spitting at peers x3'],
+  ];
+  for (const [said, phrase] of FLAGGED) {
+    test(`hint quotes "${phrase}"`, () => {
+      expect(progressHints(said)).toEqual([
+        `overallProgress: Progress picked substantial, but the notes mention "${phrase}"; check it.`,
+      ]);
+    });
+  }
+
+  test('a long clause is quoted short enough to fit the hint', () => {
+    const [hint] = progressHints('tacting animals and colors and shapes and body parts all stalled for the third session in a row now');
+    expect(hint.length).toBeLessThanOrEqual('overallProgress: '.length + 120);
+    expect(hint).toMatch(/stalled/);
   });
 
-  test('the other stall words count', () => {
-    for (const said of ['imitation w objects flat 2 wks', 'tacting plateaued', 'no progress on matching', 'receptive ID not progressing']) {
-      expect(sup.normalizeOutput({ overallProgress: STEADY }, { intake: said }).overallProgress, said).toBe(MODERATE);
+  test('moderate and minimal picks get no hint', () => {
+    const minimal = 'Client is making minimal progress towards goals and/or is demonstrating barriers (see summary below)';
+    for (const pick of [MODERATE, minimal]) {
+      const out = sup.normalizeOutput({ overallProgress: pick }, { intake: FIDELITY_INTAKE });
+      expect(out.overallProgress).toBe(pick);
+      expect(details(out).filter((d) => d.startsWith('overallProgress:'))).toEqual([]);
     }
   });
 
-  test('moderate and minimal picks are never touched', () => {
-    const minimal = 'Client is making minimal progress towards goals and/or is demonstrating barriers (see summary below)';
-    expect(sup.normalizeOutput({ overallProgress: MODERATE }, { intake: FIDELITY_INTAKE }).overallProgress).toBe(MODERATE);
-    expect(sup.normalizeOutput({ overallProgress: minimal }, { intake: FIDELITY_INTAKE }).overallProgress).toBe(minimal);
-  });
-
-  test('steady progress with nothing stalled and nothing new stays steady', () => {
-    const out = sup.normalizeOutput({ overallProgress: STEADY, hints: [] }, { intake: 'manding 3 to 7 independent, new targets juice and bubbles, new baby sister home' });
-    expect(out.overallProgress).toBe(STEADY);
-    expect(out.hints).toEqual([]);
+  test('steady progress with nothing stalled and nothing new gets no hint', () => {
+    expect(progressHints('manding 3 to 7 independent, new targets juice and bubbles, new baby sister home')).toEqual([]);
   });
 });
 
@@ -169,11 +216,20 @@ test.describe('the checks run only on a real draft, and fail open', () => {
     expect(out.hints).toEqual([]);
   });
 
-  test('a page where sup-checks.js did not load drafts as before', () => {
-    const bare = load({ withChecks: false });
+  test('a page where sup-checks.js did not load drafts as before, and says so in the console', () => {
+    const warned = [];
+    const bare = load({ withChecks: false, log: { ...console, warn: (...a) => warned.push(a.join(' ')) } });
     const out = bare.normalizeOutput({ overallProgress: STEADY, hints: [] }, { intake: FIDELITY_INTAKE });
     expect(out.overallProgress).toBe(STEADY);
     expect(out.hints).toEqual([]);
+    expect(warned.some((w) => /SupChecks/.test(w))).toBe(true);
+  });
+
+  test('a loaded page does not warn', () => {
+    const warned = [];
+    const ok = load({ log: { ...console, warn: (...a) => warned.push(a.join(' ')) } });
+    ok.normalizeOutput({ overallProgress: STEADY, hints: [] }, { intake: FIDELITY_INTAKE });
+    expect(warned).toEqual([]);
   });
 
   test('the reviewed-notes pick is left exactly as it was (Kaleb, 2026-10-09)', () => {
@@ -186,5 +242,14 @@ test.describe('the checks run only on a real draft, and fail open', () => {
     const raw = { overallProgress: STEADY, hints: [] };
     sup.normalizeOutput(raw, { intake: FIDELITY_INTAKE });
     expect(raw.overallProgress).toBe(STEADY);
+  });
+});
+
+test.describe('the Supervision page loads the checks', () => {
+  // Reviewer R332 LOW: the vm tests above cannot see a missing script tag.
+  test('window.SupChecks is on /notes/sup/ before the tool registers', async ({ page }) => {
+    await page.goto('/notes/sup/');
+    await page.waitForFunction(() => (window.NOTE_TOOLS || []).some((t) => t.id === 'sup'));
+    expect(await page.evaluate(() => typeof (window.SupChecks && window.SupChecks.apply))).toBe('function');
   });
 });
