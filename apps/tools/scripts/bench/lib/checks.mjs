@@ -4,7 +4,15 @@
  * Resources guide, so a failure names the rule it breaks. A case's `expect`
  * says which apply:
  *
- *   mentions   phrases the note must carry (the intake's facts, as written)
+ *   mentions   facts the note must carry. Each is a phrase, or a list of the
+ *              plain forms that say the same fact (["dad", "father", "parent",
+ *              "caregiver"]); any one form passes. A form counts at the start
+ *              of a word, so "gesture" passes "gestures" and "turn" does not
+ *              pass "return". A ruling stays one exact phrase ("full
+ *              physical", "mastery criteria"). Kaleb's BT runs of 9 Oct 2026
+ *              failed notes that said "new action sequences", the intake's own
+ *              "new ones", where the case wanted "novel", and "His father"
+ *              where it wanted "dad".
  *   forbid     phrases it must not (an invented fact, a hollow line, "was
  *              reinforced", "responded well")
  *   picks      { group: [labels that must be ticked] }
@@ -18,8 +26,10 @@
  * The parent tool's own checks (scripts/lib/parent-shape-checks.mjs) run too
  * when the case carries `parentExpect`. */
 import { checkParentDraft } from '../../lib/parent-shape-checks.mjs';
+import { saysAtWordStart } from './page-bench.mjs';
 
 const lc = (s) => String(s || '').toLowerCase();
+const forms = (m) => (Array.isArray(m) ? m : [m]);
 const QUESTION = /^\s*(clarify|specify|(confirm|verify|determine|check|ask|identify) (whether|if)|find out (whether|if))\b|\?\s*$/i;
 
 /* The note as the parent checker reads it: narratives by key, picks by group,
@@ -38,7 +48,9 @@ export function checkNote(c, note) {
   const narratives = Object.values(note.text || {}).join('\n');
   const all = note.all || narratives;
 
-  for (const m of e.mentions || []) if (!lc(all).includes(lc(m))) fails.push(`missing from the note: "${m}"`);
+  for (const m of e.mentions || []) {
+    if (!forms(m).some((f) => saysAtWordStart(all, f))) fails.push(`missing from the note: ${forms(m).map((f) => `"${f}"`).join(' or ')}`);
+  }
   for (const f of e.forbid || []) if (lc(all).includes(lc(f))) fails.push(`must not appear: "${f}"`);
   for (const [group, labels] of Object.entries(e.picks || {})) {
     const on = (note.picks || {})[group] || [];

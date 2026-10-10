@@ -31,6 +31,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { runCase } from './lib/drive.mjs';
+import { answerLines } from './lib/page-bench.mjs';
 import { checkNote } from './lib/checks.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -75,6 +76,7 @@ async function run(tools) {
         const fails = checkNote(c, out.note);
         results.push({ tool, ...out, fails, pass: fails.length === 0 });
         console.log(`${fails.length ? 'FAIL' : 'pass'}  ${tool}/${c.id}  typed ${out.typed.total}  rounds ${new Set(out.asked.map((a) => a.round)).size}  ${out.seconds}s${fails.length ? `\n      ${fails.join('\n      ')}` : ''}`);
+        if (out.asked.length) console.log(answerLines(out.asked).join('\n'));
       } catch (err) {
         results.push({ tool, id: c.id, error: String(err && err.message || err).split('\n')[0], pass: false });
         console.log(`ERROR ${tool}/${c.id}  ${String(err && err.message || err).split('\n')[0]}`);

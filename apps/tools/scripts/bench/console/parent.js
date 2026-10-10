@@ -34,9 +34,9 @@
         {
           "about": [
             "climbing",
-            "caregiver",
             "respond",
-            "bip"
+            "bip",
+            "fcr"
           ],
           "answer": "Add Parent Goal: Implement BIP Climbing: Prompt FCR (Antecedent) 6/1 85%. Parents prompted FCR 5 times when precursors were observed, and climbing happened in 1 of those 5."
         },
@@ -130,7 +130,7 @@
             "token",
             "forgot",
             "missed",
-            "prompt"
+            "model"
           ],
           "answer": "Mom forgot to show the token board once before a demand; BCBA modeled it once after."
         }
@@ -365,7 +365,15 @@
      * Resources guide, so a failure names the rule it breaks. A case's `expect`
      * says which apply:
      *
-     *   mentions   phrases the note must carry (the intake's facts, as written)
+     *   mentions   facts the note must carry. Each is a phrase, or a list of the
+     *              plain forms that say the same fact (["dad", "father", "parent",
+     *              "caregiver"]); any one form passes. A form counts at the start
+     *              of a word, so "gesture" passes "gestures" and "turn" does not
+     *              pass "return". A ruling stays one exact phrase ("full
+     *              physical", "mastery criteria"). Kaleb's BT runs of 9 Oct 2026
+     *              failed notes that said "new action sequences", the intake's own
+     *              "new ones", where the case wanted "novel", and "His father"
+     *              where it wanted "dad".
      *   forbid     phrases it must not (an invented fact, a hollow line, "was
      *              reinforced", "responded well")
      *   picks      { group: [labels that must be ticked] }
@@ -380,6 +388,7 @@
      * when the case carries `parentExpect`. */
     
     const lc = (s) => String(s || '').toLowerCase();
+    const forms = (m) => (Array.isArray(m) ? m : [m]);
     const QUESTION = /^\s*(clarify|specify|(confirm|verify|determine|check|ask|identify) (whether|if)|find out (whether|if))\b|\?\s*$/i;
     
     /* The note as the parent checker reads it: narratives by key, picks by group,
@@ -398,7 +407,9 @@
       const narratives = Object.values(note.text || {}).join('\n');
       const all = note.all || narratives;
     
-      for (const m of e.mentions || []) if (!lc(all).includes(lc(m))) fails.push(`missing from the note: "${m}"`);
+      for (const m of e.mentions || []) {
+        if (!forms(m).some((f) => saysAtWordStart(all, f))) fails.push(`missing from the note: ${forms(m).map((f) => `"${f}"`).join(' or ')}`);
+      }
       for (const f of e.forbid || []) if (lc(all).includes(lc(f))) fails.push(`must not appear: "${f}"`);
       for (const [group, labels] of Object.entries(e.picks || {})) {
         const on = (note.picks || {})[group] || [];
@@ -463,7 +474,78 @@
    * it. Long enough (over 25 characters) to open the Send lock as typing does. */
   const HELD_ROUND_ANSWER = 'Nothing more to add from this session.';
   
-  /* THE NOTE CARD AS A CLINICIAN COPIES IT: picks per group, text per narrative.
+  /* WHICH TRUTH ANSWERS WHICH QUESTION, one round at a time.
+   *
+   * A case's truth is the session as the technician remembers it, each fact with
+   * the words a question about it would use (`about`). A question takes the fact
+   * whose words it shares most, counted at the start of a word, and each fact
+   * answers at most one question in a round. When two questions want the same
+   * fact, the one that fits it best gets it. A question no fact fits is left
+   * blank, as a technician who did not track that would leave it.
+   *
+   * Kaleb's BT runs on 9 Oct 2026 are why: the picker took the first fact sharing
+   * any one word. Both school questions got the greeting answer ("Q2 answer
+   * duplicates Q1 answer"), a question about past sessions got the precursor
+   * answer and the note wrote it as history, and a question about what guidance
+   * dad used got the coaching answer.
+   *
+   * IGNORED_ABOUT holds the words nearly every question in a case carries (who
+   * was there, the behavior, "before", "prompt"), so sharing one says nothing
+   * about which fact is asked for. The picker skips them, and the spec keeps
+   * every case's `about` free of them. */
+  const IGNORED_ABOUT = [
+    'how', 'what', 'when', 'why', 'who', 'which', 'did', 'does', 'was', 'were',
+    'before', 'after', 'said', 'say', 'session', 'client', 'he', 'she', 'him', 'her',
+    'dad', 'mom', 'father', 'mother', 'parent', 'caregiver', 'prompt', 'hit',
+  ];
+  
+  /* The phrase at the start of a word somewhere in the text, any case. Shared
+     with lib/checks.mjs, which reads a note's mentions the same way. */
+  function saysAtWordStart(text, phrase) {
+    const at = String(text || '').toLowerCase();
+    const p = String(phrase || '').toLowerCase();
+    for (let i = at.indexOf(p); i !== -1; i = at.indexOf(p, i + 1)) {
+      if (i === 0 || !/[a-z0-9]/.test(at[i - 1])) return true;
+    }
+    return false;
+  }
+  
+  function pickAnswers(questions, truth) {
+    const lc = (s) => String(s || '').toLowerCase();
+    const facts = truth || [];
+    const fits = [];
+    questions.forEach((q, qi) => facts.forEach((t, ti) => {
+      const on = (t.about || []).filter((k) => !IGNORED_ABOUT.includes(lc(k)) && saysAtWordStart(q, k));
+      if (on.length) fits.push({ qi, ti, on });
+    }));
+    // Best fit first; a tie goes to the earlier question, then the earlier fact.
+    fits.sort((a, b) => b.on.length - a.on.length || a.qi - b.qi || a.ti - b.ti);
+    const used = new Set();
+    const picked = questions.map(() => ({ truth: null, matchedOn: [], answer: null }));
+    for (const f of fits) {
+      if (picked[f.qi].answer !== null || used.has(f.ti)) continue;
+      used.add(f.ti);
+      picked[f.qi] = { truth: f.ti, matchedOn: f.on, answer: facts[f.ti].answer };
+    }
+    return picked;
+  }
+  
+  /* Which truth answered which question, a line each, so a mismatch shows in
+     the run's log as well as in the report's `asked`. */
+  function answerLines(asked) {
+    return (asked || []).map((a) => `  round ${a.round}: ${a.question}\n    ${a.answer
+      ? `truth ${a.truth} (on ${(a.matchedOn || []).join(', ')}): ${a.answer}`
+      : 'left blank: no truth fits'}`);
+  }
+  
+  /* One question on its own: the fact that fits it, or null. */
+  function answerFor(question, truth) {
+    return pickAnswers([question], truth)[0].answer;
+  }
+  
+  /* THE NOTE CARD AS A CLINICIAN COPIES IT: picks per group, text per narrative,
+   * and `all`, the whole note in the card's order, each section under its own
+   * heading.
    *
    * A narrative the corrections pass changed is drawn as marks in place of its
    * textarea (engine.jsx renderSectionContent), and that box "holds exactly what
@@ -472,6 +554,12 @@
    * Follow Ups of v2 and v4 read as empty, so every goal was "not named". The
    * box's controls are left out, and so is the rail of removed words under it,
    * which the clipboard does not carry either.
+   *
+   * `all` is built section by section. It was the card's innerText with every
+   * field's value added at the end, and innerText never carries a textarea's
+   * value, so on Kaleb's BT runs of 9 Oct 2026 every narrative read as if it sat
+   * under Summary of Concerns, the last heading. The tool lays them out right.
+   * A multi-select gives only its ticked labels, as the form will.
    *
    * Exported for lib/drive.mjs, which runs this same function in the page, so
    * the two benches cannot read a note two ways. Self-contained for that reason. */
@@ -482,29 +570,42 @@
       copy.querySelectorAll(CONTROLS).forEach((n) => n.remove());
       return copy.textContent;
     };
+    // A section drawn some other way (the goals table, the facts) as shown, with
+    // its fields' values, which innerText does not carry, kept in that section.
+    const shownIn = (sec, title) => {
+      let shown = sec.innerText;
+      sec.querySelectorAll('button, [data-corrections-rail]').forEach((n) => {
+        if (n.innerText) shown = shown.replace(n.innerText, '');
+      });
+      shown = shown.replace(title, '');
+      const fields = [...sec.querySelectorAll('textarea, input:not([type]), input[type="text"]')].map((t) => t.value);
+      return [shown, ...fields].map((s) => s.trim()).filter(Boolean).join('\n');
+    };
     const picks = {};
     card.querySelectorAll('[data-section-id]').forEach((sec) => {
       const on = [...sec.querySelectorAll('[data-option][data-on="1"]')].map((o) => o.getAttribute('data-option'));
       if (sec.querySelector('[data-option]')) picks[sec.getAttribute('data-section-id')] = on;
     });
     const text = {};
+    const parts = [];
     card.querySelectorAll('[data-section-key]').forEach((sec) => {
       const key = sec.getAttribute('data-section-key');
+      const title = sec.getAttribute('data-section-title') || '';
+      const say = (body) => parts.push([title, body].filter(Boolean).join('\n'));
       // A single-select shows only its chosen answer, marked for reading.
       const single = sec.querySelector('[data-single-answer]');
-      if (single) { picks[key] = [single.getAttribute('data-single-answer')]; return; }
-      if (sec.querySelector('[data-section-id] [data-option]') || picks[key]) return;
+      if (single) { picks[key] = [single.getAttribute('data-single-answer')]; say(picks[key][0]); return; }
+      if (sec.querySelector('[data-section-id] [data-option]') || picks[key]) {
+        say([...sec.querySelectorAll('[data-option][data-on="1"]')].map((o) => o.getAttribute('data-option')).join('\n'));
+        return;
+      }
       const marked = sec.querySelector('[data-corrections-section]');
-      if (marked) { text[key] = boxText(marked); return; }
+      if (marked) { text[key] = boxText(marked); say(text[key]); return; }
       const ta = sec.querySelector('textarea');
-      if (ta) text[key] = ta.value;
+      if (ta) { text[key] = ta.value; say(text[key]); return; }
+      say(shownIn(sec, title));
     });
-    // The goals table edits in inputs, which innerText does not carry. Removed
-    // words in a rail are not in the note, so they are taken back out.
-    const fields = [...card.querySelectorAll('textarea, input:not([type]), input[type="text"]')].map((t) => t.value);
-    const rails = [...card.querySelectorAll('[data-corrections-rail]')].map((r) => r.innerText).filter(Boolean);
-    const shownText = rails.reduce((all, r) => all.replace(r, ''), card.innerText);
-    return { picks, text, all: [shownText, ...fields].join('\n') };
+    return { picks, text, all: parts.join('\n\n') };
   }
   
   async function benchInPage(CASES, checkNote, opts = {}) {
@@ -597,17 +698,6 @@
       if (shown(review)) review.click();
     };
   
-    // The truth entry whose words the question shares most, as drive.mjs does.
-    const answerFor = (question, truth) => {
-      const q = String(question || '').toLowerCase();
-      let best = null, bestHits = 0;
-      for (const t of truth || []) {
-        const hits = (t.about || []).filter((k) => q.includes(String(k).toLowerCase())).length;
-        if (hits > bestHits) { best = t; bestHits = hits; }
-      }
-      return best ? best.answer : null;
-    };
-  
     const openPanel = async () => {
       if (shown($('.revision-input'))) return;
       const fab = $('.revision-fab');
@@ -639,11 +729,11 @@
         await openPanel();
         const loose = [];
         let answeredAny = false;
-        for (const el of $$('[data-panel-question]')) {
-          const i = el.getAttribute('data-panel-question');
-          const question = el.innerText.split('\n')[0];
-          const answer = answerFor(question, c.truth);
-          asked.push({ round: round + 1, question, answered: !!answer });
+        const shownQs = $$('[data-panel-question]').map((el) => ({ i: el.getAttribute('data-panel-question'), question: el.innerText.split('\n')[0] }));
+        const picked = pickAnswers(shownQs.map((q) => q.question), c.truth);
+        for (const [n, { i, question }] of shownQs.entries()) {
+          const { answer, truth, matchedOn } = picked[n];
+          asked.push({ round: round + 1, question, answered: !!answer, truth, matchedOn, answer });
           if (!answer) continue;
           answeredAny = true;
           typed.answers += words(answer);
@@ -681,6 +771,7 @@
           const fails = checkNote(c, out.note);
           results.push({ ...out, fails });
           log(`${n + 1} of ${CASES.length}: ${c.id}, ${fails.length ? 'FAIL' : 'pass'}, typed ${out.typed.total} words, ${new Set(out.asked.map((a) => a.round)).size} round(s)${out.held.length ? `, held round ${out.held.join(' and ')} answered "${HELD_ROUND_ANSWER}"` : ''}, ${out.seconds}s`);
+          if (out.asked.length) log(answerLines(out.asked).join('\n'));
         } catch (err) {
           results.push({ id: c.id, fails: [`the run failed: ${err && err.message}`] });
           log(`${n + 1} of ${CASES.length}: ${c.id}, the run failed: ${err && err.message}`);
