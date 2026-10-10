@@ -15,9 +15,9 @@ import vm from 'node:vm';
 
 const ROOT = join(__dirname, '..', 'notes/bcba');
 
-function load({ withChecks = true } = {}) {
+function load({ withChecks = true, log = console } = {}) {
   const win = {};
-  const ctx = vm.createContext({ window: win, console });
+  const ctx = vm.createContext({ window: win, console: log });
   const files = ['note-tools-util.js', 'register-rules.js']
     .concat(withChecks ? ['tools/bt-checks.js'] : [], ['tools/bt.js']);
   for (const f of files) {
@@ -88,14 +88,16 @@ test.describe('the BT prompt carries the who-did-what rules', () => {
 test.describe("Kaleb's coaching case, after the checks", () => {
   const out = bt.normalizeOutput(BAD_DRAFT, { intake: INTAKE });
 
-  test('"Contact family, new behavior" is unticked when no behavior was new', () => {
-    expect(out.actionItems).toEqual([]);
-    expect(details(out)).toContain('actionItems: Unticked "new behavior": the notes name no new behavior.');
+  // Reviewer R331-H1, Atlas's call: a check never changes a tick. A wrong
+  // untick removes the BCBA's alert; a wrong tick costs the technician a look.
+  test('"Contact family, new behavior" stays ticked, with a hint to check it', () => {
+    expect(out.actionItems).toEqual(['Contact family, new behavior']);
+    expect(details(out)).toContain('actionItems: Check "new behavior": the notes name no new behavior.');
   });
 
-  test('"Visual schedule" is unticked when the notes name no schedule, and other ticks stay', () => {
-    expect(out.antecedentStrategies).toEqual(['Offered choices']);
-    expect(details(out)).toContain('antecedentStrategies: Unticked "Visual schedule": the notes name no schedule.');
+  test('"Visual schedule" stays ticked, with a hint to check it', () => {
+    expect(out.antecedentStrategies).toEqual(['Visual schedule', 'Offered choices']);
+    expect(details(out)).toContain('antecedentStrategies: Check "Visual schedule": the notes name no schedule.');
   });
 
   test('the visual schedule in the prose is flagged where it is written', () => {
@@ -142,52 +144,141 @@ test.describe('a note that gets it right is left alone', () => {
   });
 });
 
-test.describe('ticks the notes do support are kept', () => {
-  test('a behavior the notes call new keeps "Contact family, new behavior"', () => {
-    for (const said of ['new behavior: spitting x3', 'spitting is new this week', 'first time he bit', 'started biting at snack', 'new bx, screaming at transitions']) {
+test.describe('a real new behavior keeps its tick and raises no hint', () => {
+  /* Reviewer R331-H1. The first eleven are the reviewer's phrasings quoted in
+     the hold; the clinic bench case's own wording leads. The rest are the
+     earlier pins and close variants. */
+  const NEW = [
+    'never hit at swing before',
+    'never hit before today',
+    'started to hit peers',
+    'began to bite',
+    'Hitting started this week',
+    'pinching is new',
+    'new: hair pulling',
+    'biting (new)',
+    'kicking - new',
+    'kicked mom, not seen before',
+    'first instance of biting',
+    'new behavior: spitting x3',
+    'spitting is new this week',
+    'first time he bit',
+    'started biting at snack',
+    'new bx, screaming at transitions',
+    'never seen him scratch before',
+    'pushing peers started today',
+    'brand new behavior, throwing shoes',
+    'new onset of head banging',
+  ];
+  for (const said of NEW) {
+    test(said, () => {
       const out = bt.normalizeOutput({ actionItems: ['Contact family, new behavior'] }, { intake: said });
-      expect(out.actionItems, said).toEqual(['Contact family, new behavior']);
-    }
-  });
+      expect(out.actionItems).toEqual(['Contact family, new behavior']);
+      expect(details(out).filter((d) => /new behavior/.test(d))).toEqual([]);
+    });
+  }
 
-  test('a new target or a new material is not a new behavior', () => {
+  test('a new target, a new material or a caregiver question keeps the tick but raises the hint', () => {
     for (const said of ['new targets added to tacting', 'need new velcro', 'mom asked about potty training']) {
       const out = bt.normalizeOutput({ actionItems: ['Contact family, new behavior'] }, { intake: said });
-      expect(out.actionItems, said).toEqual([]);
+      expect(out.actionItems, said).toEqual(['Contact family, new behavior']);
+      expect(details(out), said).toContain('actionItems: Check "new behavior": the notes name no new behavior.');
     }
   });
 
-  test('a schedule in the notes keeps "Visual schedule"', () => {
+  test('a schedule in the notes raises no "Visual schedule" hint', () => {
     const out = bt.normalizeOutput({ antecedentStrategies: ['Visual schedule'] }, { intake: 'used picture schedule for transitions' });
     expect(out.antecedentStrategies).toEqual(['Visual schedule']);
-  });
-
-  test('a prompt level the notes name is not flagged', () => {
-    const out = bt.normalizeOutput(
-      { lessonProgressNarrative: 'Receptive ID: a full physical prompt was faded to a gestural prompt.' },
-      { intake: 'receptive ID, full physical faded to gesture' },
-    );
-    expect(details(out).filter((d) => /prompt words/.test(d))).toEqual([]);
-  });
-
-  test('"asked mom about" is a conversation, not coaching', () => {
-    const out = bt.normalizeOutput({ lessonProgressNarrative: 'Manding: the client manded for juice.' }, { intake: 'asked mom about sleep. manding for juice' });
-    expect(details(out).some((d) => /coaching/.test(d))).toBe(false);
+    expect(details(out).filter((d) => /schedule/i.test(d))).toEqual([]);
   });
 });
 
+test.describe('the hints accept the words a technician actually writes', () => {
+  const promptHints = (note, intake) =>
+    details(bt.normalizeOutput({ lessonProgressNarrative: note }, { intake })).filter((d) => /prompt words/.test(d));
+
+  test('a prompt level the notes name is not flagged', () => {
+    expect(promptHints('Receptive ID: a full physical prompt was faded to a gestural prompt.', 'receptive ID, full physical faded to gesture')).toEqual([]);
+  });
+
+  // Reviewer R331 LOW: shorthand for the level the BT wrote.
+  const SHORTHAND = [
+    ['FP', 'a full physical prompt was used', 'sit down FP x3'],
+    ['PP', 'a partial physical prompt was used', 'touch nose PP'],
+    ['full phys', 'a full physical prompt was used', 'full phys on 2 trials'],
+    ['hoh', 'hand over hand guidance was used', 'hoh for handwashing'],
+    ['used a point', 'a gestural prompt was used', 'used a point to the cup'],
+    ['pointed', 'a gestural prompt was used', 'pointed to the correct card'],
+    ['FV', 'a full verbal prompt was used', 'FV for "help please"'],
+    ['PV', 'a partial verbal prompt was used', 'PV "he.."'],
+  ];
+  for (const [name, note, intake] of SHORTHAND) {
+    test(`"${name}" counts as the level the BT wrote`, () => {
+      expect(promptHints('Program: ' + note + '.', intake)).toEqual([]);
+    });
+  }
+
+  test('lowercase "fp" or "pp" in ordinary words is not read as a level', () => {
+    expect(promptHints('Program: a full physical prompt was used.', 'app on ipad, fp')).toEqual([
+      'lessonProgressNarrative: Notes never say "full physical"; use your own prompt words.',
+    ]);
+  });
+
+  const coachHints = (note, intake) =>
+    details(bt.normalizeOutput({ lessonProgressNarrative: note }, { intake })).filter((d) => /coaching/.test(d));
+
+  test('"asked mom about" is a conversation, not coaching', () => {
+    expect(coachHints('Manding: the client manded for juice.', 'asked mom about sleep. manding for juice')).toEqual([]);
+  });
+
+  // Reviewer R331 LOW: the note may report the coaching in caregiver words.
+  for (const note of ['The behavior technician told mom to wait.', 'The technician told dad to wait three seconds.', 'The technician showed the father how to guide.', 'The technician reminded grandma to wait.']) {
+    test(`coaching reported as "${note}" is not flagged`, () => {
+      expect(coachHints(note, 'I told dad to wait 3 seconds before guiding')).toEqual([]);
+    });
+  }
+
+  const indepHints = (note) =>
+    details(bt.normalizeOutput({ lessonProgressNarrative: note }, { intake: 'indep on most' })).filter((d) => /independent/.test(d));
+
+  // Reviewer R331 LOW: independent said another way is still independent.
+  for (const note of ['The client completed most on his own.', 'She did most on her own.', 'The client responded without prompts on most trials.', 'Most responses were without a prompt.', 'Most were unprompted.']) {
+    test(`"${note}" keeps independent`, () => {
+      expect(indepHints(note)).toEqual([]);
+    });
+  }
+});
+
 test.describe('the checks run only on a real draft, and fail open', () => {
-  test('without the intake, nothing is unticked or flagged', () => {
+  test('without the intake, nothing is flagged', () => {
     const out = bt.normalizeOutput(BAD_DRAFT);
     expect(out.actionItems).toEqual(['Contact family, new behavior']);
     expect(out.antecedentStrategies).toEqual(['Visual schedule', 'Offered choices']);
     expect(out.hints).toEqual([]);
   });
 
-  test('a page where bt-checks.js did not load drafts as before', () => {
-    const bare = load({ withChecks: false });
+  test('a page where bt-checks.js did not load drafts as before, and says so in the console', () => {
+    const warned = [];
+    const bare = load({ withChecks: false, log: { ...console, warn: (...a) => warned.push(a.join(' ')) } });
     const out = bare.normalizeOutput(BAD_DRAFT, { intake: INTAKE });
     expect(out.actionItems).toEqual(['Contact family, new behavior']);
     expect(out.hints).toEqual([]);
+    expect(warned.some((w) => /BtChecks/.test(w))).toBe(true);
+  });
+
+  test('a loaded page does not warn', () => {
+    const warned = [];
+    const ok = load({ log: { ...console, warn: (...a) => warned.push(a.join(' ')) } });
+    ok.normalizeOutput(BAD_DRAFT, { intake: INTAKE });
+    expect(warned).toEqual([]);
+  });
+});
+
+test.describe('the BT page loads the checks', () => {
+  // Reviewer R331 LOW: the vm tests above cannot see a missing script tag.
+  test('window.BtChecks is on /notes/bt/ before the tool registers', async ({ page }) => {
+    await page.goto('/notes/bt/');
+    await page.waitForFunction(() => (window.NOTE_TOOLS || []).some((t) => t.id === 'bt'));
+    expect(await page.evaluate(() => typeof (window.BtChecks && window.BtChecks.apply))).toBe('function');
   });
 });

@@ -11,16 +11,23 @@
  * client's, and "full physical" was a level nobody wrote.
  *
  * The prompt now asks for each of those (bt.js, buildUserPrompt). This file is
- * the part that can be checked exactly rather than asked for:
+ * the part that can be read off the text, and every finding is a HINT. Nothing
+ * here changes a tick or a word of prose:
  *
- *   two ticks are UNDONE when the notes cannot support them ("Contact family,
- *   new behavior" with no new behavior, "Visual schedule" with no schedule),
- *   because a wrong tick is copied into the EHR as it stands;
+ *   two ticks get a "check this" hint when the notes do not support them
+ *   ("Contact family, new behavior" with no new behavior, "Visual schedule"
+ *   with no schedule). They used to be unticked, and the reviewer (R331-H1)
+ *   found real new behaviors unticked in 13 of 25 phrasings. Atlas's call: a
+ *   wrong untick removes the BCBA's alert, a wrong tick costs the technician
+ *   one look, so the tick stays and the hint asks;
  *
- *   four gaps are FLAGGED and the prose is left alone (a prompt level the notes
- *   never named, coaching the note dropped, a support called a visual schedule,
- *   and "indep" or "errorless" lost), because rewriting a clinical sentence
- *   from a pattern is a guess, and a hint reaches the technician who can fix it.
+ *   four gaps are flagged (a prompt level the notes never named, coaching the
+ *   note dropped, a support called a visual schedule, and "indep" or
+ *   "errorless" lost), because rewriting a clinical sentence from a pattern is
+ *   a guess, and a hint reaches the technician who can fix it.
+ *
+ * Every matcher errs toward silence: a phrase that might be the technician's
+ * own way of saying it counts as said.
  *
  * Pure and fail-open: bt.js runs it only on a real draft (one that carries the
  * intake), and a page where this file did not load drafts exactly as before.
@@ -38,35 +45,53 @@
     "antecedentNarrative", "behaviorPlanNarrative", "followUpNarrative",
   ];
 
-  /* A behavior the notes call new. "new" next to a behavior word, or the plain
-     ways a technician says it ("first time", "never seen before", "started
-     biting"). A caregiver's question, a new target or a new material is not a
-     new behavior, which is the whole reason this is narrower than /new/. */
-  var BEHAVIOR_WORDS = "behaviou?rs?|bxs?|aggression|elopement|eloping|self[- ]injur\\w*|SIB|tantrums?|flopping|dropping|biting|hitting|kicking|scratching|spitting|screaming|yelling|throwing|property destruction|mouthing|pica|head[- ]?banging";
+  /* A behavior the notes call new. Built from the ways the reviewer's 25
+     phrasings say it (R331-H1): "new" beside a behavior word or set off by
+     punctuation ("new: hair pulling", "biting (new)", "kicking - new",
+     "pinching is new"), "first time" or "first instance", "never ... before" or
+     "not seen before", and a behavior that "started" or "began". Erring wide is
+     the safe side here: the tick stays either way, and a match only keeps the
+     "check this" hint quiet. "new behavior plan" and its kin are a document,
+     not a behavior, so they do not count. */
+  var BEHAVIOR_WORDS = "behaviou?rs?|bxs?|aggression|elopement|eloping|self[- ]injur\\w*|SIB|tantrums?|flopping|dropping|biting|hitting|kicking|scratching|spitting|screaming|yelling|throwing|pinching|pushing|grabbing|pulling|hair pulling|crying|bolting|property destruction|mouthing|pica|head[- ]?banging";
+  var BEHAVIOR_VERBS = "hit|hits|bite|bit|bites|kick|kicked|kicks|scratch|scratched|spit|spat|pinch|pinched|push|pushed|throw|threw|scream|screamed|yell|yelled|elope|eloped|bolt|bolted|flop|flopped|grab|grabbed|pull|pulled|bang|banged|cry|cried";
+  var NOT_A_BEHAVIOR = "(?!\\s+(?:plan|support|intervention|goal|program|protocol|sheet|data|target)s?\\b)";
   var NEW_BEHAVIOR = new RegExp(
-    "\\bnew\\s+(?:\\w+\\s+){0,2}(?:" + BEHAVIOR_WORDS + ")\\b" +
-    "|\\b(?:" + BEHAVIOR_WORDS + ")\\b[^.\\n]{0,30}\\b(?:is|was|are|were)\\s+new\\b" +
-    "|\\bfirst time\\b|\\bnever (?:seen|done|happened|did)\\b" +
-    "|\\b(?:started|began|new onset of)\\s+(?:" + BEHAVIOR_WORDS + ")\\b",
+    "\\b(?:brand\\s+)?new\\s+(?:\\w+\\s+){0,2}(?:" + BEHAVIOR_WORDS + ")\\b" + NOT_A_BEHAVIOR +
+    "|\\bnew\\s*:" +
+    "|\\(\\s*new\\s*\\)" +
+    "|\\s[-\\u2013]\\s*new\\b" +
+    "|\\b(?:is|was|are|were)\\s+(?:brand\\s+)?new\\b" +
+    "|\\bfirst\\s+(?:time|instance|occurrence|episode)\\b" +
+    "|\\bnever\\s+(?:\\w+\\s+){0,5}before\\b|\\bnot\\s+seen\\s+before\\b|\\bnever\\s+(?:seen|done|happened|did)\\b" +
+    "|\\b(?:started|began|starting|beginning|new onset of)\\s+(?:to\\s+)?(?:" + BEHAVIOR_WORDS + "|" + BEHAVIOR_VERBS + ")\\b" +
+    "|\\b(?:" + BEHAVIOR_WORDS + ")\\s+(?:\\w+\\s+){0,2}(?:started|began)\\b",
     "i"
   );
 
   var SCHEDULE_WORD = /\bschedule\b/i;
   var NOTE_VISUAL_SCHEDULE = /\bvisual schedule\b/i;
 
-  /* Prompt levels a note can name. Each is matched in the note and looked for
-     in the intake by the same pattern, so a level counts as the technician's
-     only when they wrote that level. "guide" never matches "full physical",
-     which is the case that started this. */
+  /* Prompt levels a note can name. `note` is how the level reads in a note;
+     `intake` adds the shorthand a technician writes for that same level (FP,
+     PP, "full phys", hoh, "used a point"). A level counts as the technician's
+     only when they wrote that level, in either form, so "guide" never counts
+     as "full physical", which is the case that started this. The capitals-only
+     codes (FP, PP, FV, PV) are case-sensitive, so "app" or "fp" in passing are
+     not read as a level. */
   var PROMPT_LEVELS = [
-    { name: "full physical", re: /\bfull[-\s]+physical\b/i },
-    { name: "partial physical", re: /\bpartial[-\s]+physical\b/i },
-    { name: "hand over hand", re: /\bhand[-\s]+over[-\s]+hand\b|\bHOH\b/ },
-    { name: "full verbal", re: /\bfull[-\s]+verbal\b/i },
-    { name: "partial verbal", re: /\bpartial[-\s]+verbal\b/i },
-    { name: "gestural", re: /\bgestur(?:e|es|al|ally)\b/i },
-    { name: "positional", re: /\bpositional\b/i },
+    { name: "full physical", note: /\bfull[-\s]+physical\b/i, intake: [/\bfull[-\s]*phys\w*/i, /\bFPP?\b/] },
+    { name: "partial physical", note: /\bpartial[-\s]+physical\b/i, intake: [/\bpartial[-\s]*phys\w*/i, /\bPPP?\b/] },
+    { name: "hand over hand", note: /\bhand[-\s]+over[-\s]+hand\b|\bHOH\b/i, intake: [/\bhand[-\s]+over[-\s]+hand\b/i, /\bhoh\b/i] },
+    { name: "full verbal", note: /\bfull[-\s]+verbal\b/i, intake: [/\bfull[-\s]*verb\w*/i, /\bFV\b/] },
+    { name: "partial verbal", note: /\bpartial[-\s]+verbal\b/i, intake: [/\bpartial[-\s]*verb\w*/i, /\bPV\b/] },
+    { name: "gestural", note: /\bgestur(?:e|es|al|ally)\b/i, intake: [/\bgestur\w*/i, /\bpoint(?:s|ed|ing)?\b/i] },
+    { name: "positional", note: /\bpositional\b/i, intake: [/\bpositional\b/i] },
   ];
+
+  function wrote(level, intake) {
+    return level.intake.some(function (re) { return re.test(intake); });
+  }
 
   /* Coaching. In the intake: the technician says they coached, told a
      caregiver to do something, or showed or modeled it for them. "Asked mom
@@ -81,12 +106,18 @@
     "|\\b(?:showed|modell?ed for)\\s+" + CAREGIVER + "\\b",
     "i"
   );
-  var COACH_NOTE = /\bcoach\w*\b|\bfeedback\b|\binstruct\w*\b|\bmodell?ed for\b|\b(?:told|showed|directed|reminded|asked) the (?:caregiver|parent|father|mother)\b/i;
+  // In the note, the caregiver words count as well as "the caregiver" (R331).
+  var COACH_NOTE = new RegExp(
+    "\\bcoach\\w*\\b|\\bfeedback\\b|\\binstruct\\w*\\b|\\bmodell?ed for\\b" +
+    "|\\b(?:told|showed|directed|reminded|asked|taught|guided)\\s+" + CAREGIVER + "\\b",
+    "i"
+  );
 
   /* Words the technician wrote that must survive in some form. "indep on most"
      came back without "independent", and the result of a trial went with it. */
   var KEPT_TERMS = [
-    { word: "independent", intake: /\bindep(?:endent(?:ly)?|endence)?\b/i, note: /\bindependen/i, section: "lessonProgressNarrative" },
+    // "on his own", "without prompts" and "unprompted" say independent too (R331).
+    { word: "independent", intake: /\bindep(?:endent(?:ly)?|endence)?\b/i, note: /\bindependen|\bon (?:his|her|their) own\b|\bwithout (?:a |any )?prompt(?:s|ing)?\b|\bunprompted\b/i, section: "lessonProgressNarrative" },
     { word: "errorless", intake: /\berrorless\b/i, note: /\berrorless\b/i, section: "lessonProgressNarrative" },
   ];
 
@@ -98,27 +129,21 @@
     return NARRATIVES.map(function (k) { return text(out[k]); }).join("\n");
   }
 
-  function without(list, label) {
-    return (Array.isArray(list) ? list : []).filter(function (v) { return v !== label; });
-  }
-
   function has(list, label) {
     return Array.isArray(list) && list.indexOf(label) !== -1;
   }
 
-  // Ticks the notes cannot support, undone, each with a hint saying so.
-  function untick(out, intake) {
-    var changes = {};
+  /* Ticks the notes do not support, each with a hint asking the technician
+     to check it. The tick itself is never changed (R331-H1). */
+  function tickHints(out, intake) {
     var hints = [];
     if (has(out.actionItems, NEW_BEHAVIOR_ITEM) && !NEW_BEHAVIOR.test(intake)) {
-      changes.actionItems = without(out.actionItems, NEW_BEHAVIOR_ITEM);
-      hints.push({ section: "actionItems", code: "other", detail: "Unticked \"new behavior\": the notes name no new behavior." });
+      hints.push({ section: "actionItems", code: "other", detail: "Check \"new behavior\": the notes name no new behavior." });
     }
     if (has(out.antecedentStrategies, VISUAL_SCHEDULE) && !SCHEDULE_WORD.test(intake)) {
-      changes.antecedentStrategies = without(out.antecedentStrategies, VISUAL_SCHEDULE);
-      hints.push({ section: "antecedentStrategies", code: "other", detail: "Unticked \"Visual schedule\": the notes name no schedule." });
+      hints.push({ section: "antecedentStrategies", code: "other", detail: "Check \"Visual schedule\": the notes name no schedule." });
     }
-    return { changes: changes, hints: hints };
+    return hints;
   }
 
   // The first narrative that names a pattern, so a hint lands where the words are.
@@ -131,10 +156,10 @@
 
   function promptLevelHints(out, intake) {
     return PROMPT_LEVELS.filter(function (p) {
-      return !p.re.test(intake) && sectionNaming(out, p.re);
+      return !wrote(p, intake) && sectionNaming(out, p.note);
     }).map(function (p) {
       return {
-        section: sectionNaming(out, p.re),
+        section: sectionNaming(out, p.note),
         code: "ambiguous_item",
         detail: "Notes never say \"" + p.name + "\"; use your own prompt words.",
       };
@@ -159,17 +184,16 @@
     return hints;
   }
 
-  /* The whole check. Returns a NEW output and the hints to add; the caller
-     concatenates them before its own hint normalizer runs, so they take the
-     same validation as every other hint. */
+  /* The whole check. Returns the output unchanged, as a NEW object, and the
+     hints to add; the caller concatenates them before its own hint normalizer
+     runs, so they take the same validation as every other hint. */
   function apply(out, intake) {
     var o = out && typeof out === "object" ? out : {};
     var src = text(intake);
-    var ticks = untick(o, src);
-    var next = Object.assign({}, o, ticks.changes);
+    var next = Object.assign({}, o);
     return {
       output: next,
-      hints: ticks.hints.concat(promptLevelHints(next, src), gapHints(next, src)),
+      hints: tickHints(next, src).concat(promptLevelHints(next, src), gapHints(next, src)),
     };
   }
 

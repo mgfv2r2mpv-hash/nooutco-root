@@ -656,9 +656,14 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
       out.consequenceEffectiveness = EFFECTIVENESS[1];
       extraHints.push({ section: "consequenceEffectiveness", code: "other", detail: "Notes did not say; set to the middle option. Check it." });
     }
-    /* The draft read against the technician's own notes (bt-checks.js): two
-       unsupported ticks undone, and the actor, prompt-level and dropped-word
-       gaps flagged. Fails open when the file did not load. */
+    /* The draft read against the technician's own notes (bt-checks.js):
+       hints for two ticks the notes do not support, and for the actor,
+       prompt-level and dropped-word gaps. It never changes a tick or the
+       prose. Fails open when the file did not load, and says so in the
+       console, because a silent skip looks exactly like a clean note. */
+    if (isDraft && !window.BtChecks && typeof console !== "undefined") {
+      console.warn("BtChecks did not load; this BT draft was not checked against the notes.");
+    }
     var checked = isDraft && window.BtChecks ? window.BtChecks.apply(out, ctx.intake) : { output: out, hints: [] };
     out = checked.output;
     extraHints = extraHints.concat(checked.hints);
