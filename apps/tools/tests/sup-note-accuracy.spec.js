@@ -152,6 +152,29 @@ test.describe('overall progress: a substantial pick next to a stall or a new beh
   });
 });
 
+test.describe('card tool-hint-polish: the misses the #332 reviewer found after merge', () => {
+  const progressHints = (intake) => {
+    const out = sup.normalizeOutput({ overallProgress: STEADY, hints: [] }, { intake });
+    expect(out.overallProgress, intake).toBe(STEADY);
+    return details(out).filter((d) => d.startsWith('overallProgress:'));
+  };
+
+  for (const said of ['new climbing on furniture', 'hit mom for the first time', 'pinching is new']) {
+    test(`hint quotes "${said}"`, () => {
+      expect(progressHints(said)).toEqual([
+        `overallProgress: Progress picked substantial, but the notes mention "${said}"; check it.`,
+      ]);
+    });
+  }
+
+  // Guards: the earlier quiet cases, in the reviewer's own words, stay quiet.
+  for (const said of ['No new behaviors of concern', 'flat at zero', 'maintenance flat at 100%', 'new behavior plan', 'independent for the first time', 'climbing stairs flat at zero']) {
+    test(`no hint: "${said}"`, () => {
+      expect(progressHints(said)).toEqual([]);
+    });
+  }
+});
+
 test.describe('a named procedure stays named', () => {
   test('"errorless" dropped from the note is flagged on the whole note', () => {
     const out = sup.normalizeOutput({

@@ -43,13 +43,18 @@
   var MAINTENANCE = /\bmaint\w*|\bmastered\b|\b100\s*%/i;
   var STALL_NOT_AFFECT = new RegExp("(?!flat\\s+affect\\b)(?:" + STALLED.source + ")", "i");
 
-  var BEHAVIOR_WORDS = "behaviou?rs?|bxs?|aggression|elopement|eloping|self[- ]injur\\w*|SIB|tantrums?|flopping|dropping|biting|hitting|kicking|scratching|spitting|screaming|yelling|throwing|pinching|pushing|grabbing|hair pulling|bolting|property destruction|mouthing|pica|head[- ]?banging";
-  var BEHAVIOR_VERBS = "hit|bite|bit|kick|kicked|scratch|scratched|spit|spat|pinch|pinched|push|pushed|throw|threw|scream|screamed|elope|eloped|bolt|bolted|flop|flopped";
+  var BEHAVIOR_WORDS = "behaviou?rs?|bxs?|aggression|elopement|eloping|self[- ]injur\\w*|SIB|tantrums?|flopping|dropping|biting|hitting|kicking|scratching|spitting|screaming|yelling|throwing|pinching|pushing|grabbing|hair pulling|climbing|bolting|property destruction|mouthing|pica|head[- ]?banging";
+  var BEHAVIOR_VERBS = "hit|bite|bit|kick|kicked|scratch|scratched|spit|spat|pinch|pinched|push|pushed|throw|threw|scream|screamed|elope|eloped|bolt|bolted|flop|flopped|climb|climbed";
   var NEW_BEHAVIOR = new RegExp(
     "\\bnew\\s+(?:\\w+\\s+){0,2}(?:" + BEHAVIOR_WORDS + ")\\b" +
     "|\\b(?:" + BEHAVIOR_WORDS + ")\\s+(?:\\w+\\s+){0,2}(?:started|began)\\b" +
     "|\\b(?:started|began|new onset of)\\s+(?:to\\s+)?(?:" + BEHAVIOR_WORDS + "|" + BEHAVIOR_VERBS + ")\\b" +
-    "|\\bfirst\\s+(?:time|instance|occurrence)\\s+(?:of\\s+)?(?:\\w+\\s+){0,2}(?:" + BEHAVIOR_WORDS + "|" + BEHAVIOR_VERBS + ")\\b",
+    "|\\bfirst\\s+(?:time|instance|occurrence)\\s+(?:of\\s+)?(?:\\w+\\s+){0,2}(?:" + BEHAVIOR_WORDS + "|" + BEHAVIOR_VERBS + ")\\b" +
+    // tool-hint-polish: "hit mom for the first time" and "pinching is new".
+    // Only a behavior word or verb counts, so "independent for the first
+    // time" stays good news.
+    "|\\b(?:" + BEHAVIOR_WORDS + "|" + BEHAVIOR_VERBS + ")\\s+(?:\\w+\\s+){0,3}for\\s+the\\s+first\\s+time\\b" +
+    "|\\b(?:" + BEHAVIOR_WORDS + ")\\s+(?:is|was|are|were)\\s+(?:brand\\s+)?new\\b",
     "i"
   );
   // A behavior PLAN is a document. "New behavior plan implemented" is news
