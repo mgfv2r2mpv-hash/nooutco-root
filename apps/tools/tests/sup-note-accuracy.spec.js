@@ -229,6 +229,70 @@ test.describe('card tool-hint-polish, #336 review: success sentences and skill c
   }
 });
 
+test.describe('card tool-hint-polish, #336 re-review: counts and real objects keep the alert', () => {
+  const progressHints = (intake) => {
+    const out = sup.normalizeOutput({ overallProgress: STEADY, hints: [] }, { intake });
+    expect(out.overallProgress, intake).toBe(STEADY);
+    return details(out).filter((d) => d.startsWith('overallProgress:'));
+  };
+
+  // R336 re-review HIGH: a count after a behavior is a frequency, not a
+  // skill; a missed alert is the costlier error. LOW: a person before the
+  // skill object wins, self-injury counts, climbing takes modifiers.
+  const FLAGGED = [
+    'new aggression 3x this session',
+    'started hitting 3 times per session',
+    'elopement 2x started after the move',
+    'new SIB 4 times today',
+    'first time hitting 2 peers',
+    'started throwing blocks at staff',
+    'started throwing the ball at staff',
+    'pushed the peer off the swing for the first time',
+    'hit his head for the first time',
+    'climbing on the kitchen counter started today',
+    'climbed up on the table started monday',
+  ];
+  for (const said of FLAGGED) {
+    const phrase = said.split(',')[0];
+    test(`hint quotes "${phrase}"`, () => {
+      expect(progressHints(said)).toEqual([
+        `overallProgress: Progress picked substantial, but the notes mention "${phrase}"; check it.`,
+      ]);
+    });
+  }
+
+  const QUIET = [
+    'hit 80 percent for the first time',
+    'hit 80% for the first time',
+    'hitting 80% on matching for the first time',
+    'hitting 9 of 10 trials for the first time',
+    'kicked her shoes off for the first time',
+    'pushed her chair in for the first time',
+  ];
+  for (const said of QUIET) {
+    test(`no hint: "${said}"`, () => {
+      expect(progressHints(said)).toEqual([]);
+    });
+  }
+
+  // R336 re-review LOW-MEDIUM: a long run of spaces or tabs must not stall
+  // the page (the old climbing pattern took 4.4 s on 40k spaces).
+  for (const [name, said] of [
+    ['spaces after climbing', 'climbing' + ' '.repeat(20000) + 'x'],
+    ['tabs after climbing', 'climbing' + '\t'.repeat(20000) + 'x'],
+    ['spaces after climbed up', 'climbed up' + ' '.repeat(20000) + 'x'],
+    ['spaces after hit', 'hit' + ' '.repeat(20000) + 'x'],
+    ['spaces after new', 'new' + ' '.repeat(20000) + 'x'],
+  ]) {
+    test(`20k ${name} reads in under 50 ms`, () => {
+      progressHints('warm up');
+      const t0 = performance.now();
+      progressHints(said);
+      expect(performance.now() - t0).toBeLessThan(50);
+    });
+  }
+});
+
 test.describe('a named procedure stays named', () => {
   test('"errorless" dropped from the note is flagged on the whole note', () => {
     const out = sup.normalizeOutput({
