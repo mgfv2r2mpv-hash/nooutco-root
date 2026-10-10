@@ -140,9 +140,17 @@
     return list.filter(function (v, i) { return list.indexOf(v) === i; });
   }
 
+  /* A percentage is a whole count of n trials when it sits within half a point
+     of 100k/n for some whole k: 67%, 66.7% and 33% are 2 of 3, 2 of 3 and 1 of
+     3, as written. Reviewer R334-H1: the first cut demanded an exact product
+     and flagged every rounded percentage, including the one the prompt itself
+     tells the drafter to write. */
+  var ROUNDING = 0.5;
+
   function wholeTrialsMessage(p, n) {
     var exact = (p * n) / 100;
-    if (Math.abs(exact - Math.round(exact)) < 1e-9) return null;
+    var nearest = Math.round(exact);
+    if (Math.abs(p - (100 * nearest) / n) <= ROUNDING) return null;
     var lo = Math.floor(exact);
     var hi = Math.ceil(exact);
     return p + "% of " + n + " trials is " + Math.round(exact * 10) / 10 + " trials. Say " +

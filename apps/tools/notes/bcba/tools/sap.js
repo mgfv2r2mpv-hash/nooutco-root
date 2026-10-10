@@ -624,7 +624,12 @@
      (sap-checks.js, sap-numbers.js). Hints only: no block is rewritten. Fails
      open, so a page where the check files did not load drafts as before. */
   function checkHints(out, intake, revision) {
-    if (!window.SapChecks) return [];
+    if (!window.SapChecks) {
+      if (typeof console !== "undefined") {
+        console.warn("SapChecks did not load; this SAP draft was not checked against the intake or itself.");
+      }
+      return [];
+    }
     return window.SapChecks.apply(out, intake, { sections: SECTION_IDS, revision: revision }).hints;
   }
 
