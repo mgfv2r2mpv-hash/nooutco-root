@@ -472,8 +472,37 @@
   // Additive hint instructions - the core prompt above matches the standalone page.
   var HINTS_BLOCK = "\n\nHINTS: additionally include a top-level \"hints\" key, an array of {section, code, detail} objects flagging ONLY missing or ambiguous elements (max 3; empty [] when the draft stands on its own). section is one of: " + SECTION_IDS.join(", ") + ". code is one of: thin_section (a section lacks operational specifics technicians need), ambiguous_item (detail = what needs clarifying, 10 words max), other (detail = the question). A block you designed yourself is NOT a hint - it goes in \"design\". Never fabricate to avoid a hint.";
 
+  /* ── What the BCBA set stands (card sap-note-accuracy, 2026-10-09) ───────
+     From Kaleb's SAP bench run. The bench passed 3 of 3 and the drafts still
+     had real errors: "use most-to-least for 'help', he gets frustrated with
+     errors" came back as least-to-most on both buttons with the reason turned
+     around; a 2-step instruction was taught as two 1-step instructions; the
+     waiting plan started above the baseline it said it started below; the
+     refined goal gained "by the end of 1 authorization period"; the tablet
+     reinforcer was lost; a hierarchy said five levels and listed four; and
+     readiness waited for a grab, the behavior the program replaces.
+
+     These ride in the user prompt, which the browser sends, rather than in
+     SYSTEM_PROMPT: the served system prompt comes from the voice-module store
+     (draftKind sap_design), and verify-parity there re-derives it from this
+     file, so a change to SYSTEM_PROMPT would not reach a live draft until it
+     was re-extracted. Where a rule here and the standing defaults or the
+     section templates differ, this block says it wins. The parts that can be
+     checked exactly are checked in sap-checks.js and sap-numbers.js. */
+  var ACCURACY_RULES = [
+    "WHAT THE BCBA SET STANDS. These rules override the standing defaults and the section templates where they differ:",
+    "- A teaching method, mastery criterion, prompting direction or prompt hierarchy the BCBA states, in the goal, the specifications or an answer, is used exactly as stated for the target it names. \"use most-to-least for 'help'\" means Help is taught Most-to-Least, whatever a standing default would choose, and a direction stated for one target does not move to another. You may raise a question about it, but the plan is written with the BCBA's choice. Never switch it, and never restate the BCBA's reason so that it points the other way: \"he gets frustrated with errors\" is the reason FOR Most-to-Least.",
+    "- Treatment Goal (Refined): keep the BCBA's wording and make it measurable, but never add a deadline, a setting, a person or a count that is not in the goal, the specifications or an answer. This overrides the instruction to add 'by the end of 1 authorization period': where the goal has no timeframe, leave it without one and flag it for the BCBA.",
+    "- A 2-step instruction (or longer) is delivered as ONE SD that contains every step, for example \"Get your shoes and sit down.\" Reinforcement is delivered only after the learner completes every step. Never reinforce step 1 on its own, and never present step 2 as a new SD: that teaches two 1-step instructions. The SD, Teaching Strategy, Correct Response, Incorrect Response and both Error Correction blocks all describe it this way.",
+    "- Numbers agree with each other. A percentage and the fraction beside it are the same value: 4 of 5 is 80%, and 2 of 3 is 67%, not 80%. With 3-trial probes the only possible scores are 1 of 3, 2 of 3 and 3 of 3, so write that criterion as a count. A starting value called below baseline is lower than the baseline figure the BCBA gave. A step plan reaches its target no sooner than the sessions it takes: (target minus start) divided by the step size is the number of steps, and each step takes at least one session.",
+    "- Every reinforcer the BCBA names, in the specifications or in an answer, stays in the plan with the amount given, for example \"tablet for 30 seconds or one goldfish cracker per request\". Where one word names both a reinforcer and the AAC device, keep them apart: \"30 seconds of tablet time\" for the reinforcer, \"the AAC device\" for the communication device.",
+    "- Prompt Hierarchy: a stated number of levels matches the levels listed. Every level the error correction steps use, Independent included, is a level in the hierarchy, and a level removed from the hierarchy is removed from the error correction too.",
+    "- Never write a rule that conflicts with another rule you wrote and then ask the BCBA to settle it. Make your own blocks agree before you return. A conflict is for the BCBA's own input disagreeing with itself or with a standing default.",
+    "- Readiness, and the moment to run the program, never require the behavior targeted for reduction. If the program replaces grabbing, readiness is never \"has grabbed in the last 30 seconds\". Use a sign of motivation that is not that behavior: looking at, pointing toward or moving toward the item, or a stretch without access to it.",
+  ].join("\n");
+
   function buildUserPrompt(values) {
-    return "Treatment Goal:\n" + (values.goal || "") + "\n\nSAP Specifications:\n" + ((values.sapSpecs || "").trim() || "(No additional specifications provided. Design the plan.)");
+    return "Treatment Goal:\n" + (values.goal || "") + "\n\nSAP Specifications:\n" + ((values.sapSpecs || "").trim() || "(No additional specifications provided. Design the plan.)") + "\n\n" + ACCURACY_RULES;
   }
 
   /* The logged-out copy-prompt path, kept a logged-out feature by his ruling of
@@ -576,7 +605,7 @@
     ].join("\n");
 
     var user = "Treatment Goal:\n" + (values.goal || "") + "\n\nSAP Specifications:\n" + ((values.sapSpecs || "").trim() || "(No additional specifications. Design the plan.)");
-    return sys + "\n\n---\n\n" + user;
+    return sys + "\n\n" + ACCURACY_RULES + "\n\n---\n\n" + user;
   }
 
   function s(v) { return typeof v === "string" ? v : ""; }
@@ -591,14 +620,24 @@
     return body + "\n\n" + NOTE_PREFIX + (s(reentryRule).trim() || REENTRY_FALLBACK);
   }
 
-  function normalizeOutput(raw) {
+  /* The draft read against the BCBA's intake and against itself
+     (sap-checks.js, sap-numbers.js). Hints only: no block is rewritten. Fails
+     open, so a page where the check files did not load drafts as before. */
+  function checkHints(out, intake, revision) {
+    if (!window.SapChecks) return [];
+    return window.SapChecks.apply(out, intake, { sections: SECTION_IDS, revision: revision }).hints;
+  }
+
+  function normalizeOutput(raw, ctx) {
     var o = raw && typeof raw === "object" ? raw : {};
     var out = {};
     SECTION_IDS.forEach(function (id) { out[id] = s(o[id]); });
     out.errorCorrectionMaintenance = withReentry(o.errorCorrectionMaintenance, o.reentryRule);
-    out.hints = normalizeHints(o.hints, HINT_CATALOG, SECTION_IDS);
     out.design = U.normalizeDesign(o.design, SECTION_IDS);
     out.conflicts = U.normalizeConflicts(o.conflicts, SECTION_IDS);
+    // Only a real draft carries the intake it was written from.
+    var checked = ctx && typeof ctx.intake === "string" ? checkHints(out, ctx.intake, false) : [];
+    out.hints = normalizeHints((Array.isArray(o.hints) ? o.hints : []).concat(checked), HINT_CATALOG, SECTION_IDS);
     return Object.assign({}, out, normalizeRevision(o, SECTION_IDS));
   }
 
@@ -627,9 +666,11 @@
     if (next && next !== prev && prev.indexOf("\n" + NOTE_PREFIX) !== -1 && next.indexOf(NOTE_PREFIX) === -1) {
       out.errorCorrectionMaintenance = next.trim() + "\n\n" + prev.slice(prev.lastIndexOf("\n" + NOTE_PREFIX) + 1);
     }
-    out.hints = normalizeHints(o.hints, HINT_CATALOG, SECTION_IDS);
     out.design = U.normalizeDesign(o.design, SECTION_IDS);
     out.conflicts = U.normalizeConflicts(o.conflicts, SECTION_IDS);
+    // The revised plan read against itself only: the revision may carry a
+    // newer instruction than the first intake, so nothing is read against that.
+    out.hints = normalizeHints((Array.isArray(o.hints) ? o.hints : []).concat(checkHints(out, "", true)), HINT_CATALOG, SECTION_IDS);
     // Which sections the model itself said it changed on its own initiative,
     // so the engine can mark them without re-deriving the intent from a diff.
     out.dependentSections = dependents.map(function (e) { return e.section; });

@@ -124,6 +124,10 @@
   <script src="/notes/bcba/tools/sap.js"></script>
   <script src="/notes/bcba/tools/assess.js"></script>
   <script src="/notes/bcba/tools/parent.js"></script>
+  <!-- Read a SAP draft against the BCBA's intake and against itself. sap.js
+       calls them from normalizeOutput at draft time, so they load after it. -->
+  <script src="/notes/bcba/tools/sap-numbers.js"></script>
+  <script src="/notes/bcba/tools/sap-checks.js"></script>
 
   <!-- Which tool the address names: sets the crumb and tab title before the
        bar renders, and rewrites an old ?tool= address in place. -->
