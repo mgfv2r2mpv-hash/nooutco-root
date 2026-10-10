@@ -261,6 +261,32 @@ TERMINOLOGY (non-negotiable)\n\
     return blocks;
   }
 
+  /* ── Only what the BCBA wrote (card sup-note-accuracy, 2026-10-09) ────────
+     From Kaleb's Supervision bench run. With "BT ok" as the whole of the staff
+     box and "Told BT to fade to gesture on colors next session, no fidelity
+     check today" as the answer, the note invented a fidelity reading and a
+     coaching point about full physical prompting, and lost the real feedback.
+     It made up next steps ("provide advance warning when ending iPad time"),
+     dropped "errorless" from "changed to errorless w immediate echoic prompt",
+     and called progress "steady, substantial" with tacting stalled for three
+     sessions.
+
+     These ride in the user prompt, which the browser sends, rather than in
+     SYSTEM_CORE: the served system prompt comes from the voice-module store and
+     is pinned by hash in sup-prompt-rules.spec.js, so a change there would not
+     reach a live draft until it was re-extracted. Where a rule here and the
+     section specification differ, this block says it wins. The parts that can
+     be checked exactly are checked in normalizeOutput below. */
+  var FIDELITY_RULES = [
+    "",
+    "ONLY WHAT THE BCBA WROTE. These rules override the section specifications where they differ:",
+    "- feedback: only feedback the BCBA wrote or gave as an answer. Never describe how the technician performed, what was coached, or a fidelity or IOA finding the notes do not state. When the notes give one line of feedback, such as \"Told BT to fade to gesture on colors next session\", write that feedback and stop. A check the notes say was not done (\"no fidelity check today\") was not done: say so if the notes do, and never imply a result.",
+    "- nextSteps and followup: only from what the BCBA wrote. When the notes give no next step for a goal, leave that row's nextSteps as \"\" for the BCBA to fill. When the notes give no follow-up item, leave followup as \"\". Never write a next step, an assessment to run, or a strategy to try that the notes do not name. This overrides the rule that every goal row carries a nextSteps sentence.",
+    "- A named procedure stays named. Errorless, most-to-least, least-to-most, time delay, BST, DTT, NET, FCT, task analysis, chaining, shaping, DRA and DRO keep their names. \"Changed to errorless w immediate echoic prompt\" is written as a change to errorless teaching with an immediate echoic prompt, never as a prompt change alone.",
+    "- Name a prompt level only when the notes name that level. Never supply full physical, partial physical, gestural or any other level the BCBA did not write.",
+    "- overallProgress: when any program has stalled (the notes say stalled, flat, plateaued, no progress or not progressing) or a new behavior of concern appears, choose no higher than the moderate option.",
+  ];
+
   function buildUserPrompt(values) {
     var btPresent = values.btPresent;
     return [
@@ -286,7 +312,7 @@ TERMINOLOGY (non-negotiable)\n\
       "Feedback section framing: " + (btPresent
         ? "Feedback provided to direct service staff (BT/RBT) regarding implementation, skill acquisition targets, or behavior intervention."
         : "No technician was present. Describe Behavior Analyst-only activities: what was run, evaluated, modeled, or explained. Begin with: 'No technician was present; Behavior Analyst performed…'. Staff-related hint codes do not apply."),
-    ]).join("\n");
+    ], FIDELITY_RULES).join("\n");
   }
 
   // A row is a reduction target by its NAME, never by its progress text: a skill
@@ -332,7 +358,15 @@ TERMINOLOGY (non-negotiable)\n\
     ["progress", "programming", "behavior", "feedback", "followup"].forEach(function (k) {
       out[k] = typeof o[k] === "string" ? o[k] : "";
     });
-    out.hints = normalizeHints(o.hints, HINT_CATALOG, SECTION_IDS);
+    /* The draft read against the BCBA's own notes (sup-checks.js): overall
+       progress capped at moderate on a stalled program or a new behavior, and
+       a dropped procedure name or an invented prompt level flagged. Only on a
+       real draft, which carries the intake, and fails open when the file did
+       not load. */
+    var isDraft = !!(ctx && typeof ctx.intake === "string");
+    var checked = isDraft && window.SupChecks ? window.SupChecks.apply(out, ctx.intake) : { output: out, hints: [] };
+    out = checked.output;
+    out.hints = normalizeHints((Array.isArray(o.hints) ? o.hints : []).concat(checked.hints), HINT_CATALOG, SECTION_IDS);
     // The three revision keys the engine reads back. Kept separate from the
     // note's own fields because they never reach the EHR: an answer is shown
     // in the panel and a routing decision is consumed before render.
