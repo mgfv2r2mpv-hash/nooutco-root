@@ -17,10 +17,14 @@
  * the section before and after:
  *
  *   a REASON whose quote reads the same number of times before and after names
- *   wording that did not change, so it is dropped;
+ *   wording that did not change, so it is dropped. A quote found on NEITHER
+ *   side is the exception and is kept: it was paraphrased rather than copied,
+ *   so the text can neither confirm nor deny it, and corrections.js already
+ *   leaves an unmatched quote off every mark;
  *
  *   a CLAUSE of the section line that says it removed words still there, or
- *   added words that are not there, is dropped, and so is one that claims
+ *   added words that are not there, is dropped (for "Replaced X with Y" only X
+ *   is checked, since Y may already have stood elsewhere in the section), and so is one that claims
  *   counts, rates or other figures when no number was added, or claims an
  *   addition or removal when no word was added or removed at all.
  *
@@ -99,6 +103,20 @@ function quotedSpans(clause) {
   return spans;
 }
 
+/* The quoted spans a claim is about. In "Replaced X with Y" that is X alone:
+   X is what the claim says went, and Y is what came in, so Y already standing
+   somewhere in the section says nothing against the claim (reviewer R333-P1,
+   "Replaced 'utilized' with 'used'" in a section that already said "used"). */
+const REPLACE_VERB = /\breplaced\b/i;
+const REPLACE_WITH = /\s(?:with|by)\s/i;
+function claimedSpans(clause) {
+  if (!REPLACE_VERB.test(clause)) return quotedSpans(clause);
+  const from = clause.search(REPLACE_VERB);
+  const rest = clause.slice(from);
+  const cut = rest.search(REPLACE_WITH);
+  return quotedSpans(cut === -1 ? rest : rest.slice(0, cut));
+}
+
 // The words an unquoted claim is about: after the verb, up to OBJECT_END,
 // with descriptor words stripped. Two words at least, or nothing.
 function unquotedObject(clause, verb) {
@@ -123,13 +141,14 @@ function clauseHolds(clause, before, after) {
   if (adds && !removes && !exceeds(afterWords, beforeWords)) return false;
   if (adds && FIGURE_WORDS.test(clause) && !exceeds(tally(numbers(after)), tally(numbers(before)))) return false;
 
-  for (const span of quotedSpans(clause)) {
+  const claimed = claimedSpans(clause);
+  for (const span of claimed) {
     const was = countOf(before, span);
     const now = countOf(after, span);
     if (removes && !adds && was > 0 && now >= was) return false;
     if (adds && !removes && now <= was && (was > 0 || now > 0)) return false;
   }
-  if (!quotedSpans(clause).length && removes && !adds) {
+  if (!claimed.length && removes && !adds) {
     const object = unquotedObject(clause, REMOVE_VERB);
     const was = object ? countOf(before, object) : 0;
     if (was > 0 && countOf(after, object) >= was) return false;

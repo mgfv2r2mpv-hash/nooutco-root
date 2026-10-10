@@ -74,6 +74,26 @@ test.describe('a change note never claims an edit that did not land', () => {
     expect(checkedWhy(why, 'The BT utilized a board.', 'The BT utilized a board, carefully.')).toBe('');
   });
 
+  test('"replaced X with Y" checks only X, so a Y already in the text never sinks it', () => {
+    // Reviewer R333-P1: "used" was in the section before the swap, so reading Y
+    // as a removal found it still there and dropped a true note.
+    const before = 'The BT used a board and utilized a timer.';
+    const after = 'The BT used a board and used a timer.';
+    for (const why of ['Replaced "utilized" with "used".', "Replaced 'utilized' with 'used'.", 'Replaced utilized with used.', 'Replaced "utilized" by "used".']) {
+      expect(checkedWhy(why, before, after), why).toBe(why);
+    }
+  });
+
+  test('"replaced X with Y" is still dropped when X is still there', () => {
+    const before = 'The BT used a board and utilized a timer.';
+    expect(checkedWhy('Replaced "utilized" with "used".', before, before + ' Done.')).toBe('');
+  });
+
+  test('a reason whose quote is found on neither side is kept, as the header says', () => {
+    const reasons = [{ quote: 'paraphrased, not verbatim', why: 'Cannot be checked.' }];
+    expect(checkedReasons(reasons, 'A.', 'B.')).toEqual(reasons);
+  });
+
   test('an apostrophe never reads as a quote', () => {
     const why = "Removed the client's name from the BT's line.";
     expect(checkedWhy(why, "The client's mom said hi. Done.", 'Done.')).toBe(why);
