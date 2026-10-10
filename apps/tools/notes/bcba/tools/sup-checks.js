@@ -49,27 +49,40 @@
   /* Card tool-hint-polish, after the #336 review. A behavior word followed
      by a program word ("behavior data", "bx graphing", "hitting criterion")
      is about the program, not a behavior, as in bt-checks.js. */
-  var NOT_A_BEHAVIOR = "(?!\\s+(?:(?:plan|support|intervention|goal|program|protocol|sheet|data|target|criterion|mastery|percent|graph\\w*|chart\\w*|probe)s?\\b|\\d))";
+  // A score is a digit with a unit ("80%", "80 percent", "9 of 10 trials");
+  // a bare count ("3x", "4 times") is a frequency and keeps the alert.
+  var SCORE = "\\d+\\s*(?:%|percent\\b|trials?\\b|of\\b)";
+  var NOT_A_BEHAVIOR = "(?!\\s+(?:(?:plan|support|intervention|goal|program|protocol|sheet|data|target|criterion|mastery|percent|graph\\w*|chart\\w*|probe)s?\\b|" + SCORE + "))";
 
   // Climbing is a behavior only onto something not meant for climbing.
   // "Climbing the stairs" in OT, a "climbing wall" and a "climbing program"
   // are skills (R336 MEDIUM).
-  var CLIMBING = "climb(?:ing|ed|s)?\\s+(?:on|onto|up|over|in)?\\s*(?:the\\s+|a\\s+|his\\s+|her\\s+|their\\s+)?(?:furniture|counters?|shel(?:f|ves)|bookshel(?:f|ves)|tables?|fences?|chairs?|couch(?:es)?|cabinets?|dressers?|desks?|windows?)\\b";
+  // One whitespace run per gap, so a long run of spaces cannot backtrack.
+  // Up to two prepositions ("up on") and two modifiers ("the kitchen counter").
+  var CLIMBING = "climb(?:ing|ed|s)?\\s+(?:(?:on|onto|up|over|in)\\s+){0,2}(?:(?:the|a|his|her|their)\\s+)?(?:\\w+\\s+){0,2}?(?:furniture|counters?|shel(?:f|ves)|bookshel(?:f|ves)|tables?|fences?|chairs?|couch(?:es)?|cabinets?|dressers?|desks?|windows?)\\b";
 
   var BEHAVIOR = "(?:\\b(?:" + BEHAVIOR_WORDS + ")\\b" + NOT_A_BEHAVIOR + "|\\b" + CLIMBING + ")";
 
   // What a skill is done to: "threw the ball", "hit criterion", "hit 80
   // percent", "hit her goal". A behavior or verb before one of these is good
   // news (R336 HIGH).
-  var SKILL_OBJECT = "(?!\\s+(?:\\w+\\s+){0,2}?(?:(?:ball|cart|clothespin|wall|stairs?|steps?|gum|car|criterion|mastery|goal|target|percent|data|bubble|button|ladder|slide|swing|toy|block|mark|benchmark)s?\\b|\\d))";
+  // An object thrown "at" someone is aggression, so "at" after it keeps the
+  // alert ("throwing the ball at staff").
+  var SKILL_OBJECT = "(?!\\s+(?:\\w+\\s+){0,2}?(?:(?:ball|cart|clothespin|wall|stairs?|steps?|gum|car|criterion|mastery|goal|target|percent|data|bubble|button|ladder|slide|swing|mark|benchmark)s?\\b(?!\\s+at\\b)|" + SCORE + "))";
 
   /* "For the first time" counts only after a behavior noun, or after a harm
      verb with a person as its object ("hit mom", "threw a toy at a peer").
      "Hit criterion", "kicked the ball" and "talked a bit louder" are a
      client's success, the very notes where a BCBA picks substantial. */
-  var PERSON = "(?:(?:his|her|their|a|the|another|other)\\s+)?(?:mom|dad|mother|father|sister|brother|siblings?|peers?|staff|RBT|BT|teacher|therapist|aide|parents?|caregivers?|grandma|grandpa|grandmother|grandfather|friend|classmate|child|kid|baby|him|her|them|me|us|self|himself|herself|themselves)\\b";
+  // Bare "her" is a person only when no noun follows it: "hit her for" is,
+  // "kicked her shoes off" is not. A person object wins over a skill object
+  // after it ("pushed the peer off the swing").
+  var PERSON = "(?:(?:(?:his|her|their|a|the|another|other)\\s+)?(?:mom|dad|mother|father|sister|brother|siblings?|peers?|staff|RBT|BT|teacher|therapist|aide|parents?|caregivers?|grandma|grandpa|grandmother|grandfather|friend|classmate|child|kid|baby|him|them|me|us|self|himself|herself|themselves)\\b" +
+    "|her\\b(?!\\s+(?!(?:for|on|in|at|and|with|again|today|during|when|while|after|before|twice|once|then|so|but|hard)\\b)\\w))";
+  // Self-injury: "hit his head", "banged her head", "bit his hand".
+  var SELF_INJURY = "(?:hit|hits|bang(?:s|ed)?|bit|bites?|scratch(?:es|ed)?)\\s+(?:his|her|their)\\s+(?:own\\s+)?(?:head|face|hands?|arms?|legs?)\\b";
   var HARM_VERBS = "hit|hits|bit|bites?|kick(?:s|ed)?|push(?:es|ed)?|pinch(?:es|ed)?|scratch(?:es|ed)?|(?:threw|throws?)\\s+(?:\\w+\\s+){0,2}at|(?:spit|spat|spits)\\s+(?:at|on)";
-  var FIRST_TIME = "(?:" + BEHAVIOR + SKILL_OBJECT + "|\\b(?:" + HARM_VERBS + ")\\s+" + PERSON + SKILL_OBJECT + ")(?:\\s+\\w+){0,3}?\\s+for\\s+the\\s+first\\s+time\\b";
+  var FIRST_TIME = "(?:" + BEHAVIOR + SKILL_OBJECT + "|\\b(?:" + HARM_VERBS + ")\\s+" + PERSON + "|\\b" + SELF_INJURY + ")(?:\\s+\\w+){0,3}?\\s+for\\s+the\\s+first\\s+time\\b";
 
   // A behavior verb after "started" or "first time", unless a skill object
   // follows it. "A bit" is an amount, not a bite.
