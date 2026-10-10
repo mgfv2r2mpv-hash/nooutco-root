@@ -129,7 +129,7 @@ test.describe('the Assessment prompt carries the nothing-added rules', () => {
   });
 
   test('no em dash reaches the prompt', () => {
-    expect(prompt).not.toMatch(/—/);
+    expect(prompt).not.toMatch(/\u2014/);
   });
 
   test('the served system prompt is untouched, so voice-module parity holds', () => {
