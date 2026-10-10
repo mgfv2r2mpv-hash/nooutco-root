@@ -15,9 +15,11 @@
  *   hints       a clause that says a behavior stopped, when the notes say that
  *               behavior did not, is an amber hint on its section. The sentence
  *               is the clinician's to correct.
- *   dropExpert  an expert ask or replacement sentence that asserts the
- *               behavior stopped is held back before the panel reads it, and
- *               counted. A question or a correction stays.
+ *   tagExpert   an expert ask or replacement sentence that assumes the
+ *               behavior stopped keeps its place and carries an amber tag,
+ *               "Assumes crying stopped; the notes say it did not.", and is
+ *               counted. Nothing the expert said is dropped or applied: a
+ *               check raises a hint and never acts on its own (Atlas, 10 Oct).
  *
  * WHY THERE IS NO REWRITE. #328 recast "did not resolve" to "continued". The
  * review of #337 (10 Oct) found it flipped correct sentences: "did not resolve
@@ -82,10 +84,18 @@
      break crying stopped" and "Without the iPad present crying stopped" are
      not (the review of #337, LOW). "n't" carries no word boundary in front of
      it ("didn't"). */
-  var NEGATED = /(?:\bnot|\bnever|\bwithout|\bunlikely|\bfailed\s+to|n't)\s+(?:(?:be|been|being|have|has|had|to|appear|appeared|appears|seem|seemed|seems|likely|observed|reported|noted|seen|at|any|point|yet|fully|completely|entirely|totally|ever|always|really|actually|truly|immediately|quickly|get|got)\s+){0,6}$/i;
+  var NEGATED = /(?:\bnot|\bno|\bnever|\bwithout|\bunlikely|\bfailed\s+to|n't)\s+(?:(?:be|been|being|have|has|had|to|appear|appeared|appears|seem|seemed|seems|likely|observed|reported|noted|seen|at|any|point|yet|fully|completely|entirely|totally|ever|always|really|actually|truly|immediately|quickly|get|got)\s+){0,6}$/i;
   /* An infinitive or a modal is not a claim that it stopped: "asked him to
      stop crying", "led the BT to stop the trial" (the review of #337, MEDIUM 5). */
   var NOT_A_CLAIM = /\b(?:to|will|would|could|should|might|may|can|must)\s+$/i;
+  /* A clause that opens by denying it, anywhere before the verb: "At no point
+     did crying stop", "Nothing suggested crying stopped", "There was no
+     indication that crying stopped" (the pass on #337). */
+  var DENIED = /\b(?:at\s+no\s+(?:point|time)|no\s+(?:indication|evidence|sign)|nothing\s+suggest\w*)\b/i;
+  /* A plan or a condition in the present tense is not a report that it
+     stopped: "When crying stops, the BT will provide praise." */
+  var PRESENT = /^(?:stops?|ceases?|resolves?|subsides?)$/i;
+  var CONDITIONAL = /\b(?:when|whenever|if|once|unless|until|as\s+soon\s+as)\b/i;
   // Someone else's words: "The note says crying stopped", "Mom reports ...".
   var REPORTED = /\b(?:says?|said|states?|stated|reads|claims?|claimed|writes?|wrote|reports?|reported|describes?|described|labels?|labell?ed)\b/i;
   /* A clause that says the behavior went on is not a stop claim, whatever
@@ -103,6 +113,15 @@
        a behavior      "stopped crying", "stopped his crying": the behavior.
        anything else   "Crying stopped after the break": the subject. */
   var OBJECT = /^(?:the|a|an|his|her|their|its|this|that|these|those|him|them|it|all|any|some|every|each|my|our|your)$/;
+  /* A time phrase after the verb is not its object: "Crying stopped a few
+     minutes after the break", "the moment he got the iPad", "each time",
+     "all at once", "that afternoon" (the pass on #337). Session, interval
+     and trial are times only after this, that, each, every or all, because
+     "Elopement ended the session early" is the session ending. */
+  var TIME = /^(?:minutes?|seconds?|moments?|times?|point|days?|afternoon|morning|evening|night|hours?|weeks?|once)$/;
+  var TIME_AFTER_DEMONSTRATIVE = /^(?:sessions?|intervals?|trials?)$/;
+  var DEMONSTRATIVE = /^(?:this|that|each|every|all)$/;
+  var TIME_FILLER = /^(?:few|couple|of|at|same|very|first|last|next)$/;
   var PREP_ING = /^(?:during|following|including|regarding|concerning|according|considering|pending)$/;
   var NO_LONGER_REACH = 3;
   /* The subject is the few words just before the verb, back to a word that
@@ -187,10 +206,22 @@
     return around.length ? around : null;
   }
 
-  // True when the stop verb found at `index` is a claim that something stopped.
-  function claimAt(clause, index) {
-    var pre = clause.slice(0, index);
-    return !NEGATED.test(pre) && !NOT_A_CLAIM.test(pre) && !REPORTED.test(pre);
+  // True when the stop verb found at `m` is a claim that something stopped.
+  function claimAt(clause, m) {
+    var pre = clause.slice(0, m.index);
+    if (NEGATED.test(pre) || NOT_A_CLAIM.test(pre) || REPORTED.test(pre) || DENIED.test(pre)) return false;
+    return !(PRESENT.test(m[0]) && CONDITIONAL.test(pre));
+  }
+
+  // True when the words after the verb open a time phrase, not an object.
+  function timePhrase(rest) {
+    var det = rest[0] || "";
+    for (var i = 1; i < rest.length && i <= 3; i++) {
+      if (TIME.test(rest[i])) return true;
+      if (DEMONSTRATIVE.test(det) && TIME_AFTER_DEMONSTRATIVE.test(rest[i])) return true;
+      if (!TIME_FILLER.test(rest[i])) return false;
+    }
+    return false;
   }
 
   /* True when a clause of the notes says something stopped. Read loosely:
@@ -201,7 +232,7 @@
     var re = new RegExp(STOPPED.source, "gi");
     var m;
     while ((m = re.exec(c))) {
-      if (claimAt(c, m.index)) return true;
+      if (claimAt(c, m)) return true;
     }
     return false;
   }
@@ -231,14 +262,14 @@
     };
     var m;
     while ((m = re.exec(c))) {
-      if (!claimAt(c, m.index)) continue;
+      if (!claimAt(c, m)) continue;
       var rest = words(c.slice(m.index + m[0].length));
       if (/^no\s/i.test(m[0])) {
         add(rest.slice(0, NO_LONGER_REACH));
         continue;
       }
       var next = rest[0] || "";
-      if (OBJECT.test(next)) {
+      if (OBJECT.test(next) && !timePhrase(rest)) {
         add(rest.slice(1, 3));
         continue;
       }
@@ -254,8 +285,21 @@
         continue;
       }
       add(subject);
+      /* "Crying, hitting and kicking all stopped": the clauses before this
+         one that only name behaviors are the rest of its subject. */
+      if (hasAny(subject, stems)) {
+        for (var j = (before || []).length - 1; j >= 0 && bareList(before[j], stems); j--) add(words(before[j]));
+      }
     }
     return out;
+  }
+
+  // A clause that is nothing but behaviors: one item of a list.
+  function bareList(clause, stems) {
+    var ws = words(clause);
+    return ws.length > 0 && ws.length <= 3 && ws.every(function (w) {
+      return stems.indexOf(stem(w)) !== -1 || /^(?:the|his|her|their)$/.test(w);
+    });
   }
 
   // The words a set of patterns captured in one clause, minus the non-behaviors.
@@ -380,6 +424,22 @@
     return found;
   }
 
+  // "crying", "crying and hitting", "crying, hitting and kicking".
+  function listOf(ws) {
+    return ws.length < 2 ? ws.join("") : ws.slice(0, -1).join(", ") + " and " + ws[ws.length - 1];
+  }
+
+  function plural(ws) {
+    return ws.length > 1 || /[^s]s$/.test(ws[0] || "");
+  }
+
+  function detailFor(hit) {
+    var they = plural(hit);
+    var long = "Notes say the " + listOf(hit) + " did not stop; this says " + (they ? "they" : "it") + " did. Say " + (they ? "they" : "it") + " continued.";
+    var short = "Notes say the " + listOf(hit) + " did not stop; this says " + (they ? "they" : "it") + " did.";
+    return (long.length <= 120 ? long : short).slice(0, 120);
+  }
+
   /* One amber hint per section that says a behavior stopped when the notes
      say it did not. ambiguous_item is in every tool's catalog. Rank 0, as
      misplaced is ranked: it is a match against the notes, not a judgement. */
@@ -395,50 +455,56 @@
         code: "ambiguous_item",
         kind: "thin",
         rank: 0,
-        detail: ("Notes say the " + hit[0] + " did not stop; this says it did. Say it continued.").slice(0, 120),
+        detail: detailFor(hit),
       });
     });
     return out;
   }
 
-  /* True when an expert sentence asserts the behavior stopped. A yes/no
+  /* The behavior an expert sentence takes as having stopped, or "". A yes/no
      question ("Did crying stop before the break?"), one that offers continue
-     or whether, and a correction that already says it did not stop are the
-     right thing to ask, and are not (the review of #337, MEDIUM 4). A
-     question that takes the stop as given ("How long until the crying
-     stopped?") asks about something that did not happen, and is. */
-  function assertsStop(s, said) {
+     or whether, and a correction that already says it did not stop ask the
+     right thing, and take nothing as given (the review of #337, MEDIUM 4). */
+  function assumedStop(s, said) {
     var t = unquote(s).trim();
-    if (!t || YES_NO.test(t) || OPEN_QUESTION.test(t) || AGREES.test(t)) return false;
-    return stoppedIn(t, said).length > 0;
+    if (!t || YES_NO.test(t) || OPEN_QUESTION.test(t) || AGREES.test(t)) return "";
+    return stoppedIn(t, said)[0] || "";
   }
 
-  /* The expert's result without the findings that assert a behavior stopped
-     when the notes say it did not, and a count of what went. Only the ask
-     and the replacement sentence are read: a reason given alone is the
-     expert explaining a finding, and a quote is the clinician's own words. */
-  function dropExpert(found, intake) {
+  // "Assumes crying stopped; the notes say it did not."
+  function tagFor(word) {
+    return "Assumes " + word + " stopped; the notes say " + (plural([word]) ? "they" : "it") + " did not.";
+  }
+
+  /* The expert's result with every finding kept, and the ones that take a
+     stop as given when the notes say it did not tagged, with a count. Only
+     the ask and the replacement sentence are read: a reason given alone is
+     the expert explaining a finding, and a quote is the clinician's own
+     words. A tagged replacement sentence is shown, never applied. */
+  function tagExpert(found, intake) {
     if (!found || typeof found !== "object") return found;
     var said = unresolved(intake);
     var out = {};
     for (var k in found) if (Object.prototype.hasOwnProperty.call(found, k)) out[k] = found[k];
-    if (!said.length) {
-      out.unresolvedDropped = 0;
-      return out;
-    }
-    var hintsIn = Array.isArray(found.hints) ? found.hints : [];
-    var registerIn = Array.isArray(found.register) ? found.register : [];
-    var keptHints = hintsIn.filter(function (h) { return !(h && assertsStop(text(h.ask), said)); });
-    var keptRegister = registerIn.filter(function (r) { return !(r && assertsStop(text(r.move), said)); });
-    if (Array.isArray(found.hints)) out.hints = keptHints;
-    if (Array.isArray(found.register)) out.register = keptRegister;
-    out.unresolvedDropped = (hintsIn.length - keptHints.length) + (registerIn.length - keptRegister.length);
+    var tagged = 0;
+    var mark = function (item, sentence) {
+      var word = item && said.length ? assumedStop(text(sentence), said) : "";
+      if (!word) return item;
+      tagged += 1;
+      var copy = {};
+      for (var key in item) if (Object.prototype.hasOwnProperty.call(item, key)) copy[key] = item[key];
+      copy.assumes = tagFor(word);
+      return copy;
+    };
+    if (Array.isArray(found.hints)) out.hints = found.hints.map(function (h) { return mark(h, h && h.ask); });
+    if (Array.isArray(found.register)) out.register = found.register.map(function (r) { return mark(r, r && r.move); });
+    out.unresolvedTagged = tagged;
     return out;
   }
 
   window.NoteUnresolved = {
     behaviors: behaviors,
     hints: hints,
-    dropExpert: dropExpert,
+    tagExpert: tagExpert,
   };
 })();
