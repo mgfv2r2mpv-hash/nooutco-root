@@ -116,6 +116,9 @@
   <script src="/notes/bcba/goal-order.js"></script>
   <script src="/notes/bcba/repeated-facts.js"></script>
   <!-- Tool configs (plain JS - prompts, sections, normalizers) -->
+  <!-- Reads a supervision draft against the BCBA's own notes. Loaded before
+       sup.js, which calls it from normalizeOutput. -->
+  <script src="/notes/bcba/tools/sup-checks.js"></script>
   <script src="/notes/bcba/tools/sup.js"></script>
   <script src="/notes/bcba/tools/sap.js"></script>
   <script src="/notes/bcba/tools/assess.js"></script>
