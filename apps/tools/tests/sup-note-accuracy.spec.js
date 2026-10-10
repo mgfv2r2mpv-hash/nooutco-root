@@ -251,6 +251,15 @@ test.describe('card tool-hint-polish, #336 re-review: counts and real objects ke
     'hit his head for the first time',
     'climbing on the kitchen counter started today',
     'climbed up on the table started monday',
+    // R336 round 3 HIGH: interval and N-of-M data for a reduction target
+    // is a frequency, not a skill score. MEDIUM: kicking the wall is
+    // property disruption.
+    'new aggression 3 of 5 days',
+    'new hitting 50% of intervals',
+    'new SIB 50% of intervals',
+    'new elopement 2 of 5 sessions',
+    'started hitting 2 of 4 sessions',
+    'started kicking the wall',
   ];
   for (const said of FLAGGED) {
     const phrase = said.split(',')[0];
@@ -264,8 +273,12 @@ test.describe('card tool-hint-polish, #336 re-review: counts and real objects ke
   const QUIET = [
     'hit 80 percent for the first time',
     'hit 80% for the first time',
-    'hitting 80% on matching for the first time',
-    'hitting 9 of 10 trials for the first time',
+    'hit 3 of 5 targets for the first time',
+    'hit 9 of 10 trials for the first time',
+    'hit 100 percent for the first time',
+    // R336 round 3 LOW: a behavior that was new in the past is history.
+    'hitting was new last month, now at 0',
+    'hitting was new 2 weeks ago',
     'kicked her shoes off for the first time',
     'pushed her chair in for the first time',
   ];

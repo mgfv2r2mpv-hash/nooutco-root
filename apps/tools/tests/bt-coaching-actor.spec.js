@@ -253,14 +253,26 @@ test.describe('card tool-hint-polish: the misfires the #331 reviewer found after
   const newBehaviorHints = (intake) =>
     details(bt.normalizeOutput({ actionItems: ['Contact family, new behavior'] }, { intake })).filter((d) => /new behavior/.test(d));
 
-  for (const said of ['bit his sister, has not done that before', 'climbing furniture, new this week', "hit dad, hasn't done that before"]) {
+  for (const said of [
+    'bit his sister, has not done that before', 'climbing furniture, new this week', "hit dad, hasn't done that before",
+    // R336 round 3: climbing onto furniture is a behavior.
+    'climbing on furniture started this week', 'started climbing onto the counter', 'new climbing onto the window sill',
+    'hit a peer, it has not happened before',
+  ]) {
     test(`a real new behavior raises no "new behavior" hint: "${said}"`, () => {
       expect(newBehaviorHints(said)).toEqual([]);
     });
   }
 
   // Guards: the wider matcher still lets the hint ask when nothing new is named.
-  for (const said of ['new behavior plan', 'did not eat before lunch', 'new targets added this week', "hadn't had a snack before session"]) {
+  for (const said of [
+    'new behavior plan', 'did not eat before lunch', 'new targets added this week', "hadn't had a snack before session",
+    // R336 round 3: climbing as a skill or program, "new" about materials,
+    // and "not done ... before" about a task are not new behaviors.
+    'started climbing the stairs independently in OT', 'new climbing wall at clinic', 'began climbing program today',
+    'started climbing the rock wall in OT', 'new this week: token board', 'new today, started a token economy',
+    'has not done that puzzle before, needed PP', "hasn't seen the new tech before, shy at start",
+  ]) {
     test(`no new behavior, so the hint still asks: "${said}"`, () => {
       expect(newBehaviorHints(said)).toEqual(['actionItems: Check "new behavior": the notes name no new behavior.']);
     });
