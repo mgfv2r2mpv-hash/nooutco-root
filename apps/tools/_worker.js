@@ -649,6 +649,34 @@ async function verifyTurnstile(secret, token, ip) {
   }
 }
 
+// What a logged-in browser may ask /api/llm-call for (Kaleb, 14 Oct 2026: Haiku
+// and Sonnet only, 4000 output tokens, a prompt size cap). The graph reader
+// asks for 8000 because a graph's data returns as JSON that a shorter limit
+// would cut off, so that one tool has its own ceiling. Admin keeps the scope
+// bypass but not these limits.
+const LLM_DEFAULT_MODEL = "claude-haiku-4-5-20251001";
+const LLM_MODELS = new Set([LLM_DEFAULT_MODEL, "claude-sonnet-5-5", "claude-sonnet-5", "claude-sonnet-4-5"]);
+const LLM_DEFAULT_MAX_TOKENS = 3000;
+const LLM_MAX_TOKENS_CAP = 4000;
+const LLM_MAX_TOKENS_BY_TOOL = Object.freeze({ graphva: 8000 });
+const LLM_MAX_PROMPT_CHARS = 100000;
+
+function llmLimits(body) {
+  const { systemPrompt, userPrompt, system, messages, model, maxTokens, tool } = body;
+  if (model && !LLM_MODELS.has(model)) return { error: "That model is not available." };
+  const chars = (typeof systemPrompt === "string" ? systemPrompt.length : 0)
+    + (typeof userPrompt === "string" ? userPrompt.length : 0)
+    + (typeof system === "string" ? system.length : 0)
+    + (Array.isArray(messages)
+      ? messages.reduce((n, m) => n + (m && typeof m.content === "string" ? m.content.length : 0), 0)
+      : 0);
+  if (chars > LLM_MAX_PROMPT_CHARS) return { error: "Prompt is too long.", status: 413 };
+  const cap = LLM_MAX_TOKENS_BY_TOOL[tool] || LLM_MAX_TOKENS_CAP;
+  const wanted = Number(maxTokens);
+  const tokens = Number.isFinite(wanted) && wanted > 0 ? Math.min(Math.floor(wanted), cap) : LLM_DEFAULT_MAX_TOKENS;
+  return { model: model || LLM_DEFAULT_MODEL, maxTokens: tokens };
+}
+
 async function handleLlmCall(request, env) {
   // Read in the catch below, so the error record can name the note tool. The
   // record checks it against the tool list; nothing else of the body is kept.
@@ -666,6 +694,8 @@ async function handleLlmCall(request, env) {
     const body = await request.json();
     const { systemPrompt, userPrompt, system, messages, model, maxTokens, tool } = body;
     noteTool = tool;
+    const limits = llmLimits(body);
+    if (limits.error) return jsonRes(limits.status || 400, { error: limits.error });
     // The schema comes from the browser, so it is shape-checked rather than
     // forwarded verbatim - this is a field we hand to the upstream API.
     const outputConfig = sanitizeOutputConfig(body.output_config);
@@ -740,10 +770,10 @@ async function handleLlmCall(request, env) {
 
     const llmResponse = isConversation
       ? await callAnthropicConversation(
-          apiKey, sys, messages, model || "claude-haiku-4-5-20251001", maxTokens || 3000, outputConfig
+          apiKey, sys, messages, limits.model, limits.maxTokens, outputConfig
         )
       : await callAnthropicApi(
-          apiKey, sys, userPrompt, model || "claude-haiku-4-5-20251001", maxTokens || 3000, outputConfig,
+          apiKey, sys, userPrompt, limits.model, limits.maxTokens, outputConfig,
           imageResult.images
         );
     return jsonRes(200, llmResponse);
