@@ -1677,7 +1677,7 @@
     fetch(apiUrl("/api/scrub-report"), {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": "Bearer " + tok },
-      body: JSON.stringify({ terms: out }),
+      body: JSON.stringify({ count: out.length }),
     }).catch(function () {});
   }
 
