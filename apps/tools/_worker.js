@@ -4595,6 +4595,13 @@ async function handleStyleCardMute(request, env) {
   return jsonRes(200, { ok: true });
 }
 
+// How many candidate names a report counts for: its `count`, else the length of
+// a legacy `terms` list, capped at 50. The list itself is never read further.
+export function scrubReportCount(body) {
+  const reported = Number.isSafeInteger(body?.count) ? body.count : Array.isArray(body?.terms) ? body.terms.length : 0;
+  return Math.max(0, Math.min(reported, 50));
+}
+
 async function handleScrubReport(request, env) {
   const secret = (env.ADMIN_SECRET ?? "").trim();
   const auth = request.headers.get("Authorization") || "";
@@ -4604,13 +4611,16 @@ async function handleScrubReport(request, env) {
   if (!env.API_PASSWORDS) return jsonRes(503, { error: "Storage not configured." });
   let body;
   try { body = await request.json(); } catch { return jsonRes(400, { error: "Invalid body." }); }
-  const input = Array.isArray(body.terms) ? body.terms : [];
-  const seen = new Set();
-  for (const raw of input.slice(0, 50)) {
-    const term = normalizeTerm(raw);
-    if (term) seen.add(term);
+  // Counts only (his ruling, 16 Oct 2026, Ask 8): the browser tells us how many
+  // candidate names it found, never which. A body that still carries a `terms`
+  // list is counted and the list is dropped unread; nothing here stores a name.
+  const count = scrubReportCount(body);
+  if (count) {
+    const day = new Date().toISOString().slice(0, 10);
+    const key = "scrub-report-count:" + day;
+    const total = (parseInt((await env.API_PASSWORDS.get(key)) || "0", 10) || 0) + count;
+    await env.API_PASSWORDS.put(key, String(total), { expirationTtl: 60 * 60 * 24 * 90 });
   }
-  if (seen.size) await enqueueTerms(env.API_PASSWORDS, "pii-pending:v1", [...seen], "tech-scrub");
   return jsonRes(200, { ok: true });
 }
 
