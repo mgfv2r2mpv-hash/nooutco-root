@@ -753,7 +753,9 @@
         "Content-Type": "application/json",
         "Authorization": "Bearer " + getToken(),
       },
-      body: JSON.stringify(payload.messages ? Object.assign({}, payload, { messages: outbound(payload.messages) }) : payload),
+      body: JSON.stringify(Object.assign({}, payload,
+        payload.messages ? { messages: outbound(payload.messages) } : {},
+        typeof payload.userPrompt === "string" ? { userPrompt: outbound(payload.userPrompt) } : {})),
     }, GEN_TIMEOUT_MS, "Note generation timed out. Please retry.");
   }
 
@@ -1914,6 +1916,24 @@
    * Ordered longest-match-first at the call site so a ZIP inside an address is
    * not replaced before the address that contains it.
    */
+  var MONTH_CAP = "(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|Sept?(?:ember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)";
+  var COUNT_UNIT_RE = /^\s+(?:blocks?|mm|cm|km|kg|g|mg|ml|lbs?|oz|in|inch(?:es)?|ft|feet|m|times|x|trials?|minutes?|mins?|hours?|hrs?|seconds?|secs?|days?|weeks?|months?|years?|sessions?|steps?|items?|tokens?|points?|percent|reps?|prompts?|opportunit(?:y|ies)|cards?|pieces?|miles?|dollars?|cents?|units?|targets?|programs?|goals?|objectives?|attempts?|instances?|episodes?|incidents?|bites?|hits?)\b/i;
+
+  // True when a yearless-date candidate is a date and not a count or a unit.
+  // m[1] is the day in the month-first form and m[1] again in the day-first
+  // form (the only capture group), so both read the same.
+  function keepYearless(m) {
+    var day = parseInt(m[1], 10);
+    if (!(day >= 1 && day <= 31)) return false;
+    var text = m.input;
+    var before = m.index > 0 ? text.charAt(m.index - 1) : "";
+    var after = text.slice(m.index + m[0].length);
+    if (/[\d:.$#\/\-]/.test(before)) return false;                // inside a larger figure or time
+    if (/^\s*[:%]/.test(after) || /^\.\d/.test(after) || /^[\/\-]\d/.test(after)) return false; // 3:30, 3%, 3.5, 3/4
+    if (COUNT_UNIT_RE.test(after)) return false;                   // "March 3 blocks", "Mar 3 mm"
+    return true;
+  }
+
   var IDENTIFIER_PATTERNS = [
     // Do SSN before the generic ID rule so it is labelled correctly.
     { type: "SSN", re: /\b\d{3}-\d{2}-\d{4}\b/g },
@@ -1926,6 +1946,16 @@
     // one, and the notice tells the clinician exactly what was taken.
     { type: "DATE", re: /\b(?:0?[1-9]|1[0-2])[/\-.](?:0?[1-9]|[12]\d|3[01])[/\-.](?:19|20)?\d{2}\b/g },
     { type: "DATE", re: /\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t)?(?:ember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+\d{1,2}(?:st|nd|rd|th)?,?\s+(?:19|20)\d{2}\b/gi },
+    /* A WRITTEN DATE WITH NO YEAR, as of 2026-10-17: "March 14", "Feb 9th",
+       "9 March", "the 3rd of June". The year-bearing rule above let these
+       through, and a visit date is an identifier whether or not the year is
+       typed. Mirrors YEARLESS_DATE_RE in the NoMe app's identifiers pass.
+       The month must be CAPITALISED (no `i` flag), so the words "may" and
+       "march" never match. keepYearless refuses a day that is really a count
+       or a unit ("March 3 blocks", "Mar 3 mm"), a clock time ("March 3:30")
+       and a decimal. A month on its own never matches: it needs a day. */
+    { type: "DATE", re: new RegExp("\\b" + MONTH_CAP + "\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?\\b", "g"), keep: keepYearless },
+    { type: "DATE", re: new RegExp("\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(?:of\\s+)?" + MONTH_CAP + "\\b\\.?", "g"), keep: keepYearless },
     // Phone, with or without country code / punctuation.
     { type: "PHONE", re: /(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}\b/g },
     // Labelled record/member/policy identifiers.
@@ -2409,9 +2439,39 @@
   // Keys whose values are structure the Worker reads, never prose.
   var OUTBOUND_SKIP = { id: true, section: true, tool: true, type: true, role: true, cache_control: true };
 
+  /* THE LAST NET AT EVERY MODEL DOOR, as of 2026-10-17. The callers scrub
+     first (NotesScrub.review mints the tokens and keeps the put-back map), but
+     the check that nothing slipped past lived in each caller, and a path that
+     forgot it sent a raw date, phone or address. This runs on every string that
+     leaves through outbound(), so a miss upstream is tokenised here instead of
+     sent. Identifiers only: names need a human's call and stay with review().
+     A token minted here is [TYPE_R1], with an R, so it can never equal one the
+     engine issued (the engine's own put-back would otherwise fill it with a
+     different person's number). The same literal gets the same token for the
+     whole page session, so a replayed conversation is byte-stable. They are not
+     restored; a clinician who sees [DATE_R1] in a draft types the date. */
+  var netIssued = {};
+  var netCounts = {};
+
+  function netToken(type, literal) {
+    var key = type + "|" + literal.toLowerCase();
+    if (!netIssued[key]) {
+      netCounts[type] = (netCounts[type] || 0) + 1;
+      netIssued[key] = "[" + type + "_R" + netCounts[type] + "]";
+    }
+    return netIssued[key];
+  }
+
+  function tokeniseIdentifiers(text) {
+    var hits = detectIdentifiers(text);
+    if (!hits.length) return text;
+    return applyScrub(text, hits.map(function (h) { return { name: h.text, token: netToken(h.type, h.text) }; }));
+  }
+
   function outbound(value) {
-    if (!outboundWords.length) return value;
-    if (typeof value === "string") return dehydrateWords(value, outboundWords);
+    if (typeof value === "string") {
+      return tokeniseIdentifiers(outboundWords.length ? dehydrateWords(value, outboundWords) : value);
+    }
     if (Array.isArray(value)) return value.map(outbound);
     if (value && typeof value === "object") {
       var o = {};
@@ -2589,6 +2649,9 @@
        door (llm-call messages, expert pass, corrections pass). The engine sets
        it whenever the table changes. */
     setOutboundWords: setOutboundWords,
+    /* Every string through the put-back words and the identifier net. For a
+       page that posts to /api/llm-call itself (graphVA). */
+    outbound: outbound,
     _json: { repair: repairModelJson },
   };
 })();
