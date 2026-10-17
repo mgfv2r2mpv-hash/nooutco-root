@@ -217,3 +217,45 @@ test.describe('a detected identifier comes back', () => {
     for (const e of map) expect(e.restore, `${e.token} would be dropped by restoreOutput`).toBe(true);
   });
 });
+
+// Written dates with no year. Added 2026-10-17 beside the year-bearing rule; the
+// month has to be capitalised and the day has to read as a day.
+test.describe('yearless written dates', () => {
+  const CAUGHT = [
+    'Visit was on March 14 at the clinic',
+    'Seen Feb 9th for the intake',
+    'Rescheduled to 9 March after the holiday',
+    'Next review is the 3rd of June',
+    'Mar. 21 reassessment',
+    'Started services Sept 2nd',
+  ];
+  for (const text of CAUGHT) {
+    test(`catches: ${text}`, async ({ page }) => {
+      const hits = await detect(page, text);
+      expect(hits.map((h) => h.type), text).toContain('DATE');
+    });
+  }
+
+  const REFUSED = [
+    ['lower-case may as a word', 'he may 3 times reach for it'],
+    ['lower-case march as a word', 'the group will march 5 laps'],
+    ['a count after a month name', 'March 3 blocks stacked independently'],
+    ['a unit after an abbreviated month', 'Mar 3 mm of movement'],
+    ['a clock time', 'Arrival was March 3:30 by the log'],
+    ['a month alone', 'Services began in March and ended in June'],
+    ['a day out of range', 'March 45 is not a date'],
+    ['a decimal', 'Rate was March 3.5 per hour'],
+  ];
+  for (const [label, text] of REFUSED) {
+    test(`refuses ${label}`, async ({ page }) => {
+      const hits = await detect(page, text);
+      expect(hits.filter((h) => h.type === 'DATE'), text).toEqual([]);
+    });
+  }
+
+  test('a dated year form still wins over the yearless one', async ({ page }) => {
+    const hits = await detect(page, 'Due March 14, 2026 per the plan');
+    const dates = hits.filter((h) => h.type === 'DATE').map((h) => h.text);
+    expect(dates).toEqual(['March 14, 2026']);
+  });
+});

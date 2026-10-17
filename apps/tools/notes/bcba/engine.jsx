@@ -6338,8 +6338,8 @@ function App() {
               2026-08-04: "old news. hide it on the drafters." The scrub now runs
               inside the drafting flow itself, so sending someone to a separate
               page to do it by hand is an older way of working that the tool has
-              outgrown. notes/scrubber.html still exists and is still reachable
-              by URL for anyone who wants it standalone. Its wrapper goes too, or
+              outgrown. notes/scrubber.html was removed on 2026-10-17 as deprecated.
+              Its wrapper goes too, or
               the header keeps an empty flex column reserving space for nothing. */}
         </div>
 
