@@ -355,7 +355,7 @@
 
   function callReader(baked, context) {
     var prompt = EXTRACT_PROMPT + (context
-      ? "\n\nContext supplied by the analyst who owns this record:\n\"\"\"\n" + context.slice(0, 1200) +
+      ? "\n\nContext supplied by the analyst who owns this record:\n\"\"\"\n" + NotesGate.outbound(context.slice(0, 1200)) +
         "\n\"\"\"\nUse it to decide which panel to read, what the units are, which segments are baseline and which are intervention, and how to name phases. " +
         "It does not override the image. If it conflicts with what is printed on the graph, follow the graph and note the conflict in uncertainties. " +
         "Never add, adjust, or infer a data point on the strength of the context alone."

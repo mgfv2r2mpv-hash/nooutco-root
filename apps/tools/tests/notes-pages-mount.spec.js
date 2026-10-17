@@ -90,9 +90,12 @@ test('no drafter offers a Scrubber link', async ({ page }) => {
   await expect(page.getByRole('link', { name: /Scrubber/i })).toHaveCount(0);
 });
 
-test('the standalone scrubber page is still reachable', async ({ page }) => {
-  // Hidden from the drafters, not deleted.
-  const res = await page.goto('/notes/scrubber.html');
-  expect(res.status()).toBe(200);
-  await expect(page.getByRole('heading', { name: /Clinical Summary Scrubber/i })).toBeVisible();
+test('the standalone scrubber page is gone', async ({ page }) => {
+  // Retired 2026-10-17: the scrub runs inside the drafting flow, so the old
+  // page is removed. The site has no 404.html, so Pages answers an unknown
+  // path with its own fallback; the check is that the old page is not served.
+  await page.goto('/notes/scrubber.html');
+  expect(await page.content()).not.toMatch(/Clinical Summary Scrubber/i);
+  await expect(page.locator('#input, textarea')).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: /Clinical Summary Scrubber/i })).toHaveCount(0);
 });
