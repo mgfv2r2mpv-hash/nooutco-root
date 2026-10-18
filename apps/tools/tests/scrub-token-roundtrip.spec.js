@@ -755,9 +755,10 @@ test.describe('reusing the page for a second note without clearing', () => {
     await loggedIn(page);
 
     const fill = async (skill) => {
-      await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill(skill);
-      await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first-then board before demands');
-      await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked and redirected');
+      await page.getByRole('textbox', { name: /Session Start/i }).fill(FLOOR_PAD.session);
+      await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill(skill + FLOOR_PAD.lesson);
+      await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first-then board before demands' + FLOOR_PAD.antecedent);
+      await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked and redirected' + FLOOR_PAD.behavior);
       // The first Generate on a page load turns the button into Regenerate, so the second note finds it under that name.
       await page.getByRole('button', { name: /^(Generate Note|Regenerate)$/ }).click();
       await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 30000 });
@@ -785,7 +786,9 @@ test.describe('reusing the page for a second note without clearing', () => {
 
     // A name the first note scrubbed that the second note never wrote must not be in the ledger any more.
     const names = await ledgerNames();
-    const leftovers = namesA.filter((n) => !skillB.includes(n) && names.includes(n));
+    // The floor pads are in both notes, so a name they carry (the BT) is written by the second note too.
+    const writtenByB = skillB + FLOOR_PAD.session + FLOOR_PAD.lesson + FLOOR_PAD.antecedent + FLOOR_PAD.behavior;
+    const leftovers = namesA.filter((n) => !writtenByB.includes(n) && names.includes(n));
     expect(leftovers, 'the first note’s ledger survived into the second').toEqual([]);
   });
 });
