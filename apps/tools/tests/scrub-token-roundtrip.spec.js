@@ -722,3 +722,60 @@ test.describe('putting the clinician’s own words back on the way to the EHR', 
     expect(copied).not.toContain('Jacob');
   });
 });
+
+/* TWO NOTES IN ONE SITTING, WITHOUT PRESSING CLEAR.
+ *
+ * This is the normal way the tool gets used: a BCBA writes a note, copies it
+ * into the EHR, then types over the boxes for the next client and presses
+ * Generate again. It is worth a test of its own now that the ledger is stored,
+ * because "the map persists" and "the map must not outlive its note" pull in
+ * opposite directions and this is the flow where they meet.
+ *
+ * Generate Note scrubs with NO carryOver, so the second note's map replaces the
+ * first one's in the ref, in the state and on disk. The first note's words must
+ * not survive into the second note's ledger, and the second note's own words
+ * must still come back.
+ */
+test.describe('reusing the page for a second note without clearing', () => {
+  test('replaces the first note’s ledger instead of mixing the two', async ({ page }) => {
+    await page.route('**/api/llm-call**', async (route) => {
+      const body = JSON.parse(route.request().postData() || '{}');
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ content: [{ text: JSON.stringify(echoReply(body)) }] }),
+      });
+    });
+    await loggedIn(page);
+
+    const fill = async (skill) => {
+      await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill(skill);
+      await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first-then board before demands');
+      await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked and redirected');
+      await page.getByRole('button', { name: 'Generate Note' }).click();
+      await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 30000 });
+    };
+    const noteText = () =>
+      page.getByTestId('generated-note').evaluate((el) =>
+        [el.innerText, ...[...el.querySelectorAll('textarea')].map((t) => t.value)].join('\n')
+      );
+
+    // Note A.
+    await fill('Client labeled the Magenta cards during Tact trials.');
+    expect(await noteText()).toContain('Magenta');
+
+    // Note B, typed straight over the top. No Clear.
+    await fill('Client labeled the Turquoise cards during Echoic trials.');
+    const second = await noteText();
+
+    expect(second, 'a token was left in the second note').not.toMatch(/\[{1,2}\s*[Tt]\s*\d+\s*\]{1,2}/);
+    expect(second, 'the second note lost its own word').toContain('Turquoise');
+    expect(second, 'the first note’s word bled into the second').not.toContain('Magenta');
+
+    const names = await page.evaluate(() =>
+      (window.NotesGate.draft.load('bt::map') || []).map((e) => e.name)
+    );
+    expect(names, 'the first note’s ledger survived into the second').not.toContain('Magenta');
+    expect(names).toContain('Turquoise');
+  });
+});
