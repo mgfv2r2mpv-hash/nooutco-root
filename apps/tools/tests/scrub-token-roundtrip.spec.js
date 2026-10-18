@@ -752,7 +752,8 @@ test.describe('reusing the page for a second note without clearing', () => {
       await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill(skill);
       await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first-then board before demands');
       await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked and redirected');
-      await page.getByRole('button', { name: 'Generate Note' }).click();
+      // The first Generate on a page load turns the button into Regenerate, so the second note finds it under that name.
+      await page.getByRole('button', { name: /^(Generate Note|Regenerate)$/ }).click();
       await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 30000 });
     };
     const noteText = () =>
@@ -761,21 +762,24 @@ test.describe('reusing the page for a second note without clearing', () => {
       );
 
     // Note A.
+    const ledgerNames = () =>
+      page.evaluate(() => (window.NotesGate.draft.load('bt::map') || []).map((e) => e.name));
+    const skillB = 'Client labeled the Turquoise cards during Echoic trials.';
     await fill('Client labeled the Magenta cards during Tact trials.');
     expect(await noteText()).toContain('Magenta');
+    const namesA = await ledgerNames();
 
     // Note B, typed straight over the top. No Clear.
-    await fill('Client labeled the Turquoise cards during Echoic trials.');
+    await fill(skillB);
     const second = await noteText();
 
     expect(second, 'a token was left in the second note').not.toMatch(/\[{1,2}\s*[Tt]\s*\d+\s*\]{1,2}/);
     expect(second, 'the second note lost its own word').toContain('Turquoise');
     expect(second, 'the first note’s word bled into the second').not.toContain('Magenta');
 
-    const names = await page.evaluate(() =>
-      (window.NotesGate.draft.load('bt::map') || []).map((e) => e.name)
-    );
-    expect(names, 'the first note’s ledger survived into the second').not.toContain('Magenta');
-    expect(names).toContain('Turquoise');
+    // A name the first note scrubbed that the second note never wrote must not be in the ledger any more.
+    const names = await ledgerNames();
+    const leftovers = namesA.filter((n) => !skillB.includes(n) && names.includes(n));
+    expect(leftovers, 'the first note’s ledger survived into the second').toEqual([]);
   });
 });
