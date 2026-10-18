@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { isTriageCall } from './helpers/llm-call.js';
+import { FLOOR_PAD } from './helpers/bt-floor.js';
 
 /* EACH ANSWER TRAVELS WITH THE QUESTION IT ANSWERS.
  *
@@ -78,9 +79,10 @@ async function ask(page, triage, { skill = 'DTT money 3 item array, needed full 
   await page.goto(url);
   await page.evaluate((tok) => localStorage.setItem('notes_auth_token', tok), tokenFor());
   await page.goto(url);
-  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill(skill);
-  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first then board, also moved to the floor and he settled');
-  await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked and redirected');
+  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill(skill + FLOOR_PAD.lesson);
+  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first then board, also moved to the floor and he settled' + FLOOR_PAD.antecedent);
+  await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked and redirected' + FLOOR_PAD.behavior);
+  await page.getByRole('textbox', { name: /Session Start/i }).fill(FLOOR_PAD.session);
   await page.getByRole('button', { name: 'Generate Note' }).click();
   const ack = page.locator('#notes-ack-go');
   if (await ack.isVisible({ timeout: 5000 }).catch(() => false)) {
