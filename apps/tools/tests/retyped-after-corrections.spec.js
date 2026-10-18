@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { FLOOR_PAD } from './helpers/bt-floor.js';
 import { captureClipboard } from './helpers/clipboard.js';
 import { isTriageCall } from './helpers/llm-call.js';
 
@@ -133,9 +134,10 @@ async function draft(page, { passes = [ONE_CORRECTION], revision = null } = {}) 
   await page.goto(BT_PAGE);
   await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), tokenFor());
   await page.goto(BT_PAGE);
-  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT 3-item array, gestural prompts');
-  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('choices before demands');
-  await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement x2, blocked the door');
+  await page.getByRole('textbox', { name: /Session Start/i }).fill(FLOOR_PAD.session);
+  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT 3-item array, gestural prompts' + FLOOR_PAD.lesson);
+  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('choices before demands' + FLOOR_PAD.antecedent);
+  await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement x2, blocked the door' + FLOOR_PAD.behavior);
   await page.getByRole('button', { name: 'Generate Note' }).click();
   await acceptScrubGate(page);
   await expect(page.locator('[data-corrections-section="behaviorPlanNarrative"]')).toBeVisible({ timeout: 20000 });
