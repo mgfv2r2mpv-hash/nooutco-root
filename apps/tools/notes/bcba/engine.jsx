@@ -6487,7 +6487,7 @@ function App() {
 
           {words ? <ReadyBar reading={words} /> : null}
 
-          {S.error &&<p style={{ color: "#c0392b", fontSize: 13, marginBottom: 12, whiteSpace: "pre-line" }}>{S.error}</p>}
+          {S.error && <p style={{ color: "#c0392b", fontSize: 13, marginBottom: 12, whiteSpace: "pre-line" }}>{S.error}</p>}
           {/* The legal notice, which used to be a modal accepted once per page load
               and then never read again. It sits here instead, beside the box being
               typed into, where it is in front of the clinician every time rather
