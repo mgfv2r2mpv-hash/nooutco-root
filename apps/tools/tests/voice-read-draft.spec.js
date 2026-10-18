@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { FLOOR_PAD } from './helpers/bt-floor.js';
 import { createHmac } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -171,9 +172,10 @@ async function draftRun(page, env, { kid = KID, copy = false } = {}) {
   await page.goto(BT_PAGE);
   await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), tokenFor(kid));
   await page.goto(BT_PAGE);
-  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill(SESSION.skill);
-  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill(SESSION.antecedent);
-  await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill(SESSION.behavior);
+  await page.getByRole('textbox', { name: /Session Start/i }).fill(FLOOR_PAD.session);
+  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill(SESSION.skill + FLOOR_PAD.lesson);
+  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill(SESSION.antecedent + FLOOR_PAD.antecedent);
+  await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill(SESSION.behavior + FLOOR_PAD.behavior);
   await page.getByRole('button', { name: 'Generate Note' }).click();
   await acceptScrubGate(page);
   await expect.poll(() => drafts.length, { timeout: 30000 }).toBeGreaterThan(0);

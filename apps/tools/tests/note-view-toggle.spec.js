@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { FLOOR_PAD } from './helpers/bt-floor.js';
 import { captureClipboard } from './helpers/clipboard.js';
 import { isTriageCall } from './helpers/llm-call.js';
 
@@ -87,9 +88,10 @@ async function acceptScrubGate(page) {
 async function draft(page, { inRaw = false, note = NOTE } = {}) {
   await stub(page, note);
   await page.goto('/notes/bt/');
-  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT 3-item array, full physical faded to independent');
-  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first-then board before demands');
-  await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked and redirected to FCR');
+  await page.getByRole('textbox', { name: /Session Start/i }).fill(FLOOR_PAD.session);
+  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT 3-item array, full physical faded to independent' + FLOOR_PAD.lesson);
+  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first-then board before demands' + FLOOR_PAD.antecedent);
+  await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked and redirected to FCR' + FLOOR_PAD.behavior);
   await page.getByRole('button', { name: 'Generate Note' }).click();
   await acceptScrubGate(page);
   await expect(inRaw ? raw(page) : marks(page)).toBeVisible({ timeout: 30000 });

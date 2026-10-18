@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { FLOOR_PAD } from './helpers/bt-floor.js';
 import { isTriageCall } from './helpers/llm-call.js';
 
 /* THE DELETIONS RAIL, three icons per row.
@@ -80,9 +81,10 @@ async function generate(page, { aid = false } = {}) {
   await page.goto(url);
   await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), tokenFor());
   await page.goto(url);
-  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT 3 item array, full physical faded');
-  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('blocks first, choices after each request');
-  await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked and redirected');
+  await page.getByRole('textbox', { name: /Session Start/i }).fill(FLOOR_PAD.session);
+  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT 3 item array, full physical faded' + FLOOR_PAD.lesson);
+  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('blocks first, choices after each request' + FLOOR_PAD.antecedent);
+  await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked and redirected' + FLOOR_PAD.behavior);
   await page.getByRole('button', { name: 'Generate Note' }).click();
   const ack = page.locator('#notes-ack-go');
   if (await ack.isVisible({ timeout: 6000 }).catch(() => false)) {
@@ -246,6 +248,13 @@ test.describe('deletions rail at phone width', () => {
     const n = await tips.count();
     expect(n).toBeGreaterThan(0);
     for (let i = 0; i < n; i++) {
+      // At this width the header, the Assistant panel (mid-screen) and the
+      // intake's sticky ready bar cover most of the viewport, so park the icon
+      // in the clear band under the header before hovering it.
+      await tips.nth(i).locator('.info-icon').evaluate((el) => {
+        el.scrollIntoView({ block: 'start' });
+        window.scrollBy(0, -150);
+      });
       await tips.nth(i).locator('.info-icon').hover();
       const bubble = tips.nth(i).locator('.info-bubble');
       await expect(bubble).toBeVisible();
