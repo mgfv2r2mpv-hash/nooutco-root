@@ -145,8 +145,8 @@ test.describe('the sections that carry a procedure say what a procedure needs', 
       .not.toMatch(/describe the antecedent strategies as applied and their impact/i);
   });
 
-  test('the behavior narrative asks what the technician did about it', async () => {
-    expect(user).toMatch(/what happened, what the technician did in response, and what followed/i);
+  test('the behavior narrative asks what staff did about it', async () => {
+    expect(user).toMatch(/what happened, what staff did in response, and what followed/i);
   });
 
   test('and every one of them routes the gap to a hint rather than to a guess', async () => {
