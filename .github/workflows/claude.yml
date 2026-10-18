@@ -18,6 +18,12 @@ jobs:
       (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
       (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
     runs-on: ubuntu-latest
+    env:
+      # ACTIONS_STEP_DEBUG forces the action's show_full_output ON, which prints
+      # every tool result (env, file reads) into a PUBLIC log. The action ORs the
+      # two, so show_full_output: false does not override it. Pinning it here is
+      # a belt; the rule is that nobody checks "Enable debug logging" on a re-run.
+      ACTIONS_STEP_DEBUG: "false"
     permissions:
       contents: read
       pull-requests: read
@@ -34,7 +40,17 @@ jobs:
         id: claude
         uses: anthropics/claude-code-action@v1
         with:
+          # The subscription, not the API key. An @claude run costs no dollars,
+          # but it draws on the same subscription window a live session draws
+          # on, so a long CI review can throttle you at your own keyboard.
+          #
+          #   gh secret set CLAUDE_CODE_OAUTH_TOKEN
+          #
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+          # Never raise this, and never add allowed_bots. Both hand a public log
+          # tool output, or hand an outside App a prompt it writes itself.
+          show_full_output: false
 
           # This is an optional setting that allows Claude to read CI results on PRs
           additional_permissions: |
