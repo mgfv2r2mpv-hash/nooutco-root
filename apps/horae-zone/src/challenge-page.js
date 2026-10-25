@@ -26,11 +26,15 @@ import { NOT_CONFIGURED_SENTENCE, turnstileSecret } from "./turnstile.js";
 // lavish-pollux, janusmirror docs/REMOTE-SETUP.md), so the shell that frames
 // this page runs there; without them the frame is refused and the phone's
 // Sign in never gets a token (Kaleb's phone, 9 Oct 2026).
+// jm is the front page that frames each Mac's card, and a frame-ancestors
+// check covers every ancestor, so the challenge inside a card there needs it
+// too (Kaleb's iPhone, 25 Oct 2026: Sign in stayed disabled).
 export const FRAME_ORIGINS = Object.freeze([
   "https://lc.nooutco.me",
   "https://lp.nooutco.me",
   "https://lavish-castor.nooutco.me",
   "https://lavish-pollux.nooutco.me",
+  "https://jm.nooutco.me",
 ]);
 export const TURNSTILE_SCRIPT = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
 const CHALLENGE_ORIGIN = "https://challenges.cloudflare.com";
